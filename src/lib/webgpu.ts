@@ -56,7 +56,7 @@ export const LOCAL_MODELS: LocalModelOption[] = [
   { id: "Llama-3.2-1B-Instruct-q4f16_1-MLC", label: "Llama 3.2 1B", params: "1B", engine: "web-llm", vramMB: 879, note: "Meta · 4K ctx", requiresF16: true },
   { id: "Llama-3.2-1B-Instruct-q4f32_1-MLC", label: "Llama 3.2 1B (f32)", params: "1B", engine: "web-llm", vramMB: 1188, note: "No shader-f16 needed" },
   { id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 0.5B", params: "0.5B", engine: "web-llm", vramMB: 945, note: "32K context", requiresF16: true },
-  { id: "Qwen2.5-0.5B-Instruct-q4f32_1-MLC", label: "Qwen2.5 0.5B (f32)", params: "0.5B", engine: "web-llm", vramMB: 760, note: "No shader-f16 needed" },
+  { id: "Qwen2.5-0.5B-Instruct-q4f32_1-MLC", label: "Qwen2.5 0.5B (f32)", params: "0.5B", engine: "web-llm", vramMB: 1060, note: "No shader-f16 needed" },
   { id: "Qwen3-0.6B-q4f16_1-MLC", label: "Qwen3 0.6B", params: "0.6B", engine: "web-llm", vramMB: 1403, note: "Thinking-capable", requiresF16: true },
   { id: "SmolLM2-1.7B-Instruct-q4f16_1-MLC", label: "SmolLM2 1.7B", params: "1.7B", engine: "web-llm", vramMB: 1774, note: "Strong for size", requiresF16: true },
   { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 1.5B", params: "1.5B", engine: "web-llm", vramMB: 1630, note: "Balanced", requiresF16: true },
