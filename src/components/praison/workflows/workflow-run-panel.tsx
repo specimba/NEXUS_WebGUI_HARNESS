@@ -7,15 +7,20 @@ import {
   Check,
   ChevronDown,
   Clock,
+  Copy,
   Download,
   GitCompareArrows,
+  KeyRound,
+  LifeBuoy,
   Loader2,
   Play,
+  RotateCcw,
   ShieldCheck,
   Square,
   Undo2,
   X,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -50,15 +55,17 @@ import {
   fmtIntervalShort,
   fmtMs,
   fmtRel,
+  runDiagnostics,
   runToMarkdown,
   slugify,
 } from "@/lib/helpers";
 import {
   useAgentsStore,
   useSettingsStore,
+  useUiStore,
   useWorkflowsStore,
 } from "@/lib/stores";
-import { executeWorkflowRun } from "@/lib/workflow-runner";
+import { executeWorkflowRun, runErrorKindLabel } from "@/lib/workflow-runner";
 import { SCHEDULE_INTERVALS } from "@/lib/constants";
 import type { Workflow, WorkflowRunStep } from "@/lib/types";
 import { TOOL_META } from "@/lib/constants";
@@ -66,7 +73,12 @@ import { cn } from "@/lib/utils";
 import { AgentAvatar } from "@/components/praison/atoms";
 import { MarkdownRenderer } from "@/components/praison/markdown";
 import { WorkflowCompareDialog } from "@/components/praison/workflows/workflow-compare-dialog";
-import type { ToolCallInfo, ToolId } from "@/lib/types";
+import type {
+  RunErrorKind,
+  ToolCallInfo,
+  ToolId,
+  WorkflowRun,
+} from "@/lib/types";
 
 // ─── Pipeline run panel: task → live streaming step cards → run history ─────
 
@@ -138,6 +150,187 @@ function ToolCallChips({ toolCalls }: { toolCalls: ToolCallInfo[] }) {
         );
       })}
     </div>
+  );
+}
+
+// ─── Recovery card: non-silent failure fallback with user options ───────────
+
+const ERROR_KIND_BADGE: Record<RunErrorKind, string> = {
+  network: "border-amber-500/40 bg-amber-500/10 text-amber-500",
+  auth: "border-red-500/40 bg-red-500/10 text-red-500",
+  "rate-limit": "border-amber-500/40 bg-amber-500/10 text-amber-500",
+  timeout: "border-amber-500/40 bg-amber-500/10 text-amber-500",
+  unknown: "border-border bg-muted text-muted-foreground",
+};
+
+function RunRecoveryCard({
+  run,
+  workflow,
+  busy,
+  onResume,
+  onRestart,
+}: {
+  run: WorkflowRun;
+  workflow: Workflow;
+  busy: boolean;
+  onResume: (fromStepIndex: number) => void;
+  onRestart: () => void;
+}) {
+  const [dismissed, setDismissed] = React.useState(false);
+  const [msgOpen, setMsgOpen] = React.useState(false);
+  const err = run.error;
+  const lastAttempt = React.useRef<number>(-1);
+
+  // A NEW failure (attempts changed) always re-opens the card, even if the
+  // user had dismissed the previous one — never hide fresh information.
+  React.useEffect(() => {
+    if (err && err.attempts !== lastAttempt.current) {
+      lastAttempt.current = err.attempts;
+      setDismissed(false);
+    }
+  }, [err]);
+
+  const firstPending = run.steps.findIndex((s) => s.status !== "done");
+  const hasOutput = run.steps.some((s) => s.output.trim().length > 0);
+  const stopped = run.status === "stopped";
+
+  if (dismissed) return null;
+
+  function savePartialReport() {
+    downloadText(
+      `praison-run-partial-${slugify(workflow.name)}.md`,
+      runToMarkdown(workflow, run),
+      "text/markdown"
+    );
+    toast.success("Partial report saved", {
+      description: `${run.steps.filter((s) => s.status === "done").length}/${run.steps.length} steps captured as Markdown.`,
+    });
+  }
+
+  function copyDiagnostics() {
+    const text = runDiagnostics(workflow, run);
+    navigator.clipboard
+      .writeText(text)
+      .then(() => toast.success("Diagnostics copied", { description: "Paste it into an issue or chat — contains no keys." }))
+      .catch(() => {
+        toast.error("Clipboard blocked", { description: "Select and copy from the browser console instead." });
+        console.info(text);
+      });
+  }
+
+  return (
+    <Card className="gap-3 border-l-4 border-l-red-500 border-red-500/30 bg-red-500/[0.03] p-4">
+      <div className="flex items-start gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/10" aria-hidden>
+          <LifeBuoy className="h-4 w-4 text-red-400" />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-semibold leading-tight">
+            {stopped ? "Run stopped — resume anytime" : "Run failed — pick a recovery option"}
+          </p>
+          {err ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Failed at <span className="font-medium text-foreground">step {err.stepIndex + 1}/{run.steps.length}</span>
+              {" "}· {err.agentName}
+              {" "}
+              <Badge variant="outline" className={cn("mx-0.5 px-1.5 py-0 text-[10px]", ERROR_KIND_BADGE[err.kind])}>
+                {runErrorKindLabel(err.kind)}
+              </Badge>
+              · {err.stepsDone}/{run.steps.length} steps done
+              {err.toolCallsOk > 0 ? ` · ${err.toolCallsOk} tool call${err.toolCallsOk === 1 ? "" : "s"} succeeded first` : ""}
+              {hasOutput ? " · partial output preserved" : ""}
+            </p>
+          ) : (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              You stopped this run — every completed step is kept. Resuming continues from
+              {" "}<span className="font-medium text-foreground">step {(firstPending === -1 ? run.steps.length : firstPending) + 1}</span>{" "}
+              without re-running what already succeeded.
+            </p>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Dismiss recovery options"
+          title="Dismiss"
+          onClick={() => setDismissed(true)}
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </Button>
+      </div>
+
+      {err ? (
+        <>
+          <div className="rounded-lg border bg-background/60 p-2.5">
+            <p className={cn("break-words font-mono text-xs text-muted-foreground", !msgOpen && "line-clamp-2")}>
+              {err.message}
+            </p>
+            {err.message.length > 110 ? (
+              <button
+                type="button"
+                onClick={() => setMsgOpen((o) => !o)}
+                className="mt-1 text-[11px] text-violet-400 transition-colors hover:text-violet-300"
+              >
+                {msgOpen ? "Show less" : "Show full error"}
+              </button>
+            ) : null}
+          </div>
+          <p className="rounded-lg border border-violet-500/25 bg-violet-500/5 p-2.5 text-xs leading-relaxed">
+            {err.hint}
+          </p>
+        </>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={busy || firstPending === -1}
+          onClick={() => onResume(firstPending)}
+        >
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+          {stopped
+            ? `Resume from step ${firstPending + 1}`
+            : firstPending === err?.stepIndex
+              ? "Retry failed step"
+              : "Resume from failed step"}
+        </Button>
+        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onRestart}>
+          <Play className="h-3.5 w-3.5" aria-hidden />
+          Restart from scratch
+        </Button>
+        {hasOutput ? (
+          <Button type="button" variant="ghost" size="sm" onClick={savePartialReport}>
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Partial report
+          </Button>
+        ) : null}
+        <Button type="button" variant="ghost" size="sm" onClick={copyDiagnostics}>
+          <Copy className="h-3.5 w-3.5" aria-hidden />
+          Copy diagnostics
+        </Button>
+        {err?.kind === "auth" ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => useUiStore.getState().setView("settings")}
+          >
+            <KeyRound className="h-3.5 w-3.5" aria-hidden />
+            Fix key in Settings
+          </Button>
+        ) : null}
+      </div>
+
+      {run.resumeCount || (err && err.attempts > 1) ? (
+        <p className="text-[11px] text-muted-foreground">
+          Resumed ×{run.resumeCount ?? 0}
+          {err && err.attempts > 1 ? ` · ${err.attempts} attempts on this run` : ""}
+          {" "}· a fresh run row is never duplicated, completed work is never re-billed.
+        </p>
+      ) : null}
+    </Card>
   );
 }
 
@@ -224,6 +417,49 @@ export function WorkflowRunPanel({
     await executeWorkflowRun({
       workflow: { id: wf.id },
       task: trimmed,
+      source: "manual",
+      onStarted: (runId, controller) => {
+        setViewingRunId(runId);
+        setRunning(true);
+        abortRef.current = controller;
+      },
+      onSettled: () => {
+        setRunning(false);
+        abortRef.current = null;
+      },
+    });
+  }
+
+  /** Continue an errored/stopped run from a step — completed outputs preserved. */
+  async function resumeRun(fromStepIndex: number) {
+    const wf = liveWorkflow;
+    const run = viewedRun;
+    if (!wf || !run || running) return;
+    await executeWorkflowRun({
+      workflow: { id: wf.id },
+      task: run.task,
+      resume: { runId: run.id, fromStepIndex },
+      source: "manual",
+      onStarted: (runId, controller) => {
+        setViewingRunId(runId);
+        setRunning(true);
+        abortRef.current = controller;
+      },
+      onSettled: () => {
+        setRunning(false);
+        abortRef.current = null;
+      },
+    });
+  }
+
+  /** Fresh run with the same task as a failed/stopped one. */
+  async function restartRun() {
+    const wf = liveWorkflow;
+    const run = viewedRun;
+    if (!wf || !run || running || !run.task.trim()) return;
+    await executeWorkflowRun({
+      workflow: { id: wf.id },
+      task: run.task,
       source: "manual",
       onStarted: (runId, controller) => {
         setViewingRunId(runId);
@@ -541,6 +777,17 @@ export function WorkflowRunPanel({
                   <span className="font-medium text-foreground">Task:</span>{" "}
                   {viewedRun.task}
                 </p>
+              ) : null}
+              {/* Non-silent failure fallback: options + information, never just a dead end */}
+              {!running && (viewedRun.status === "error" || viewedRun.status === "stopped") && liveWorkflow ? (
+                <RunRecoveryCard
+                  key={viewedRun.id}
+                  run={viewedRun}
+                  workflow={liveWorkflow}
+                  busy={running}
+                  onResume={resumeRun}
+                  onRestart={restartRun}
+                />
               ) : null}
               {viewedRun.steps.map((step, i) => {
                 const agent = agents.find((a) => a.id === step.agentId);

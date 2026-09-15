@@ -10,6 +10,7 @@ import {
   Search,
   Settings2,
   Sheet as SheetIcon,
+  Sparkles,
   Workflow as WorkflowIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -306,6 +307,17 @@ export function TopBar() {
                   <KeyRound className="h-3.5 w-3.5" aria-hidden />
                   <span className="flex-1 truncate">Custom endpoint · {legacyHost}</span>
                   {resolved.providerId === "custom" && <span className="text-xs">✓</span>}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    history.replaceState(null, "", "#/setup");
+                    useUiStore.getState().openSetupWizard();
+                  }}
+                  className="text-violet-400"
+                >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                  <span className="flex-1">Get a free frontier key — guided setup</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

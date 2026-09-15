@@ -4,12 +4,14 @@ import * as React from "react";
 import {
   Bot,
   Cog,
+  Gpu,
   MessagesSquare,
   Moon,
   MessageSquarePlus,
   Palette,
   Play,
   Search,
+  Sparkles,
   Sun,
   Workflow as WorkflowIcon,
 } from "lucide-react";
@@ -179,6 +181,44 @@ export function CommandPalette() {
             <Palette className="text-fuchsia-500" />
             Cycle accent theme
             <CommandShortcut>↺</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Providers & models">
+          <CommandItem
+            onSelect={() =>
+              run(() => {
+                history.replaceState(null, "", "#/setup");
+                useUiStore.getState().openSetupWizard();
+              })
+            }
+          >
+            <Sparkles className="text-violet-400" />
+            Get a free frontier key — guided setup
+          </CommandItem>
+          <CommandItem
+            onSelect={() =>
+              run(() => {
+                useUiStore.getState().setView("settings");
+                useUiStore.getState().setSettingsAnchor("providers");
+              })
+            }
+          >
+            <Cog className="text-violet-400" />
+            Free provider gallery
+          </CommandItem>
+          <CommandItem
+            onSelect={() =>
+              run(() => {
+                useUiStore.getState().setView("settings");
+                useUiStore.getState().setSettingsAnchor("local-models");
+              })
+            }
+          >
+            <Gpu className="text-violet-400" />
+            Local models — WebGPU playground
           </CommandItem>
         </CommandGroup>
 

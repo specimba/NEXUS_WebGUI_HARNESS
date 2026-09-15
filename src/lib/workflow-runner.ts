@@ -21,6 +21,8 @@ import {
 } from "@/lib/stores";
 import { REWORK_LIMIT } from "@/lib/constants";
 import type {
+  RunErrorInfo,
+  RunErrorKind,
   ToolCallInfo,
   Workflow,
   WorkflowRun,
@@ -49,6 +51,62 @@ export interface ExecuteRunOptions {
   onSettled?: (runId: string, status: WorkflowRun["status"]) => void;
   /** Optional external stop handle — defaults to the runner's own controller. */
   signal?: AbortSignal;
+  /**
+   * Resume an existing errored/stopped run instead of creating a new row:
+   * completed step outputs are preserved, execution restarts at fromStepIndex.
+   * When set, `task` is ignored (the run's original task is reused).
+   */
+  resume?: { runId: string; fromStepIndex: number };
+}
+
+// ─── Failure classification (powers the non-silent recovery card) ───────────
+
+const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
+  network: {
+    label: "Network",
+    hint: "The connection to the model provider dropped mid-run. This is usually transient — retrying the failed step keeps every completed step's output.",
+  },
+  auth: {
+    label: "Auth",
+    hint: "The API key was rejected (expired, revoked or wrong). Fix the key in Settings → Free frontier providers, then retry the failed step.",
+  },
+  "rate-limit": {
+    label: "Rate limit",
+    hint: "The provider's free-tier quota tripped (429). Wait a minute — or switch to another free provider in the header picker — then retry the failed step.",
+  },
+  timeout: {
+    label: "Timeout",
+    hint: "The provider took too long to answer. Retry usually helps; if it keeps happening, try a smaller/faster model for this step.",
+  },
+  unknown: {
+    label: "Unknown",
+    hint: "The provider returned an error we couldn't classify. Copy the diagnostics below for details — retrying the failed step is still safe.",
+  },
+};
+
+const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
+  { kind: "rate-limit", re: /\b429\b|rate.?limit|quota|too many requests/i },
+  { kind: "auth", re: /\b(401|403)\b|unauthorized|invalid.{0,12}(api )?key|invalid.?key|forbidden|permission denied/i },
+  { kind: "timeout", re: /timeout|timed? ?out|etimedout|deadline/i },
+  {
+    kind: "network",
+    re: /network|fetch failed|failed to fetch|could not reach|socket|econn|enotfound|eai_again|dns|connection (refused|reset|closed|error)|load failed|premature close|stream ended without|upstream/i,
+  },
+];
+
+/** Classify an engine error message → kind + copy used by the recovery card. */
+export function classifyRunError(message: string): {
+  kind: RunErrorKind;
+  hint: string;
+} {
+  for (const { kind, re } of ERROR_PATTERNS) {
+    if (re.test(message)) return { kind, hint: ERROR_KIND_META[kind].hint };
+  }
+  return { kind: "unknown", hint: ERROR_KIND_META.unknown.hint };
+}
+
+export function runErrorKindLabel(kind: RunErrorKind): string {
+  return ERROR_KIND_META[kind].label;
 }
 
 /**
@@ -56,49 +114,81 @@ export interface ExecuteRunOptions {
  * streams each step through the agent chain, patches statuses live.
  * Steps marked kind:"review" act as quality gates — they audit the previous
  * step's output and may send it back for a rework pass (up to REWORK_LIMIT).
+ * With `options.resume` it continues an existing errored/stopped run from a
+ * step index, preserving every completed step's output (non-destructive).
  * Returns the run id, or null when the run could not start.
  */
 export async function executeWorkflowRun(
   options: ExecuteRunOptions
 ): Promise<string | null> {
-  const { task, source = "manual", onStarted, onSettled } = options;
+  const { source = "manual", onStarted, onSettled } = options;
   const wf = useWorkflowsStore
     .getState()
     .workflows.find((w) => w.id === options.workflow.id);
-  if (!wf || wf.steps.length === 0 || task.trim() === "") return null;
+  if (!wf || wf.steps.length === 0) return null;
   if (activeRuns.has(wf.id)) return null;
 
   const store = useWorkflowsStore.getState();
   const settings = useSettingsStore.getState();
   const agentsNow = useAgentsStore.getState().agents;
-  const runId = uid("run");
-  const now = Date.now();
-  const trimmed = task.trim();
 
-  const steps: WorkflowRunStep[] = wf.steps.map((s) => {
-    const agent = agentsNow.find((a) => a.id === s.agentId);
-    return {
-      stepId: s.id,
-      agentId: s.agentId,
-      agentName: agent?.name ?? "Unknown agent",
-      agentEmoji: agent?.emoji ?? "🤖",
-      label: s.label || "Untitled step",
-      output: "",
-      toolCalls: [],
+  // ─── Fresh run vs resume of an existing errored/stopped row ─────────────
+  let runId: string;
+  let task: string;
+  let steps: WorkflowRunStep[];
+  let startIndex = 0;
+  let attempts = 0;
+
+  if (options.resume) {
+    const run = wf.runs.find((r) => r.id === options.resume!.runId);
+    if (!run || run.status === "running") return null;
+    runId = run.id;
+    task = run.task;
+    attempts = run.error?.attempts ?? 0;
+    startIndex = Math.min(
+      Math.max(0, options.resume.fromStepIndex),
+      run.steps.length - 1
+    );
+    steps = run.steps.map((s, i) =>
+      i >= startIndex
+        ? { ...s, output: "", toolCalls: [], status: "running" as const, ms: undefined, verdict: undefined, reworked: undefined }
+        : s
+    );
+    store.patchRun(wf.id, runId, {
       status: "running",
-      kind: s.kind ?? "generate",
-    };
-  });
-
-  store.addRun(wf.id, {
-    id: runId,
-    workflowId: wf.id,
-    workflowName: wf.name,
-    task: trimmed,
-    status: "running",
-    startedAt: now,
-    steps,
-  });
+      finishedAt: undefined,
+      error: undefined,
+      steps,
+      resumeCount: (run.resumeCount ?? 0) + 1,
+    });
+  } else {
+    if (options.task.trim() === "") return null;
+    runId = uid("run");
+    task = options.task.trim();
+    steps = wf.steps.map((s) => {
+      const agent = agentsNow.find((a) => a.id === s.agentId);
+      return {
+        stepId: s.id,
+        agentId: s.agentId,
+        agentName: agent?.name ?? "Unknown agent",
+        agentEmoji: agent?.emoji ?? "🤖",
+        label: s.label || "Untitled step",
+        output: "",
+        toolCalls: [],
+        status: "running" as const,
+        kind: s.kind ?? "generate",
+      };
+    });
+    store.addRun(wf.id, {
+      id: runId,
+      workflowId: wf.id,
+      workflowName: wf.name,
+      task,
+      status: "running",
+      startedAt: Date.now(),
+      steps,
+    });
+  }
 
   const controller = new AbortController();
   const signal = options.signal ?? controller.signal;
@@ -119,15 +209,51 @@ export async function executeWorkflowRun(
     }
   };
 
-  const finish = (status: WorkflowRun["status"], toastMsg: string) => {
-    patchRun({ status, finishedAt: Date.now() });
+  const finish = (
+    status: WorkflowRun["status"],
+    toastMsg: string,
+    errorInfo?: RunErrorInfo
+  ) => {
+    patchRun({ status, finishedAt: Date.now(), ...(errorInfo ? { error: errorInfo } : status === "done" ? { error: undefined } : {}) });
     if (source === "scheduled") {
       if (status === "done") toast.success("Scheduled run finished", { icon: "⏰", description: `${wf.name} · ${steps.length} steps` });
-      else if (status === "error") toast.error("Scheduled run failed", { icon: "⏰", description: wf.name });
+      else if (status === "error") toast.error("Scheduled run failed", { icon: "⏰", description: errorInfo ? `${errorInfo.stepLabel} · ${ERROR_KIND_META[errorInfo.kind].label.toLowerCase()} — open the run to recover` : wf.name });
     } else {
       if (status === "done") toast.success(toastMsg);
+      else if (status === "error" && errorInfo) {
+        // Non-silent failure: tell the user WHERE to recover, not just that it broke.
+        toast.error(`Run failed at "${errorInfo.stepLabel}"`, {
+          icon: "🛟",
+          description: `${ERROR_KIND_META[errorInfo.kind].label} issue · ${errorInfo.stepsDone}/${steps.length} steps done — recovery options are in the run panel.`,
+        });
+      }
     }
     onSettled?.(runId, status);
+  };
+
+  /** Build the full RunErrorInfo for a failed step and finish the run. */
+  const failRun = (fallbackIndex: number, err: Error) => {
+    const meta = err as Error & { stepId?: string; toolCallsOk?: number };
+    const found = steps.findIndex((s) => s.stepId === meta.stepId);
+    const failedIndex = found === -1 ? fallbackIndex : found;
+    const step = steps[failedIndex] ?? steps[fallbackIndex];
+    const { kind, hint } = classifyRunError(err.message);
+    const llm = resolveLlm(settings.settings);
+    const info: RunErrorInfo = {
+      stepIndex: failedIndex,
+      stepId: step.stepId,
+      stepLabel: step.label,
+      agentName: step.agentName,
+      message: err.message,
+      kind,
+      hint,
+      toolCallsOk: meta.toolCallsOk ?? 0,
+      stepsDone: steps.slice(0, failedIndex).filter((s) => s.status === "done").length,
+      llmLabel: llm.label,
+      attempts: attempts + 1,
+    };
+    stopRemaining(failedIndex);
+    finish("error", `Step "${step.label}" failed`, info);
   };
 
   /** Stream one agent call for a run step; returns the final content + duration. */
@@ -194,6 +320,10 @@ export async function executeWorkflowRun(
           output: draft || "(stopped)",
         });
       } else {
+        // Attach recovery metadata so failRun can attribute the failure precisely.
+        const meta = err as Error & { stepId?: string; toolCallsOk?: number };
+        meta.stepId = runStep.stepId;
+        meta.toolCallsOk = localToolCalls.filter((tc) => tc.ok === true).length;
         patchRunStep(runStep.stepId, {
           status: "error",
           output: `${draft ? `${draft}\n\n` : ""}**Error:** ${(err as Error).message}`,
@@ -204,10 +334,18 @@ export async function executeWorkflowRun(
   };
 
   try {
-    const prev: PrevStepOutput[] = [];
+    // Resume: rebuild the conversation context from every completed step
+    // before the resume point — nothing the user already paid for is lost.
+    const prev: PrevStepOutput[] =
+      startIndex > 0
+        ? steps
+            .slice(0, startIndex)
+            .filter((s) => s.status === "done" && s.output.trim() !== "")
+            .map((s) => ({ label: s.label, agentName: s.agentName, output: s.output }))
+        : [];
     const framework = settings.settings.framework;
 
-    for (let i = 0; i < steps.length; i++) {
+    for (let i = startIndex; i < steps.length; i++) {
       const step = steps[i];
       const def = wf.steps.find((s) => s.id === step.stepId);
       const kind = def?.kind ?? "generate";
@@ -221,8 +359,7 @@ export async function executeWorkflowRun(
         .agents.find((a) => a.id === step.agentId);
       if (!agentRow) {
         patchRunStep(step.stepId, { status: "error", output: "Agent not found" });
-        stopRemaining(i);
-        finish("error", `Step "${step.label}" failed`);
+        failRun(i, new Error(`Agent "${step.agentName}" was deleted — re-add it to this workflow, then resume.`));
         return runId;
       }
 
@@ -230,7 +367,7 @@ export async function executeWorkflowRun(
       if (kind === "review" && i > 0) {
         const reviewed = steps[i - 1];
         const context = buildReviewContext(
-          trimmed,
+          task,
           prev[prev.length - 1] ?? {
             label: reviewed.label,
             agentName: reviewed.agentName,
@@ -284,8 +421,7 @@ export async function executeWorkflowRun(
               .agents.find((a) => a.id === reviewed.agentId);
             if (!genAgent) {
               patchRunStep(reviewed.stepId, { status: "error", output: "Agent not found" });
-              stopRemaining(i);
-              finish("error", `Step "${reviewed.label}" failed`);
+              failRun(i, new Error(`Agent "${reviewed.agentName}" was deleted — re-add it to this workflow, then resume.`));
               return runId;
             }
             const reviewedDef = wf.steps.find((s) => s.id === reviewed.stepId);
@@ -298,8 +434,8 @@ export async function executeWorkflowRun(
             prev.pop();
             const genContext =
               framework === "sequential"
-                ? buildSequentialContext(trimmed, prev)
-                : buildConversationalContext(trimmed, prev);
+                ? buildSequentialContext(task, prev)
+                : buildConversationalContext(task, prev);
 
             patchRunStep(reviewed.stepId, { status: "running", reworked: true });
             const gen = await streamStep(
@@ -320,8 +456,7 @@ export async function executeWorkflowRun(
               finish("stopped", "Pipeline stopped");
               return runId;
             }
-            stopRemaining(i);
-            finish("error", `Step "${step.label}" failed`);
+            failRun(i, err as Error);
             return runId;
           }
         }
@@ -331,8 +466,8 @@ export async function executeWorkflowRun(
       // ─── Regular generate step ────────────────────────────────────────────
       const context =
         framework === "sequential"
-          ? buildSequentialContext(trimmed, prev)
-          : buildConversationalContext(trimmed, prev);
+          ? buildSequentialContext(task, prev)
+          : buildConversationalContext(task, prev);
 
       try {
         const { content } = await streamStep(step, step.agentId, baseSystem, context);
@@ -343,13 +478,12 @@ export async function executeWorkflowRun(
           finish("stopped", "Pipeline stopped");
           return runId;
         }
-        stopRemaining(i);
-        finish("error", `Step "${step.label}" failed`);
+        failRun(i, err as Error);
         return runId;
       }
     }
 
-    finish("done", "Pipeline finished");
+    finish("done", startIndex > 0 ? "Pipeline resumed & finished" : "Pipeline finished");
     return runId;
   } finally {
     activeRuns.delete(wf.id);

@@ -443,6 +443,11 @@ interface UiState {
   busy: boolean;
   /** Workflows view layout: card grid or the runs kanban board. */
   workflowBoardOpen: boolean;
+  /** Guided "get your free frontier key" wizard visibility (+ optional deep-linked provider). */
+  setupWizardOpen: boolean;
+  setupWizardProviderId: string | null;
+  /** Scroll target inside Settings ("providers" | "local-models") — consumed by SettingsView. */
+  settingsAnchor: "providers" | "local-models" | null;
   setView: (v: View) => void;
   setMobileNavOpen: (v: boolean) => void;
   toggleChatList: () => void;
@@ -455,6 +460,9 @@ interface UiState {
   clearPendingFocus: () => void;
   setBusy: (v: boolean) => void;
   setWorkflowBoardOpen: (v: boolean) => void;
+  openSetupWizard: (providerId?: string) => void;
+  setSetupWizardOpen: (v: boolean) => void;
+  setSettingsAnchor: (a: "providers" | "local-models" | null) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -470,6 +478,9 @@ export const useUiStore = create<UiState>()(
       pendingFocus: null,
       busy: false,
       workflowBoardOpen: false,
+      setupWizardOpen: false,
+      setupWizardProviderId: null,
+      settingsAnchor: null,
       setView: (view) => set({ view, mobileNavOpen: false }),
       setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
       toggleChatList: () => set((s) => ({ chatListOpen: !s.chatListOpen })),
@@ -484,6 +495,15 @@ export const useUiStore = create<UiState>()(
       clearPendingFocus: () => set({ pendingFocus: null }),
       setBusy: (busy) => set({ busy }),
       setWorkflowBoardOpen: (workflowBoardOpen) => set({ workflowBoardOpen }),
+      openSetupWizard: (providerId) =>
+        set({
+          setupWizardOpen: true,
+          setupWizardProviderId: providerId ?? null,
+          view: "settings",
+          mobileNavOpen: false,
+        }),
+      setSetupWizardOpen: (setupWizardOpen) => set({ setupWizardOpen }),
+      setSettingsAnchor: (settingsAnchor) => set({ settingsAnchor }),
     }),
     {
       name: "praison-ui",

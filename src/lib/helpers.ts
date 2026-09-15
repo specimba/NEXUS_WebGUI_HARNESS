@@ -396,6 +396,51 @@ export function runToMarkdown(workflow: Pick<Workflow, "name">, run: WorkflowRun
   return lines.join("\n");
 }
 
+/**
+ * Technical diagnostics block for a failed/stopped run — copied to the
+ * clipboard from the recovery card so users can report issues precisely.
+ */
+export function runDiagnostics(
+  workflow: Pick<Workflow, "name">,
+  run: WorkflowRun
+): string {
+  const lines: string[] = [
+    "PraisonAI Web — run diagnostics",
+    "===============================",
+    `workflow : ${workflow.name} (${run.workflowId})`,
+    `run      : ${run.id}`,
+    `status   : ${run.status}`,
+    `started  : ${new Date(run.startedAt).toISOString()}`,
+    run.finishedAt
+      ? `finished : ${new Date(run.finishedAt).toISOString()} (${fmtMs(run.finishedAt - run.startedAt)})`
+      : "finished : —",
+    `task     : ${run.task.slice(0, 200)}`,
+  ];
+  const e = run.error;
+  if (e) {
+    lines.push(
+      "",
+      "[failure]",
+      `step     : #${e.stepIndex + 1} "${e.stepLabel}" (${e.stepId})`,
+      `agent    : ${e.agentName}`,
+      `kind     : ${e.kind}`,
+      `engine   : ${e.llmLabel}`,
+      `stepsDone: ${e.stepsDone}/${run.steps.length}`,
+      `toolsOk  : ${e.toolCallsOk} (inside the failed step)`,
+      `attempts : ${e.attempts}`,
+      `message  : ${e.message}`
+    );
+  }
+  if (run.resumeCount) lines.push(`resumes  : ${run.resumeCount}`);
+  lines.push("", "[steps]");
+  run.steps.forEach((s, i) => {
+    lines.push(
+      `- #${i + 1} ${s.label} · ${s.status}${s.ms != null ? ` · ${fmtMs(s.ms)}` : ""} · tools ${s.toolCalls.length} · out ${s.output.length}B${s.kind === "review" ? ` · verdict ${s.verdict ?? "—"}` : ""}`
+    );
+  });
+  return lines.join("\n");
+}
+
 /** Render a two-run comparison (from the compare dialog) as a Markdown report. */
 export function comparisonToMarkdown(
   workflow: Pick<Workflow, "name">,

@@ -27,6 +27,27 @@ function useIsClient(): boolean {
   );
 }
 
+// ─── In-app hash routes (single-page app; linkable/bookmarkable) ────────────
+// #/setup            → guided free-key wizard
+// #/guide/<provider> → wizard pre-opened at that provider's registration step
+// #/providers        → Settings scrolled to the free provider gallery
+// #/local-models     → Settings scrolled to the WebGPU local-model panel
+
+function applyHashRoute(): void {
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  if (!hash) return;
+  const [head, param] = hash.split("/");
+  const ui = useUiStore.getState();
+  if (head === "setup") {
+    ui.openSetupWizard();
+  } else if (head === "guide" && param) {
+    ui.openSetupWizard(decodeURIComponent(param));
+  } else if (head === "providers" || head === "local-models") {
+    ui.setView("settings");
+    ui.setSettingsAnchor(head);
+  }
+}
+
 if (typeof window !== "undefined") {
   ensureSeeded();
 }
@@ -44,6 +65,15 @@ export default function Page() {
       document.documentElement.setAttribute("data-theme", id);
     }
   }, [uiTheme]);
+
+  // Handle hash routes on load and while the app is open (#/setup, #/guide/<id>, …).
+  useEffect(() => {
+    if (!mounted) return;
+    applyHashRoute();
+    const onHash = () => applyHashRoute();
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [mounted]);
 
   if (!mounted) return <Splash />;
 

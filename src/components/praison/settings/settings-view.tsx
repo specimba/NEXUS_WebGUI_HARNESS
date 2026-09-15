@@ -8,6 +8,7 @@ import { ThemePicker } from "@/components/praison/settings/theme-picker";
 import { LocalModelsPanel } from "@/components/praison/settings/local-models";
 import { ProviderCard } from "@/components/praison/settings/provider-card";
 import { ProviderGallery } from "@/components/praison/settings/provider-gallery";
+import { SetupWizard } from "@/components/praison/settings/setup-wizard";
 import { UsageDashboard } from "@/components/praison/settings/usage-dashboard";
 import {
   AlertDialog,
@@ -53,6 +54,7 @@ import {
   useAgentsStore,
   useConversationsStore,
   useSettingsStore,
+  useUiStore,
   useWorkflowsStore,
 } from "@/lib/stores";
 import type { Conversation, Framework } from "@/lib/types";
@@ -87,6 +89,20 @@ export function SettingsView() {
   const workflows = useWorkflowsStore((s) => s.workflows);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Consume a deep-link scroll target (#/providers · #/local-models hash routes).
+  const settingsAnchor = useUiStore((s) => s.settingsAnchor);
+  const setSettingsAnchor = useUiStore((s) => s.setSettingsAnchor);
+  React.useEffect(() => {
+    if (!settingsAnchor) return;
+    const t = setTimeout(() => {
+      document
+        .getElementById(settingsAnchor)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setSettingsAnchor(null);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [settingsAnchor, setSettingsAnchor]);
 
   const messageCount = React.useMemo(
     () => conversations.reduce((n, c) => n + c.messages.length, 0),
@@ -202,8 +218,12 @@ export function SettingsView() {
           <UsageDashboard />
 
           {/* ── Provider: free frontier gallery + advanced custom endpoint ── */}
-          <ProviderGallery />
-          <LocalModelsPanel />
+          <div id="providers" className="scroll-mt-4">
+            <ProviderGallery />
+          </div>
+          <div id="local-models" className="scroll-mt-4">
+            <LocalModelsPanel />
+          </div>
           <ProviderCard />
 
           {/* ── Behavior ─────────────────────────────────────────────── */}
@@ -489,6 +509,9 @@ export function SettingsView() {
           </Card>
         </div>
       </div>
+      {/* Guided "free frontier key" wizard — opened from the gallery, header
+          picker, command palette or the #/setup · #/guide/<provider> routes. */}
+      <SetupWizard />
     </div>
   );
 }

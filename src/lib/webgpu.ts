@@ -41,30 +41,35 @@ export interface LocalModelOption {
   /** VRAM required in MB (WebLLM prebuilt config values). */
   vramMB: number;
   note: string;
+  /** True for q4f16/q0f16 weights — requires the adapter's shader-f16 feature. */
+  requiresF16?: boolean;
 }
 
 // Curated from mlc-ai/web-llm src/config.ts prebuilt list (vram_required_MB is
 // the official number). transformers.js rows are ONNX models that also run on
 // WASM/CPU — the fallback path for weak or missing WebGPU.
 export const LOCAL_MODELS: LocalModelOption[] = [
-  { id: "SmolLM2-135M-Instruct-q0f16-MLC", label: "SmolLM2 135M", params: "135M", engine: "web-llm", vramMB: 360, note: "Buttery on anything" },
-  { id: "SmolLM2-360M-Instruct-q4f16_1-MLC", label: "SmolLM2 360M", params: "360M", engine: "web-llm", vramMB: 376, note: "Best tiny chat" },
-  { id: "gemma3-1b-it-q4f16_1-MLC", label: "Gemma 3 1B", params: "1B", engine: "web-llm", vramMB: 711, note: "Google, punchy" },
-  { id: "Llama-3.2-1B-Instruct-q4f16_1-MLC", label: "Llama 3.2 1B", params: "1B", engine: "web-llm", vramMB: 879, note: "Meta · 4K ctx" },
-  { id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 0.5B", params: "0.5B", engine: "web-llm", vramMB: 945, note: "32K context" },
-  { id: "Qwen3-0.6B-q4f16_1-MLC", label: "Qwen3 0.6B", params: "0.6B", engine: "web-llm", vramMB: 1403, note: "Thinking-capable" },
-  { id: "SmolLM2-1.7B-Instruct-q4f16_1-MLC", label: "SmolLM2 1.7B", params: "1.7B", engine: "web-llm", vramMB: 1774, note: "Strong for size" },
-  { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 1.5B", params: "1.5B", engine: "web-llm", vramMB: 1630, note: "Balanced" },
-  { id: "gemma-2-2b-it-q4f16_1-MLC", label: "Gemma 2 2B", params: "2B", engine: "web-llm", vramMB: 1895, note: "Google instruct" },
-  { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC", label: "Llama 3.2 3B", params: "3B", engine: "web-llm", vramMB: 2264, note: "Solid quality" },
-  { id: "Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC", label: "Qwen2.5 Coder 3B", params: "3B", engine: "web-llm", vramMB: 2505, note: "In-browser coding" },
-  { id: "Qwen3-4B-q4f16_1-MLC", label: "Qwen3 4B", params: "4B", engine: "web-llm", vramMB: 3432, note: "Reasoning" },
-  { id: "Phi-4-mini-instruct-q4f16_1-MLC", label: "Phi-4-mini 3.8B", params: "3.8B", engine: "web-llm", vramMB: 3438, note: "Microsoft" },
-  { id: "Mistral-7B-Instruct-v0.3-q4f16_1-MLC", label: "Mistral 7B v0.3", params: "7B", engine: "web-llm", vramMB: 4573, note: "Classic" },
-  { id: "Llama-3.1-8B-Instruct-q4f16_1-MLC", label: "Llama 3.1 8B", params: "8B", engine: "web-llm", vramMB: 5001, note: "Meta flagship" },
-  { id: "DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC", label: "R1 Distill Qwen 7B", params: "7B", engine: "web-llm", vramMB: 5107, note: "Local reasoning demo" },
-  { id: "Qwen3-8B-q4f16_1-MLC", label: "Qwen3 8B", params: "8B", engine: "web-llm", vramMB: 5696, note: "Newest gen" },
-  { id: "gemma-2-9b-it-q4f16_1-MLC", label: "Gemma 2 9B", params: "9B", engine: "web-llm", vramMB: 6422, note: "Best ≤7GB" },
+  { id: "SmolLM2-135M-Instruct-q0f16-MLC", label: "SmolLM2 135M", params: "135M", engine: "web-llm", vramMB: 360, note: "Buttery on anything", requiresF16: true },
+  { id: "SmolLM2-360M-Instruct-q4f16_1-MLC", label: "SmolLM2 360M", params: "360M", engine: "web-llm", vramMB: 376, note: "Best tiny chat", requiresF16: true },
+  { id: "SmolLM2-360M-Instruct-q4f32_1-MLC", label: "SmolLM2 360M (f32)", params: "360M", engine: "web-llm", vramMB: 560, note: "No shader-f16 needed" },
+  { id: "gemma3-1b-it-q4f16_1-MLC", label: "Gemma 3 1B", params: "1B", engine: "web-llm", vramMB: 711, note: "Google, punchy", requiresF16: true },
+  { id: "Llama-3.2-1B-Instruct-q4f16_1-MLC", label: "Llama 3.2 1B", params: "1B", engine: "web-llm", vramMB: 879, note: "Meta · 4K ctx", requiresF16: true },
+  { id: "Llama-3.2-1B-Instruct-q4f32_1-MLC", label: "Llama 3.2 1B (f32)", params: "1B", engine: "web-llm", vramMB: 1188, note: "No shader-f16 needed" },
+  { id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 0.5B", params: "0.5B", engine: "web-llm", vramMB: 945, note: "32K context", requiresF16: true },
+  { id: "Qwen2.5-0.5B-Instruct-q4f32_1-MLC", label: "Qwen2.5 0.5B (f32)", params: "0.5B", engine: "web-llm", vramMB: 760, note: "No shader-f16 needed" },
+  { id: "Qwen3-0.6B-q4f16_1-MLC", label: "Qwen3 0.6B", params: "0.6B", engine: "web-llm", vramMB: 1403, note: "Thinking-capable", requiresF16: true },
+  { id: "SmolLM2-1.7B-Instruct-q4f16_1-MLC", label: "SmolLM2 1.7B", params: "1.7B", engine: "web-llm", vramMB: 1774, note: "Strong for size", requiresF16: true },
+  { id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", label: "Qwen2.5 1.5B", params: "1.5B", engine: "web-llm", vramMB: 1630, note: "Balanced", requiresF16: true },
+  { id: "gemma-2-2b-it-q4f16_1-MLC", label: "Gemma 2 2B", params: "2B", engine: "web-llm", vramMB: 1895, note: "Google instruct", requiresF16: true },
+  { id: "Llama-3.2-3B-Instruct-q4f16_1-MLC", label: "Llama 3.2 3B", params: "3B", engine: "web-llm", vramMB: 2264, note: "Solid quality", requiresF16: true },
+  { id: "Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC", label: "Qwen2.5 Coder 3B", params: "3B", engine: "web-llm", vramMB: 2505, note: "In-browser coding", requiresF16: true },
+  { id: "Qwen3-4B-q4f16_1-MLC", label: "Qwen3 4B", params: "4B", engine: "web-llm", vramMB: 3432, note: "Reasoning", requiresF16: true },
+  { id: "Phi-4-mini-instruct-q4f16_1-MLC", label: "Phi-4-mini 3.8B", params: "3.8B", engine: "web-llm", vramMB: 3438, note: "Microsoft", requiresF16: true },
+  { id: "Mistral-7B-Instruct-v0.3-q4f16_1-MLC", label: "Mistral 7B v0.3", params: "7B", engine: "web-llm", vramMB: 4573, note: "Classic", requiresF16: true },
+  { id: "Llama-3.1-8B-Instruct-q4f16_1-MLC", label: "Llama 3.1 8B", params: "8B", engine: "web-llm", vramMB: 5001, note: "Meta flagship", requiresF16: true },
+  { id: "DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC", label: "R1 Distill Qwen 7B", params: "7B", engine: "web-llm", vramMB: 5107, note: "Local reasoning demo", requiresF16: true },
+  { id: "Qwen3-8B-q4f16_1-MLC", label: "Qwen3 8B", params: "8B", engine: "web-llm", vramMB: 5696, note: "Newest gen", requiresF16: true },
+  { id: "gemma-2-9b-it-q4f16_1-MLC", label: "Gemma 2 9B", params: "9B", engine: "web-llm", vramMB: 6422, note: "Best ≤7GB", requiresF16: true },
   { id: "onnx-community/Qwen2.5-0.5B-Instruct", label: "Qwen2.5 0.5B (ONNX)", params: "0.5B", engine: "transformers.js", vramMB: 500, note: "WebGPU or CPU/WASM" },
   { id: "HuggingFaceTB/SmolLM2-135M-Instruct", label: "SmolLM2 135M (ONNX)", params: "135M", engine: "transformers.js", vramMB: 150, note: "Runs even without WebGPU" },
 ];
@@ -179,15 +184,20 @@ function classifyBudget(r: GpuReport): void {
   r.tier = budget >= 6000 ? "large" : budget >= 3000 ? "medium" : budget >= 1400 ? "small" : "tiny";
 }
 
-/** Models that fit the detected budget, best utilization first. */
+/** Models that fit the detected budget, best utilization first.
+ *  WebGPU field convention (IBM Granite / webml-community pattern): q4f16
+ *  weights are hard-gated on the adapter's shader-f16 feature — devices
+ *  without it get q4f32 / CPU-friendly variants instead of a broken load. */
 export function suggestModels(report: GpuReport): LocalModelOption[] {
   if (!report.supported) {
     // No WebGPU → only the transformers.js CPU/WASM paths make sense.
     return LOCAL_MODELS.filter((m) => m.engine === "transformers.js");
   }
-  return LOCAL_MODELS.filter((m) => m.vramMB <= report.budgetMB).sort(
-    (a, b) => b.vramMB - a.vramMB
-  );
+  return LOCAL_MODELS.filter(
+    (m) =>
+      m.vramMB <= report.budgetMB &&
+      (!m.requiresF16 || report.shaderF16)
+  ).sort((a, b) => b.vramMB - a.vramMB);
 }
 
 export function fmtMB(mb: number): string {

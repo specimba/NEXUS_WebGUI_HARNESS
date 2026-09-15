@@ -30,7 +30,7 @@ import {
 import { runAgentChat } from "@/lib/chat-client";
 import { FREELLM_SH_URL, FREE_PROVIDERS, providerBaseUrl, type FreeProvider } from "@/lib/providers";
 import { truncate } from "@/lib/helpers";
-import { useSettingsStore } from "@/lib/stores";
+import { useSettingsStore, useUiStore } from "@/lib/stores";
 import type { ProviderKeyEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -507,6 +507,18 @@ export function ProviderGallery() {
             freellm.sh index
             <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            onClick={() => {
+              history.replaceState(null, "", "#/setup");
+              useUiStore.getState().openSetupWizard();
+            }}
+          >
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            Guided setup
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

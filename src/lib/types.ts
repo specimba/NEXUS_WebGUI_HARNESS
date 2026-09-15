@@ -143,6 +143,35 @@ export interface WorkflowRunStep {
   reworked?: boolean;
 }
 
+/** Classified cause of a failed run — drives the recovery card's copy. */
+export type RunErrorKind = "network" | "auth" | "rate-limit" | "timeout" | "unknown";
+
+/**
+ * Everything the user needs to understand WHY a run failed and what their
+ * options are. Surfaced by the recovery card in the run panel (non-silent
+ * fallback — the user decides: retry, resume, restart or export).
+ */
+export interface RunErrorInfo {
+  /** Index of the step that failed (0-based, into run.steps). */
+  stepIndex: number;
+  stepId: string;
+  stepLabel: string;
+  agentName: string;
+  /** Raw error message from the engine. */
+  message: string;
+  kind: RunErrorKind;
+  /** Actionable next-step copy for this kind of failure. */
+  hint: string;
+  /** Tool calls that succeeded inside the failed step before it died. */
+  toolCallsOk: number;
+  /** Steps that fully completed before the failure. */
+  stepsDone: number;
+  /** LLM engine label that was active for the failed step. */
+  llmLabel: string;
+  /** Recovery attempts so far on this run (1 = first failure). */
+  attempts: number;
+}
+
 export interface WorkflowRun {
   id: string;
   workflowId: string;
@@ -152,6 +181,10 @@ export interface WorkflowRun {
   startedAt: number;
   finishedAt?: number;
   steps: WorkflowRunStep[];
+  /** Populated when status = "error" — powers the recovery card. */
+  error?: RunErrorInfo;
+  /** How many times this run was resumed after a failure/stop. */
+  resumeCount?: number;
 }
 
 export interface Workflow {
