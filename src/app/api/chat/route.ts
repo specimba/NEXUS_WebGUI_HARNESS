@@ -93,7 +93,9 @@ export async function POST(req: NextRequest) {
       send({ type: "start" });
       try {
         body.images = sanitizeImages(body.images);
-        const useCustom = body.provider === "custom" && !!body.apiKey && !!body.baseUrl;
+        // Custom engine needs a base URL; apiKey is optional (keyless providers
+        // like Pollinations work without one).
+        const useCustom = body.provider === "custom" && !!body.baseUrl;
         if (useCustom) {
           await runCustomEngine(body, send, req.signal);
         } else {
@@ -133,11 +135,47 @@ function isAbort(err: unknown): boolean {
   );
 }
 
+/** Transient upstream failures worth an automatic retry (not user aborts). */
+function isTransientNetworkError(err: unknown): boolean {
+  if (isAbort(err)) return false;
+  const message = err instanceof Error ? err.message : String(err);
+  return /network error|fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|ETIMEDOUT|socket hang up|undici.*socket|terminated|timeout/i.test(
+    message
+  );
+}
+
 function humanizeError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   if (/fetch failed|ENOTFOUND|ECONNREFUSED|EAI_AGAIN/i.test(message))
     return "Could not reach the LLM provider. Check the API Base URL in Settings.";
+  if (/network error/i.test(message))
+    return "Upstream network hiccup — the run was retried automatically but the provider stayed unreachable. Try again shortly.";
   return message;
+}
+
+/** Retry helper for transient upstream failures (auto engine LLM calls). */
+async function withRetry<T>(
+  attempts: number,
+  label: string,
+  send: Send,
+  fn: () => Promise<T>
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt >= attempts || !isTransientNetworkError(err)) throw err;
+      const waitMs = 1200 * attempt;
+      send({
+        type: "status",
+        message: `${label} — network hiccup, retrying (${attempt + 1}/${attempts})…`,
+      });
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+  throw lastErr;
 }
 
 function clampIter(n?: number): number {
@@ -169,8 +207,12 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
     send({ type: "status", message: `Analyzing ${body.images.length} attached image${body.images.length === 1 ? "" : "s"}…` });
   }
   const base = (body.baseUrl || "").replace(/\/+$/, "");
-  const url = `${base}/chat/completions`;
+  // Accept both a base URL (…/v1) and a full chat-completions endpoint.
+  const url = base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
   const model = !body.model || body.model === "auto" ? CUSTOM_FALLBACK_MODEL : body.model;
+  const authHeaders: Record<string, string> = body.apiKey
+    ? { Authorization: `Bearer ${body.apiKey}` }
+    : {};
   const toolIds = (body.tools ?? []).filter(Boolean);
   const maxIterations = clampIter(body.maxIterations);
   const collected: ToolCallInfo[] = [];
@@ -187,7 +229,7 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
     const res = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${body.apiKey}`,
+        ...authHeaders,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -372,16 +414,20 @@ async function runAutoEngine(body: ChatBody, send: Send, signal: AbortSignal): P
     // The built-in SDK exposes vision through createVision; text-only turns
     // use the regular completion call. (The vision endpoint defaults its
     // model server-side; "auto" satisfies the SDK's required field.)
-    const completion = body.images?.length
-      ? await zai.chat.completions.createVision({
-          model: "auto",
-          messages: msgs as never,
-          thinking: { type: "disabled" },
-        })
-      : await zai.chat.completions.create({
-          messages: msgs as never,
-          thinking: { type: "disabled" },
-        });
+    // Transient network failures are retried up to 3x with backoff — a long
+    // multi-tool run (e.g. Morning Briefing) must not die on one hiccup.
+    const completion = await withRetry(3, "Thinking", send, () =>
+      body.images?.length
+        ? zai.chat.completions.createVision({
+            model: "auto",
+            messages: msgs as never,
+            thinking: { type: "disabled" },
+          })
+        : zai.chat.completions.create({
+            messages: msgs as never,
+            thinking: { type: "disabled" },
+          })
+    );
     const raw = completion.choices?.[0]?.message?.content ?? "";
     const call = toolDefs.length > 0 && iteration <= maxIterations ? tryParseToolCall(raw, toolDefs) : null;
 

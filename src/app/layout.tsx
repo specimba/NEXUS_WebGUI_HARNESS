@@ -53,7 +53,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      {/* suppressHydrationWarning on <body>: browser extensions (Grammarly, Monica,
+          etc.) inject data-* attributes before React hydrates, which otherwise logs
+          a hydration-attribute mismatch console error. */}
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />

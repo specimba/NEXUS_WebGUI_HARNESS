@@ -46,8 +46,8 @@ const PROVIDER_OPTIONS: {
   {
     value: "custom",
     icon: KeyRound,
-    title: "Custom — bring your own key (BYOK)",
-    sub: "Any OpenAI-compatible endpoint: Groq, OpenAI, OpenRouter, Ollama, LM Studio…",
+    title: "Custom — any OpenAI-compatible endpoint (advanced)",
+    sub: "Your own base URL + key: Ollama, LM Studio, vLLM, OpenAI, Azure… Popular free providers live in the gallery above.",
   },
 ];
 
@@ -93,7 +93,13 @@ export function ProviderCard() {
         {/* Provider mode — radio group semantics */}
         <div role="radiogroup" aria-label="Provider mode" className="grid gap-3">
           {PROVIDER_OPTIONS.map((opt) => {
-            const selected = settings.provider === opt.value;
+            // The custom radio is only "selected" when the LEGACY endpoint path
+            // is the active one (a registry provider being active de-selects it).
+            const selected =
+              opt.value === "auto"
+                ? settings.provider === "auto"
+                : settings.provider === "custom" &&
+                  (settings.activeProviderId ?? "custom") === "custom";
             const Icon = opt.icon;
             return (
               <button
@@ -101,7 +107,14 @@ export function ProviderCard() {
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                onClick={() => update({ provider: opt.value })}
+                onClick={() =>
+                  update({
+                    provider: opt.value,
+                    // Picking the legacy custom radio selects the legacy path;
+                    // picking auto clears the registry selection.
+                    ...(opt.value === "custom" ? { activeProviderId: "custom" } : { activeProviderId: undefined }),
+                  })
+                }
                 className={cn(
                   "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors outline-none",
                   "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
@@ -136,8 +149,8 @@ export function ProviderCard() {
           })}
         </div>
 
-        {/* Custom provider configuration */}
-        {settings.provider === "custom" ? (
+        {/* Legacy custom endpoint configuration (advanced path) */}
+        {settings.provider === "custom" && settings.activeProviderId === "custom" ? (
           <div className="space-y-4 rounded-lg border bg-muted/30 p-3">
             {/* API base URL */}
             <div className="space-y-1.5">

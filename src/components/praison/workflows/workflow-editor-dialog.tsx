@@ -44,6 +44,7 @@ import {
 } from "@/lib/stores";
 import type { StepKind, Workflow, WorkflowStep } from "@/lib/types";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { resolveLlm } from "@/lib/llm-config";
 import { cn } from "@/lib/utils";
 
 // ─── Create / edit a workflow: name, description and ordered steps ──────────
@@ -160,11 +161,12 @@ export function WorkflowEditorDialog({
       const agentList = useAgentsStore
         .getState()
         .agents.map((a) => ({ id: a.id, name: a.name, role: a.role }));
+      const llm = resolveLlm(settings, "auto");
       const res = await runAgentChat({
-        provider: settings.provider,
-        apiKey: settings.apiKey || undefined,
-        baseUrl: settings.baseUrl,
-        model: "auto",
+        provider: llm.provider,
+        apiKey: llm.apiKey,
+        baseUrl: llm.baseUrl,
+        model: llm.model,
         temperature: 0.2,
         maxIterations: 1,
         system: AUTO_PLAN_SYSTEM,

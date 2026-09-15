@@ -176,6 +176,17 @@ export interface WorkflowSchedule {
   nextRunAt?: number;
 }
 
+/** A user-saved API key + preferences for one registry provider (BYOK vault). */
+export interface ProviderKeyEntry {
+  key: string;
+  /** Preferred model id for this provider (defaults to the registry's first). */
+  model?: string;
+  /** Cloudflare Workers AI needs the account id inside the endpoint URL. */
+  accountId?: string;
+  /** Last successful validation (ms epoch) — drives the "connected" dot. */
+  validatedAt?: number;
+}
+
 export interface Settings {
   provider: ProviderMode; // auto = built-in SDK, custom = BYOK OpenAI-compatible
   apiKey: string;
@@ -190,6 +201,10 @@ export interface Settings {
   speechRate?: number;
   /** Accent theme (nexus violet / matrix green / fallout amber / cyber magenta). */
   uiTheme?: UiThemeId;
+  /** Per-provider key vault (id → entry). Local-only, never leaves the browser. */
+  providerKeys?: Record<string, ProviderKeyEntry>;
+  /** Which LLM source is active when provider = "custom": a registry id or "custom" (legacy endpoint). */
+  activeProviderId?: string;
   seeded: boolean;
 }
 

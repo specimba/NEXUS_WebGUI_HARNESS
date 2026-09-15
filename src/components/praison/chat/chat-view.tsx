@@ -30,6 +30,7 @@ import { ConversationList } from "@/components/praison/chat/conversation-list";
 import { MemoryDialog } from "@/components/praison/chat/memory-dialog";
 import { MessageItem } from "@/components/praison/chat/message-item";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { resolveLlm } from "@/lib/llm-config";
 import {
   DEFAULT_TTS_VOICE,
   MAX_CONTEXT_MESSAGES,
@@ -223,12 +224,13 @@ export function ChatView() {
         const convMemory = useConversationsStore
           .getState()
           .conversations.find((c) => c.id === convId)?.memory;
+        const llm = resolveLlm(settings, selectedAgent.model);
         const result = await runAgentChat(
           {
-            provider: settings.provider,
-            apiKey: settings.apiKey || undefined,
-            baseUrl: settings.baseUrl,
-            model: selectedAgent.model,
+            provider: llm.provider,
+            apiKey: llm.apiKey,
+            baseUrl: llm.baseUrl,
+            model: llm.model,
             temperature: selectedAgent.temperature,
             maxIterations: selectedAgent.maxIterations,
             system:

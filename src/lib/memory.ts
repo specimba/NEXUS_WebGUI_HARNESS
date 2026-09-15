@@ -7,6 +7,7 @@ import {
   MEMORY_SOURCE_MESSAGES,
 } from "./constants";
 import { runAgentChat } from "./chat-client";
+import { resolveLlm } from "./llm-config";
 import { useAgentsStore, useConversationsStore, useSettingsStore } from "./stores";
 
 // ─── Hermes-style memory folding ─────────────────────────────────────────────
@@ -76,12 +77,13 @@ export async function consolidateMemory(
     ? `Previous memory document:\n"""\n${conv.memory.text.trim()}\n"""\n\n`
     : "";
 
+  const llm = resolveLlm(settings, "auto");
   const result = await runAgentChat(
     {
-      provider: settings.provider,
-      apiKey: settings.apiKey || undefined,
-      baseUrl: settings.baseUrl,
-      model: "auto",
+      provider: llm.provider,
+      apiKey: llm.apiKey,
+      baseUrl: llm.baseUrl,
+      model: llm.model,
       temperature: 0.2,
       maxIterations: 0,
       system: CONSOLIDATION_SYSTEM,

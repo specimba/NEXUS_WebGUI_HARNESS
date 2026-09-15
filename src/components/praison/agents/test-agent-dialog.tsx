@@ -15,6 +15,7 @@ import { MarkdownRenderer } from "@/components/praison/markdown";
 import { TOOL_META } from "@/lib/constants";
 import { fmtMs, uid } from "@/lib/helpers";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { resolveLlm } from "@/lib/llm-config";
 import { useSettingsStore } from "@/lib/stores";
 import type { Agent, ToolCallInfo, ToolId } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -152,12 +153,13 @@ export function TestAgentDialog({
       setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)));
 
     try {
+      const llm = resolveLlm(settings, agent.model);
       const result = await runAgentChat(
         {
-          provider: settings.provider,
-          apiKey: settings.apiKey,
-          baseUrl: settings.baseUrl,
-          model: agent.model,
+          provider: llm.provider,
+          apiKey: llm.apiKey,
+          baseUrl: llm.baseUrl,
+          model: llm.model,
           temperature: agent.temperature,
           maxIterations: agent.maxIterations,
           system: agent.instructions || undefined,

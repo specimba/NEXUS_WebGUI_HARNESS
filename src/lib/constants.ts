@@ -122,6 +122,8 @@ export const DEFAULT_SETTINGS: Settings = {
   voice: DEFAULT_TTS_VOICE,
   speechRate: 1,
   uiTheme: DEFAULT_UI_THEME,
+  providerKeys: {},
+  activeProviderId: undefined,
   seeded: false,
 };
 

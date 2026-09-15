@@ -93,7 +93,20 @@ export const useSettingsStore = create<SettingsState>()(
       update: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
       reset: () => set({ settings: DEFAULT_SETTINGS }),
     }),
-    { name: "praison-settings", storage: createJSONStorage(() => localStorage) }
+    {
+      name: "praison-settings",
+      storage: createJSONStorage(() => localStorage),
+      // Deep-merge so settings added in later versions (providerKeys,
+      // activeProviderId, …) exist even for users with older persisted state.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<SettingsState>;
+        return {
+          ...current,
+          ...p,
+          settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
+        };
+      },
+    }
   )
 );
 

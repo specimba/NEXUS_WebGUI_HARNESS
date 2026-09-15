@@ -19,6 +19,7 @@ import {
 import { msgContextText, fmtRel, fmtIn, uid } from "@/lib/helpers";
 import { buildMemoryBlock } from "@/lib/memory";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { resolveLlm } from "@/lib/llm-config";
 import {
   useAgentsStore,
   useConversationsStore,
@@ -64,6 +65,7 @@ async function fireBeat(conv: Conversation): Promise<void> {
     .map((m) => ({ role: m.role, content: msgContextText(m) }))
     .slice(-MAX_CONTEXT_MESSAGES);
   if (history.length === 0) return;
+  const llm = resolveLlm(settings, agent.model);
 
   const asstId = uid("msg");
   const placeholder: ChatMessage = {
@@ -82,10 +84,10 @@ async function fireBeat(conv: Conversation): Promise<void> {
   try {
     const result = await runAgentChat(
       {
-        provider: settings.provider,
-        apiKey: settings.apiKey || undefined,
-        baseUrl: settings.baseUrl,
-        model: agent.model,
+        provider: llm.provider,
+        apiKey: llm.apiKey,
+        baseUrl: llm.baseUrl,
+        model: llm.model,
         temperature: agent.temperature,
         maxIterations: agent.maxIterations,
         system: agent.instructions + buildMemoryBlock(conv.memory) + "\n\n" + HEARTBEAT_SYSTEM,

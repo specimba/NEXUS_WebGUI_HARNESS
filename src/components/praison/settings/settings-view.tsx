@@ -5,7 +5,9 @@ import { Download, ExternalLink, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, ThemeToggle } from "@/components/praison/atoms";
 import { ThemePicker } from "@/components/praison/settings/theme-picker";
+import { LocalModelsPanel } from "@/components/praison/settings/local-models";
 import { ProviderCard } from "@/components/praison/settings/provider-card";
+import { ProviderGallery } from "@/components/praison/settings/provider-gallery";
 import { UsageDashboard } from "@/components/praison/settings/usage-dashboard";
 import {
   AlertDialog,
@@ -192,14 +194,16 @@ export function SettingsView() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="Settings"
-        description="Provider, behavior, appearance and your local data."
+        description="Providers, local models, behavior, appearance and your local data."
       />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-5 p-4 md:p-6">
           {/* ── Usage dashboard ──────────────────────────────────────── */}
           <UsageDashboard />
 
-          {/* ── Provider ─────────────────────────────────────────────── */}
+          {/* ── Provider: free frontier gallery + advanced custom endpoint ── */}
+          <ProviderGallery />
+          <LocalModelsPanel />
           <ProviderCard />
 
           {/* ── Behavior ─────────────────────────────────────────────── */}

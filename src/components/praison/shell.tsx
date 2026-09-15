@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   Bot,
   ExternalLink,
+  KeyRound,
   MessagesSquare,
   Plus,
   Search,
@@ -16,8 +17,18 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { BrandMark, ThemeToggle } from "@/components/praison/atoms";
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
+import { resolveLlm } from "@/lib/llm-config";
+import { FREE_PROVIDERS } from "@/lib/providers";
 import { APP_VERSION, GITHUB_URL } from "@/lib/constants";
 import type { View } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -167,12 +178,23 @@ export function TopBar() {
   const view = useUiStore((s) => s.view);
   const setMobileNavOpen = useUiStore((s) => s.setMobileNavOpen);
   const setPaletteOpen = useUiStore((s) => s.setPaletteOpen);
-  const provider = useSettingsStore((s) => s.settings.provider);
-  const baseUrl = useSettingsStore((s) => s.settings.baseUrl);
+  const settings = useSettingsStore((s) => s.settings);
+  const update = useSettingsStore((s) => s.update);
   const meta = VIEW_TITLES[view];
-  let host = "groq";
+
+  // Resolve the active provider for the badge + quick-switch dropdown.
+  const resolved = React.useMemo(() => resolveLlm(settings), [settings]);
+  const registryReady = React.useMemo(
+    () =>
+      FREE_PROVIDERS.map((p) => ({
+        p,
+        ready: p.noKey || !!settings.providerKeys?.[p.id]?.key?.trim(),
+      })),
+    [settings.providerKeys]
+  );
+  let legacyHost = "custom";
   try {
-    host = new URL(baseUrl).hostname.replace("api.", "");
+    legacyHost = new URL(settings.baseUrl).hostname.replace("api.", "");
   } catch {
     /* keep default */
   }
@@ -207,26 +229,89 @@ export function TopBar() {
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge
-              variant="outline"
-              className={cn(
-                "hidden cursor-default gap-1.5 font-normal sm:flex",
-                provider === "auto" ? "border-emerald-500/40 text-emerald-400" : "border-violet-500/40 text-violet-400"
-              )}
-            >
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  provider === "auto" ? "bg-emerald-400" : "bg-violet-400"
-                )}
-              />
-              {provider === "auto" ? "Auto · built-in LLM" : `BYOK · ${host}`}
-            </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "hidden cursor-pointer gap-1.5 font-normal transition-colors hover:bg-muted/60 sm:flex",
+                    resolved.providerId === "auto"
+                      ? "border-emerald-500/40 text-emerald-400"
+                      : "border-violet-500/40 text-violet-400"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      resolved.providerId === "auto" ? "bg-emerald-400" : "bg-violet-400"
+                    )}
+                  />
+                  {resolved.label}
+                </Badge>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+                  LLM provider — switch instantly
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => update({ provider: "auto", activeProviderId: undefined })}
+                  className={cn(resolved.providerId === "auto" && "bg-accent")}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+                  <span className="flex-1">Auto · built-in GLM</span>
+                  {resolved.providerId === "auto" && <span className="text-xs">✓</span>}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] tracking-wide text-muted-foreground uppercase">
+                  Free frontier providers
+                </DropdownMenuLabel>
+                {registryReady.map(({ p, ready }) => {
+                  const active = resolved.providerId === p.id;
+                  return (
+                    <DropdownMenuItem
+                      key={p.id}
+                      onClick={() =>
+                        ready
+                          ? update({ provider: "custom", activeProviderId: p.id })
+                          : setPaletteOpen(false)
+                      }
+                      className={cn(active && "bg-accent")}
+                      {...(ready
+                        ? {}
+                        : { title: `Add your ${p.name} key in Settings → Free frontier providers` })}
+                    >
+                      <span aria-hidden className="w-4 text-center text-sm">
+                        {p.glyph}
+                      </span>
+                      <span className={cn("flex-1 truncate", !ready && "text-muted-foreground")}>
+                        {p.name}
+                        {!ready && <span className="ml-1 text-[10px]">no key</span>}
+                      </span>
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          ready ? "bg-emerald-400" : "bg-muted-foreground/30"
+                        )}
+                        aria-hidden
+                      />
+                      {active && <span className="text-xs">✓</span>}
+                    </DropdownMenuItem>
+                  );
+                })}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => update({ provider: "custom", activeProviderId: "custom" })}
+                  className={cn(resolved.providerId === "custom" && "bg-accent")}
+                >
+                  <KeyRound className="h-3.5 w-3.5" aria-hidden />
+                  <span className="flex-1 truncate">Custom endpoint · {legacyHost}</span>
+                  {resolved.providerId === "custom" && <span className="text-xs">✓</span>}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {provider === "auto"
-              ? "Using the built-in LLM — zero config"
-              : `Using your own OpenAI-compatible endpoint (${host})`}
+            Click to switch LLM provider — resolved: {resolved.label}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

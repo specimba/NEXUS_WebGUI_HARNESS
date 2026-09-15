@@ -4,6 +4,7 @@
 
 import { toast } from "sonner";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { resolveLlm } from "@/lib/llm-config";
 import {
   buildConversationalContext,
   buildReviewContext,
@@ -142,12 +143,13 @@ export async function executeWorkflowRun(
     let draft = "";
     const localToolCalls: ToolCallInfo[] = [];
     try {
+      const llm = resolveLlm(settings.settings, agent.model);
       const res = await runAgentChat(
         {
-          provider: settings.settings.provider,
-          apiKey: settings.settings.apiKey || undefined,
-          baseUrl: settings.settings.baseUrl,
-          model: agent.model,
+          provider: llm.provider,
+          apiKey: llm.apiKey,
+          baseUrl: llm.baseUrl,
+          model: llm.model,
           temperature: agent.temperature,
           maxIterations: agent.maxIterations,
           tools: agent.tools,
