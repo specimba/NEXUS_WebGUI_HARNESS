@@ -6,6 +6,8 @@ import type {
   Agent,
   ChatMessage,
   Conversation,
+  ConversationHeartbeat,
+  ConversationMemory,
   Settings,
   ToolCallInfo,
   View,
@@ -171,6 +173,10 @@ interface ConversationsState {
   patchToolCall: (convId: string, msgId: string, callId: string, patch: Partial<ToolCallInfo>) => void;
   /** Drop every message after `msgId` (or including it when `inclusive`). */
   truncateFrom: (convId: string, msgId: string, inclusive?: boolean) => void;
+  /** Replace the folded memory doc (source: auto consolidation or manual edit). */
+  setMemory: (convId: string, memory: ConversationMemory | undefined) => void;
+  /** Enable/disable/configure the proactive heartbeat loop. */
+  setHeartbeat: (convId: string, heartbeat: ConversationHeartbeat | undefined) => void;
   clearAll: () => void;
 }
 
@@ -275,6 +281,18 @@ export const useConversationsStore = create<ConversationsState>()(
               updatedAt: Date.now(),
             };
           }),
+        })),
+      setMemory: (convId, memory) =>
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === convId ? { ...c, memory } : c
+          ),
+        })),
+      setHeartbeat: (convId, heartbeat) =>
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === convId ? { ...c, heartbeat } : c
+          ),
         })),
       clearAll: () => set({ conversations: [], activeId: null }),
     }),
@@ -506,6 +524,28 @@ export function ensureSeeded(): void {
       description: "Code Smith writes JavaScript, runs it in the sandbox and iterates until it works.",
       steps: [mkStep("a-coder", "Write, run and verify the solution")],
     });
+  }
+  // Hermes-style daily briefing — added for everyone who doesn't have it yet
+  // (fixed id, idempotent; the user opts into a schedule via the Schedule popover).
+  {
+    const wfStore = useWorkflowsStore.getState();
+    if (!wfStore.workflows.some((w) => w.id === "wf-morning-briefing")) {
+      const researcher = useAgentsStore.getState().getById("a-researcher");
+      const writer = useAgentsStore.getState().getById("a-writer");
+      if (researcher && writer) {
+        const mkStep = (agentId: string, label: string) => ({ id: uid("step"), agentId, label });
+        wfStore.add({
+          id: "wf-morning-briefing",
+          name: "Morning Briefing",
+          description:
+            "A daily digest: scan the web for what happened while you were away, then deliver a tight 5-bullet briefing.",
+          steps: [
+            mkStep("a-researcher", "Search the web for today's most important developments in AI and tech"),
+            mkStep("a-writer", "Write a tight morning briefing: 5 bullets max, one line each, end with one recommended focus for the day"),
+          ],
+        });
+      }
+    }
   }
   if (!settings.seeded) {
     useSettingsStore.getState().update({ seeded: true });

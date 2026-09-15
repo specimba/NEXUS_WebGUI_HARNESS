@@ -235,14 +235,16 @@ export function TopBar() {
   );
 }
 
-// ─── Splash (pre-hydration) ──────────────────────────────────────────────────
+// ─── Splash (pre-hydration, accent-themed art backdrop) ─────────────────────
 export function Splash() {
   return (
-    <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-background">
-      <div className="soft-pulse">
+    <div className="relative flex h-dvh flex-col items-center justify-center gap-4 overflow-hidden bg-background">
+      <div className="theme-art opacity-70" aria-hidden />
+      <div className="theme-art-veil" aria-hidden />
+      <div className="soft-pulse relative z-10">
         <BrandMark />
       </div>
-      <p className="shimmer-text text-sm font-medium">spinning up your agents…</p>
+      <p className="shimmer-text relative z-10 text-sm font-medium">spinning up your agents…</p>
     </div>
   );
 }

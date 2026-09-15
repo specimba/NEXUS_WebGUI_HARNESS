@@ -1,18 +1,20 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AppSidebar, MobileNav, Splash, TopBar } from "@/components/praison/shell";
 import { CommandPalette } from "@/components/praison/command-palette";
 import { GlobalSearchDialog } from "@/components/praison/global-search-dialog";
 import { ChatView } from "@/components/praison/chat/chat-view";
+import { HeartbeatEngine } from "@/components/praison/chat/chat-heartbeat";
 import { AgentsView } from "@/components/praison/agents/agents-view";
 import { WorkflowsView } from "@/components/praison/workflows/workflows-view";
 import { WorkflowScheduler } from "@/components/praison/workflows/workflow-scheduler";
 import { SessionHealth } from "@/components/praison/session-health";
 import { SettingsView } from "@/components/praison/settings/settings-view";
-import { ensureSeeded, useUiStore } from "@/lib/stores";
+import { ensureSeeded, useSettingsStore, useUiStore } from "@/lib/stores";
 import { useKeyboardShortcuts } from "@/lib/use-shortcuts";
+import { DEFAULT_UI_THEME } from "@/lib/constants";
 
 const noopSubscribe = () => () => {};
 
@@ -32,7 +34,16 @@ if (typeof window !== "undefined") {
 export default function Page() {
   const mounted = useIsClient();
   const view = useUiStore((s) => s.view);
+  const uiTheme = useSettingsStore((s) => s.settings.uiTheme);
   useKeyboardShortcuts();
+
+  // Keep <html data-theme> in sync with the persisted accent theme.
+  useEffect(() => {
+    const id = uiTheme ?? DEFAULT_UI_THEME;
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", id);
+    }
+  }, [uiTheme]);
 
   if (!mounted) return <Splash />;
 
@@ -63,6 +74,7 @@ export default function Page() {
       <CommandPalette />
       <GlobalSearchDialog />
       <WorkflowScheduler />
+      <HeartbeatEngine />
       <SessionHealth />
     </div>
   );

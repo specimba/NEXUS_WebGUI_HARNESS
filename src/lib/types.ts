@@ -2,6 +2,9 @@
 
 export type View = "chat" | "agents" | "workflows" | "settings";
 
+/** Accent theme variants (remap the violet/fuchsia accent scale via CSS vars). */
+export type UiThemeId = "nexus" | "matrix" | "fallout" | "cyber";
+
 export type ToolId = "web_search" | "read_url" | "run_code" | "current_time";
 
 export type AgentColor = "violet" | "emerald" | "amber" | "rose" | "cyan" | "fuchsia";
@@ -54,6 +57,8 @@ export interface ChatMessage {
   model?: string;
   /** Files/images attached by the user (content inlined for context). */
   attachments?: MessageAttachment[];
+  /** True when this reply was posted proactively by a conversation heartbeat. */
+  heartbeat?: boolean;
 }
 
 /** A message typed while the agent was streaming — auto-sent when it settles. */
@@ -76,6 +81,23 @@ export interface MessageAttachment {
   mime?: string;
 }
 
+/** Hermes-style first-person memory pinned into the conversation context. */
+export interface ConversationMemory {
+  text: string;
+  updatedAt: number;
+  /** "auto" = consolidation pass, "manual" = user-edited. */
+  source: "auto" | "manual";
+  /** Assistant-message count at the last consolidation (drives the auto trigger). */
+  atMessageCount?: number;
+}
+
+/** Proactive heartbeat — the agent wakes an idle watched chat on an interval. */
+export interface ConversationHeartbeat {
+  enabled: boolean;
+  intervalMs: number;
+  lastBeatAt?: number;
+}
+
 export interface Conversation {
   id: string;
   title: string;
@@ -86,6 +108,10 @@ export interface Conversation {
   updatedAt: number;
   /** Pinned conversations stay grouped at the top of the chat list. */
   pinned?: boolean;
+  /** Folded first-person memory (auto-consolidated or hand-written). */
+  memory?: ConversationMemory;
+  /** Opt-in proactive wake-up loop for this conversation. */
+  heartbeat?: ConversationHeartbeat;
 }
 
 export interface WorkflowStep {
@@ -162,6 +188,8 @@ export interface Settings {
   voice?: string;
   /** Read-aloud playback rate (0.75 – 2). Missing = 1. */
   speechRate?: number;
+  /** Accent theme (nexus violet / matrix green / fallout amber / cyber magenta). */
+  uiTheme?: UiThemeId;
   seeded: boolean;
 }
 

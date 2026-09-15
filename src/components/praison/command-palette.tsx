@@ -7,6 +7,7 @@ import {
   MessagesSquare,
   Moon,
   MessageSquarePlus,
+  Palette,
   Play,
   Search,
   Sun,
@@ -28,9 +29,12 @@ import { titleFrom, truncate } from "@/lib/helpers";
 import {
   useAgentsStore,
   useConversationsStore,
+  useSettingsStore,
   useUiStore,
   useWorkflowsStore,
 } from "@/lib/stores";
+import { UI_THEMES } from "@/lib/constants";
+import { toast } from "sonner";
 import type { View } from "@/lib/types";
 
 const NAV: { view: View; label: string; icon: React.ElementType; shortcut: string }[] = [
@@ -160,6 +164,21 @@ export function CommandPalette() {
               <Moon className="text-violet-400" />
             )}
             Switch to {resolvedTheme === "dark" ? "light" : "dark"} theme
+          </CommandItem>
+          <CommandItem
+            onSelect={() =>
+              run(() => {
+                const s = useSettingsStore.getState();
+                const idx = UI_THEMES.findIndex((t) => t.id === (s.settings.uiTheme ?? "nexus"));
+                const next = UI_THEMES[(idx + 1) % UI_THEMES.length];
+                s.update({ uiTheme: next.id });
+                toast(`${next.label} theme engaged`, { description: next.tagline });
+              })
+            }
+          >
+            <Palette className="text-fuchsia-500" />
+            Cycle accent theme
+            <CommandShortcut>↺</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Download, ExternalLink, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, ThemeToggle } from "@/components/praison/atoms";
+import { ThemePicker } from "@/components/praison/settings/theme-picker";
 import { ProviderCard } from "@/components/praison/settings/provider-card";
 import { UsageDashboard } from "@/components/praison/settings/usage-dashboard";
 import {
@@ -349,9 +350,13 @@ export function SettingsView() {
           {/* ── Appearance ───────────────────────────────────────────── */}
           <Card className="gap-4">
             <CardHeader className="pb-3">
-              <CardTitle>Appearance</CardTitle>
+              <CardTitle>Accent theme</CardTitle>
+              <CardDescription>
+                Four hand-tuned dark-line identities — every glow, badge, chart and scrollbar follows.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <ThemePicker />
               <div className="flex items-center gap-3">
                 <ThemeToggle />
                 <p className="text-sm text-muted-foreground">

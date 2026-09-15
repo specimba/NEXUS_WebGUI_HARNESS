@@ -24,8 +24,10 @@ import {
 } from "@/components/ui/select";
 import { AgentAvatar, ModelBadge } from "@/components/praison/atoms";
 import { ChatSearch } from "@/components/praison/chat/chat-search";
+import { HeartbeatButton } from "@/components/praison/chat/chat-heartbeat";
 import { Composer } from "@/components/praison/chat/composer";
 import { ConversationList } from "@/components/praison/chat/conversation-list";
+import { MemoryDialog } from "@/components/praison/chat/memory-dialog";
 import { MessageItem } from "@/components/praison/chat/message-item";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import {
@@ -43,6 +45,7 @@ import {
   titleFrom,
   uid,
 } from "@/lib/helpers";
+import { buildMemoryBlock, maybeAutoConsolidate } from "@/lib/memory";
 import {
   useAgentsStore,
   useConversationsStore,
@@ -217,6 +220,9 @@ export function ChatView() {
       abortRef.current = controller;
 
       try {
+        const convMemory = useConversationsStore
+          .getState()
+          .conversations.find((c) => c.id === convId)?.memory;
         const result = await runAgentChat(
           {
             provider: settings.provider,
@@ -225,7 +231,8 @@ export function ChatView() {
             model: selectedAgent.model,
             temperature: selectedAgent.temperature,
             maxIterations: selectedAgent.maxIterations,
-            system: selectedAgent.instructions,
+            system:
+              selectedAgent.instructions + buildMemoryBlock(convMemory),
             tools: selectedAgent.tools,
             messages: history,
             images: images && images.length > 0 ? images : undefined,
@@ -401,6 +408,9 @@ export function ChatView() {
           }
           return;
         }
+        // Hermes-style hygiene: fold new activity into the memory doc once the
+        // threshold is crossed (silent background pass).
+        if (settled === "done") void maybeAutoConsolidate(convId);
         flushQueueRef.current?.();
       });
     },
@@ -865,6 +875,8 @@ export function ChatView() {
                 {messages.length} {messages.length === 1 ? "message" : "messages"}
               </span>
             )}
+            <MemoryDialog conv={conversation} disabled={streaming} />
+            <HeartbeatButton conv={conversation} disabled={streaming} />
             <Button
               variant="ghost"
               size="icon"

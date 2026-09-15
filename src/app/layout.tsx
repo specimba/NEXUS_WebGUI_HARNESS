@@ -42,6 +42,10 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/** Pre-hydration accent theme: reads the persisted settings before React boots
+ *  so the splash already renders in the chosen Fallout/Matrix/Cyber theme. */
+const THEME_BOOT = `try{(function(){var s=localStorage.getItem("praison-settings");var t=s?JSON.parse(s)?.state?.settings?.uiTheme:null;var ok=["nexus","matrix","fallout","cyber"];if(ok.indexOf(t)>-1){document.documentElement.setAttribute("data-theme",t);}})();}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,6 +56,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="praison-theme">
           {children}
           <Toaster position="bottom-right" richColors closeButton />

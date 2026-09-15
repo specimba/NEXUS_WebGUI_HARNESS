@@ -8,6 +8,7 @@ import {
   Clock,
   Copy,
   FileText,
+  HeartPulse,
   Loader2,
   Pencil,
   RotateCcw,
@@ -490,6 +491,15 @@ export const MessageItem = React.memo(function MessageItem({
           <span className="text-sm font-semibold">{displayName}</span>
           <ModelBadge model={agent?.model ?? "auto"} />
           <span className="text-[11px] text-muted-foreground">{fmtTime(message.createdAt)}</span>
+          {message.heartbeat && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-violet-400"
+              title="Posted proactively by the conversation heartbeat"
+            >
+              <HeartPulse className="h-2.5 w-2.5" aria-hidden />
+              heartbeat
+            </span>
+          )}
           {showStats && (
             <span
               className="inline-flex items-center gap-0.5 text-[10px] tabular-nums text-muted-foreground/80"

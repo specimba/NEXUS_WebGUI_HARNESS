@@ -1,4 +1,4 @@
-import type { Agent, Settings, ToolId } from "./types";
+import type { Agent, Settings, ToolId, UiThemeId } from "./types";
 
 // ─── Branding ────────────────────────────────────────────────────────────────
 export const APP_NAME = "PraisonAI";
@@ -89,6 +89,28 @@ export const SCHEDULE_INTERVALS: ScheduleIntervalPreset[] = [
   { label: "Every day", short: "1d", ms: 24 * 60 * 60_000 },
 ];
 
+// ─── Accent themes (Fallout / Matrix / Cyberpunk dark variants) ─────────────
+export interface UiThemePreset {
+  id: UiThemeId;
+  label: string;
+  tagline: string;
+  /** Thumbnail art served from /public/themes. */
+  art: string;
+}
+
+export const UI_THEMES: UiThemePreset[] = [
+  { id: "nexus", label: "Nexus", tagline: "Violet nebula — the classic harness glow", art: "/themes/nexus.jpg" },
+  { id: "matrix", label: "Matrix", tagline: "Phosphor green digital rain", art: "/themes/matrix.jpg" },
+  { id: "fallout", label: "Fallout", tagline: "Vault amber terminal warmth", art: "/themes/fallout.jpg" },
+  { id: "cyber", label: "Cyberpunk", tagline: "Neon magenta & electric cyan", art: "/themes/cyber.jpg" },
+];
+
+export const DEFAULT_UI_THEME: UiThemeId = "nexus";
+
+export function uiThemeById(id: string | undefined): UiThemePreset {
+  return UI_THEMES.find((t) => t.id === id) ?? UI_THEMES[0];
+}
+
 export const DEFAULT_SETTINGS: Settings = {
   provider: "auto",
   apiKey: "",
@@ -99,6 +121,7 @@ export const DEFAULT_SETTINGS: Settings = {
   displayName: "You",
   voice: DEFAULT_TTS_VOICE,
   speechRate: 1,
+  uiTheme: DEFAULT_UI_THEME,
   seeded: false,
 };
 
@@ -259,3 +282,25 @@ export const TTS_VOICES: TtsVoicePreset[] = [
   { id: "douji", label: "Douji", note: "Natural & smooth" },
   { id: "luodo", label: "Luodo", note: "Expressive" },
 ];
+
+
+// ─── Conversation heartbeat (Hermes-style proactive wake) ───────────────────
+export const HEARTBEAT_INTERVALS: { ms: number; label: string }[] = [
+  { ms: 5 * 60_000, label: "5 min" },
+  { ms: 15 * 60_000, label: "15 min" },
+  { ms: 30 * 60_000, label: "30 min" },
+  { ms: 60 * 60_000, label: "1 hour" },
+];
+export const DEFAULT_HEARTBEAT_INTERVAL_MS = 15 * 60_000;
+/** Heartbeats never fire more often than this, regardless of preset. */
+export const HEARTBEAT_MIN_INTERVAL_MS = 60_000;
+/** Extra idle quiet-time required after the last message before a beat fires. */
+export const HEARTBEAT_IDLE_MS = 30_000;
+
+// ─── Memory folding (Hermes-style consolidation) ─────────────────────────────
+/** Auto-consolidate after this many assistant replies since the last pass. */
+export const MEMORY_CONSOLIDATE_EVERY = 10;
+/** Memory docs are trimmed to roughly this length (chars). */
+export const MEMORY_MAX_CHARS = 1200;
+/** Messages (most recent first) fed into a consolidation pass. */
+export const MEMORY_SOURCE_MESSAGES = 24;

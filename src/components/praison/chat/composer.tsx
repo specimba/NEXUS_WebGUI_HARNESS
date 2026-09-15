@@ -12,6 +12,7 @@ import {
   MessageSquarePlus,
   Mic,
   Moon,
+  Palette,
   Paperclip,
   Search,
   SendHorizontal,
@@ -45,7 +46,8 @@ import {
   fmtBytes,
   slugify,
 } from "@/lib/helpers";
-import { useConversationsStore, useUiStore } from "@/lib/stores";
+import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
+import { UI_THEMES, uiThemeById } from "@/lib/constants";
 import type { Agent, MessageAttachment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -155,6 +157,19 @@ function useSlashCommands(): SlashCommand[] {
         hint: `Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`,
         icon: resolvedTheme === "dark" ? Sun : Moon,
         run: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"),
+      },
+      {
+        id: "accent",
+        label: "/accent",
+        hint: `Cycle accent theme (now: ${uiThemeById(useSettingsStore.getState().settings.uiTheme).label})`,
+        icon: Palette,
+        run: () => {
+          const s = useSettingsStore.getState();
+          const idx = UI_THEMES.findIndex((t) => t.id === (s.settings.uiTheme ?? "nexus"));
+          const next = UI_THEMES[(idx + 1) % UI_THEMES.length];
+          s.update({ uiTheme: next.id });
+          toast(`${next.label} theme engaged`, { description: next.tagline });
+        },
       },
     ];
   }, [resolvedTheme, setTheme]);
