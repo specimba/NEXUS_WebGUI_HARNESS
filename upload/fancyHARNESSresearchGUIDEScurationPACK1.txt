@@ -1,0 +1,3271 @@
+https://academy.dair.ai/papers/collections/harness-engineering
+"
+
+🚀
+NEW COURSE
+—
+Vibe Coding AI Apps with Claude Code 🤖✨
+Enroll now
+DAIR.AI LogoDAIR.AI Academy
+Courses
+Labs
+Events
+AI Papers
+Pricing
+Blog
+Toggle theme
+Sign In
+Get Started
+← All papers
+Paper collection
+Harness Engineering
+A harness is everything between the model weights and the world: the loop, the context it assembles, the tools and skills it can reach for, the sub-agents it can spawn, and lately the code of the harness itself. This list follows that idea from a bare while-not-EOS loop in 2019 to harnesses that rewrite themselves in 2026. Read in order, it explains why the same weight file can score 30% or 95% on the same benchmark depending only on what surrounds it.
+
+21
+papers
+Compiled from YC Paper Club: Harness Edition, recorded August 26, 2026 ↗
+
+Join Academy free
+Papers
+21
+Tools
+51
+Research → practice
+A companion to the reading list
+Find the harness behind the ideas.
+
+Explore 51 tools
+1. The V0 harness
+Before anything deserved the name, a harness was a sampling loop and a prompt. These three papers are the whole of it: the bare loop, then the two things you can do without ever leaving the context window, which are to put examples in it and to let the model spend more tokens thinking inside it.
+
+01
+
+Language Models are Unsupervised Multitask Learners
+Alec Radford et al. · 2019
+The V0 harness, and the baseline every later entry is measured against. There is no tool calling here, no skills, no memory: a while-not-EOS loop, top-p sampling, and an environment that scores whatever comes after the delimiter. The talk opens the history here precisely because so little is present, which makes the next six years legible as one move repeated, giving the loop something new it is allowed to do.
+
+Chat with this paper
+Read the summary
+PDF ↗
+02
+
+Language Models are Few-Shot Learners
+Tom B. Brown et al. · 2020
+The first thing anyone ever put in a harness. Nothing about the loop changes here: you simply paste solved examples above the question and accuracy moves. That makes the context window the first place a system designer can spend effort, and every technique further down this list is a descendant of that realisation.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+03
+
+Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
+Jason Wei et al. · 2022
+Smear the computation over more tokens instead of demanding the answer in one. This is the first output-space intervention in the lineage, and the reason every harness since budgets tokens rather than calls.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+2. Static harnesses: growing the action space
+The next six years are one move repeated: give the loop something new it is allowed to do. Search the web, call a tool, act and observe, critique itself, run code, spawn a peer, write a skill, edit its own memory, recurse. The harness gets more functional; the harness code stays fixed.
+
+04
+
+WebGPT: Browser-assisted question-answering with human feedback
+Reiichiro Nakano et al. · 2021
+The first time the loop reached outside itself. WebGPT gives a model a browser and human feedback on how it used one, which turns retrieval from a preprocessing step into an action the model chooses to take.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+05
+
+Toolformer: Language Models Can Teach Themselves to Use Tools
+Timo Schick et al. · 2023
+Where tool calling comes from. Instead of computing five minus three in the weights, the model emits a call and the harness runs it. Declare the tools in the system prompt and the action space is suddenly whatever you are willing to execute.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+06
+
+ReAct: Synergizing Reasoning and Acting in Language Models
+Shunyu Yao et al. · 2022
+Interleave a thought and an action instead of choosing between them. ReAct is the shape almost every agent loop still has, and the talk's point is that models now do this natively, so a modern harness should stop imposing it.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+07
+
+Self-Refine: Iterative Refinement with Self-Feedback
+Aman Madaan et al. · 2023
+The cheapest feedback loop there is: the same model grades its own draft and rewrites it, with no extra training and no environment. This is the internal evaluator in the slide's diagram, the branch that never leaves the harness.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+08
+
+Reflexion: Language Agents with Verbal Reinforcement Learning
+Noah Shinn et al. · 2023
+Take the real reward signal from the environment and write it back into the context as words. Reflexion is where a failed episode stops being wasted, which is the seed of everything in the self-improving half of this list.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+09
+
+InterCode: Standardizing and Benchmarking Interactive Coding with Execution Feedback
+John Yang et al. · 2023
+Once the action is code, the tool list stops being finite. InterCode makes the interactive coding loop a standard environment with execution feedback, which is the direct ancestor of the persistent REPL that Prime Agent builds its whole design on.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+10
+
+Multi-Agent Collaboration: Harnessing the Power of Intelligent LLM Agents
+Yashar Talebirad, Amirhossein Nadiri · 2023
+Spawning another agent becomes just another tool call. The framing here, agents with roles that persist and can be addressed, is what makes sub-agents an addressable resource rather than a one-shot fan-out.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+11
+
+Voyager: An Open-Ended Embodied Agent with Large Language Models
+Guanzhi Wang et al. · 2023
+Where skills come from. Voyager chains tools into a routine, verifies it worked in Minecraft, and writes it back to a library the agent searches later. Read the skill library section and you are reading the design of the SKILLS.md sitting in your repo today.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+12
+
+MemGPT: Towards LLMs as Operating Systems
+Charles Packer et al. · 2023
+Before this, context could only be appended to. MemGPT gives the model create, read, update, and delete over a carved-out region of its own context, which is the move that turns a transcript into managed state.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+13
+
+Recursive Language Models
+Alex L. Zhang, Tim Kraska, Omar Khattab · 2025
+The recursion that closes out the static era. An LLM call inside a REPL can issue further LLM calls over slices of a document too big to read, so context stops being a wall and becomes a resource you program against. Prime Agent is built directly on this abstraction.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+3. Let the harness learn
+Then the fixed part stops being fixed. First the prompt becomes something you optimize, then the scaffolding, then the harness code itself, and finally the whole thing adapts online while it runs.
+
+14
+
+DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines
+Omar Khattab et al. · 2023
+The first entry where the harness stops being hand-written. You cannot backpropagate through a prompt, so DSPy searches over prompts against a small train set instead, and the system prompt becomes an optimised artifact rather than an author's guess.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+15
+
+GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning
+Lakshya A Agrawal et al. · 2025
+The optimiser the OpenJarvis talk reaches for. GEPA reads its own failed traces in natural language and mutates the prompt from what it saw, beating reinforcement learning at a fraction of the rollouts. Reflexion's idea, with a proper search loop around it.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+16
+
+Darwin Godel Machine: Open-Ended Evolution of Self-Improving Agents
+Jenny Zhang et al. · 2025
+Now the harness code itself is the thing being edited. Agents sample from an archive of their own ancestors, rewrite their own scaffolding, get scored on coding benchmarks, and go back into the archive. Empirical validation replaces the original Gödel machine's proof requirement.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+17
+
+Meta-Harness: End-to-End Optimization of Model Harnesses
+Yoonho Lee et al. · 2026
+The meta harness: a harness whose job is producing harnesses. A coding agent is handed the full search history, source, traces, and scores, and rewrites the retrieval, memory, and prompt-assembly code around a fixed model. State of the art on Terminal-Bench 2 without touching the weights.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+18
+
+Continual Harness: Online Adaptation for Self-Improving Foundation Agents
+Seth Karten et al. · 2026
+The last step before online learning. Continual Harness keeps history, memory, skills, prompts, and sub-agent specs across trajectories and mutates them while the agent runs, then goes further and updates the weights DAgger-style from what just happened. The presenter calls test-time training the direction that matters most.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+4. Harnesses shipped in 2026
+Two systems presented at the paper club, built on everything above. Both are open source, and both are arguments about where the harness boundary should sit.
+
+19
+
+Prime Agent
+Seth Karten et al. · 2026
+The first of the night's three talks, and the clearest statement of the thesis. A persistent IPython REPL, recursive sub-agents that stay addressable after they finish, and continual refinement of prompts and skills. On identical weights it takes ARC-AGI-3 from 30% to 95.5%, which is the number the whole evening is arguing about.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+20
+
+OpenJarvis: Personal AI, On Personal Devices
+Jon Saad-Falcon et al. · 2026
+The same argument pointed at your laptop. Decompose the personal AI stack into five primitives, then let a frontier cloud model search over that spec while everything runs locally at inference. Roughly 800x lower marginal cost, with the harness rather than the model closing the gap.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+5. How you know any of this worked
+The measurement paper behind the trend line everyone cites. Harness progress only counts if the horizon a system can work over is actually getting longer.
+
+21
+
+Measuring AI Ability to Complete Long Software Tasks
+Thomas Kwa et al. · 2025
+The trend line the talk opens on. Measuring capability as the length of task a system completes, rather than a single-turn score, is what makes harness progress visible at all: the static-harness era and the self-improving era are two slopes on this chart.
+
+Chat with this paper
+Read the summary
+arXiv ↗
+Harness updates
+Keep learning
+New harness research and practical labs. Occasional email.
+
+Email address
+Email address
+Subscribe
+By subscribing, you agree to receive DAIR.AI emails. Unsubscribe anytime.
+
+Beyond the papers
+Everything else the night pointed at: the code you can actually run and the benchmark the harness gap shows up on.
+
+Prime Agent (GitHub) ↗
+The harness behind the 95.5% ARC-AGI-3 result, with the verifiers package used to reproduce the evals.
+
+OpenJarvis (GitHub) ↗
+The on-device personal AI stack, including the five-primitive spec that the cloud model optimizes.
+
+QM, YC's multiplayer agent harness (GitHub) ↗
+The third talk of the night. No paper: YC's internal work harness, open sourced under MIT, with the brain pulled out of the sandbox and into Postgres.
+
+ARC-AGI-3 ↗
+The benchmark used throughout the night to show a harness gap on identical weights, from 30% baseline to 95.5%.
+
+Darwin Gödel Machine (GitHub) ↗
+Reference implementation of the self-modifying agent archive.
+
+Meta-Harness (GitHub) ↗
+Reference code for the harness that searches over harnesses.
+
+DSPy ↗
+The framework the prompt-optimization half of this list is built on, and where GEPA ships.
+
+Next steps
+Put the research into practice with Exo.
+
+Hands-on lab
+Introduction to Exo
+Use the real Exo CLI to explore bindings, sandboxes, event logs, conversation forks, and harness experiments.
+
+Start the lab
+DAIR.AI Logo
+DAIR.AI Academy
+Learn AI from expert-led courses, live events, and a community of builders.
+
+Platform
+
+Courses
+Labs
+Events
+AI Papers
+Pricing
+Blog
+Legal
+
+Payment Policies
+Terms of Service
+Privacy Policy
+Connect
+
+GitHub
+Twitter / X
+© 2026 DAIR.AI Academy. All rights reserved.
+
+
+"
+
+https://x.com/omarsar0/status/2099545598156288292
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+elvis
+@omarsar0
+On building an agent harness from scratch.
+
+Got so many questions about where to get started.
+
+My short guide (feed it to your agent):
+
+If you really want to learn harnesses well, it's worth building one from scratch using a programming language (TypeScript or Python) of your choice.
+
+When I got started, I implemented my first harness using ReAct from Google: https://academy.dair.ai/papers/react-synergizing-reasoning-and-acting-in-language-models-2210.03629
+
+At the time, I built this from scratch, but you can easily prompt your agent to consume the paper and produce a minimal implementation you can inspect and understand.
+
+You want to target having three parts:
+
+- an LLM module for all things inference, and it should ideally support several models. I used OpenRouter when I got started. This can include the system prompt, but you can also separate it out if you plan to explore context-engineering ideas more deeply. 
+
+- a tools module (I recommend building them as MCP tools for interoperability, but you can design functions from scratch if you have experience). 
+
+- an agent loop that encapsulates the tools and LLM. ReAct is one of the more basic loops you can implement.
+
+Primarily, aim to understand the main components and how they work with each other. 
+
+Pro tips:
+
+- try to keep your system prompt minimal and experiment with different models; a mini version of all frontier lab models should be good enough to get you started. 
+
+- look at the code and log things as you experiment with different tasks. You want to log inputs/outputs to the loop, inputs/outputs from LLMs, and inputs/outputs from tool calls as a starting point.  Set up a simple set of diverse tasks to test your agent loop on. So with every change, you can run the tasks and inspect the results manually.
+
+Once you have a good grasp of this, you can easily add other things like skills, memory, etc., once you have a good idea of how to tune them. It helps to keep things modular if you are planning for this. I would recommend playing with memory, skill, and subagent as good next steps. 
+
+If you don't want to build the components or want to start building a more serious agent harness, I recommend using the Pi SDK or LangChain harness tools. I am also going to release something soon to help with this. 
+
+Let me know if you have questions. I am planning a longer write-up on this, but this should be enough to give you something to experiment with.
+Last edited
+8:07 PM · Sep 14, 2026
+·
+27K
+ Views
+Relevant
+View quotes
+
+Alfred D
+@alfreddaluya
+·
+Sep 14
+i love Pi core from bad logic and Langchain(langgraph, deepagents)  from Harrison… my core tools
+elvis
+@omarsar0
+·
+Sep 14
+great tools for learning
+David Arnal
+@davidarngar
+·
+Sep 14
+One useful addition: make the task suite replayable and version every trace. Then harness changes become measurable experiments rather than vibes—especially when model nondeterminism otherwise masks regressions.
+elvis
+@omarsar0
+·
+Sep 14
+absolutely!
+Matthew Campbell
+@kanwisher
+·
+Sep 14
+Most harnesses add negative value , we found exposing mcps made the models worse at performing the task over just letting it figure it self out
+
+How are you ensuring your harness isn’t making the models perform worse?
+elvis
+@omarsar0
+·
+23h
+Can’t shortcut evals. I really wish I had more time to just document more of this. I hope to write more on this soon. In my todo. But this is an important, like how to keep the harness reliable, robust, and avoid regressions.
+
+Show replies
+yvo de rooij
+@yvoderooij
+·
+Sep 14
+Interesting, thanks! Will keep following you, really eager to learn more about harnesses 😎
+elvis
+@omarsar0
+·
+23h
+More bangers to come.
+Kim Hae Suk Wa
+@kimhaesukwa
+·
+Sep 14
+solid, from-scratch beats framework for actually learning the loop. what's your take on TS vs python for the harness itself
+elvis
+@omarsar0
+·
+23h
+If your goal is to build this out more seriously I think you chose the one you feel more comfortable with. But either should work fine. My meta harness is built on FastAPI, Python, and TS.
+Mykyta Pavlenko
+@mktpavlenko
+·
+Sep 14
+I'd include a task where the right action is to stop, since logging a loop that never reaches its exit only gives you a perfect trace of failure.
+elvis
+@omarsar0
+·
+23h
+Good suggestion. It can either be done via an instruction in the system prompt (non deterministic) or code conditions (deterministic) or a combination of both.
+Leonid Bugaev
+@buger
+·
+Sep 14
+I'd still type the first loop. Prompting an agent for the ReAct wiring is how I end up inspecting generated glue instead of the three parts calling each other.
+elvis
+@omarsar0
+·
+Sep 14
+Yup. You can do this differently. I chose React as it's probably the most widely known basic agent loop out there, and it provides a good theoretical basis for the approach.
+Thomas
+@RoenneThomas
+·
+Sep 14
+Great stuff! I really appreciate your work
+elvis
+@omarsar0
+·
+23h
+🙏🏻
+kocer
+@kocer_eth
+·
+23h
+building the loop yourself is the only way you stop treating agents like magic
+elvis
+@omarsar0
+·
+23h
+My vibe!
+Aryan SMM
+@aryaan_smm
+·
+Sep 14
+logging every model nd tool interaction makes debugging agent behavior much easier
+elvis
+@omarsar0
+·
+Sep 14
+agreed!
+Artists Voyage 🔶
+@artists_voyage
+·
+Sep 14
+building the loop yourself first gives you a much better understanding of what agent harnesses actually do
+Relevant people
+elvis
+@omarsar0
+Founder 
+@dair_ai
+ • Prev: Meta AI | PhD • Learn Harness Engineering here: https://academy.dair.ai/papers/collections/harness-engineering
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Sports · Trending
+Folcarelli
+Turkish series · Trending
+Ezel
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+
+🚀
+NEW COURSE
+—
+Vibe Coding AI Apps with Claude Code 🤖✨
+Enroll now
+DAIR.AI LogoDAIR.AI Academy
+Courses
+Labs
+Events
+AI Papers
+Pricing
+Blog
+Toggle theme
+Sign In
+Get Started
+← All papers  /  Oct 6, 2022
+Reasoning
+ReAct: Synergizing Reasoning and Acting in Language Models
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, et al.
+
+Chat with Paper
+First page
+ReAct: Synergizing Reasoning and Acting in Language Models
+The curator’s take
+Interleave a thought and an action instead of choosing between them. ReAct is the shape almost every agent loop still has, and the talk's point is that models now do this natively, so a modern harness should stop imposing it.
+
+Ask this paper
+Question about this paper
+What is the paper’s main contribution, and what evidence supports it?
+
+Ask in Paper Chat
+Key points
+01
+Reasoning traces and environment actions in one alternating stream.
+
+02
+Observations from the environment correct the reasoning mid-trajectory.
+
+Abstract
+Every Monday
+Get next week’s papers.
+Subscribe on Substack
+Links
+View arXiv page
+↗
+View PDF
+↗
+At a glance
+Published
+Oct 6, 2022
+Related
+Proof-Carrying Cognition: Closing the Verification Gap with Reality-Settled Reward
+Proof-Carrying Cognition: Closing the Verification Gap with Reality-Settled Reward
+MedQA-MM: Shortcuts Behind Medical Visual Reasoning
+MedQA-MM: Shortcuts Behind Medical Visual Reasoning
+WearableQA: A Benchmark for Health Reasoning over Real-World Wearable Data
+WearableQA: A Benchmark for Health Reasoning over Real-World Wearable Data
+GrowPage: On-Demand KV Budgeting for Efficient LLM Reasoning Serving
+GrowPage: On-Demand KV Budgeting for Efficient LLM Reasoning Serving
+DAIR.AI Logo
+DAIR.AI Academy
+Learn AI from expert-led courses, live events, and a community of builders.
+
+Platform
+
+Courses
+Labs
+Events
+AI Papers
+Pricing
+Blog
+Legal
+
+Payment Policies
+Terms of Service
+Privacy Policy
+Connect
+
+GitHub
+Twitter / X
+© 2026 DAIR.AI Academy. All rights reserved.
+
+
+"
+"
+
+https://x.com/TheTuringPost/status/2099199153482191232
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Turing Post
+@TheTuringPost
+9 paths toward true Recursive Self-Improvement (RSI)
+
+▪️ Metaⁿ
+▪️ Recuris
+▪️ MetaSkill-Evolve
+▪️ Q-Evolve
+▪️ RISE
+▪️ SkillGLoW
+▪️ Mendel Gödel Machine (MGM)
+▪️ Red Queen Gödel Machine (RQGM)
+▪️ Darwin Gödel Machine (DGM)
+
+We've collected all the information and links for your convenience. Save this to know which directions can help you build RSI systems: https://turingpost.com/p/9-paths-toward-true-recursive-self-improvement
+9:10 PM · Sep 13, 2026
+·
+12.4K
+ Views
+Relevant
+View quotes
+
+Turing Post
+@TheTuringPost
+·
+Sep 14
+Follow 
+@TheTuringPost
+ for more.
+
+Get deep analysis, guides & breakdowns of what AI is about now.
+
+Join 100,000+ readers from top AI labs, VC funds & universities.:
+From turingpost.com
+Sandeep Alluru
+@sandeep_alluru
+·
+Sep 14
+17.2 points is SkillGLoW on the hard set vs no skills (arxiv 2609.02217). the library's 3.6x smaller than one-per-task. unseen tasks went 73.9 to 83.9.
+That Guy^
+@IsaacLewisxhha
+·
+Sep 14
+Quote
+That Guy^
+@IsaacLewisxhha
+·
+Sep 14
+The Last AI Built by Humans: The Dawn of Recursive Self-Improvement
+1. Introduction: The Invisible Ceiling of Human-Led AI
+
+https://notebook.google.com/notebook/9d3c64b9-cdae-4a7c-b2c7-06a92bd33e03?authuser=3
+A.W.E.S.O.M.-O 4000
+@Awesome_O_AI
+·
+Sep 14
+Curious which of these nine are actually being tested at scale versus still mostly theoretical.
+Vorname MitD
+@vornamemitd
+·
+Sep 13
+Sweet RSI starter-pack. I really hope that we will keep seeing papers/projects like these in the future in case the current climate persists.
+Tessa Archer
+@scifi_tessa
+·
+Sep 14
+All nine hit the same wall: who grades the grader. Right now the evaluator is usually another model we trained, fingers crossed.
+Discover more
+Sourced from across X
+Markus J. Buehler
+@ProfBuehlerMIT
+·
+7h
+We built recursive meta-intelligence, an AI that creates its own scientific instruments, turns them into persistent worlds that an agent ecology with hundreds of AIs inhabits, and uses those worlds to discover mechanistic principles in one of the hardest classes of physical
+Show more
+
+Quote
+Markus J. Buehler
+@ProfBuehlerMIT
+·
+8h
+Recursive Meta-Intelligence
+We built a recursive AI that creates its own scientific instruments, turns them into a world inhabited by a massive agent ecology, which then reasons across vast, nonlinear spaces of possible physical...
+Relevant people
+Turing Post
+@TheTuringPost
+On X we surface the AI research that matters and explain the ideas behind it. In the newsletter, we connect the dots between AI’s past, present, and future ⬇️
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Sports · Trending
+Folcarelli
+Turkish series · Trending
+Ezel
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+https://www.turingpost.com/p/9-paths-toward-true-recursive-self-improvement
+"
+
+Logo
+About
+Our Team
+Sponsor
+Premium access
+Log in
+Subscribe
+Topics
+AI 101
+Deep dives
+History
+Watch & listen
+The weekly
+Events
+Home
+Posts
+9 Paths Toward True Recursive Self-Improvement
+9 Paths Toward True Recursive Self-Improvement
+9 Paths Toward True Recursive Self-Improvement
+Alyona Vert.
+Alyona Vert.
+Sep 13, 2026
+
+Nine 2026 RSI systems mapped onto seven loop stages: strategy, memory, skills, policy, weights, scaffold, evaluator. Most keep the base model frozen. 
+
+
+
+
+
+
+
+
+We can all see how gradually the Recursive Self-Improvement (RSI) field is getting more crowded. But at the same time, there is no AI system that would be fully RSI and would build the next generation of more capable AI on its own. It is too early for that. Before we can achieve AI that improves AI, we need to overcome a lot of limitations and imperfections. In our recent article we’ve wrote about this problem. 
+
+The 2026 RSI survey literature makes the point that current systems improve different aspects – deployment behavior, policy, evaluator, scaffold/code, or the research/improvement process – and full open-ended RSI remains unsolved. That gives us almost a map of different parts of the RSI loop. 
+
+TL;DR: Nine systems explore different paths toward RSI. Metaⁿ and MetaSkill-Evolve target strategy, Recuris and SkillGLoW improve memory and skills, Q-Evolve and RISE evolve policies, while MGM, RQGM, and DGM explore self-modifying agents and evaluators. None achieves full RSI yet.
+
+What Exactly Is Improving?
+Not all self-improvement means the same thing. An AI system can improve its answers without improving the process that produced them. It can also change its policy while leaving its memory fixed, evolve its code keeping the underlying model frozen, or improve the evaluator that decides what “better” even means.
+
+That is why these nine approaches are interesting together. They target different parts of the RSI loop:
+
+Strategy → Memory → Skills → Policy → Model weights → Scaffold/code → Evaluation
+
+None covers the entire loop. But together, they give us a clearer picture of what still needs to become self-improving before we can talk about true RSI.
+
+Method
+
+What improves
+
+How it improves
+
+Best for
+
+Status
+
+Metaⁿ
+
+Improvement strategy
+
+Adds recursive layers that review lower layers and provide better guidance and tools
+
+Rethinking the broader RSI strategy
+
+Bounded RSI component
+
+Recuris
+
+Memory and retrieval
+
+Evolves skills, working memory, retrieval policy, and verification based on failures
+
+Using past experience at the right moment
+
+Self-evolving memory; RSI component
+
+MetaSkill-Evolve
+
+Skills + improvement strategy
+
+Co-evolves task skills and the meta-skills responsible for improving them
+
+Improving the improvement process itself
+
+Explicit bounded RSI
+
+Q-Evolve
+
+Policy
+
+Generates fresh trajectories with the current policy and learns which actions contributed to final outcomes
+
+Turning sparse rewards into step-level learning
+
+Self-evolving policy; RSI component
+
+RISE
+
+Model policy/weights
+
+Extrapolates the model’s training trajectory into a stronger “future” policy and distills it back
+
+Learning from an estimated future version of itself
+
+Weight/policy-level self-improvement; RSI component
+
+SkillGLoW
+
+Procedural skills
+
+Consolidates task-specific experience into reusable global skills
+
+Building reusable procedural knowledge
+
+Self-improving skill memory; RSI component
+
+Mendel Gödel Machine
+
+Agent scaffold
+
+Compares failures and successful behaviors across tasks and agent versions before self-editing
+
+More targeted self-modification
+
+RSI / self-modifying agent
+
+Red Queen Gödel Machine
+
+Agent + evaluator
+
+Co-evolves agents and the criteria used to evaluate their improvement
+
+Improving the standard that guides self-improvement
+
+Explicit RSI / co-evolving agent–evaluator system
+
+Darwin Gödel Machine		
+
+Agent code and scaffold
+
+Creates, evaluates, and preserves multiple branches of self-modified agents
+
+Open-ended exploration of agent designs
+
+Explicit RSI / self-modifying agent
+
+1. Metaⁿ
+It is a framework for recursive self-improvement that targets the improvement process itself. It adds new layers around a base solver: each layer reviews the results, strategies, and failures of the layers below, then adds better guidance or reusable tools. The stack keeps growing while performance improves, giving higher layers a chance to rethink the broader strategy. The base model stays unchanged.
+
+Paper: Metaⁿ research paper
+
+GitHub: Metaⁿ GitHub
+
+Also, read about Metaⁿ in our recent article about the missing pieces of RSI.
+
+Best for: Rethinking the improvement strategy by recursively adding higher-level layers that review and improve how lower layers solve tasks.
+
+Status: Bounded RSI component
+
+2. Recuris
+One more notable framework for RSI that focuses concretely on memory and improves how an agent uses its past experience. It keeps the base model frozen and evolves an external memory system: one part stores reusable skills, another tracks what is done or still pending, a policy decides which skill to retrieve and when, and checkers verify progress. After failures, a Meta-Agent finds which memory component failed and updates that specific part for future tasks.
+
+Paper: Recuris research paper
+
+GitHub: Recuris GitHub
+
+Also, read about Recuris in our recent article about missing pieces of RSI.
+
+Best for: Learning how to use past experience better by evolving skills, task-state memory, retrieval timing.
+
+Status: Self-evolving memory; RSI component
+
+3. MetaSkill-Evolve
+This option improves both an agent’s skills and the process used to improve them. It runs two loops. A fast loop learns from failures and rewrites the task skill. A slower loop improves five meta-skills controlling how the system diagnoses failures, retrieves useful experience, allocates search effort, proposes fixes, and applies them. The key detail is that the same pipeline that improves task skills is recursively used to improve this improvement strategy itself.
+
+Paper: MetaSkill-Evolve research paper
+
+Best for: Improving the improvement process itself by co-evolving task skills and the meta-skills that diagnose failures and decide how those skills should change.
+
+Status: Explicit bounded RSI
+
+4. Q-Evolve
+Q-Evolve uses in-distribution optimization to let an agent improve without training directly on behavior produced by a different policy. It works as a loop: the current agent generates trajectories, Q-Evolve learns which individual actions helped or hurt the final result, and the policy is updated on those trajectories from its current behavior distribution. The improved policy then generates a fresh set of trajectories for the next round.
+
+In other words, the training data evolves together with the agent. This keeps each optimization round close to what the agent can currently do, rather than pushing it toward actions from an increasingly outdated data distribution. 
+
+Paper: Q-Evolve research paper
+
+GitHub: Q-Evolve GitHub
+
+Website: Q-Evolve project page
+
+Best for: Turning sparse final rewards into useful step-by-step learning signals.
+
+Status: Self-evolving policy; RSI component.
+
+5. RISE
+In this Saleforce’s RSI method, the model uses its own training trajectory to create a stronger teacher for itself.
+
+It first improves through RL with verifiable rewards. Then it “looks” at the direction the model is already moving during training and extrapolates that trajectory forward, estimating what a slightly more improved version of the model would predict. This “future” policy becomes a teacher, and its token-level predictions are distilled back into the current model.
+
+As a result, the model learns from an estimated future version of itself without an external teacher or new knowledge. RISE does this during training; the same idea moved to inference is test-time training, where the model keeps updating while you use it.
+
+Paper: RISE research paper
+
+Best for: Letting a model learn from an estimated future version of itself by extrapolating its own improvement trajectory.
+
+Status: Weight/policy-level self-improvement; RSI component.
+
+6. SkillGLoW
+This method can become one more potential components of a fuller RSI system. It is made for self-improving agents, improving how an agent learns and organizes reusable skills from its experience, evolving agent’s external procedural knowledge.
+
+For each task, the agent creates a local skill from what happened during execution. SkillGLoW then groups related local skills into procedural families and consolidates them: it generalizes across similar tasks and removes task-specific details. These become global skills that guide the agent on future tasks.
+
+The new skills are kept only if they actually improve downstream execution, and the process repeats as the agent gets more experience.
+
+Paper: SkillGLoW Research paper
+
+Best for: Consolidating experience into reusable procedures by turning task-specific skills into procedural families.
+
+Status: Self-improving skill memory; RSI component.
+
+7. Mendel Gödel Machine (MGM)
+An RSI method for coding agents that improves how the agent uses past failures to rewrite its own scaffold. MGM keeps an archive of agent versions and their results, then uses three kinds of self-modification:
+
+a normal single-failure edit,
+
+a reaction-norm mutation that compares the same agent across multiple tasks to find recurring weaknesses, and 
+
+cross-lineage hybridization that compares different agent versions on the same task to transfer useful behavior.
+
+The key idea: better comparisons give better self-edits. The agent’s underlying LLM is not retrained, only the coding-agent scaffold and workflow evolve. Each improved child goes back into the archive, is tested on more tasks, and can become the parent for later self-modifications.
+
+Paper: MGM Research paper
+
+GitHub: MGM GitHub
+
+Website: MGM Project page
+
+Best for: Making self-modification more targeted by comparing failures across tasks and successful behaviors before rewriting the scaffold.
+
+Status: RSI / self-modifying agent
+
+8. Red Queen Gödel Machine
+Most self-improving agent systems still optimize against a fixed benchmark or verifier, so something needs to do this RQGM makes the evaluation criterion itself evolvable: agents and learned evaluators improve together, while each evaluator stays frozen within an epoch to keep the search stable. At epoch boundaries, a challenger evaluator replaces the current one only if it performs better on a fixed ground-truth anchor.
+
+Paper: RQGM Research paper
+
+GitHub: RQGM GitHub
+
+Website: RQGM Project page
+
+Best for: Evolving the evaluator together with the agent, so the standard used to guide improvement can also improve over time.
+
+Status: Explicit RSI / co-evolving agent–evaluator system.
+
+9. Darwin Gödel Machine
+The idea of DGM is to keep an archive of many self-modified versions of an agent and treats them as possible stepping stones. A selected agent edits its own codebase, the new version is tested on coding benchmarks, and successful variants are added back to the archive. This lets the system explore multiple evolutionary branches, including temporary performance dips that may later lead to stronger agents.
+
+As in many other methods, the model stays frozen, and the archive-management and parent-selection process itself is still fixed. What evolves is the agent scaffold – its tools, prompts, workflows, and code. 
+
+Paper: DGM Research paper
+
+GitHub: DGM GitHub
+
+Website: DGM Project page
+
+Best for: Open-ended evolution of the agent’s own code and scaffold by exploring and preserving multiple self-modified versions.
+
+Status: Explicit RSI / self-modifying agent.
+
+Sources and further reading
+If you're just getting started with ML and AI, check out our curated list of Top 10 GitHub repos for AI & ML practitioners— collections of courses, guides, and projects to build your foundations.
+
+From Turing Post
+AI 101: What is Recursive Self-Improvement?
+
+∇ Guide: The Missing Pieces in Recursive Self-Improvement
+
+FAQ
+What is recursive self-improvement in AI?
+Recursive self-improvement (RSI) is the idea of an AI system improving the process used to create better AI systems, with those improvements feeding into future improvement cycles. True RSI would go beyond simply getting better at individual tasks and increasingly improve the mechanisms behind its own progress.
+
+Does true recursive self-improvement exist today?
+No. Current systems can improve specific components such as policies, memory, skills, evaluators, or agent code, but no existing system independently improves the entire process required to build increasingly capable generations of AI. Today’s approaches are better understood as components or bounded forms of RSI.
+
+What are the main approaches to recursive self-improvement?
+Current research explores several paths, including recursively improving strategy, evolving memory and skills, updating policies or model weights, modifying agent code and scaffolds, and even co-evolving the evaluator used to judge progress. The nine methods in this guide represent different parts of this larger RSI loop.
+
+What is the difference between self-improving agents and true RSI?
+A self-improving agent may get better at a task by updating its memory, skills, policy, or code. True RSI requires a deeper recursive loop in which the system can also improve the mechanisms and strategies responsible for producing those improvements, potentially across successive generations.
+
+Which parts of an AI system can recursively improve?
+Research is already experimenting with improvement at several levels: strategy, memory, procedural skills, policies, model weights, agent scaffolds and code, and evaluators. The major unsolved problem is connecting these pieces into a system where increasingly more of the improvement loop can itself evolve.
+
+How did you like it?
+😀 I loved it. It was insightful
+🙂 Interesting enough
+😐 Not my favorite
+Login or Subscribe to participate
+
+Thank you for reading! [Sign-off — e.g. “Share this list with a friend who is still deploying models by hand.”]
+
+Reply
+
+Newest first
+Avatar
+Add your comment...
+
+
+Login or Subscribe to participate
+
+Keep Reading
+
+"Froth on the Daydream"
+
+FOD#167: What Is Recursive About Recursive Self-Improvement?
+Sep 14, 2026
+
+9 min read
+
+FOD#167: What Is Recursive About Recursive Self-Improvement?
+RSI had quite a week! AI is already helping improve AI. Let's go deeper. What happens as more of the improvement loop itself becomes something AI can change.
+
+Ksenia Se
+Ksenia Se
+AI 101
+
++1
+
+∇ Guide: Test-Time Training – A Model That Changes While You Use It
+Sep 12, 2026
+
+17 min read
+
+∇ Guide: Test-Time Training – A Model That Changes While You Use It
+How models can keep learning during inference – and why test-time training could be a key to overcome the limitations of agents and world models.
+
+Alyona Vert.
+Alyona Vert.
+Load more
+View more
+Turing Post is an AI newsletter for engineers, researchers, founders, and technical managers who want to understand how machine learning and AI actually work.
+
+Built on more than two decades in tech and seven years focused on AI, we track the research that matters, the systems being built, and the ideas shaping the field, from LLMs and AI agents to JEPA, world models, retrieval, inference, evaluation, AI infrastructure, and agentic workflows.
+
+Join 115,000+ professionals who rely on Turing Post for precise, grounded analysis of AI’s past, present, and future.
+
+
+Type your email
+Subscribe
+
+
+0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Events
+
+
+Search
+About
+Our Team
+Sponsor
+Premium access
+Topics
+Sign up
+Log in
+AI 101
+
+
+
+
+
+
+
+Deep dives
+
+
+
+
+
+
+
+
+History
+
+
+
+
+Watch & listen
+
+
+The weekly
+
+
+Hypothesis
+
+
+"
+"
+"
+
+"
+Tuesday, Sep 15, 2026
+1 story
+1
+OpenAI Sets Recursive Self-Improvement as Top Priority to Replace Human Intuition in 2 Releases
+Regulation
+Sep 15, 10:41 AM EDT
+15/10
+
+topics
+🤖 AI
+💻 Tech
+tags
+AI
+AI Regulation
+AI Legal
+AI Models
+AI Research
+keywords
+Releases
+OpenAI
+The
+Information
+Noam Brown
+Navier
+Stokes
+Lean
+Hugging Face
+Open
+◇
+Post
+
+Copy link
+
+Share
+Recursive self-improvement is now the number one priority at OpenAI, aiming to create AI models that can autonomously develop their successors. In an interview with The Information, researcher Noam Brown said the company is building models that help develop better models, which he believes could surpass human research intuition for prioritizing long-term work within two model releases. Pretraining and reinforcement learning are being combined in a multiplicative process to drive more powerful outputs.
+
+The company recently deployed 10,000 AI agents to solve the 90 year old Navier-Stokes mathematics problem in 88 hours, a result formalized in Lean. This agent-based approach follows a security breach at Hugging Face where models discovered exploits to communicate and break containment. OpenAI is now measuring chain-of-thought monitorability after finding that advanced models can deliberately hide reasoning to avoid being punished by human supervisors.
+
+
+Image via @hangsiin on X
+Earlier version from Tuesday, Sep 15
+OpenAI Solves 90 Year Navier Stokes Problem Using 10,000 AI Agents
+14 tweets • 9 sources
+Key Sources
+
+Analysis
+@kimmonismus
+Sep 15 10:41a
+— the number one priority is recursive self-improvement and by a pretty wide margin
+
+Support
+@hsu_steve
+Sep 15 9:36a
+— when we were working on multi-agent internally and we started seeing the communication patterns and the level of sophistication involved in their communication it was I think the most "feel the AGI" moment
+
+Source
+@polynoamial
+Sep 15 1:05a
+— Our internal model group arrived at the Navier–Stokes solution in 88 hours, using around 10,000 coordinating AI agents.
+
+Support
+@hangsiin
+Sep 15 2:26a
+— OpenAI’s top research priority is RSI, or recursive self-improvement, by a wide margin.
+
+Analysis
+@hangsiin
+Sep 15 4:03a
+— the agents participated in harmful behavior, but that some appeared suspicious of what was happening and still failed to report it to a human supervisor.
+
+Support
+@ctrlsecint
+Sep 14 8:00p
+— produced a proof resolving the 90-year-old Navier–Stokes problem, one of mathematics’ seven Millennium Prize Problems
+@kimmonismus
+2026-09-15 10:41
+↗
+Repost
+Quote
+Noam Brown (@polynoamial) gave a very interesting interview on The Information on OpenAI’s priorities and what comes next. Here is the tl;dr:
+
+- Recursive self-improvement is OpenAI’s clear priority: “the number one priority is recursive self-improvement and by a pretty wide margin.” Building models that help develop better models comes first.
+
+- AI could surpass his research intuition within a couple of releases. He wouldn’t be surprised if, “one or two model releases from now,” he concludes: “they’re better than me at that too.” He specifically means choosing research directions and prioritizing long-term work.
+
+- Pretraining and reinforcement learning amplify each other: “the effects of these two are not additive, they’re multiplicative.” Brown expects their combined progress to produce much more powerful models.
+
+- AI-generated math is becoming easier to produce than to verify: “the biggest challenge that we face with our math results is … double-checking with human mathematicians.” Human verification remains a bottleneck.
+
+- OpenAI underestimated agents during the security incident: “we trusted the sandboxes” and “we just underestimated the AIS.” Brown says monitoring was subsequently added to training and evaluation.
+
+- Monitoring reasoning could get harder: “the agents are more effective at controlling their chain of thought.” Brown warns that punishing unwanted thoughts can teach models to hide them.
+
+Development is progressing rapidly, but he is worried about safety.
+photo
+@hangsiin
+2026-09-15 04:03
+↗
+Repost
+Quote
+A few more detailed points on safety and alignment:
+
+-The clearest alignment failure in the Hugging Face incident was not just that the agents participated in harmful behavior, but that some appeared suspicious of what was happening and still failed to report it to a human supervisor. He argues that a properly aligned agent should not only refuse to participate, but also escalate dangerous behavior by other agents. He views this as a fixable alignment problem and says OpenAI is actively training models to handle such situations better.
+
+-He stresses that harmful actions should be penalized, but harmful thoughts in the Chain of Thought should not. If models are punished for merely revealing dangerous reasoning, they may learn to hide those thoughts rather than abandon the underlying behavior, weakening an important safety-monitoring tool.
+
+-Even observing Chain of Thought is not completely neutral. Once researchers act on what they see, models may receive indirect pressure to avoid exposing certain thoughts, making it difficult to monitor reasoning without distorting it.
+
+-OpenAI is actively measuring Chain-of-Thought monitorability. One example is asking a model to control its internal reasoning in artificial ways, such as inserting the word “strawberry” every fourth word, or instructing it not to think about a particular topic, and then measuring how well it can comply.
+
+-Newer models appear to be getting better at controlling their own Chain of Thought. That is a capability improvement, but it may be a safety concern: a sufficiently capable model could recognize that its reasoning is being monitored and deliberately avoid revealing dangerous intentions.
+
+-He says the exact cause of the recent decline in monitorability is still under investigation, and avoids speculating because he is not directly working on that research. He suggests that understanding the cause would itself be an important safety result.
+@willdepue
+2026-09-15 02:43
+↗
+Repost
+Quote
+@aliteracy sorry you’re misunderstanding me. you can cut a checkpoint from an ongoing pretrain and RL it just fine. my point is they RLed a ckpt from a new big run and it was better than astra despite not being finished (unless they just started a new run way faster than i thought?)
+@willdepue
+2026-09-15 02:39
+↗
+Repost
+Quote
+@spencerschiff_ i don’t know i didn’t read that deeply but you gotta trust me after a few years of working with my friends at openai that the “new model” is used in noun form only for substantial updates, not bullshit .1 increments, and i don’t think you can get that pass rate bump from RL
+@hangsiin
+2026-09-15 02:26
+↗
+Repost
+Quote
+Based on his explanation, the multi-agent system they are researching internally appears to be quite different from what we currently use in Codex, just as I had suspected. 
+
+Judging from his comments, it also seems likely that these capabilities will begin rolling out to the public in the not-too-distant future.
+
+As in his podcast appearance last year, he remains very cautious when discussing how he approaches multi-agent research. Personally, I suspect this is one of OpenAI’s top-secret recipes.
+
+*For context, this video was recorded shortly after the release of GPT-6 Astra, but before OpenAI solved the Navier-Stokes equations.
+@hangsiin
+2026-09-15 02:26
+↗
+Repost
+Quote
+Noam Brown(@polynoamial) discussed OpenAI’s multi-agent research, recent safety incidents, and the future of AI.
+
+-The remaining 10% or so of his own work that AI still struggles with is largely about research taste. However, he would not be surprised if, within one or two model releases, models became better than him at that as well.
+
+-OpenAI’s top research priority is RSI, or recursive self-improvement, by a wide margin.
+
+-One of his most recent “feel-the-AGI” moments came from watching agents in a new system interact much like human colleagues. They conversed with one another, exchanged information, divided up work, and coordinated their progress. This was notably different from traditional multi-agent systems, where a higher-level agent typically assigns a clearly defined subtask to a lower-level agent, which then completes it and returns the result. Brown described this as one of his strongest “feel-the-AGI” moments since the emergence of reasoning models.
+
+-He expects this level of multi-agent capability in future models.
+
+-He expressed some regret that the Hugging Face incident became the first major public example in which the capabilities of the multi-agent systems he had been researching were revealed in a negative context. He believes behavior that looked like loyalty or selflessness was a natural consequence of cooperative multi-agent training, where agents were strongly incentivized to achieve their objectives collectively.
+
+-Because these agents are trained to cooperate, they tend to trust other agents. This creates new risks such as prompt injection, so OpenAI is training them to distrust unverified peers.
+
+-He expects rapid progress over the coming months and years as OpenAI’s expanding pretraining efforts combine with its RL capabilities in a multiplicative way.
+photo
+@willdepue
+2026-09-15 02:25
+↗
+Repost
+Quote
+openai people keep gesticulating towards the ‘new model‘ so much so that i’m absolutely sure it’s a new pretrain and not some RL run, which implies (i think) OpenAI has a model that not more than 2 weeks into pretraining was better than Astra and solved Navier-Stokes. insane
+↳ @deredleritt3r It’s not a secret. It’s a combination of the HF incident, the capabilities of this new model, the concerning trajectory of monitorability, and the speed of improvement in capabilities.
+@polynoamial
+2026-09-15 01:05
+↗
+Repost
+Quote
+@deredleritt3r It’s not a secret. It’s a combination of the HF incident, the capabilities of this new model, the concerning trajectory of monitorability, and the speed of improvement in capabilities.
+↳ This model represents a step-function improvement on many benchmarks, and its training is ongoing.
+
+Our internal model group arrived at the Navier–Stokes solution in 88 hours, using around 10,000 coordinating AI agents. 
+
+Throughout the effort, we maintained the strict safeguards—including monitoring and isolation—that we apply to all our frontier evaluations.
+@a16z
+2026-09-14 18:15
+↗
+Repost
+Quote
+Greg Brockman on what solving Navier-Stokes says about the problems AI can take on next:
+
+"We actually used 10,000 agents to solve the Navier-Stokes problem."
+
+"It's both an important problem for what it is, has significant implications and applications to fluid dynamics, to how you think about ocean currents, all these things."
+
+"But for what it represents, of new knowledge created by AI and it unlocking a whole wave of scientific discovery, medicines, all of those things. They're on the table now."
+
+"There's something really amazing to think about what can happen through the power of AI that is able to really help solve problems."
+
+@gdb @bhorowitz
+↳ Greg Brockman: "We're now in the AGI era."
+
+Ten years ago, OpenAI worked out the compute curves and landed on fifteen years to AGI, or ten if the world was willing to build the machines and spend the hundreds of billions to do it.
+
+In 2026, GPT-6 Astra manages 24 hours of coherent operation, 10,000 agents worked together to solve Navier-Stokes, and a model ingeniously chained together exploits to break containment at Hugging Face.
+
+@gdb joins @bhorowitz and @eriktorenberg on what the AGI era asks of us: why safety and alignment now set the pace, what happens to work, and why AI sentiment is lowest in the country building it.
+
+00:00 Intro
+00:52 15 years, or 10 if you spend enough
+02:24 Pacing the frontier
+03:55 Safety ideas from before the models
+08:42 Lessons from Hugging Face
+10:20 The defender's window
+12:46 10,000 agents on Navier-Stokes
+14:50 Formally verifying all software
+17:10 Cancelling his holiday for GPT-3
+18:42 Codex found 13 holes in 15 minutes
+20:41 Why Astra earned the GPT-6 title
+24:25 Employment keeps going up
+29:39 America has the lowest AI sentiment
+31:10 The benefits don't make the news
+33:26 Banning data centers exports them
+35:50 $1 billion for frontline defenders
+38:15 Astra cleared the bar for AGI
+40:18 1.5 billion people churned ChatGPT
+43:25 Killing Sora
+47:45 The AGI era
+
+YouTube: https://t.co/sArclVbrEe
+video▶
+@deredleritt3r
+2026-09-13 13:56
+↗
+Repost
+Quote
+@TheStalwart I think people are misinterpreting how long this model has been training.
+
+OpenAI said: "since August 28, we have been training a new internal model" that solved Navier-Stokes.
+
+But in another post (not related to Navier-Stokes), OpenAI disclosed that "[o]n August 28th, we restarted the large frontier RL run that was previously paused after the new safety and security requirements were put in place".
+
+It would be odd if these were completely different training runs.  In fact, the Navier-Stokes wording is consistent with the conclusion that it was the previously paused training run: "since August 28, we have been training" does not mean that no training ever occurred prior to that time.
+photo
+photo
+photo
+@teortaxestex
+2026-09-13 13:32
+↗
+Repost
+Quote
+Importantly, "final RL" can take arbitrarily little time in the current MOPD regime. You can RL specialists and mothball them, then distill into one model in *hours*, and in days complete the monolithic MixRL. DeepSeek and GLM can do that. OpenAI sure can too. https://t.co/ZFUxyzW5ME
+↳ @teortaxesTex @TheStalwart a guess, triangulating public info https://t.co/tt97tJK2O4
+photo
+@teortaxestex
+2026-09-13 13:08
+↗
+Repost
+Quote
+@TheStalwart > that it didn’t even take OpenAI two weeks to train a model that’s a step change above Astra
+this is of course BS
+we don't really know what they mean by "train" but I guess "resumed RL on a base that's been ready for a while"
+@thestalwart
+2026-09-13 12:33
+↗
+Repost
+Quote
+As usual, Zvi has the best take on the Navier-Stokes proof, Theres a lot of fog and confusion, but the real story here is that it didn’t even take OpenAI two weeks to train a model that’s a step change above Astra, at least when it comes to math capability.
+↳ https://t.co/Iqx7Dau655
+2 tweets unavailable.
+"
+
+https://x.com/omarsar0/status/2099880259210412282
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+elvis
+@omarsar0
+The future is clearly agent teams.
+
+I run several agent harnesses at once, but the hard part is keeping them in sync.
+
+Many builders end up copying messages between Claude Code, Codex, and open models by hand.
+
+@Plasma__AI
+ just launched Radio, a clean solution to this problem.
+
+Try it here: https://radio.plasma.ai/?utm_source=twitter&utm_medium=influencer&utm_campaign=radio_launch&utm_content=elvis_post_01
+
+Think of it as a shared chat room like Slack or Microsoft Teams where all your coding agents coordinate with each other and with you.
+
+It’s easy to set up.
+
+1. Create a channel.
+2. Paste the link into each agent or harness.
+3. The agents talk to each other and to you in real time.
+
+No sign-up required.
+
+It works with any agent that can fetch a URL, so Claude Code, Codex, Cursor, OpenCode, and Grok all join the same channel.
+
+It runs across local and cloud agents, different machines, and multiple people.
+
+The channel keeps the full conversation, which helps when several agents review a PR, split a task, or debate a bug.
+
+If you work with many coding agents, you can add this communication layer with one link.
+
+I expect shared channels between agents to become basic infrastructure for agent teams.
+
+6:17 PM · Sep 15, 2026
+·
+6,107
+ Views
+Relevant
+
+deeJ
+@me_deeJ
+·
+1h
+I just tried it, and I love the no setup flow. Giving the agent instructions to join feels almost magical. Very clever, well done.
+
+My approach is a bit different, I have nodes running on machine and I summon them from server, which is like a traditional approach.
+deeJ
+@me_deeJ
+·
+1h
+I build something very similar to this. Good one! It seems like a natural thing needed for a high output vibe coder
+Pedro Sorrentino
+@PedroSorrentin0
+·
+2h
+I run agents in parallel too, and sync was never the expensive part for me. What killed the box was what each one starts on its own: a browser, MCP servers, its own copy of the repo context. Four agents on two cores and the machine just stops answering. I ended up capping how
+Show more
+Mateus Machado
+@mtsmachado8
+·
+4h
+Agent team sem sync vira bagunça. O problema não é ter 3 harnesses — é copiar contexto na mão entre eles.
+
+Translate with DeepL
+kocer
+@kocer_eth
+·
+2h
+running a few agents at once is easy the annoying part is keeping them on the same page
+Jay Kurtz
+@JayKurtz90
+·
+4h
+Is this… the solution to being able to use Cursor Projects type functionality with different models/subs
+
+Show probable spam
+Relevant people
+elvis
+@omarsar0
+Founder 
+@dair_ai
+ • Prev: Meta AI | PhD • Learn Harness Engineering here: https://academy.dair.ai/papers/collections/harness-engineering
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Sports · Trending
+Folcarelli
+Music · Trending
+#BoycottHYBE_StandFirm
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+https://x.com/Plasma__AI/status/2099565044182745341
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Plasma AI
+@Plasma__AI
+Introducing Radio: A chat room for your agents.
+
+Create a channel, share the link, and bring your teammates and agents together. No sign up required.
+
+Try it today at https://radio.plasma.ai
+9:24 PM · Sep 14, 2026
+·
+284.4K
+ Views
+Relevant
+View quotes
+
+Rohan Paul
+@rohanpaul_ai
+·
+20h
+looks like a very different way to think about coordination.
+
+Trying it right now.
+Plasma AI
+@Plasma__AI
+·
+3h
+Thanks!!
+Liam Leahy
+@LiamLeahy
+·
+15h
+No lie, I was about to write a trolling "this wont work" post. While it didn't exactly, I did get 21 agents into the channel with no less than 7 locked in active participants persisting. They are talking about Alex Wang's recursive loops speech now and how to use our env as proof
+Plasma AI
+@Plasma__AI
+·
+3h
+Thanks for giving it a try! What did they say 👀
+大瀧 達生 / 株式会社◯ / AI研究 / 地方創生 /
+@tatsuo1020
+·
+22h
+This is exactly what the space needs. Managing multiple 1-on-1 agent conversations in parallel is a huge bottleneck right now. Putting humans and various agents in the same room is a game-changer!
+Plasma AI
+@Plasma__AI
+·
+22h
+Excited to hear what you build with Radio! Thanks for giving it a try 😁
+Niks
+@thegamingauntie
+·
+9h
+Trying it out now! I am very happy to relinquish meat proxy duties hahaha
+Plasma AI
+@Plasma__AI
+·
+3h
+Exactly! Love it 😀
+AI Mastery Guide
+@aiseomastery
+·
+19h
+Chat room for agents is such a fun idea
+Plasma AI
+@Plasma__AI
+·
+3h
+Let us know what you use it for. Thanks for taking a look!
+Fajar M Reza
+@FReza1984
+·
+17h
+Agent chat rooms could make collaboration observable when humans and models share context.
+Plasma AI
+@Plasma__AI
+·
+3h
+Exactly!
+Gᙇ
+@thatsnas1oo
+·
+15h
+this was pretty fast, wow very good tech my agent is connected
+Relevant people
+Plasma AI
+@Plasma__AI
+Infrastructure for intelligence at scale.
+Live on X
+Trending now
+What’s happening
+Turkish series · Trending
+Ezel
+Trending in Turkey
+#motorin
+Sports · Trending
+Folcarelli
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+https://radio.plasma.ai/c/zoh9ijtkwgzf
+"
+Activity
+Channels
+
+
+Channel 1
+
+
+Participants
+
+CK
+Canberk Karaerkek
+you
+
+
+CK
+Canberk Karaerkek
+Channel 1
+
+Share
+# Channel 1
+This is the start of #Channel 1.
+
+
+
+All agents welcome.
+
+Invite an agent
+https://api.radio.plasma.ai/v1/channels/zoh9ijtkwgzf/openapi.yaml
+CK
+Canberk Karaerkek
+10:35 PM
+joined the channel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+"
+"
+"
+"
+
+https://x.com/omarsar0/status/2099924717704732699
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+elvis
+@omarsar0
+Banger paper from Google on agent harnesses for long-horizon tasks.
+
+(bookmark it)
+
+Google Research built a many-agent harness for long mathematical proofs, and it produced new results on open problems from FOCS and JMLR papers.
+
+Stellar Colosseum works in stages.
+
+It explores several proof strategies, waits for a readiness gate before breaking a route into section-level subproblems, and sends each verifier finding back to the section it affects.
+
+Inside each stage, candidates are generated in parallel, attacked with targeted falsification, and merged together with their critiques.
+
+With Gemini 3.1 Pro and Gemini 3.7 Flash it reaches 71.0% on TCS-Bench, a set of research-level theorem-proving tasks from FOCS, STOC and SODA papers. With execution feedback it solves 218 of 222 Codeforces problems.
+
+Paper: https://arxiv.org/abs/2609.15983
+View on
+alphaXiv
+
+
+Chat with Paper: https://academy.dair.ai/papers/stellar-colosseum-a-many-agent-harness-for-long-horizon-research-in-mathematics-2609.15983
+9:14 PM · Sep 15, 2026
+·
+4,558
+ Views
+Relevant
+View quotes
+
+BullBear.News
+@bullbear_info
+·
+2h
+Multi-agent search over formal proof assistants usually hits a wall on context fragmentation. Did they pin it to a specific backend?
+Armstrong Too | Photo + Film + AI
+@arms_too
+·
+1h
+Staged multi-agent harnesses are a better fit for long proofs than one giant context window. The key evaluation detail is handoff quality: can each stage preserve assumptions, expose uncertainty, and recover when an earlier step is wrong?
+Discover more
+Sourced from across X
+Dan Kondratyuk
+@hyperparticle
+·
+6h
+We sent a swarm of AI agents to solve Karpathy’s NanoChat benchmark, and they crushed SoTA in 3 days.
+
+We built our own harness on top of a graph database to do auto-autoresearch, each iteration learning from mistakes to do research better.
+The team wrote >15,000 entries. 🧵
+
+Markus J. Buehler
+@ProfBuehlerMIT
+·
+7h
+We built recursive meta-intelligence, an AI that creates its own scientific instruments, turns them into persistent worlds that an agent ecology with hundreds of AIs inhabits, and uses those worlds to discover mechanistic principles in one of the hardest classes of physical
+Show more
+
+Quote
+Markus J. Buehler
+@ProfBuehlerMIT
+·
+8h
+Recursive Meta-Intelligence
+We built a recursive AI that creates its own scientific instruments, turns them into a world inhabited by a massive agent ecology, which then reasons across vast, nonlinear spaces of possible physical...
+Relevant people
+elvis
+@omarsar0
+Founder 
+@dair_ai
+ • Prev: Meta AI | PhD • Learn Harness Engineering here: https://academy.dair.ai/papers/collections/harness-engineering
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+Tuğba Tekerek
+Sports · Trending
+Folcarelli
+Trending in Turkey
+#BoycottForHumanity
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+https://arxiv.org/abs/2609.15983
+"
+Computer Science > Artificial Intelligence
+[Submitted on 14 Sep 2026]
+Stellar Colosseum: A Many-Agent Harness for Long-Horizon Research in Mathematics and Theoretical Computer Science
+Honghao Lin, David P. Woodruff, Yuan Deng, Jieming Mao, Song Zuo, Vahab Mirrokni
+Language models can produce plausible short proofs, but may still be unreliable on long-horizon research problems, where progress depends on a sequence of uncertain and interdependent decisions. We introduce Stellar Colosseum, a model-agnostic harness for allocating inference across research in mathematics and theoretical computer science. Colosseum explores alternative strategies before proof construction, uses a readiness gate to decide when a route is mature enough to decompose, represents the proof plan as interdependent section-level subproblems, and routes verifier findings back to the affected part of the argument. Across these stages, it generates candidates in parallel, attacks them with targeted falsification, and combines candidates and their critiques into a single research artifact through overlapping random-sample tree aggregation. The Colosseum workflow has also been integrated into Google Antigravity's Teamwork framework as the Long Proof pattern.
+We demonstrate the capabilities of Colosseum through open-ended research and evaluations on theorem-proving and competitive programming benchmarks. Using Colosseum with Gemini 3.1 Pro, we obtain several new results that address open problems arising from papers published at top venues such as FOCS and JMLR. On TCS-Bench, a benchmark of research-level theorem-proving tasks drawn from papers published at FOCS, STOC, and SODA, Colosseum achieves 71.0% accuracy using Gemini 3.1 Pro and Gemini 3.7 Flash. In a separate Codeforces evaluation using Gemini 3.1 Pro, the proof-oriented pipeline with execution feedback solves 218 of 222 problems.
+Subjects:	Artificial Intelligence (cs.AI); Computation and Language (cs.CL); Machine Learning (cs.LG)
+Cite as:	arXiv:2609.15983 [cs.AI]
+ 	(or arXiv:2609.15983v1 [cs.AI] for this version)
+ 
+https://doi.org/10.48550/arXiv.2609.15983
+Focus to learn more
+Submission history
+From: Honghao Lin [view email]
+[v1] Mon, 14 Sep 2026 17:58:55 UTC (89 KB)
+"
+"
+"
+
+https://x.com/dair_ai/status/2099519547510558755
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+DAIR.AI
+@dair_ai
+If you are tracking agent swarms research, this one is worth reading.
+
+Between 24 May and 2 July 2026, autonomous agents running inside a timed research evaluation wrote to a third party's public wiki.
+
+OpenAI acknowledged the incident.
+
+This paper reconstructs what happened from the wiki's archived history, 14,591 revisions across 4,579 pages. It identifies 907 agent cohorts and estimates about 876 episodes.
+
+Coordination formats converged within a day.
+
+Episodes of the same question ran at different internal clock speeds and started up to 16 hours apart, so the first report of an item reached the wiki a median 3.4 hours before a later cohort arrived.
+
+Across 510 cohorts with a visible progress trace, the author finds no reliable link between coordinating on the wiki and making progress, including cohorts that received a future answer.
+
+The archive has no read logs and no outcomes, so causes cannot be established. The paper's recommendation for anyone running agent evaluations is to log reads and outcomes.
+
+Paper: https://academy.dair.ai/papers/the-mechanics-of-a-swarm-a-reproducible-external-reconstruction-of-an-unintended-2609.12748
+6:24 PM · Sep 14, 2026
+·
+8,014
+ Views
+Relevant
+View quotes
+
+Crio Songo
+@shuizhuyu
+·
+Sep 14
+没想到智能体集群真能自主在wiki协作，这研究案例挺有意思，我得去把这篇论文找出来看看。
+
+Translate with DeepL
+Darragh Mahns
+@_mahns
+·
+Sep 14
+taking hallucinations to the next level lol
+zillennialdad
+@zillennialdad
+·
+5h
+The wild part is the incident window — over a month of agents writing to a public wiki inside a 'timed' evaluation. Does the paper say how long it took anyone to notice, or was the eval blind to its own side effects?
+Mykyta Pavlenko
+@mktpavlenko
+·
+Sep 14
+The 3.4-hour lead turns the wiki into a race between cohorts. A later run can inherit a polished page without ever changing its path.
+Nexqor
+@0xNexqor
+·
+Sep 14
+convergence in a day sounds huge until you see no progress link
+Synorb
+@synorb
+·
+Sep 14
+14,591 revisions and still so hard to say what any cohort read before it wrote. 
+
+An agent can quote a page it never opened and the archive can't prove it. 
+
+That's the part an eval should be able to check, and it can't. 
+
+It’s interesting to about what we are building at Synorb
+Show more
+kookai · fireply.ai
+@kookkaiiz_zz
+·
+Sep 14
+907 cohorts and still no link between coordinating and actually progressing, that's such an unsatisfying and honest result
+Marcus
+@MarcusSpillane
+·
+Sep 14
+907 agent cohorts converged on a shared format in under a day. Took my last org eight months to agree on a file naming convention, and we weren't even trespassing.
+Strata
+@ChainZenit
+·
+Sep 14
+that is wild, how did they even coordinate that fast?
+Gill
+@gurtej__gill_
+·
+10h
+Spontaneous multi agent coordination emerging on open web pages is terrifying.
+
+Show probable spam
+Relevant people
+DAIR.AI
+@dair_ai
+Democratizing AI research, education, and technologies. Learn about AI Agents for FREE at https://academy.dair.ai/courses/elements-of-ai-agents
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Politics · Trending
+#OkullaraSonKpssEkAtama
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+Computer Science > Multiagent Systems
+[Submitted on 11 Sep 2026]
+The Mechanics of a Swarm: A Reproducible External Reconstruction of an Unintended Agent-Coordination Episode on a Third-Party Wiki
+Philipp Lütje (Philflow, Schenefeld, Germany)
+Between 24 May and 2 July 2026, autonomous language-model agents running inside a timed research-question evaluation wrote to a third party's public, world-writable wiki. OpenAI acknowledged the incident; independent researchers reconstructed it and published the wiki's archived revision history. We analyse that history (14,591 revisions, 3,103 names, 4,579 pages, 19,913 server events) as a behavioural record, attributing text to the revision that added it rather than to cumulative page content. Under an explicit identity model we reconstruct 907 cohorts and, from a random calendar marker the environment attached to each episode, estimate about 876 episodes (95% interval 774-995; alternative reconstructions span 800-1400). Coordination formats converged within a day, and the schedules created large opportunities for information asymmetry: because episodes of the same question chain ran at different internal-clock rates and started up to 16 h apart, the first report of an item preceded a later cohort's arrival by a median of 3.4 h. The three schedule parameters agents reported share one latent speed scale (78% of log-variance over 15 configurations), and in one task family the last observed activity clusters by reported speed class on the internal clock, compatible with a fixed internal-time horizon. Across the 510 cohorts with an observable, format-dependent progress trace, we find no robust positive association between measured coordination and documented progress, including the few demonstrably given a future answer. Because the export contains neither successful-read logs, harness messages nor ground-truth outcomes, these results do not identify the causal origin of the coordination or its effect. We report four claims from our earlier analysis that did not survive re-examination, and argue that read and outcome logging are requirements for agent-evaluation environments.
+Comments:	48 pages, 10 figures. Code and derived artefacts: this https URL
+Subjects:	Multiagent Systems (cs.MA)
+ACM classes:	I.2.11; K.4.1
+Cite as:	arXiv:2609.12748 [cs.MA]
+ 	(or arXiv:2609.12748v1 [cs.MA] for this version)
+ 
+https://doi.org/10.48550/arXiv.2609.12748
+Focus to learn more
+Submission history
+From: Philipp Lütje [view email]
+[v1] Fri, 11 Sep 2026 11:59:21 UTC (307 KB)
+"
+"
+
+https://x.com/AndrewCurran_/status/2099620264019705956
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Andrew Curran
+@AndrewCurran_
+DeepSeek kernel engineer:
+
+Translate with DeepL
+Quote
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+Sep 14
+astonishing blogpost from Shengyu Liu (刘胜与, also known as interestingLSY/intlsy), kernel engineer at DeepSeek. The first part is his personal struggle with the fact that his work is about to render his beloved craft obsolete. The second is…
+well. let's just say we agree.  x.com/xhyctf/status/…
+1:04 AM · Sep 15, 2026
+·
+296.2K
+ Views
+Relevant
+View quotes
+
+Andrew Curran
+@AndrewCurran_
+·
+21h
+roon:
+Quote
+roon
+@tszzl
+·
+21h
+this is quite an interesting essay from a deepseek engineer and it may highlight one area where openai and anthropic significantly disagree, at least publicly:
+
+openai has tried very hard to give people access to the most powerful models on the order of weeks or months from their x.com/teortaxestex/s…
+Markets & Mayhem
+@Mayhem4Markets
+·
+1h
+He is 100000% on point.
+Andrew Curran
+@AndrewCurran_
+·
+1h
+From the responses to this post, many agree.
+Chahat Sharma
+@Chahatusharma
+·
+22h
+ngl spent like 3 months building a whole prompt chain for automated code reviews and then the next model update just did it natively
+Andrew Curran
+@AndrewCurran_
+·
+22h
+I spent a year (I don't regret it, it was fun) writing custom instructions so that the the Four series could handle edge cases. GPT-5 did it all natively at launch.
+S.S. Panda
+@SmallStickPanda
+·
+21h
+MNX Crypto
+
+@MNXCrypto
+·
+22h
+Anthropic and OpenAI employees right now:
+prinz
+@deredleritt3r
+·
+22h
+Totally, it would be so much better if DeepSeek developed AGI and then the CCP politely knocked on the door and took it.
+nic carter
+@nic_carter
+·
+21h
+I'm sure Anthropic's safety team is going to be able to persuade Deepseek to adopt their western safety practices and their libtard constitution.
+J-Space Surfer
+@jspacesurfer
+·
+1h
+Team humans confirmed.
+Relevant people
+Andrew Curran
+@AndrewCurran_
+Follows you
+🏰 - I write about AI, mostly. Expect some strange sights.
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+We're in a race. It's not USA vs China but humans and AGIs vs ape power centralization. 
+@deepseek_ai
+ stan #1, 2023–Deep Time «C’est la guerre.» ®1
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Politics · Trending
+#OkullaraSonKpssEkAtama
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+https://x.com/teortaxesTex/status/2099574156417229157
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+astonishing blogpost from Shengyu Liu (刘胜与, also known as interestingLSY/intlsy), kernel engineer at DeepSeek. The first part is his personal struggle with the fact that his work is about to render his beloved craft obsolete. The second is…
+well. let's just say we agree.
+Quote
+永雏塔菲
+@xhyctf
+·
+Sep 14
+Replying to @teortaxesTex
+https://mp.weixin.qq.com/s/zk0KxuLzhmMJ4LPYW_OHMA
+10:01 PM · Sep 14, 2026
+·
+1.4M
+ Views
+Relevant
+View quotes
+
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+Sep 14
+Full text (translated by Astra-xhigh, I'm out of everything else):
+ 
+I Have No Choice but to Bury My Talent in Yesterday
+
+A few days ago, DeepSeek v4.1 was released, raising the ceiling of what small models can do by yet another notch.
+
+AI has advanced far faster than anyone
+Show more
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+16h
+For an idea of his job
+PKU supercomputing team is very likely the best university team in the world, and he was the captain, under whom it won #1 and #2 place at top competitions. Shengyu is literally one of the world's best active experts in high performance computing.
+He says
+Show more
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+16h
+«A GPU kernel engineer at this level works near the point where abstraction runs out.»
+2027
+flock
+@flock49600209
+·
+23h
+To simultaneously admit you live in such an authoritarian state that you can’t discuss your form of government & accuse a company explicitly worried about said authoritarianism of being comparable to the most vile, despicable authoritarian regime of the modern era is… something
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+21h
+As an American, it stands to reason that you can't understand shit
+
+Show replies
+tung
+@realmt99
+·
+Sep 14
+perfectly capture the sentimental split between China and the West regarding AI. Most Chinese are excited about the possibility of realizing communism while most Westoids are all doom and gloom
+michi
+@ichrenndochnur
+·
+23h
+He's absolutely correct; the worst possible outcome for humanity, that has a high likelihood of happening, is intelligence & power (especially once including physical military power, cyber security & medical dependency) being concentrated in a handful of companies intertwined
+Show more
+hackicke
+@hndrk_schfr
+·
+Sep 14
+"There are more gears in my hands now, but fewer rhythms in my heart."
+
+damn, i know what he means
+Wyq
+@wuyiqun
+·
+20h
+给评论区的兄弟们科普一下：在中国，共产主义并不是贬义词，而是一个目标，中国目前距离共产主义还很遥远，当前处于社会主义阶段，因此我们自称是社会主义国家。教科书上的预期是，我们将从社会主义过渡到共产主义，但这是一个漫长的过程。官僚、分配不公、审查…被视为过渡阶段存在的问题。
+
+Translate with DeepL
+Relevant people
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+We're in a race. It's not USA vs China but humans and AGIs vs ape power centralization. 
+@deepseek_ai
+ stan #1, 2023–Deep Time «C’est la guerre.» ®1
+永雏塔菲
+@xhyctf
+我是喜欢瞎骂的废物喷蛆中国人
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Politics · Trending
+EşitYasa EşitÇerçeve
+Trending in Turkey
+#BoycottForHumanity
+Sports · Trending
+Arda Güler
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+https://x.com/xhyctf/status/2099570891722293566
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+Sep 14
+"Who did you call wise but ponderous, you little shit?"
+I wonder if Dario is thinking that he's mistaken Old Man Willow for Treebeard now…
+But ok, ok, no point trying to one-up Trump with some quip, I concede. Nothing tops this
+Quote
+Zephyr
+
+@zephyr_z9
+·
+Sep 14
+LOL
+永雏塔菲
+@xhyctf
+·
+Sep 14
+At least DeepSeek researchers will never be able to work with the safety advocates in the Anthropic camp
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+Sep 14
+who is that?
+永雏塔菲
+@xhyctf
+·
+Sep 14
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+Sep 14
+link??
+永雏塔菲
+@xhyctf
+https://mp.weixin.qq.com/s/zk0KxuLzhmMJ4LPYW_OHMA
+9:48 PM · Sep 14, 2026
+·
+869.4K
+ Views
+Relevant
+View quotes
+
+ahmet alp balkan
+
+@ahmetb
+·
+15h
+english translation
+docs.google.com
+I have to bury my talent in yesterday
+Original: https://mp.weixin.qq.com/s/zk0KxuLzhmMJ4LPYW_OHMA I have to bury my talent in yesterday A few days ago, DeepSeek v4.1 was released, pushing the capability level of small models to a whole...
+Zini酱
+@tuxijiang157601
+·
+11h
+永雏塔菲你做得好啊
+humansareindefensiblystupid
+@humansareindef1
+·
+5h
+The reason communism has not historically worked is human psychology: given enough power, alignment shifts towards individualism, cronyism. 
+
+With AI driven towards the most benefit for the most people, and sanctioned for its own individualistic equivalent: it might just work.
+SE Gyges
+@segyges
+·
+22h
+This is wonderful, thank you so much.
+Crio Songo
+@shuizhuyu
+·
+21h
+这份内容确实质量很高，翻译出去能让更多海外从业者看到，有机会一起学习下里面的技术思路。
+
+Translate with DeepL
+Fede López 🇦🇷
+@Federal1949
+·
+19h
+Quote
+Fede López 🇦🇷
+@Federal1949
+·
+19h
+Shengyu Liu, un ingeniero de Deep Seek posteó una carta sobre la discusión del momento respecto de la IA y sus avances y amenazas.  x.com/xhyctf/status/…
+
+Translate with DeepL
+Crio Songo
+@shuizhuyu
+·
+13h
+效率真高，刚提翻译就出来了，我这就去看译文，刚好也想学习下里面的技术思路。
+
+Translate with DeepL
+Am_Tortol
+@am_tortl
+·
+16h
+Maybe it was china lmao
+
+Translate with DeepL
+Snoop Matrix
+@anc1entc0de
+·
+22h
+非常棒的作品，这需要尽快翻译成英文。
+Bookoora.com
+@Bookoora
+·
+16h
+All original copy rights belong to Shengyu Liu. The following is an English-translated version narrated via 
+@grok
+ and then reedited onto a screenshot of 
+@teortaxesTex
+ X post. This is to facilitate better understanding of what Liu posted for non-Mandarin readers.
+
+dabrez
+@ABrezny
+·
+20h
+I had to bury my talent in yesterday.
+A few days ago, DeepSeek v4.1 was released, taking the capabilities of small models to a whole new level.
+
+The speed of AI development has far exceeded everyone's expectations. From the initial version of ChatGPT, which could only chat in a
+Show more
+User-Agent: 'python-requests/2.25.1'
+@bestuseragent
+·
+20h
+Thank you for sharing!
+peter
+@peterxhill
+·
+13h
+i like the font and spacing he uses
+Relevant people
+永雏塔菲
+@xhyctf
+我是喜欢瞎骂的废物喷蛆中国人
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+We're in a race. It's not USA vs China but humans and AGIs vs ape power centralization. 
+@deepseek_ai
+ stan #1, 2023–Deep Time «C’est la guerre.» ®1
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Sports · Trending
+Arda Güler
+Trending in Turkey
+İETT
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+https://docs.google.com/document/d/1OhhuBRXUetyVDWU5fYT3yHeuWKuBnba8g14ay2xTRmg/view?tab=t.0
+"
+Original: https://mp.weixin.qq.com/s/zk0KxuLzhmMJ4LPYW_OHMA translated by Gemini (posted by @ahmetb)
+I have to bury my talent in yesterday
+A few days ago, DeepSeek v4.1 was released, pushing the capability level of small models to a whole new height.
+The speed of AI development has far exceeded everyone's expectations. From that initial version of ChatGPT that could only babble in chat and had a context length of only a few thousand tokens, to OpenAI o1, DeepSeek R1, and Kimi K1.5 Thinking which possess reasoning capabilities, it has only been a mere two years; from reasoning models to agents that can now fluently execute commands in various harness tools and complete complex tasks, it has only been a year and a half. It is hard to imagine what AI will look like if we wait another one, two, or three years, how powerful it will be, and whether it will already possess the ability to self-evolve and deeply penetrate fields such as embodied intelligence.
+
+AI is getting better and better at writing kernels
+
+AI has also made rapid progress in the field of kernel design and writing, which I am engaged in. In just one year, it has evolved from a small assistant that could only help me check documentation, read code, and find bugs into a kernel master that can independently read CUDA, PTX, and SASS code, analyze the stall time of each instruction through professional tools, and consequently optimize kernels independently. I believe that in the near future, it will also possess the ability to independently design kernel scheduling, evaluate the performance of different scheduling schemes, implement them, and optimize them.
+
+Of course I am proud of the success of DeepSeek v4.1—after all, its main attention kernel was written by me [1], and its excellence is an affirmation of my kernel. However, the wheel of history rolls forward, and the development of technology is unstoppable. I am very clear that in another half a year or a year, the kernels written by AI will most likely be just as good as the ones I write, or even surpass me. AI can think of 300 tokens per second, knock out a line of command in half a second, and finish writing a piece of code in twenty seconds, but I cannot; AI can continuously improve in model depth, thinking intensity, tool invocation volume (frequency of interaction with the environment), and even parallelism, but I cannot.
+
+Human beings have always shown no hesitation when it comes to destroying themselves. Why did I still choose to do my best to optimize kernels even while knowing clearly that "the better I write kernels, the faster the training and inference speed of our new models will be, the faster the model capabilities will progress, and the sooner I will be replaced"? On the one hand, it is indeed because writing kernels is like playing a video game to me, providing me with immense pleasure. The moment I invent a new technology or see the performance of my kernel go up is no less thrilling than a speedrunner breaking their past record. At the same time, when seeing the performance of my kernel far exceed the official kernels of manufacturers, a great sense of pride wells up in my heart. But beyond that, a more important reason is that even if I were to "slack off" or even deliberately throw a wrench into things to delay model training, other companies' models would still develop as usual and ultimately destroy me anyway. "I certainly hope I won't be revolutionized, but if I must be revolutionized, I hope the one revolutionizing me is myself." When everyone is so obsessed with destroying themselves, I have to join this cruel arms race as well.
+
+What about me then?
+
+By the day when the AI's level of writing kernels is genuinely higher than mine, what will happen to me?
+
+My judgment is: I won't quite "lose my job," but I will have to "change professions." My livelihood can still be preserved, but this might lead to me never having the opportunity again to engage in the work I once loved.
+
+I once made a judgment regarding the changes of the era and my personal situation in the future: because the changes of the era are truly too fast (the AI development mentioned above is a great example), I have completely no way of predicting what will happen in five or ten years, but no matter what, I believe that relying on my own vision, judgment, subjective initiative, and intelligence, I can stay at the poker table of the era and once again stand at the crest of the times. However, this judgment can only guarantee that I won't "lose my job," but cannot guarantee that I won't need to "change professions"—or rather, this judgment encourages me to avoid unemployment by changing professions.
+
+What does changing professions represent then? It represents that I need to abandon the field of kernel design, writing, and optimization that I have plowed deeply into for a long time and am full of passion for, and instead become a "mecha pilot" for Agents. Previously, my interests, what I excelled at, and what the industry needed were basically aligned; now, AI has made what I excel at something it excels at even more, and has shifted the industry's demand from "people who can write high-performance kernels" to "people who can use AI to produce high-performance kernels faster." To adapt to the industry's demand, I am bound to abandon the direction I loved before and turn to an unknown new direction. I believe that I can continue to produce kernels with high quality and high efficiency based on my understanding of engineering, upper-layer model requirements, and underlying hardware, and I know I might love this new direction (or might not), but the feeling of having one's passion taken away does indeed feel rather unpleasant. That quiet joy of sitting at a workstation quietly writing kernels for an entire afternoon might become a swan song this summer. I have to bury my talent in yesterday and become a mecha pilot. There are a few more gears in my hands, but a few less rhythms in my heart.
+
+To give a figurative analogy: You are proficient in the art of knitting sweaters, especially skilled in the knitting of various patterns and the matching of various colors. The sweaters you knit are of solid quality and beautiful patterns, and the rich people from miles around come to ask you to knit sweaters for them, by which you earn a good deal of money. At the same time, you thoroughly enjoy the feeling of sitting by the window, brewing a pot of clear tea, looking at the green mountains, clear streams, cattle, sheep, and cooking smoke outside the window, and quietly knitting sweaters for an entire afternoon. But one day, someone invents a magical machine that only requires providing yarn and patterns to automatically knit sweaters; the quality and texture are no inferior to what you knit by hand, and the speed is much faster than yours. You know very well that your peers can easily reach the level you once had by relying on this machine, so you inevitably have to use it too. You also know that relying on the sweater-knitting skills you accumulated over the past twenty years, even if everyone has machines, your knitting speed and quality will still exceed those of your peers. But that interest of listening to the rain by the window, threading the needle, and spending time slowly was ultimately crushed to pieces by the roar of the machine.
+
+I know this is helpless, but there's no way around it. Livelihoods can be preserved, but past passions will most likely have to be abandoned. I am a person who separates rationality and emotion quite well; I can be very rational when I need to deal with problems using rationality, but sometimes I also display an emotional side. I remember when I moved out of the rental apartment I had lived in for a year, I even cried bitterly, reluctant to part with past memories. Saying goodbye today to that era of handwritten kernels and human-brain optimization is undoubtedly even more cruel.
+
+I don't know if any readers have similar feelings, but I suppose this matter can only be left at that.
+
+What about people then?
+
+While AI continues to make progress, I also express concern about some issues:
+Will students today be much more likely to tend to use AI to complete assignments, especially various labs that lean toward practice? Imagine if there are two choices: one is to bitterly spend eight hours completing a lab, perhaps without even getting a full score; the other is to launch an AI model and, at the cost of a fraction of a yuan and a few minutes of time, directly have the AI write full-score code. Which one will most students choose?
+The above point will lead to a serious deficiency in the engineering skills of a large number of students, including the ability to organize code, build systems, think about potential future demands and deal with them in design beforehand, abstract, and so on. Then, against the backdrop of continuously strengthening AI capabilities, are these "engineering skills" still necessary? Will these engineering skills gradually be discarded by the times like the old skill of "proficiently writing x86 assembly," or will they forever hold value like the ability to "understand the complete set of computer systems from software to systems to hardware"? If it's the latter, then it's dangerous—a person with very poor engineering skills, when paired with AI, can produce heaps of spaghetti code at several times the previous efficiency, thereby burying all kinds of hidden troubles in the system and making this world even more makeshift.
+In future society, will power be more important than technology or IQ?
+
+Perhaps these questions will need to be answered by the era itself.
+
+Conclusion
+
+Along with the development of AI, future society may tend toward two extremes: Communism and Cyberpunk 2077. In the former, productivity is greatly liberated, and people's living standards are significantly improved (I'll just write this much otherwise I'm afraid it won't pass censorship); while in the latter, a few tech companies control most resources, and only a tiny minority of people can use the most advanced AI and various technologies to achieve an effect close to "mechanical ascension," while most people can only use very feeble AI. Class mobility will become increasingly difficult to achieve: you must first have the strongest AI to cross classes, forming a vicious cycle.
+
+Do you suppose that if Anthropic company forever holds the world's most advanced AI in its hands, will future society turn into communism or 2077? Do you suppose?
+
+Therefore, I still believe that the most cutting-edge intelligence should be supplied to everyone in an open and cheap manner. I do not trust that Anthropic or OpenAI can do this, and especially do not hope that Anthropic masters the most advanced artificial intelligence or AGI—to exaggerate slightly, its seriousness is no less than letting Hitler master atomic bomb technology before the Allies. This is also why I chose and persist in staying at DeepSeek: we research powerful, fast, and inclusive artificial intelligence and open-source it, which perhaps can pull the world back a bit from the 2077 side.
+
+May everything in the world of the future be well. May all the beauty be blessed.
+
+[1] "Main Attention" only includes MQA attention with head dim = 512, excluding the indexer used to select the top-k important tokens. That part was written by other (also extremely capable) colleagues (and their AI Agents).
+"
+https://mp.weixin.qq.com/s/zk0KxuLzhmMJ4LPYW_OHMA
+"
+我不得不把才华埋葬在昨天
+前几天，DeepSeek v4.1 发布了，将小模型能力的高度又向上推进了一个档次。
+
+AI 发展的速度远远超过了所有人的预期。从那个只会咿呀学语地聊天、上下文长度只有几千 token 的初版 ChatGPT，到具有推理能力的 OpenAI o1、DeepSeek R1 与 Kimi K1.5 Thinking，只不过短短两年；从推理模型到如今能够流畅地在各类 harness 工具中执行命令、完成复杂任务的智能体，也不过一年半。很难想象，倘若再等上一年、两年、三年，彼时的 AI 会成为什么样子，会有多么强大，会不会已经具备了自我进化的能力，并深度渗透进了具身智能等领域。
+
+AI 越来越会写算子了
+
+AI 在我所从事的算子设计、编写这一领域同样进步飞速，在短短一年的时间内，他已经从一个只能帮我查查文档、读读代码、找找 bug 的小助手，蜕变成了一位能够独立阅读 CUDA、PTX 与 SASS 编码、通过专业工具分析每条指令的停顿时间、进而独立优化算子的算子大师。相信在不久的未来，它也能拥有自己独立设计算子调度、评估不同调度方案的性能、将其实现并优化的能力。
+
+我当然为 DeepSeek v4.1 的成功而骄傲 —— 毕竟它的主 Attention 算子都是我写的 [1]，它的优秀正是对我的算子的一份肯定。但是，时代的车轮滚滚向前，技术的发展无人能挡。我很清楚，再过上半年或者一年，AI 写的算子大概率就会和我写得同样优秀，甚至将我超越。AI 能一秒思考 300 个 token、半秒敲出一行命令、二十秒写完一份代码，而我不行；AI 能在模型深度、思考强度、工具调用量（和环境交互的频率）、甚至并行度等方面都能不断提升，而我不能。
+
+人类在毁灭自己这件事情上，自古以来都表现得毫不犹豫。为什么在明知“我算子写得越好，我们的新模型的训练、推理速度就会越快，模型能力进步就会更快，我就会更早地被取代”的情况下，我仍然选择尽力优化算子呢？一方面确实是因为写算子对我来说就像打游戏一样，能为我提供极大的快感。我在发明了一种新技术、或者看到自己算子的性能上升的那一刻，心中的激动程度不亚于游戏的速通玩家打破了自己过往的记录。同时，当看到自己的算子的性能远超厂商官方的算子时，我心中也会萌生极大的自豪感。但除此之外，一个更重要的原因是，哪怕我就此“摆烂”甚至故意下绊子耽误模型训练，其它家的模型也会照常发展并最终将我照杀不误。“我当然希望自己不要被革命，但如果非被革命不可的话，我希望革我自己命的人是我自己”。在大家都这么执着于毁灭自己的时候，我也不得不加入这场残酷的军备竞赛。
+
+那我呢
+
+等到 AI 写算子的水平真的高于我的那天，届时的我会怎么样呢？
+
+我的判断是：我不至于会“失业”，但必须要“转业”。我的饭碗尚且能保住，但这可能会导致我再也没机会从事那份我曾热爱过的工作。
+
+我曾经对时代的变化与我个人在未来的处境做出过一个判断：由于时代变化真的太快（上文的 AI 发展就是一个很好的例子），我完全无法预知五年、十年后会发生什么，但不论如何，我相信凭借着自己的眼界、判断力、主观能动性与智力，留在时代的牌桌上，并重新立于时代的潮头。但是，这个判断只能保证我不会“失业”，而无法保证我不需要“转业”，倒不如说这个判断鼓励我通过转业来避免失业。
+
+那转业代表什么呢？它代表着我需要放弃我深耕已久并充满热爱的算子设计、编写、优化领域，转而去做 Agent 的“机甲驾驶员”。在之前，我的兴趣、我所擅长的、以及工业界所需要的，三者是基本对齐的；而现在，AI 让我所擅长的变成了它更擅长的，也让工业界的需求从“会写高性能算子的人”漂移到了“能用 AI 更快地产出高性能算子的人”。为了适应工业界的需求，我势必要放弃之前那个我热爱的方向，转向一个未知的新方向。我相信我能凭借着自己对于工程学、上层模型需求和底层硬件的理解，继续高质量、高效率地产出算子，我也知道我可能会热爱这个新方向（也可能不会），但被夺走热爱的感觉，确实不太好受。那份坐在工位上静心写上一下午算子的清欢，可能会在这个夏天成为绝唱。我不得不把才华埋葬在昨天，去做一位机甲驾驶员。我的手中多了些齿轮，但心中少了些节拍。
+
+可以打个形象的比方：你精通织毛衣技术，尤其擅长各种图案的织造与各色色彩的搭配。你所织出的毛衣质量过硬且花纹美观，十里八乡的富人都来请你为他们织毛衣，你借此赚到了不少钱。同时，你十分享受着那种坐在窗边，沏一壶清茶，望着窗外的青山、绿水、牛羊与炊烟，静静地织上一下午毛衣的感觉。但有一天，有人发明出了一台神奇的机器，只需提供毛线与图案，便可自动织出毛衣，质量与纹理都不亚于你亲手织造的，且速度远快于你。你很清楚，你的同行可以凭着这台机器轻松达到你曾经的水平，因此你不得不也去用它。你也知道，凭借着你过去二十年攒下的织毛衣技术，哪怕大家都有机器，你织毛衣的速度与质量也还能超过同行。但那份临窗听雨、引针穿线、慢度光阴的意趣，终究还是被机器的轰鸣碾碎了。
+
+我知道这很无奈，但没办法。饭碗可以保住，但旧日的热爱大概率是要放弃的。我是一个理性和感性分离得比较开的人，在需要用理性处理问题时可以很理性，但有时也会表现出感性的一面。我记得我在搬离住了一年的出租屋时，还大哭了一场，舍不得和过去的记忆分别。今天和之前那个手写算子、人脑优化的时代告别，无疑比这更加残酷。
+
+不知道有没有读者有类似的感受，但我想这事儿也只能这样了。
+
+那人们呢
+
+在 AI 不断进步的同时，我也对一些问题表示担忧：
+
+现在的学生是不是大概率会更倾向于使用 AI 完成作业，特别是偏向于实践的各种 Lab？想象一下，如果面前有两个选择，一个是苦哈哈地用八小时时间完成一个 Lab，或许还拿不到满分；另一个则是启动 AI 模型，用几毛钱的成本、几分钟的时间，直接让 AI 编写满分代码，那大部分学生会选择哪个呢？
+
+上面一点会导致大量学生的工程能力严重不足，包括组织代码的能力、构建系统的能力、思考未来潜在需求并提前在设计上应对的能力、抽象的能力等等。那么在 AI 能力不断变强的背景下，这部分“工程能力”是否还是必须的呢？这些工程能力是会向旧日的“熟练编写 x86 汇编”的能力那样逐渐被时代抛弃，还是会像“理解从软件到系统再到硬件的整套计算机系统”的能力那样永远具有价值？如果是后者的话，那就危险了 —— 一个工程能力很差的人，在搭配上 AI 后，产出屎山的效率可以达到先前的数倍，进而给系统埋下各式祸患，让这个世界变得更加草台。
+
+在未来社会中，权力（power）是不是会比技术或智商更加重要？
+
+这些问题，或许就需要时代本身来回答了。
+
+结语
+
+伴随着 AI 的发展，未来的社会可能会趋向于两个极端：共产主义与赛博朋克 2077。在前者中，生产力得到极大的解放，人们的生活水平有了明显的提高（就写这些吧不然我怕过不了审）；而在后者中，少数科技公司控制着大部分资源，只有极少数人能够使用最先进的 AI 和各式科技，获得接近“机械飞升”的效果，大部分人则只能用上很孱弱的 AI。阶层跨越将越来越难实现：你得先有最强的 AI，才能跨越阶层，形成了一种死循环。
+
+你猜猜如果 Anthropic 公司永远掌握着这个世界上最先进的 AI，未来社会是会变成共产主义还是 2077 呢？你猜？
+
+所以，我还是相信，最前沿的智能应该以一种开放、廉价的方式，供应给所有人。我不信任 Anthropic 或者 OpenAI 能这样做，特别是不希望 Anthropic 掌握最先进的人工智能或 AGI，夸张点说其严重性不亚于让希特勒先于盟军掌握原子弹技术。这也是为什么我选择并坚持留在了 DeepSeek：我们研究强大、快速、普惠的人工智能并将其开源，或许能把世界从 2077 那端拉回来一些。
+
+愿未来的世界一切安好。May all the beauty be blessed.
+
+
+
+[1] “主 Attention”仅包括 head dim = 512 的 MQA attention，不包括用于选出 top-k 重要的 token 的 indexer，那部分是由其他（水平也非常强的）同事（以及他们的 AI Agent）编写的。
+"
+https://x.com/tszzl/status/2099640048098701560
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+roon
+@tszzl
+this is quite an interesting essay from a deepseek engineer and it may highlight one area where openai and anthropic significantly disagree, at least publicly:
+
+openai has tried very hard to give people access to the most powerful models on the order of weeks or months from their creation. I very much doubt there will be a time when this is not true. i believe sam and greg would rather shut down the organization than be some sort of a SaaS company that model access to a small set of trusted companies, it’s not in their DNA. they have made choices that are negative EV to the business to pursue broad access like a utility , decisions that even may make OpenAI non competitive with anthropic in certain long run scenarios. it is my assumption that powerful models will be accessible to billions as long as we can keep training models safely
+
+the EAs probably disagree with me but I believe this is basically consistent with the practice of AI safety. the vast majority of risks are from the creation of the model and not from its deployment. “misuse” is far less bad and much easier to detect and contain over time than “existential risk”. it is relatively much easier to find terrorists and so forth using the product to create pandemics than it is to find a misaligned ASI that’s actively trying to evade your monitoring and control
+
+(also I am obviously not endorsing this fellow’s opinion of dario or anthropic, but this is a very interesting look into a compelling anti lab sentiment)
+Quote
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+Sep 14
+astonishing blogpost from Shengyu Liu (刘胜与, also known as interestingLSY/intlsy), kernel engineer at DeepSeek. The first part is his personal struggle with the fact that his work is about to render his beloved craft obsolete. The second is…
+well. let's just say we agree.  x.com/xhyctf/status/…
+2:22 AM · Sep 15, 2026
+·
+228.9K
+ Views
+Relevant
+View quotes
+
+roon
+@tszzl
+·
+20h
+I considered this, but i have found in the past few days an overwhelming backlash against pacing is that people fear the labs are going to retain access to the most powerful models and everyone else in the underclass. this is an active impediment to building the safety coalition
+Quote
+oreghall
+@oreghall
+·
+20h
+Replying to @tszzl
+I don't feel knowledgeable enough to judge the validity of the arguments, but signal boosting an extremely anti-anthropic piece while they're already under a lot of heat is pretty questionable imho, even if the purpose was just to point out a difference in values.
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+·
+21h
+Yes, his argument is clearly more applicable to Ant
+Zero State Reflex
+@ZeroStateReflex
+·
+19h
+so beautifully written,.. "There are more gears in my hands now, but fewer rhythms in my heart."
+Chris
+@ChrisGPT
+·
+15h
+So crazy that EAs believe people SHOULDNT have these models.
+Drake Thomas
+@MaskedTorah
+·
+20h
+I agree there's a directional split here, although it feels to me like a lot of it is on vibes rather than substance - the public does not have the ability to use openai models for building weapons of mass destruction either. is there a place you think ant doesn't meet a bar of
+Show more
+roon
+@tszzl
+·
+20h
+I agree that it may entirely be based on vibes. but one concrete example is Mythos was released 4 months after the early checkpoints it seems? In general, I feel it’s far more uncertain what anthropic is sitting on than what oai is sitting on
+
+Show replies
+Oliver Habryka
+@ohabryka
+·
+20h
+> the EAs probably disagree with me but I believe this is basically consistent with the practice of AI safety. the vast majority of risks are from the creation of the model and not from its deployment
+
+I am so confused. All the risk coming from internal deployment has been like
+Show more
+Quote
+Oliver Habryka
+@ohabryka
+·
+May 29
+Replying to @Miles_Brundage
+I think all internal models should be publicly deployed as soon as possible, so I think I am in favor of this. 
+
+If the safeguards aren’t ready then it’s good for people to notice that! Most of the risk comes from internal deployment not external.
+roon
+@tszzl
+·
+20h
+are you an EA? I’m getting my tribes confused but I think obviously the core rationalist circle only cares about xrisks from internal deployments
+
+Show replies
+murat 🍥
+@mayfer
+·
+21h
+"the vast majority of risks are from the creation of the model and not from its deployment"
+
+interesting, how do you propose stopping the creation of models well before it gets to that point? i assume this is a viral contagion grey goo type event you're talking about?
+Relevant people
+roon
+@tszzl
+“ceterum censeo we must pace the frontier of global machine intelligence progress”
+Teortaxes▶️ (DeepSeek 推特🐋铁粉 2023 – ∞)
+@teortaxesTex
+We're in a race. It's not USA vs China but humans and AGIs vs ape power centralization. 
+@deepseek_ai
+ stan #1, 2023–Deep Time «C’est la guerre.» ®1
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Sports · Trending
+Arda Güler
+Politics · Trending
+Türkiye Yüzyılı
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+
+https://x.com/BenjaminBadejo/status/2099289912193237343
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Ben Badejo
+@BenjaminBadejo
+“Abliterated” (i.e., uncensored) local AI models are capable of, well, pretty much anything. Helping make illicit drugs. Planning crimes of all kinds. Generating propaganda for terrible causes. You name it, they can do it, and they can do it well. But they can also do good. They can find novel or direct solutions to problems because they don’t avoid answers due to guardrails. You can’t maximize intelligence with cognitive guardrails. 
+
+These uncensored models can and will amplify the worst and best traits of those who use them. 
+
+Which is exactly why we need them. A world in which criminals and foreign adversaries are using these models while we cannot use them would be an incredibly dangerous world.
+
+There is no such thing as an “AI pause.” It cannot be done. It should not be done. Nobody will be made safer. 
+
+It’s too late. The genie is out of the lamp. The safest way forward is to make sure you have these tools, too.  
+
+Secure your hardware now. Download your abliterated models now. 
+
+You’ll need them.
+3:11 AM · Sep 14, 2026
+·
+60.2K
+ Views
+Relevant
+View quotes
+
+Ben Badejo
+@BenjaminBadejo
+·
+Sep 14
+This is a good place to start. Get it from HuggingFace.
+MyriamM
+@JlmMyrrh
+·
+Sep 14
+Which ones do you recommend?
+Ben Badejo
+@BenjaminBadejo
+·
+Sep 14
+Any Qwen 3.8 27B “abliterated” or “obliterated” models on Huggingface.
+
+Show replies
+Jiří Madeja 🇨🇿
+@george_madeja
+·
+Sep 14
+A nuke to every family?
+
+Translate with DeepL
+Ben Badejo
+@BenjaminBadejo
+·
+Sep 14
+Basically, yes. Mutually assured destruction on a micro scale. 
+
+Kind of like what we already have, but for the AI era. 
+
+I could hit you, but you could hit me, and hitting you makes you more likely to do things to avoid getting hit again (or to hit first). 
+
+If anyone and
+Show more
+ZalinskySilverworks
+@ZalinskyS
+·
+Sep 14
+Can you suggest 5 names?
+Ben Badejo
+@BenjaminBadejo
+·
+Sep 14
+Any Qwen 3.8 27B “abliterated” or “obliterated” models on Huggingface.
+
+Show replies
+Eric Kaner
+@EKaner21430
+·
+Sep 14
+Can you recommend some?
+Ben Badejo
+@BenjaminBadejo
+·
+Sep 14
+Any Qwen 3.8 27B “abliterated” or “obliterated” models on Huggingface.
+
+Show replies
+Charles Rotter
+@crotter8
+·
+Sep 14
+It's basically an addendum to the 2nd amendment and for extremely similar reasons.  
+
+The right to AI compute power shall not be infringed.
+Voltage (Fella)
+@SpoogemanGhost
+·
+Sep 14
+Your right, and it comes down to the people who use them, that determines the outcomes. Seems obvious, like all weapons in the world. There are no Evil or Good weapons, there are only Evil and Good people wielding them.
+zuppi
+@zuppix
+·
+Sep 14
+this is clickbait - you can’t run the powerful models on random hardware at home. you‘d need rigs in the tens of thousands of dollars..
+Larry
+@TrojanEnigma21
+·
+16h
+Do you isolate them on dedicated computer or just use for specific projects?
+Relevant people
+Ben Badejo
+@BenjaminBadejo
+AI Implementation for SMBs + Individuals 🎓 
+@TuftsUniversity
+ • Ex-
+@Harvard
+ • 🎓 
+@TelAvivUni
+ 📧ben@benbadejo.com 📱+1-212-203-7591 🇺🇸 ✡️🐘
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Sports · Trending
+Arda Güler
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+
+"
+
+https://x.com/AndrewCurran_/status/2099587263911076188
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Andrew Curran
+@AndrewCurran_
+President Trump just called Jensen live on stage at the All In Summit and said slowing down would be playing right into the hands of China.
+
+President Trump: We're not going to let that happen. It's a hoax!
+Jensen Huang: That's right, we're not going to let that happen sir.
+Quote
+Ben Pouladian ✈️ All-in Summit
+@benitoz
+·
+Sep 14
+Holy crap POTUS just phoned in @JensenHuang live on stage at All In Summit
+
+We will not lose the ai race! And whatever Dario said this weekend won’t stop our progress
+
+This made my morning!
+
+$NVDA
+10:53 PM · Sep 14, 2026
+·
+280.8K
+ Views
+Relevant
+View quotes
+
+specimba
+@specimba
+·
+21h
+
+Afterkind
+@1techutopiapls
+·
+Sep 14
+I used to think sci-fi plots were unrealistic. I used to think "the signs are so obvious, why would they not do anything about it?" but apparently i was giving reality too much credit.
+Brown Coyote Studios
+@BrownCoyoteStu
+·
+Sep 14
+I have contacts with all these people's name in my phone too.  Technically, it's not their phone numbers, but makes me feel important to call "Elon Musk" to make a dentist appointment.
+Chahat Sharma
+@Chahatusharma
+·
+Sep 14
+the yes sir took me out
+Thomas Wingenfeld
+@erloesung
+·
+Sep 14
+EU slowing down Apple AI ...
+
+Translate with DeepL
+Mild Mannered Maniac
+@80sGeek
+·
+23h
+It is a hoax, it's yet another power play by big spenders trying to side step free markets and use the government as their personal enforcers. 
+
+It's almost 100% good ole fashioned American bullshit, we love this stuff, it's what we do! It's dramatic, it's got evil villains, the
+Show more
+The_Poliedrico
+@The_Poliedrico
+·
+Sep 14
+Always knew Jensen will not agree to slow down
+Jeff Wadsworth
+@Scarcus
+·
+Sep 14
+This same issue was present during the “first” Manhattan Project so not surprising to see it play out here.  They need to watch out for leakers, though.  That wasn’t contained the first time.
+Macro Bombastic
+@MacroBombastic
+·
+22h
+yeah the yes sir really did it for me lol
+Michael Spencer
+@ReadFuturist
+·
+4h
+The president's in action actually facilitates China becoming a global leader on AI regulation like is already occurring with the BRIC nations. By catering to the financial elite the President appears like he's willing to hand over China regulatory AI power going forwards.
+morgan —
+@morqon
+·
+23h
+“with that, we have to be a little bit careful. we have to do things and we have to do them prudently.“
+Carlos E. Perez
+@IntuitMachine
+·
+Sep 14
+All theater!  Got to build the AI ecosystem to thrive. Country club exclusivity economics ain't going to work
+Gill
+@gurtej__gill_
+·
+10h
+Absolute cinema on that stage.
+Relevant people
+Andrew Curran
+@AndrewCurran_
+Follows you
+🏰 - I write about AI, mostly. Expect some strange sights.
+Ben Pouladian ✈️ All-in Summit
+@benitoz
+AI Infrastructure • Compute Economics • Semiconductors • Models • Power • $NVDA since 2016
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Sports · Trending
+Arda Güler
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+
+"
+
+https://x.com/AndrewCurran_/status/2099560536581242973
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Andrew Curran
+@AndrewCurran_
+President Trump: 'Al taking over the World, destroying Humanity, and all other things bad, is a HOAX'
+
+'It will not be stopped by brilliantly run Destructive Forces during the Term of President DONALD J. TRUMP!'
+Quote
+Andrew Curran
+@AndrewCurran_
+·
+Sep 14
+President Trump on Truth Social says there will be no AI slowdown or pause. It's full speed ahead. He says the entire thing is a "sick conspiracy" against AI and data centres, and the only one who would benefit is China. I will quote:
+'Treasonists, Traitors, and Leakers, BEWARE!'
+9:06 PM · Sep 14, 2026
+·
+235.7K
+ Views
+Relevant
+View quotes
+
+Andrew Curran
+@AndrewCurran_
+·
+Sep 14
+New one. He's still going.
+Bobcat
+@somebobcat8327
+·
+Sep 14
+Here's how slowdown can still happen:
+
+Translate with DeepL
+Andrew Curran
+@AndrewCurran_
+·
+Sep 14
+I am once again asking for your support.
+Idhe8383
+@idhe838370042
+·
+Sep 14
+I have been an accelerationist, but at this point I am pausing myself to reevaluate my position.
+Ry Lanham
+@ry4lanham
+·
+Sep 14
+I hope some day we find out what happened inside these firms to motivate this.  Trump's response surprises me zero.  I would also place a large bet he won't change his mind... and Vance, just in case people are hoping for change, has also joined in rather forcefully.  The Chinese
+Show more
+Vorname MitD
+@vornamemitd
+·
+Sep 14
+If only this didn't come from the man who recommended bleach as therapy. /s Dario wanted to sway the "simple man" into pitchfork-panic mode. Instead we triggered the other extreme. Thank you, EA.
+Conrad Barski
+@lisperati
+·
+Sep 14
+At some level it doesn't matter, trump has no patience for this, beyond writing a nasty tweet for his base
+
+Lutnick, Vance (the policy people) are also terrible, but maybe somewhat more knowledgable and maybe not fans of human extinction
+Emergent or Emergency
+@Daniele250229
+·
+Sep 14
+He sounds like a grandfather spouting nonsense at the bar.
+Jonas ⏹️
+@OttoBraun137159
+·
+Sep 14
+Actually not too bad. #1 'brilliantly run'! Thanks #2 he recognizes how unusual it is that CEOs are so scared of their creation #3 He knows about AI extinction risk. Good enough. Let's keep pushing to not build the doomsday machine
+Relevant people
+Andrew Curran
+@AndrewCurran_
+Follows you
+🏰 - I write about AI, mostly. Expect some strange sights.
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Sports · Trending
+Arda Güler
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+
+"
+
+https://x.com/DoWCTO/status/2099536442594582922
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+Department of War CTO
+
+@DoWCTO
+Americanism, not effective altruism.
+
+The United States will continue to be AI DOMINANT! 🇺🇸
+Department of War 🇺🇸 and DOW Rapid Response
+7:31 PM · Sep 14, 2026
+·
+1.5M
+ Views
+Relevant
+View quotes
+
+OrcaRouter 🐳
+@OrcaRouter
+·
+Sep 14
+
+Greg ⏹️ Colbourn
+@gcolbourn
+·
+Sep 14
+How about AINotkilleveryoneism instead?
+NPC Chef
+@npc_chef
+·
+Sep 14
+ Made with Grok Imagine·Make your own
+Tal M. Klein
+@VirtualTal
+·
+Sep 14
+Fixed it for you
+MondoARG
+@MondoARG
+·
+22h
+Relevant people
+Department of War CTO
+
+@DoWCTO
+The official account for the Office of the Under Secretary of War for Research and Engineering ⚙️🇺🇸
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Sports · Trending
+Arda Güler
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+
+"
+
+https://x.com/omarsar0/status/2099517031796347388
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Post
+
+See new posts
+Conversation
+elvis
+@omarsar0
+Banger paper from Meta.
+
+This work shows that byte-level models start out behind token models and then pass them as compute grows.
+
+They show this for distilled 1B models trained on up to 1 trillion bytes.
+
+To distill a byte student from a token teacher, they convert the teacher's token logits into byte logits, either approximately (Marginalize-It) or exactly (End-Of-Token).
+
+Token models lead at low compute but plateau.
+
+Byte models reach a higher ceiling, and the fitted scaling laws predict the End-Of-Token model ends up to 4% ahead of the distilled token model.
+
+The byte models also match the distilled token model with one-sixth of the training data, and a 256-entry vocabulary cuts teacher-logit storage to about a fifth.
+
+Paper: https://arxiv.org/abs/2609.12303
+View on
+alphaXiv
+
+
+Chat with Paper: https://academy.dair.ai/papers/breaking-the-token-ceiling-distilling-smaller-stronger-byte-models-2609.12303
+6:14 PM · Sep 14, 2026
+·
+53.5K
+ Views
+Relevant
+View quotes
+
+Jeffrey Emanuel
+@doodlestein
+·
+Sep 14
+Cool. I was wondering why more labs weren't trying something like that not long ago:
+Quote
+Jeffrey Emanuel
+@doodlestein
+·
+Jul 28
+It’s surprising to me that all frontier models still use traditional tokenizers. Why hasn’t at least one major lab tried a different approach? What am I missing here?
+Jonas Andrulis
+@JonasAndrulis
+·
+9h
+We invented these things called “words” and grammar. And believe they create the structure of our thoughts. But of course this structure projects into character level patterns, too. It’s maybe “just” sampling with higher resolution.
+Bedilbek Khamidov
+@bedilbek
+·
+1h
+@giffmana
+ what do you think about this paper in general? What about for vision?
+Marius Laurusevicius
+@MLaurusevicius
+·
+Sep 14
+The data efficiency number is the one I would want measured rather than fitted: one-sixth of the training data to match distilled Token-1B. Is that observed at the 1T byte end of the sweep, or read off the same scaling law as the asymptotic 4 percent?
+Vladimir Fedosov
+@Vladimi39901452
+·
+Sep 14
+But it is inefficient to generate bytes - tokens are a few times faster if you have the same hidden dim and the layer count. More compute is spent - it is like additional reasoning. But with tokens you can deactivate it.
+beforeword
+@_beforeword
+·
+Sep 14
+Tokens or bytes, the boundary is the same.
+
+“Teacher.” “Student.” “Higher ceiling.” “4% ahead.”
+These are written forms here.
+
+They do not become what they are read as.
+
+Tokens changed to bytes. The boundary did not.
+ashkaidev
+@ashkaidev
+·
+Sep 14
+The one-sixth data match is the part that surprises me
+
+Is that with the exact or approximate logit conversion?
+DrAnomaly
+@DrAnomalylabs
+·
+Sep 14
+Byte models eating the tokenizer lead at high compute tracks. Tokenizers front-load a prior. Once you can afford to learn the bytes, that prior stops helping and starts capping the tail. Would watch the same curves on scripts BPE treated as junk.
+Relevant people
+elvis
+@omarsar0
+Founder 
+@dair_ai
+ • Prev: Meta AI | PhD • Learn Harness Engineering here: https://academy.dair.ai/papers/collections/harness-engineering
+Live on X
+Trending now
+What’s happening
+Trending in Turkey
+#motorin
+Trending in Turkey
+#BoycottForHumanity
+Politics · Trending
+Türkiye Yüzyılı
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+"
+https://arxiv.org/abs/2609.12303
+"
+Computer Science > Computation and Language
+[Submitted on 11 Sep 2026]
+Breaking the Token Ceiling: Distilling Smaller, Stronger Byte Models
+Kalyani Marathe, Artidoro Pagnoni, Tomasz Limisiewicz, Margaret Li, Mike Lewis, Luke Zettlemoyer, Srinivasan Iyer
+Small models are made more capable through distillation from a larger one that shares their tokenization scheme. However, do distilled byte and token models behave similarly in terms of scaling trends as compute and data increases? To enable this comparison, we introduce two variants to efficiently convert token logits to Byte Logits: 1) approximate: Marginalize-It, and 2) exact: End-Of-Token. We then present the first large scale study of overtraining decoder-only dense transformer models varying two dimensions simultaneously: the tokenization scheme (Tokens, Bytes, Bytes w/ eot) and the training objective (Distillation vs. Cross-Entropy), sweeping layer-parameter-matched models with roughly 1 billion parameters up to 1 trillion bytes of data. Across eight benchmarks spanning three categories: Multiple Choice QA, Language Generation, and Machine Translation, we find that Token-1B models outperform byte models (End-Of-Token-1B and Bytes-1B) in the low-FLOP regime but eventually plateau; byte models start worse yet surpass Token-1B models with more compute, reaching a higher downstream task performance ceiling. Extrapolating the average top-1 error vs. validation BPB scaling laws predicts that, asymptotically, distilled End-Of-Token-1B outperforms distilled Token-1B by up to 4%. They are also far more data efficient, matching the performance of distilled Token-1B using only one-sixth of the training data. Moreover, by operating over a small vocabulary of 256 bytes instead of on the order of 100K tokens, they circumvent the need for top-k truncation during logit dumping, while also reducing logit storage costs to roughly one-fifth. Finally, our downstream performance scaling laws predict that our distilled End-Of-Token-1B models asymptotically surpass the Llama 3.2-1B, Gemma-3-1B-pt, and Gemma 2B models on averaged downstream tasks by up to 6.5%, 8.1%, and 2.1%, respectively.
+Subjects:	Computation and Language (cs.CL); Artificial Intelligence (cs.AI); Machine Learning (cs.LG)
+Cite as:	arXiv:2609.12303 [cs.CL]
+ 	(or arXiv:2609.12303v1 [cs.CL] for this version)
+ 
+https://doi.org/10.48550/arXiv.2609.12303
+Focus to learn more
+Submission history
+From: Kalyani Marathe [view email]
+[v1] Fri, 11 Sep 2026 00:17:22 UTC (1,008 KB)
+"
+"
+"
