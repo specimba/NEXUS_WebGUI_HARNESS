@@ -20,15 +20,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { runAgentChat } from "@/lib/chat-client";
-import { FREELLM_SH_URL, FREE_PROVIDERS, providerBaseUrl, type FreeProvider } from "@/lib/providers";
+import {
+  FREELLM_SH_URL,
+  FREE_PROVIDERS,
+  LIVE_CATALOG_KEY,
+  loadLiveCatalog,
+  providerBaseUrl,
+  providerModelOptions,
+  withSavedOption,
+  type FreeProvider,
+  type LiveCatalog,
+} from "@/lib/providers";
+import { ModelPicker } from "@/components/praison/model-picker";
 import { truncate } from "@/lib/helpers";
 import { useSettingsStore, useUiStore } from "@/lib/stores";
 import type { ProviderKeyEntry } from "@/lib/types";
@@ -36,25 +40,7 @@ import { cn } from "@/lib/utils";
 
 type TestResult = { ok: true; ms: number } | { ok: false; error: string };
 
-interface LiveModel {
-  id: string;
-  label?: string;
-  contextLength?: number;
-}
-
-type LiveCatalog = Record<string, LiveModel[]>;
 type TestMap = Record<string, TestResult | undefined>;
-
-const LIVE_CATALOG_KEY = "praison-free-catalog";
-
-function loadLiveCatalog(): LiveCatalog {
-  try {
-    const raw = localStorage.getItem(LIVE_CATALOG_KEY);
-    return raw ? (JSON.parse(raw) as LiveCatalog) : {};
-  } catch {
-    return {};
-  }
-}
 
 function fmtRel(ts: number | undefined): string {
   if (!ts) return "never";
@@ -188,7 +174,7 @@ export function ProviderGallery() {
     setBusy("openrouter-live");
     try {
       const res = await fetch("/api/providers/free-models");
-      const data = (await res.json()) as { models?: LiveModel[]; error?: string; cached?: boolean };
+      const data = (await res.json()) as { models?: LiveCatalog["openrouter"]; error?: string; cached?: boolean };
       if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
       const next: LiveCatalog = { ...live, openrouter: data.models ?? [] };
       setLive(next);
@@ -209,14 +195,8 @@ export function ProviderGallery() {
     }
   }
 
-  const modelOptionsFor = (p: FreeProvider): { id: string; label: string; note?: string }[] => {
-    const base = [...p.models];
-    const extra = (live[p.liveCatalog ?? ""] ?? []).filter((m) => !base.some((b) => b.id === m.id));
-    return [
-      ...base,
-      ...extra.map((m) => ({ id: m.id, label: m.label || m.id, note: m.contextLength ? `${Math.round(m.contextLength / 1000)}K ctx` : undefined })),
-    ];
-  };
+  const modelOptionsFor = (p: FreeProvider): { id: string; label: string; note?: string; badge?: string; badgeTone?: "violet" | "emerald" | "amber" | "muted" }[] =>
+    withSavedOption(providerModelOptions(p, live), entryFor(p).model || p.models[0]?.id);
 
   const renderCard = (p: FreeProvider, featuredCard = false) => {
     const entry = entryFor(p);
@@ -375,7 +355,7 @@ export function ProviderGallery() {
               </div>
             ) : null}
 
-            {/* Model select */}
+            {/* Model picker — searchable curated + live, stale-saved stays visible */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Default model</Label>
@@ -397,31 +377,43 @@ export function ProviderGallery() {
                   </Button>
                 ) : null}
               </div>
-              <Select
+              <ModelPicker
                 value={selectedModel}
-                onValueChange={(v) =>
+                options={options}
+                onSelect={(v) =>
                   update({
                     providerKeys: { ...(settings.providerKeys ?? {}), [p.id]: { ...entry, model: v } },
                   })
                 }
-              >
-                <SelectTrigger className="w-full font-mono text-xs" aria-label={`${p.name} default model`}>
-                  <SelectValue placeholder="Pick a model…" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72 overflow-y-auto">
-                  {options.map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="font-mono text-xs">
-                      <span className="font-sans font-medium">{m.label}</span>
-                      <span className="ml-1.5 font-sans text-[10px] text-muted-foreground">{m.note ?? m.id}</span>
-                    </SelectItem>
-                  ))}
-                  {!options.some((o) => o.id === selectedModel) && selectedModel ? (
-                    <SelectItem value={selectedModel} className="font-mono text-xs">
-                      {selectedModel}
-                    </SelectItem>
-                  ) : null}
-                </SelectContent>
-              </Select>
+                ariaLabel={`${p.name} default model`}
+                placeholder="Pick a model…"
+                searchPlaceholder={`Search ${p.name} models…`}
+                emptyTitle="No model matches"
+                emptyHint={
+                  p.liveCatalog
+                    ? "Curated + live :free models. Clear the search, or refresh the live catalog."
+                    : "Clear the search to see this provider's full catalog."
+                }
+                footer={
+                  p.liveCatalog ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-[11px] text-muted-foreground"
+                      onClick={refreshLiveCatalog}
+                      disabled={busy === "openrouter-live"}
+                    >
+                      {busy === "openrouter-live" ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" aria-hidden />
+                      )}
+                      Refresh live :free catalog
+                    </Button>
+                  ) : undefined
+                }
+              />
             </div>
 
             {/* Actions + status */}

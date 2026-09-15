@@ -43,6 +43,8 @@ function applyHashRoute(): void {
   } else if (head === "guide" && param) {
     ui.openSetupWizard(decodeURIComponent(param));
   } else if (head === "providers" || head === "local-models") {
+    // Navigational anchors imply leaving the wizard — dismiss it if open.
+    ui.setSetupWizardOpen(false);
     ui.setView("settings");
     ui.setSettingsAnchor(head);
   }

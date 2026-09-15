@@ -28,15 +28,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ModelPicker } from "@/components/praison/model-picker";
 import { runAgentChat } from "@/lib/chat-client";
-import { FREELLM_SH_URL, FREE_PROVIDERS, providerBaseUrl, type FreeProvider } from "@/lib/providers";
+import {
+  FREELLM_SH_URL,
+  FREE_PROVIDERS,
+  loadLiveCatalog,
+  providerBaseUrl,
+  providerModelOptions,
+  withSavedOption,
+  type FreeProvider,
+} from "@/lib/providers";
 import { useSettingsStore, useUiStore } from "@/lib/stores";
 import type { ProviderKeyEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -93,21 +95,41 @@ export function SetupWizard() {
 
   const provider = FREE_PROVIDERS.find((p) => p.id === providerId) ?? null;
 
+  // Curated + persisted live :free models for the chosen provider; a saved
+  // model that's no longer cataloged stays visible instead of blanking the
+  // picker (the "model not selectable" bug class).
+  const wizardModelOptions = React.useMemo(
+    () =>
+      provider
+        ? withSavedOption(
+            providerModelOptions(provider, loadLiveCatalog()),
+            draftModel || provider.models[0]?.id
+          )
+        : [],
+    [provider, draftModel]
+  );
+
   // Reset whenever the wizard opens; honor deep-linked provider (#/guide/<id>).
+  // Drafts pre-fill from the vault on BOTH paths, so a previously saved (even
+  // stale) model stays visible and re-selectable at the connect step.
   React.useEffect(() => {
     if (!open) return;
     const pid = deepLinkProviderId && FREE_PROVIDERS.some((p) => p.id === deepLinkProviderId)
       ? deepLinkProviderId
       : null;
+    const reg = FREE_PROVIDERS.find((p) => p.id === pid);
+    const entry = reg ? settings.providerKeys?.[reg.id] : undefined;
     setProviderId(pid);
-    setStep(pid ? 1 : 0);
-    setDraftKey("");
-    setDraftAccount("");
-    setDraftModel("");
+    setDraftKey(entry?.key ?? "");
+    setDraftAccount(entry?.accountId ?? "");
+    setDraftModel(entry?.model ?? reg?.models[0]?.id ?? "");
+    // Keyed providers (and keyless ones) skip the register reading — but an
+    // explicit guide deep-link (#/guide/<id>) still shows it for fresh users.
+    setStep(pid && !entry?.key?.trim() && !reg?.noKey ? 1 : pid ? 2 : 0);
     setShowKey(false);
     setTesting(false);
     setTest(null);
-  }, [open, deepLinkProviderId]);
+  }, [open, deepLinkProviderId, settings.providerKeys]);
 
   function pickProvider(p: FreeProvider) {
     setProviderId(p.id);
@@ -367,19 +389,19 @@ export function SetupWizard() {
 
             <div className="space-y-1.5">
               <Label className="text-xs">Default model</Label>
-              <Select value={draftModel} onValueChange={setDraftModel}>
-                <SelectTrigger className="w-full font-mono text-xs" aria-label={`${provider.name} default model`}>
-                  <SelectValue placeholder="Pick a model…" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {provider.models.map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="font-mono text-xs">
-                      <span className="font-sans font-medium">{m.label}</span>
-                      <span className="ml-1.5 font-sans text-[10px] text-muted-foreground">{m.note ?? m.id}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ModelPicker
+                value={draftModel}
+                options={wizardModelOptions}
+                onSelect={setDraftModel}
+                ariaLabel={`${provider.name} default model`}
+                placeholder="Pick a model…"
+                searchPlaceholder="Search models…"
+                emptyTitle="No model matches"
+                emptyHint="Curated + live :free models for this provider. Clear the search to see everything."
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Curated picks plus any live :free models cached by the gallery.
+              </p>
             </div>
 
             {test && !test.ok ? (

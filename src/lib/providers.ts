@@ -167,10 +167,12 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       "Credits are per CALL — avoid very long prompts to stretch them.",
     ],
     models: [
-      { id: "meta/llama-3.3-70b-instruct", label: "Llama 3.3 70B", note: "Meta flagship" },
-      { id: "deepseek-ai/deepseek-r1", label: "DeepSeek R1", note: "Reasoning" },
-      { id: "qwen/qwen2.5-coder-32b-instruct", label: "Qwen2.5 Coder 32B", note: "Code" },
-      { id: "nvidia/llama-3.3-nemotron-super-49b-v1", label: "Nemotron Super 49B", note: "NVIDIA-tuned" },
+      { id: "nvidia/nemotron-3-ultra-550b-a55b", label: "Nemotron 3 Ultra 550B", note: "Flagship MoE · live 2026-09" },
+      { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron 3 Super 120B", note: "Strong + cheaper" },
+      { id: "moonshotai/kimi-k3", label: "Kimi K3", note: "Moonshot frontier" },
+      { id: "deepseek-ai/deepseek-v4-flash-0731", label: "DeepSeek V4 Flash", note: "Fast reasoning" },
+      { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B", note: "OpenAI open-weight" },
+      { id: "nvidia/nemotron-3.5-lightning-30b-a3b", label: "Nemotron 3.5 Lightning 30B", note: "Fastest" },
     ],
   },
   {
@@ -304,3 +306,76 @@ export function providerBaseUrl(p: FreeProvider, accountId?: string): string {
 
 /** freellm.sh — the live community index this registry is curated against. */
 export const FREELLM_SH_URL = "https://freellm.sh/?sort=newest#models";
+
+// ─── Model catalog helpers (shared by gallery / wizard / agent editor) ──────
+// One source of truth for "what are the selectable models for provider X":
+// curated registry models merged with the persisted live :free catalog, each
+// tagged with a status badge. Keeps every picker consistent and fixes the
+// "saved live model invisible in curated-only lists" bug class.
+
+export interface LiveModel {
+  id: string;
+  label?: string;
+  contextLength?: number;
+}
+
+export type LiveCatalog = Record<string, LiveModel[]>;
+
+export const LIVE_CATALOG_KEY = "praison-free-catalog";
+
+export function loadLiveCatalog(): LiveCatalog {
+  try {
+    const raw = localStorage.getItem(LIVE_CATALOG_KEY);
+    return raw ? (JSON.parse(raw) as LiveCatalog) : {};
+  } catch {
+    return {};
+  }
+}
+
+export interface CatalogModelOption {
+  id: string;
+  label: string;
+  note?: string;
+  badge?: string;
+  badgeTone?: "violet" | "emerald" | "amber" | "muted";
+}
+
+/**
+ * Merged model options for one provider: curated models first ("curated"),
+ * then live-catalog extras ("live", violet), then — if the currently saved
+ * value matches none of them — the saved id itself ("saved", amber) so a
+ * stale/removed model stays visible and re-selectable instead of blanking
+ * the picker.
+ */
+export function providerModelOptions(
+  p: FreeProvider,
+  live?: LiveCatalog
+): CatalogModelOption[] {
+  const base: CatalogModelOption[] = p.models.map((m) => ({
+    id: m.id,
+    label: m.label,
+    note: m.note ?? m.id,
+    badge: "curated",
+    badgeTone: "muted",
+  }));
+  const extra = (live?.[p.liveCatalog ?? ""] ?? []).filter((m) => !base.some((b) => b.id === m.id));
+  for (const m of extra) {
+    base.push({
+      id: m.id,
+      label: m.label || m.id,
+      note: m.contextLength ? `${m.id} · ${Math.round(m.contextLength / 1000)}K ctx` : m.id,
+      badge: "live",
+      badgeTone: "violet",
+    });
+  }
+  return base;
+}
+
+/** Append the saved value as a visible option when it's missing from the list. */
+export function withSavedOption(
+  options: CatalogModelOption[],
+  savedId: string | undefined
+): CatalogModelOption[] {
+  if (!savedId || options.some((o) => o.id === savedId)) return options;
+  return [...options, { id: savedId, label: savedId, note: "previously saved", badge: "saved", badgeTone: "amber" }];
+}

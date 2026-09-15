@@ -14,21 +14,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { AUTO_MODEL, CUSTOM_MODELS, TOOL_IDS, TOOL_META, modelLabel } from "@/lib/constants";
+import { ModelPicker, type PickerOption } from "@/components/praison/model-picker";
+import { AUTO_MODEL, TOOL_IDS, TOOL_META } from "@/lib/constants";
+import { FREE_PROVIDERS, loadLiveCatalog, providerModelOptions } from "@/lib/providers";
 import type { Agent, AgentColor, ToolId } from "@/lib/types";
 import { uid } from "@/lib/helpers";
-import { useAgentsStore } from "@/lib/stores";
+import { useAgentsStore, useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
 
 // ─── Agent create / edit form dialog ─────────────────────────────────────────
@@ -53,6 +46,7 @@ export function AgentFormDialog({
 }) {
   const addAgent = useAgentsStore((s) => s.add);
   const updateAgent = useAgentsStore((s) => s.update);
+  const providerSettings = useSettingsStore((s) => s.settings);
 
   const [name, setName] = React.useState("");
   const [emoji, setEmoji] = React.useState("");
@@ -64,6 +58,33 @@ export function AgentFormDialog({
   const [temperature, setTemperature] = React.useState(0.7);
   const [maxIterations, setMaxIterations] = React.useState(6);
   const [tools, setTools] = React.useState<ToolId[]>([]);
+
+  // Every registry provider's catalog, grouped and ready-badged, merged with
+  // the persisted live :free catalog — searchable via the ModelPicker.
+  const modelOptions = React.useMemo<PickerOption[]>(() => {
+    const live = loadLiveCatalog();
+    const out: PickerOption[] = [
+      { id: AUTO_MODEL.id, label: AUTO_MODEL.label, note: AUTO_MODEL.note, group: "Built-in" },
+    ];
+    for (const p of FREE_PROVIDERS) {
+      const ready = p.noKey || !!providerSettings.providerKeys?.[p.id]?.key?.trim();
+      const group = ready ? p.name : `${p.name} — no key yet`;
+      for (const o of providerModelOptions(p, live)) {
+        out.push({ ...o, group, note: o.note ?? o.id });
+      }
+    }
+    if (model && model !== AUTO_MODEL.id && !out.some((o) => o.id === model)) {
+      out.push({
+        id: model,
+        label: model,
+        note: "saved on this agent",
+        badge: "saved",
+        badgeTone: "amber",
+        group: "Built-in",
+      });
+    }
+    return out;
+  }, [model, providerSettings.providerKeys]);
 
   // Re-seed local state each time the dialog opens (create vs edit).
   React.useEffect(() => {
@@ -231,30 +252,19 @@ export function AgentFormDialog({
             </p>
           </div>
 
-          {/* Model */}
+          {/* Model — searchable, grouped by provider, status-badged */}
           <div className="space-y-1.5">
             <Label htmlFor="agent-model">Model</Label>
-            <Select value={model} onValueChange={setModel}>
-              <SelectTrigger id="agent-model" className="w-full" aria-label="Model">
-                <SelectValue>{modelLabel(model)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Built-in</SelectLabel>
-                  <SelectItem value={AUTO_MODEL.id}>
-                    {AUTO_MODEL.label} — zero config
-                  </SelectItem>
-                </SelectGroup>
-                <SelectGroup>
-                  <SelectLabel>Groq presets</SelectLabel>
-                  {CUSTOM_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <ModelPicker
+              value={model}
+              options={modelOptions}
+              onSelect={setModel}
+              ariaLabel="Model"
+              placeholder="Pick a model…"
+              searchPlaceholder="Search models & providers…"
+              emptyTitle="No model matches"
+              emptyHint="Try a different search — every registry provider's catalog is listed above."
+            />
           </div>
 
           {/* Sliders */}
