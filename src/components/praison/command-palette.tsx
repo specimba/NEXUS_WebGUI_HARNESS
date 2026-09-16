@@ -5,6 +5,7 @@ import {
   Bot,
   Cog,
   Gpu,
+  ImagePlus,
   MessagesSquare,
   Moon,
   MessageSquarePlus,
@@ -154,6 +155,13 @@ export function CommandPalette() {
             <Search className="text-violet-400" />
             Search all chats…
             <CommandShortcut>⌘⇧F</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => run(() => useUiStore.getState().setImageStudioOpen(true))}
+          >
+            <ImagePlus className="text-violet-400" />
+            Open Image Studio…
+            <span className="text-muted-foreground ml-auto text-[11px]">Grok Imagine 2 · $0.50/img</span>
           </CommandItem>
           <CommandItem
             onSelect={() =>
