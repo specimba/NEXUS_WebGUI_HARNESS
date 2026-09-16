@@ -256,6 +256,14 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
 
     const { content, toolCalls, reasoning } = await consumeUpstreamSSE(res.body, send, signal);
 
+    // Some gateways (Pollinations) deliver key-budget notices INSIDE a 200
+    // stream as if they were assistant text. Surface them as real errors.
+    if (/has reached its budget|raise the key budget/i.test(content)) {
+      throw new Error(
+        "This provider key has reached its budget — raise the key budget on the provider's dashboard (e.g. enter.pollinations.ai → your key) or switch providers."
+      );
+    }
+
     if (toolCalls.length > 0 && tools.length > 0 && !isFinalPass) {
       msgs.push({
         role: "assistant",
@@ -329,6 +337,7 @@ async function consumeUpstreamSSE(
       const payload = line.slice(5).trim();
       if (payload === "[DONE]") continue;
       let chunk: {
+        model?: string;
         choices?: Array<{
           delta?: { content?: string; reasoning?: string; reasoning_content?: string; tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }> };
         }>;
@@ -338,6 +347,9 @@ async function consumeUpstreamSSE(
       } catch {
         continue;
       }
+      // Pollinations injects sponsored chunks from a separate "ad-system" model
+      // into the same stream — they are not assistant output, drop them.
+      if (chunk.model === "ad-system") continue;
       const delta = chunk.choices?.[0]?.delta;
       if (!delta) continue;
       if (delta.reasoning || delta.reasoning_content) {
@@ -369,6 +381,7 @@ function upstreamErrorMessage(status: number, text: string): string {
     const msg = parsed?.error?.message ?? parsed?.message;
     if (msg) {
       if (status === 401) return `Invalid API key: ${msg}`;
+      if (status === 402) return `Out of credits (HTTP 402): ${msg}`;
       if (status === 403) return `Access forbidden (check key/region): ${msg}`;
       if (status === 404) return `Model or endpoint not found: ${msg}`;
       if (status === 429) return `Rate limit exceeded: ${msg}`;

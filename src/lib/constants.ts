@@ -1,4 +1,4 @@
-import type { Agent, Settings, ToolId, UiThemeId } from "./types";
+import type { Agent, ProviderKeyEntry, Settings, ToolId, UiThemeId } from "./types";
 
 // ─── Branding ────────────────────────────────────────────────────────────────
 export const APP_NAME = "PraisonAI";
@@ -9,6 +9,25 @@ export const GITHUB_URL = "https://github.com/specimba/PraisonAI";
 // ─── Provider defaults ───────────────────────────────────────────────────────
 export const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1";
 export const CUSTOM_FALLBACK_MODEL = "llama-3.3-70b-versatile";
+
+// ─── Pre-seeded BYOK keys (r18) ──────────────────────────────────────────────
+// Ships working keys so the app chats out-of-the-box. These are merged into the
+// vault for EVERY user (persisted user keys always win — we only fill blanks).
+// Vyce AI: daily-reward gateway, DeepSeek V4.1 preselected (user-verified).
+// Pollinations: keyed tier beats the exhausted anonymous IP pool.
+export const PRESEED_PROVIDER_KEYS: Record<string, ProviderKeyEntry> = {
+  vyce: {
+    key: "sk-5507b79cf0226a14d3d32719ca0bb0f05b159b9c3481c4f3",
+    model: "deepseek-v4.1",
+  },
+  pollinations: {
+    key: "sk_6irvUWDd8292cklHVE3qir6dGl6tBPxW",
+    model: "openai-fast",
+  },
+};
+
+/** localStorage flag so the one-time "Vyce is here" intro toast fires once. */
+export const VYCE_INTRO_FLAG = "praison-vyce-intro";
 
 export const AUTO_MODEL = {
   id: "auto",
@@ -112,7 +131,10 @@ export function uiThemeById(id: string | undefined): UiThemePreset {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  provider: "auto",
+  // New users land on Vyce (pre-seeded key, DeepSeek V4.1) — the current
+  // efficiency-frontier pick. Existing users keep their selection; the vault
+  // preseed + a one-time intro toast make the switch one click.
+  provider: "custom",
   apiKey: "",
   baseUrl: DEFAULT_BASE_URL,
   defaultModel: CUSTOM_FALLBACK_MODEL,
@@ -122,8 +144,8 @@ export const DEFAULT_SETTINGS: Settings = {
   voice: DEFAULT_TTS_VOICE,
   speechRate: 1,
   uiTheme: DEFAULT_UI_THEME,
-  providerKeys: {},
-  activeProviderId: undefined,
+  providerKeys: { ...PRESEED_PROVIDER_KEYS },
+  activeProviderId: "vyce",
   seeded: false,
 };
 

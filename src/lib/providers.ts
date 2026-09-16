@@ -36,10 +36,37 @@ export interface FreeProvider {
   guide: string[];
   models: ProviderModel[];
   /** Providers whose free catalog rotates — fetched live via /api/providers/free-models. */
-  liveCatalog?: "openrouter";
+  liveCatalog?: "openrouter" | "pollinations";
 }
 
 export const FREE_PROVIDERS: FreeProvider[] = [
+  {
+    id: "vyce",
+    name: "Vyce AI",
+    glyph: "◈",
+    tagline:
+      "Daily free credits ($10/day, streaks to $30) — DeepSeek V4.1, Claude 4.6 & Agnes 3.0 behind one OpenAI-compatible gateway.",
+    baseUrl: "https://vyceai.com/v1",
+    keyPrefix: "sk-",
+    signupUrl: "https://vyceai.com",
+    featured: true,
+    limits:
+      "Free $10.00 credits every day (resets 00:00 UTC) · key limit 150 RPM · per-1M token pricing from $0.05",
+    guide: [
+      "Open vyceai.com and sign up — every account gets $10.00 in free credits daily.",
+      "Claim the Daily Reward (streaks grow it up to $30/day), then create a key in the API Keys tab — it starts with sk-.",
+      "Paste it here — this app talks to https://vyceai.com/v1 (OpenAI-compatible, streaming verified).",
+      "DeepSeek V4.1 is preselected — the current efficiency-frontier pick; Claude Sonnet 4.6, V4 Flash and Agnes 3.0 (512K ctx) are one click away.",
+      "Bonus endpoints: /v1/messages (Anthropic-style) and /v1/images/generations (Grok Imagine 2, $0.50/img).",
+    ],
+    models: [
+      { id: "deepseek-v4.1", label: "DeepSeek V4.1", note: "Flagship MoE · 270K ctx · tools · $0.15/$0.60 per 1M" },
+      { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", note: "Ultra-fast · 270K ctx · tools · $0.22/$0.66" },
+      { id: "agnes-3.0-flash", label: "Agnes 3.0 Flash", note: "Agentic · 512K ctx · tools · cheapest $0.05/$0.15" },
+      { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", note: "Frontier coding · 270K ctx · $3/$15" },
+      { id: "deepseek-v4-flash-lr", label: "DeepSeek V4 Flash LR", note: "Long-run variant · $0.15/$0.60" },
+    ],
+  },
   {
     id: "groq",
     name: "Groq",
@@ -260,16 +287,20 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     id: "pollinations",
     name: "Pollinations",
     glyph: "✿",
-    tagline: "Zero signup, zero key — anonymous free tier. Perfect for a first test drive.",
+    tagline: "OpenAI-compatible text API with a live model roster — free keys, no card.",
     baseUrl: "https://text.pollinations.ai/openai",
-    noKey: true,
-    signupUrl: "https://pollinations.ai",
-    limits: "Anonymous tier, rate-limited, “free forever” per freellm.sh — expect occasional queueing",
+    keyPrefix: "sk_",
+    signupUrl: "https://enter.pollinations.ai",
+    liveCatalog: "pollinations",
+    limits:
+      "Anonymous tier shares a global IP budget (usually exhausted) · free keys carry a per-key budget you can raise at enter.pollinations.ai",
     guide: [
-      "Nothing to register — just press “Use” and start chatting.",
-      "Rate limits are stricter than keyed providers; consider Groq for heavy use.",
+      "Keyless anonymous access works from some IPs but shares a global budget — mostly exhausted.",
+      "Create a free key at enter.pollinations.ai (starts with sk_) for reliable keyed access.",
+      "If a chat replies with a “key budget” notice, raise the budget on your key's page, then retry.",
+      "The online roster is small right now (GPT-OSS 20B, reasoning + tools) — “Refresh live catalog” pulls what's up.",
     ],
-    models: [{ id: "openai-fast", label: "OpenAI Fast", note: "gpt-oss-20b class" }],
+    models: [{ id: "openai-fast", label: "OpenAI Fast", note: "GPT-OSS 20B · reasoning + tools · online now" }],
   },
   {
     id: "cerebras",

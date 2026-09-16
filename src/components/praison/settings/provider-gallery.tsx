@@ -171,21 +171,37 @@ export function ProviderGallery() {
 
   async function refreshLiveCatalog() {
     if (busy) return;
-    setBusy("openrouter-live");
+    const rotating = FREE_PROVIDERS.filter((p) => p.liveCatalog);
+    if (rotating.length === 0) return;
+    setBusy("live-catalog");
+    let total = 0;
+    const failures: string[] = [];
     try {
-      const res = await fetch("/api/providers/free-models");
-      const data = (await res.json()) as { models?: LiveCatalog["openrouter"]; error?: string; cached?: boolean };
-      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
-      const next: LiveCatalog = { ...live, openrouter: data.models ?? [] };
+      const next: LiveCatalog = { ...live };
+      for (const p of rotating) {
+        try {
+          const res = await fetch(`/api/providers/free-models?provider=${encodeURIComponent(p.liveCatalog!)}`);
+          const data = (await res.json()) as { models?: LiveCatalog[string]; error?: string; cached?: boolean };
+          if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
+          next[p.id] = data.models ?? [];
+          total += data.models?.length ?? 0;
+        } catch (err) {
+          failures.push(`${p.name}: ${err instanceof Error ? err.message : "unknown"}`);
+        }
+      }
       setLive(next);
       try {
         localStorage.setItem(LIVE_CATALOG_KEY, JSON.stringify(next));
       } catch {
         /* quota */
       }
-      toast.success(`${data.models?.length ?? 0} live :free models`, {
-        description: data.cached ? "Served from the 10-minute cache." : "Fresh from OpenRouter's API.",
-      });
+      if (total > 0) {
+        toast.success(`${total} live models across ${rotating.length} rotating catalogs`, {
+          description: failures.length ? `Partial: ${truncate(failures.join(" · "), 90)}` : "Fresh from the providers' APIs.",
+        });
+      } else {
+        throw new Error(failures.join(" · ") || "No catalogs returned models");
+      }
     } catch (err) {
       toast.error("Live catalog fetch failed", {
         description: err instanceof Error ? truncate(err.message, 80) : "Unknown error",

@@ -30,8 +30,9 @@ import { BrandMark, ThemeToggle } from "@/components/praison/atoms";
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import { resolveLlm } from "@/lib/llm-config";
 import { FREE_PROVIDERS } from "@/lib/providers";
-import { APP_VERSION, GITHUB_URL } from "@/lib/constants";
+import { APP_VERSION, GITHUB_URL, VYCE_INTRO_FLAG } from "@/lib/constants";
 import type { View } from "@/lib/types";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // ─── Nav items ───────────────────────────────────────────────────────────────
@@ -182,6 +183,27 @@ export function TopBar() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
   const meta = VIEW_TITLES[view];
+
+  // One-time "Vyce AI is here" intro (r18): pre-seeded key landed in the vault;
+  // offer existing users a one-click switch instead of silently changing brains.
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem(VYCE_INTRO_FLAG)) return;
+      localStorage.setItem(VYCE_INTRO_FLAG, "1");
+      const s = useSettingsStore.getState().settings;
+      if (s.provider === "custom" && s.activeProviderId === "vyce") return;
+      toast("Vyce AI added — $10/day free credits", {
+        description: "DeepSeek V4.1 is pre-loaded with your key and ready to chat.",
+        action: {
+          label: "Use Vyce",
+          onClick: () => useSettingsStore.getState().update({ provider: "custom", activeProviderId: "vyce" }),
+        },
+        duration: 15_000,
+      });
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, []);
 
   // Resolve the active provider for the badge + quick-switch dropdown.
   const resolved = React.useMemo(() => resolveLlm(settings), [settings]);

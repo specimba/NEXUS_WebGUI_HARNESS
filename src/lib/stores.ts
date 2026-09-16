@@ -15,7 +15,7 @@ import type {
   WorkflowRun,
   WorkflowRunStep,
 } from "./types";
-import { DEFAULT_SETTINGS, SEED_AGENTS } from "./constants";
+import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS } from "./constants";
 import { uid } from "./helpers";
 
 // ─── Debounced localStorage (avoid writing on every streamed token) ─────────
@@ -100,10 +100,20 @@ export const useSettingsStore = create<SettingsState>()(
       // activeProviderId, …) exist even for users with older persisted state.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SettingsState>;
+        const settings = { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) };
+        // Vault preseed (r18): fill in pre-seeded keys for providers the user
+        // has no key for yet — never overwrite a key the user saved themselves.
+        const keys = { ...(settings.providerKeys ?? {}) };
+        for (const [pid, pre] of Object.entries(PRESEED_PROVIDER_KEYS)) {
+          const cur = keys[pid];
+          if (!cur?.key?.trim()) {
+            keys[pid] = { ...pre, ...cur, key: cur?.key?.trim() || pre.key };
+          }
+        }
         return {
           ...current,
           ...p,
-          settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
+          settings: { ...settings, providerKeys: keys },
         };
       },
     }
