@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,10 @@ type TestResult = { ok: true; ms: number } | { ok: false; error: string };
 
 type TestMap = Record<string, TestResult | undefined>;
 
+/** Result of an account/credits probe (providers with mePath — Vyce today). */
+type CreditsInfo = { name?: string; balance?: number; rateLimit?: number; enabled?: boolean; at: number; error?: string };
+type CreditsMap = Record<string, CreditsInfo | undefined>;
+
 function fmtRel(ts: number | undefined): string {
   if (!ts) return "never";
   const s = Math.round((Date.now() - ts) / 1000);
@@ -62,6 +67,7 @@ export function ProviderGallery() {
   const [draftKeys, setDraftKeys] = React.useState<Record<string, string>>({});
   const [draftAccounts, setDraftAccounts] = React.useState<Record<string, string>>({});
   const [tests, setTests] = React.useState<TestMap>({});
+  const [credits, setCredits] = React.useState<CreditsMap>({});
   const [live, setLive] = React.useState<LiveCatalog>(() => loadLiveCatalog());
 
   const featured = FREE_PROVIDERS.filter((p) => p.featured);
@@ -147,6 +153,45 @@ export function ProviderGallery() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setTests((t) => ({ ...t, [p.id]: { ok: false, error: truncate(message, 90) } }));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Probe the provider's account endpoint (balance/limits) — Vyce /v1/me today. */
+  async function checkCredits(p: FreeProvider) {
+    if (busy) return;
+    const key = settings.providerKeys?.[p.id]?.key?.trim() || draftKeyFor(p).trim();
+    if (!key) {
+      toast.error("Save a key first");
+      return;
+    }
+    setBusy(p.id);
+    try {
+      const res = await fetch("/api/providers/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerId: p.id, key }),
+      });
+      const data = (await res.json()) as {
+        name?: string;
+        balance?: number;
+        rateLimit?: number;
+        enabled?: boolean;
+        error?: string;
+      };
+      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setCredits((c) => ({ ...c, [p.id]: { ...data, at: Date.now() } }));
+      toast.success(`${p.name} account checked${data.name ? ` — ${data.name}` : ""}`, {
+        description:
+          data.balance != null
+            ? `Balance $${data.balance.toFixed(2)} · ${data.rateLimit ?? "?"} RPM limit${data.enabled === false ? " · KEY DISABLED" : ""}`
+            : "Account reachable.",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setCredits((c) => ({ ...c, [p.id]: { at: Date.now(), error: message } }));
+      toast.error("Account check failed", { description: truncate(message, 90) });
     } finally {
       setBusy(null);
     }
@@ -472,7 +517,24 @@ export function ProviderGallery() {
                   </Button>
                 </>
               ) : null}
-              <span aria-live="polite" className="flex min-h-6 flex-1 items-center justify-end">
+              {p.mePath ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void checkCredits(p)}
+                  disabled={busy === p.id}
+                  title={`Probe ${p.name}'s account endpoint (${p.mePath}) for live balance & limits`}
+                >
+                  {busy === p.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Wallet className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Check credits
+                </Button>
+              ) : null}
+              <span aria-live="polite" className="flex min-h-6 flex-1 flex-wrap items-center justify-end gap-1.5">
                 {test ? (
                   test.ok ? (
                     <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500">
@@ -485,6 +547,17 @@ export function ProviderGallery() {
                   )
                 ) : hasKey && entry.validatedAt ? (
                   <span className="text-[11px] text-muted-foreground">validated {fmtRel(entry.validatedAt)}</span>
+                ) : null}
+                {credits[p.id] && !credits[p.id]!.error ? (
+                  <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-300">
+                    {credits[p.id]!.name ? `${credits[p.id]!.name} · ` : ""}
+                    {credits[p.id]!.balance != null ? `$${credits[p.id]!.balance!.toFixed(2)}` : "account ok"}
+                    {credits[p.id]!.rateLimit != null ? ` · ${credits[p.id]!.rateLimit} RPM` : ""} · checked {fmtRel(credits[p.id]!.at)}
+                  </Badge>
+                ) : credits[p.id]?.error ? (
+                  <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-500 max-w-full font-normal">
+                    credits: {truncate(credits[p.id]!.error!, 60)}
+                  </Badge>
                 ) : null}
               </span>
             </div>
