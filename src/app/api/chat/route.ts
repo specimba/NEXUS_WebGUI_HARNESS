@@ -139,9 +139,15 @@ function isAbort(err: unknown): boolean {
 function isTransientNetworkError(err: unknown): boolean {
   if (isAbort(err)) return false;
   const message = err instanceof Error ? err.message : String(err);
-  return /network error|fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|ETIMEDOUT|socket hang up|undici.*socket|terminated|timeout/i.test(
+  return /network error|fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|ETIMEDOUT|socket hang up|undici.*socket|terminated|timeout|\bupstream\b|bad gateway|service unavailable|gateway.*(dropped|unavailable)|http 5\d\d/i.test(
     message
   );
+}
+
+/** Collapse an error to a short status-line fragment for retry notices. */
+function shortError(err: unknown): string {
+  const m = err instanceof Error ? err.message : String(err);
+  return m.length > 90 ? `${m.slice(0, 90)}…` : m;
 }
 
 function humanizeError(err: unknown): string {
@@ -226,35 +232,70 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
   for (let iteration = 1; iteration <= maxIterations + 1; iteration++) {
     send({ type: "iteration", n: iteration });
     const isFinalPass = iteration > maxIterations;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        ...authHeaders,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: msgs,
-        temperature: typeof body.temperature === "number" ? body.temperature : 0.7,
-        max_tokens: body.maxTokens ?? 2048,
-        stream: true,
-        ...(tools.length > 0 && !isFinalPass ? { tools, tool_choice: "auto" } : {}),
-      }),
-      signal,
-    });
+    // Resilience (r19): gateways like Vyce sit behind rotating upstream pools
+    // and occasionally drop a call mid-run (502/504/socket death) — exactly
+    // what killed a Morning-Briefing step after 7 successful tool calls.
+    // Retry each LLM call up to 3x while NOTHING has been streamed to the
+    // client yet (a mid-stream death can still surface honestly and is
+    // recovered one level up by the step-level auto-retry).
+    const MAX_UPSTREAM_ATTEMPTS = 3;
+    let streamedAny = false;
+    let outcome: { content: string; toolCalls: UpstreamToolCall[]; reasoning: string } | null = null;
 
-    if (!res.ok || !res.body) {
-      const text = await res.text().catch(() => "");
-      if (res.status === 400 && tools.length > 0 && !isFinalPass && /tool/i.test(text)) {
-        send({ type: "status", message: "Model does not support tools — continuing without them" });
-        tools = [];
-        iteration -= 1; // retry same iteration without tools
-        continue;
+    attemptLoop: for (let attempt = 1; attempt <= MAX_UPSTREAM_ATTEMPTS; attempt++) {
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: {
+            ...authHeaders,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages: msgs,
+            temperature: typeof body.temperature === "number" ? body.temperature : 0.7,
+            max_tokens: body.maxTokens ?? 2048,
+            stream: true,
+            ...(tools.length > 0 && !isFinalPass ? { tools, tool_choice: "auto" } : {}),
+          }),
+          signal,
+        });
+      } catch (err) {
+        if (isAbort(err)) throw err;
+        if (attempt < MAX_UPSTREAM_ATTEMPTS && !streamedAny && isTransientNetworkError(err)) {
+          send({ type: "status", message: `Upstream hiccup (${shortError(err)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
+          await sleep(1200 * attempt);
+          continue attemptLoop;
+        }
+        throw err;
       }
-      throw new Error(upstreamErrorMessage(res.status, text));
+
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => "");
+        if (res.status === 400 && tools.length > 0 && !isFinalPass && /tool/i.test(text)) {
+          send({ type: "status", message: "Model does not support tools — continuing without them" });
+          tools = [];
+          iteration -= 1; // retry same iteration without tools
+          break attemptLoop;
+        }
+        const httpErr = new Error(upstreamErrorMessage(res.status, text));
+        if (attempt < MAX_UPSTREAM_ATTEMPTS && isTransientNetworkError(httpErr)) {
+          send({ type: "status", message: `Upstream hiccup (${shortError(httpErr)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
+          await sleep(1200 * attempt);
+          continue attemptLoop;
+        }
+        throw httpErr;
+      }
+
+      outcome = await consumeUpstreamSSE(res.body, send, signal, () => {
+        streamedAny = true;
+      });
+      break attemptLoop;
     }
 
-    const { content, toolCalls, reasoning } = await consumeUpstreamSSE(res.body, send, signal);
+    if (!outcome) continue; // tools dropped — replay the same iteration
+    const { content, toolCalls, reasoning } = outcome;
 
     // Some gateways (Pollinations) deliver key-budget notices INSIDE a 200
     // stream as if they were assistant text. Surface them as real errors.
@@ -308,13 +349,15 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
 async function consumeUpstreamSSE(
   body: ReadableStream<Uint8Array>,
   send: Send,
-  signal: AbortSignal
+  signal: AbortSignal,
+  onFirstChunk?: () => void
 ): Promise<{ content: string; toolCalls: UpstreamToolCall[]; reasoning: string }> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let content = "";
   let reasoning = "";
+  let first = true;
   const toolCalls: UpstreamToolCall[] = [];
 
   while (true) {
@@ -328,6 +371,10 @@ async function consumeUpstreamSSE(
     }
     const { value, done } = await reader.read();
     if (done) break;
+    if (first) {
+      first = false;
+      onFirstChunk?.();
+    }
     buffer += decoder.decode(value, { stream: true });
     let idx: number;
     while ((idx = buffer.indexOf("\n")) !== -1) {
@@ -376,6 +423,9 @@ async function consumeUpstreamSSE(
 }
 
 function upstreamErrorMessage(status: number, text: string): string {
+  // 5xx = the PROVIDER's infrastructure failed (not the user's config) — say
+  // so explicitly so diagnostics + retry classification are unambiguous.
+  const prefix = status >= 500 ? `Upstream HTTP ${status}: ` : "";
   try {
     const parsed = JSON.parse(text);
     const msg = parsed?.error?.message ?? parsed?.message;
@@ -385,12 +435,12 @@ function upstreamErrorMessage(status: number, text: string): string {
       if (status === 403) return `Access forbidden (check key/region): ${msg}`;
       if (status === 404) return `Model or endpoint not found: ${msg}`;
       if (status === 429) return `Rate limit exceeded: ${msg}`;
-      return msg;
+      return `${prefix}${msg}`;
     }
   } catch {
     /* not json */
   }
-  return `Provider error (HTTP ${status}): ${clip(text || "no details", 300)}`;
+  return `${prefix}Provider error (HTTP ${status}): ${clip(text || "no details", 300)}`;
 }
 
 // ─── Engine 2: auto — built-in SDK with JSON tool protocol ───────────────────

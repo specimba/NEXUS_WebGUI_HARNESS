@@ -37,6 +37,8 @@ export interface FreeProvider {
   models: ProviderModel[];
   /** Providers whose free catalog rotates — fetched live via /api/providers/free-models. */
   liveCatalog?: "openrouter" | "pollinations";
+  /** Optional account-info endpoint (relative to baseUrl) for a credits widget, e.g. "/v1/me". */
+  mePath?: string;
 }
 
 export const FREE_PROVIDERS: FreeProvider[] = [
@@ -66,6 +68,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", note: "Frontier coding · 270K ctx · $3/$15" },
       { id: "deepseek-v4-flash-lr", label: "DeepSeek V4 Flash LR", note: "Long-run variant · $0.15/$0.60" },
     ],
+    mePath: "/v1/me",
   },
   {
     id: "groq",

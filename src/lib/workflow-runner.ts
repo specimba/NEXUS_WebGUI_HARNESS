@@ -21,6 +21,7 @@ import {
 } from "@/lib/stores";
 import { REWORK_LIMIT } from "@/lib/constants";
 import type {
+  RunCallLogEntry,
   RunErrorInfo,
   RunErrorKind,
   ToolCallInfo,
@@ -90,9 +91,12 @@ const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
   { kind: "timeout", re: /timeout|timed? ?out|etimedout|deadline/i },
   {
     kind: "network",
-    re: /network|fetch failed|failed to fetch|could not reach|socket|econn|enotfound|eai_again|dns|connection (refused|reset|closed|error)|load failed|premature close|stream ended without|upstream/i,
+    re: /network|fetch failed|failed to fetch|could not reach|socket|econn|enotfound|eai_again|dns|connection (refused|reset|closed|error)|load failed|premature close|stream ended without|upstream|http 5\d\d|bad gateway|service unavailable/i,
   },
 ];
+
+/** Failure kinds the runner heals by itself (one automatic step retry). */
+const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout"];
 
 /** Classify an engine error message → kind + copy used by the recovery card. */
 export function classifyRunError(message: string): {
@@ -203,6 +207,20 @@ export async function executeWorkflowRun(
   const patchRun = (patch: Partial<WorkflowRun>) =>
     useWorkflowsStore.getState().patchRun(wf.id, runId, patch);
 
+  /** Append one LLM-call record to the run's call log (harness rank-② slice). */
+  const pushCall = (entry: Omit<RunCallLogEntry, "at">) => {
+    try {
+      const run = useWorkflowsStore
+        .getState()
+        .workflows.find((w) => w.id === wf.id)
+        ?.runs.find((r) => r.id === runId);
+      const log = [...(run?.callLog ?? []), { at: Date.now(), ...entry } as RunCallLogEntry].slice(-60);
+      patchRun({ callLog: log });
+    } catch {
+      /* logging must never break a run */
+    }
+  };
+
   const stopRemaining = (fromIndex: number) => {
     for (let j = fromIndex + 1; j < steps.length; j++) {
       patchRunStep(steps[j].stepId, { status: "stopped", output: "" });
@@ -233,7 +251,7 @@ export async function executeWorkflowRun(
 
   /** Build the full RunErrorInfo for a failed step and finish the run. */
   const failRun = (fallbackIndex: number, err: Error) => {
-    const meta = err as Error & { stepId?: string; toolCallsOk?: number };
+    const meta = err as Error & { stepId?: string; toolCallsOk?: number; autoRetried?: boolean };
     const found = steps.findIndex((s) => s.stepId === meta.stepId);
     const failedIndex = found === -1 ? fallbackIndex : found;
     const step = steps[failedIndex] ?? steps[fallbackIndex];
@@ -251,12 +269,19 @@ export async function executeWorkflowRun(
       stepsDone: steps.slice(0, failedIndex).filter((s) => s.status === "done").length,
       llmLabel: llm.label,
       attempts: attempts + 1,
+      autoRetried: meta.autoRetried === true || undefined,
     };
     stopRemaining(failedIndex);
     finish("error", `Step "${step.label}" failed`, info);
   };
 
-  /** Stream one agent call for a run step; returns the final content + duration. */
+  /**
+   * Stream one agent call for a run step; returns the final content + duration.
+   * Self-healing (r19): a transient engine failure (network drop / timeout —
+   * e.g. a gateway 502 after several tool calls) is retried ONCE automatically
+   * with a clean slate so scheduled runs survive upstream hiccups instead of
+   * dying at 7am. Every attempt is recorded in the run's call log.
+   */
   const streamStep = async (
     runStep: WorkflowRunStep,
     agentId: string,
@@ -267,70 +292,122 @@ export async function executeWorkflowRun(
     if (!agent) throw new Error(`Agent for step "${runStep.label}" not found`);
     const stepStart = Date.now();
     let draft = "";
-    const localToolCalls: ToolCallInfo[] = [];
-    try {
-      const llm = resolveLlm(settings.settings, agent.model);
-      const res = await runAgentChat(
-        {
-          provider: llm.provider,
-          apiKey: llm.apiKey,
-          baseUrl: llm.baseUrl,
+    let localToolCalls: ToolCallInfo[] = [];
+    const llm = resolveLlm(settings.settings, agent.model);
+    const MAX_STEP_ATTEMPTS = 2; // 1 real attempt + 1 automatic self-heal retry
+
+    for (let attempt = 1; attempt <= MAX_STEP_ATTEMPTS; attempt++) {
+      try {
+        draft = "";
+        localToolCalls = [];
+        const res = await runAgentChat(
+          {
+            provider: llm.provider,
+            apiKey: llm.apiKey,
+            baseUrl: llm.baseUrl,
+            model: llm.model,
+            temperature: agent.temperature,
+            maxIterations: agent.maxIterations,
+            tools: agent.tools,
+            system,
+            messages: [{ role: "user", content: context }],
+            signal,
+          },
+          {
+            onToken: (t) => {
+              draft += t;
+              patchRunStep(runStep.stepId, { output: draft });
+            },
+            onToolCall: (c) => {
+              localToolCalls.push({ id: c.id, name: c.name, args: c.args });
+              patchRunStep(runStep.stepId, { toolCalls: [...localToolCalls] });
+            },
+            onToolResult: (r) => {
+              const idx = localToolCalls.findIndex((tc) => tc.id === r.id);
+              if (idx !== -1) {
+                localToolCalls[idx] = {
+                  ...localToolCalls[idx],
+                  result: r.content,
+                  ok: r.ok,
+                  ms: r.ms,
+                };
+              }
+              patchRunStep(runStep.stepId, { toolCalls: [...localToolCalls] });
+            },
+          }
+        );
+        pushCall({
+          stepId: runStep.stepId,
+          stepLabel: runStep.label,
+          agentName: agent.name,
+          engine: llm.label,
           model: llm.model,
-          temperature: agent.temperature,
-          maxIterations: agent.maxIterations,
-          tools: agent.tools,
-          system,
-          messages: [{ role: "user", content: context }],
-          signal,
-        },
-        {
-          onToken: (t) => {
-            draft += t;
-            patchRunStep(runStep.stepId, { output: draft });
-          },
-          onToolCall: (c) => {
-            localToolCalls.push({ id: c.id, name: c.name, args: c.args });
-            patchRunStep(runStep.stepId, { toolCalls: [...localToolCalls] });
-          },
-          onToolResult: (r) => {
-            const idx = localToolCalls.findIndex((tc) => tc.id === r.id);
-            if (idx !== -1) {
-              localToolCalls[idx] = {
-                ...localToolCalls[idx],
-                result: r.content,
-                ok: r.ok,
-                ms: r.ms,
-              };
-            }
-            patchRunStep(runStep.stepId, { toolCalls: [...localToolCalls] });
-          },
-        }
-      );
-      patchRunStep(runStep.stepId, {
-        output: res.content,
-        toolCalls: res.toolCalls.length > 0 ? res.toolCalls : localToolCalls,
-        status: "done",
-        ms: Date.now() - stepStart,
-      });
-      return { content: res.content, ms: Date.now() - stepStart };
-    } catch (err) {
-      if (isAbortError(err)) {
-        patchRunStep(runStep.stepId, {
-          status: "stopped",
-          output: draft || "(stopped)",
+          ms: Date.now() - stepStart,
+          ok: true,
+          attempt,
         });
-      } else {
+        patchRunStep(runStep.stepId, {
+          output: res.content,
+          toolCalls: res.toolCalls.length > 0 ? res.toolCalls : localToolCalls,
+          status: "done",
+          ms: Date.now() - stepStart,
+        });
+        return { content: res.content, ms: Date.now() - stepStart };
+      } catch (err) {
+        if (isAbortError(err)) {
+          pushCall({
+            stepId: runStep.stepId,
+            stepLabel: runStep.label,
+            agentName: agent.name,
+            engine: llm.label,
+            model: llm.model,
+            ms: Date.now() - stepStart,
+            ok: false,
+            error: "aborted by user",
+            attempt,
+          });
+          patchRunStep(runStep.stepId, {
+            status: "stopped",
+            output: draft || "(stopped)",
+          });
+          throw err;
+        }
+        const message = (err as Error).message ?? "unknown error";
+        pushCall({
+          stepId: runStep.stepId,
+          stepLabel: runStep.label,
+          agentName: agent.name,
+          engine: llm.label,
+          model: llm.model,
+          ms: Date.now() - stepStart,
+          ok: false,
+          error: message,
+          attempt,
+        });
+        // ─── Self-heal: one clean retry for transient engine failures ──────
+        const kind = classifyRunError(message).kind;
+        if (attempt < MAX_STEP_ATTEMPTS && SELF_HEAL_KINDS.includes(kind) && !signal.aborted) {
+          toast.info(`"${runStep.label}" hit a ${kind} hiccup — retrying once automatically…`, {
+            icon: "🛟",
+            description: "The engine dropped the call mid-step. Tool results already gathered are re-run safely.",
+          });
+          patchRunStep(runStep.stepId, { status: "running", output: "", toolCalls: [] });
+          continue;
+        }
         // Attach recovery metadata so failRun can attribute the failure precisely.
-        const meta = err as Error & { stepId?: string; toolCallsOk?: number };
+        const meta = err as Error & { stepId?: string; toolCallsOk?: number; autoRetried?: boolean };
         meta.stepId = runStep.stepId;
         meta.toolCallsOk = localToolCalls.filter((tc) => tc.ok === true).length;
+        meta.autoRetried = attempt > 1;
         patchRunStep(runStep.stepId, {
           status: "error",
-          output: `${draft ? `${draft}\n\n` : ""}**Error:** ${(err as Error).message}`,
+          output: `${draft ? `${draft}\n\n` : ""}**Error:** ${message}`,
         });
+        throw err;
       }
-      throw err;
     }
+    // Unreachable (loop either returns or throws) — kept for the type checker.
+    throw new Error(`Step "${runStep.label}" exhausted its attempts.`);
   };
 
   try {

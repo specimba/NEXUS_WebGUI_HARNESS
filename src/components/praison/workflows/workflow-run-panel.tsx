@@ -178,6 +178,7 @@ function RunRecoveryCard({
 }) {
   const [dismissed, setDismissed] = React.useState(false);
   const [msgOpen, setMsgOpen] = React.useState(false);
+  const [callsOpen, setCallsOpen] = React.useState(false);
   const err = run.error;
   const lastAttempt = React.useRef<number>(-1);
 
@@ -238,6 +239,11 @@ function RunRecoveryCard({
               </Badge>
               · {err.stepsDone}/{run.steps.length} steps done
               {err.toolCallsOk > 0 ? ` · ${err.toolCallsOk} tool call${err.toolCallsOk === 1 ? "" : "s"} succeeded first` : ""}
+              {err.autoRetried ? (
+                <Badge variant="outline" className="mx-0.5 px-1.5 py-0 text-[10px] border-amber-500/40 bg-amber-500/10 text-amber-500">
+                  auto-retried
+                </Badge>
+              ) : null}
               {hasOutput ? " · partial output preserved" : ""}
             </p>
           ) : (
@@ -279,6 +285,40 @@ function RunRecoveryCard({
           <p className="rounded-lg border border-violet-500/25 bg-violet-500/5 p-2.5 text-xs leading-relaxed">
             {err.hint}
           </p>
+          {run.callLog && run.callLog.length > 0 ? (
+            <div className="rounded-lg border bg-background/60 p-2.5">
+              <button
+                type="button"
+                onClick={() => setCallsOpen((o) => !o)}
+                className="flex w-full items-center justify-between text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                aria-expanded={callsOpen}
+              >
+                <span>
+                  LLM calls · {run.callLog.length} recorded
+                  {run.callLog.some((c) => !c.ok) ? ` · ${run.callLog.filter((c) => !c.ok).length} failed` : " · all ok"}
+                </span>
+                <span>{callsOpen ? "hide" : "show"}</span>
+              </button>
+              {callsOpen ? (
+                <ul className="mt-2 space-y-1 font-mono text-[10.5px] leading-relaxed text-muted-foreground">
+                  {run.callLog.map((c, i) => (
+                    <li key={`${c.at}-${i}`} className="break-words">
+                      <span className="text-foreground/70">#{i + 1}</span>{" "}
+                      {c.stepLabel ? `“${c.stepLabel}” · ` : ""}
+                      {c.engine}
+                      {c.model ? ` · ${c.model}` : ""} · {(c.ms / 1000).toFixed(1)}s{" "}
+                      {c.ok ? (
+                        <span className="text-emerald-500">✓</span>
+                      ) : (
+                        <span className="text-red-400">✗ {c.error ?? "failed"}</span>
+                      )}
+                      {c.attempt && c.attempt > 1 ? ` (attempt ${c.attempt})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
         </>
       ) : null}
 

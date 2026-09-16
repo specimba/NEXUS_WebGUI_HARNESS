@@ -170,6 +170,27 @@ export interface RunErrorInfo {
   llmLabel: string;
   /** Recovery attempts so far on this run (1 = first failure). */
   attempts: number;
+  /** True when the runner already retried this step once automatically before surfacing. */
+  autoRetried?: boolean;
+}
+
+/**
+ * One LLM call attempt inside a run — harness rank-② "logging triad" first
+ * slice: every engine call is recorded with engine/model/duration/outcome so
+ * run diagnostics show exactly WHERE a pipeline died and what a retry fixed.
+ */
+export interface RunCallLogEntry {
+  at: number;
+  stepId?: string;
+  stepLabel?: string;
+  agentName?: string;
+  engine: string;
+  model?: string;
+  ms: number;
+  ok: boolean;
+  error?: string;
+  /** 1-based attempt number for this step call (auto-retries increment it). */
+  attempt?: number;
 }
 
 export interface WorkflowRun {
@@ -185,6 +206,8 @@ export interface WorkflowRun {
   error?: RunErrorInfo;
   /** How many times this run was resumed after a failure/stop. */
   resumeCount?: number;
+  /** Chronological log of LLM calls made during this run (capped, oldest-dropped). */
+  callLog?: RunCallLogEntry[];
 }
 
 export interface Workflow {

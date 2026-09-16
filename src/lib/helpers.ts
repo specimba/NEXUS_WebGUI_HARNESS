@@ -428,8 +428,18 @@ export function runDiagnostics(
       `stepsDone: ${e.stepsDone}/${run.steps.length}`,
       `toolsOk  : ${e.toolCallsOk} (inside the failed step)`,
       `attempts : ${e.attempts}`,
+      `autoRetry: ${e.autoRetried ? "1 (the runner retried this step automatically before surfacing)" : "none"}`,
       `message  : ${e.message}`
     );
+  }
+  if (run.callLog?.length) {
+    lines.push("", "[llm calls]");
+    run.callLog.forEach((c, i) => {
+      const stepRef = c.stepLabel ? `step "${c.stepLabel}"` : "step";
+      lines.push(
+        `- #${i + 1} ${stepRef} · ${c.engine}${c.model ? ` · ${c.model}` : ""} · ${fmtMs(c.ms)} · ${c.ok ? "✓" : `✗ ${c.error ?? "failed"}`}${c.attempt && c.attempt > 1 ? ` (attempt ${c.attempt})` : ""}`
+      );
+    });
   }
   if (run.resumeCount) lines.push(`resumes  : ${run.resumeCount}`);
   lines.push("", "[steps]");
