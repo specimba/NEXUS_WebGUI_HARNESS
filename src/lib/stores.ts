@@ -456,6 +456,8 @@ interface UiState {
   /** Guided "get your free frontier key" wizard visibility (+ optional deep-linked provider). */
   setupWizardOpen: boolean;
   setupWizardProviderId: string | null;
+  /** Image Studio dialog (BYOK image generation) visibility. */
+  imageStudioOpen: boolean;
   /** Scroll target inside Settings ("providers" | "local-models") — consumed by SettingsView. */
   settingsAnchor: "providers" | "local-models" | null;
   setView: (v: View) => void;
@@ -466,6 +468,7 @@ interface UiState {
   requestRunWorkflow: (workflowId: string) => void;
   clearPendingRunWorkflow: () => void;
   setGlobalSearchOpen: (v: boolean) => void;
+  setImageStudioOpen: (v: boolean) => void;
   requestFocusMessage: (convId: string, msgId: string) => void;
   clearPendingFocus: () => void;
   setBusy: (v: boolean) => void;
@@ -490,6 +493,7 @@ export const useUiStore = create<UiState>()(
       workflowBoardOpen: false,
       setupWizardOpen: false,
       setupWizardProviderId: null,
+      imageStudioOpen: false,
       settingsAnchor: null,
       setView: (view) => set({ view, mobileNavOpen: false }),
       setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
@@ -498,6 +502,7 @@ export const useUiStore = create<UiState>()(
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       requestRunWorkflow: (pendingRunWorkflowId) =>
         set({ pendingRunWorkflowId, view: "workflows", mobileNavOpen: false }),
+      setImageStudioOpen: (imageStudioOpen) => set({ imageStudioOpen }),
       clearPendingRunWorkflow: () => set({ pendingRunWorkflowId: null }),
       setGlobalSearchOpen: (globalSearchOpen) => set({ globalSearchOpen }),
       requestFocusMessage: (convId, msgId) =>

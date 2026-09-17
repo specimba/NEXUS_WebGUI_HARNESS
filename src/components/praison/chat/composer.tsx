@@ -8,6 +8,7 @@ import {
   Cog,
   FileText,
   GripVertical,
+  ImagePlus,
   Loader2,
   MessageSquarePlus,
   Mic,
@@ -788,6 +789,20 @@ export function Composer({
               className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground transition-colors hover:text-violet-400"
             >
               <Paperclip className="h-[18px] w-[18px]" aria-hidden />
+            </Button>
+
+            {/* Image Studio — BYOK AI image generation (Vyce · Grok Imagine 2) */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Open Image Studio"
+              title="Image Studio — generate art with Grok Imagine 2 ($0.50/image from daily credits)"
+              disabled={streaming}
+              onClick={() => useUiStore.getState().setImageStudioOpen(true)}
+              className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground transition-colors hover:text-violet-400"
+            >
+              <ImagePlus className="h-[18px] w-[18px]" aria-hidden />
             </Button>
 
             {/* Voice input */}

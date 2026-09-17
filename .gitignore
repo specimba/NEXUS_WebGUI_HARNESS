@@ -40,9 +40,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-# local dev artifacts (root-anchored only — must NOT swallow src files like local-models.tsx)
+# local-* was silently eating src/components/praison/settings/local-models.tsx
+# (three lost-file incidents: r14→r15→r16→r19/20). Keep the glob for runtime
+# artifacts (root-anchored), but NEVER ignore app source under src/.
 /local-*
 /local-*/*
+!src/**
 !src/components/praison/settings/local-models.tsx
 .claude
 .z-ai-config
