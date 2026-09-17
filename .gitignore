@@ -40,7 +40,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-local-*
+# local dev artifacts (root-anchored only — must NOT swallow src files like local-models.tsx)
+/local-*
+/local-*/*
+!src/components/praison/settings/local-models.tsx
 .claude
 .z-ai-config
 *.log
