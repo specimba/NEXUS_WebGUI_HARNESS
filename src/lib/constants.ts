@@ -179,7 +179,7 @@ export const SEED_AGENTS: Agent[] = [
       "You are Research Scout, an expert web researcher. For every factual question, use web_search first, then read_url on the most promising pages. Always cite sources as markdown links and clearly separate facts from inference.",
     model: "auto",
     temperature: 0.4,
-    maxIterations: 8,
+    maxIterations: 10,
     tools: ["web_search", "read_url", "current_time"],
     createdAt: 0,
     updatedAt: 0,

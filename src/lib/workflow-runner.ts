@@ -5,7 +5,7 @@
 import { toast } from "sonner";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
-import { buildRelayWire } from "@/lib/relay";
+import { buildRelayWire, recordRelayHopResult, type RelayTaskFit } from "@/lib/relay";
 import {
   buildConversationalContext,
   buildReviewContext,
@@ -80,6 +80,10 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
     label: "Timeout",
     hint: "The provider took too long to answer. Retry usually helps; if it keeps happening, try a smaller/faster model for this step.",
   },
+  model: {
+    label: "Model",
+    hint: "The model id no longer exists on this provider (renamed or decommissioned). Open Settings → the provider card → “Refresh models” to pull the current roster, pick a live model, then retry. The relay already skipped past it.",
+  },
   unknown: {
     label: "Unknown",
     hint: "The provider returned an error we couldn't classify. Copy the diagnostics below for details — retrying the failed step is still safe.",
@@ -89,6 +93,7 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
 const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
   { kind: "rate-limit", re: /\b429\b|rate.?limit|quota|too many requests/i },
   { kind: "auth", re: /\b(401|403)\b|unauthorized|invalid.{0,12}(api )?key|invalid.?key|forbidden|permission denied/i },
+  { kind: "model", re: /\b404\b|no such model|model.?not.?found|model (.{0,40} )?does not exist|not found|decommissioned|does not exist or is not supported/i },
   { kind: "timeout", re: /timeout|timed? ?out|etimedout|deadline/i },
   {
     kind: "network",
@@ -295,13 +300,23 @@ export async function executeWorkflowRun(
     let draft = "";
     let localToolCalls: ToolCallInfo[] = [];
     const llm = resolveLlm(settings.settings, agent.model);
+    // Task fit (Genius-rotator doctrine): research steps with search tools
+    // prefer fast models first (many quick tool rounds); review/writing steps
+    // prefer flagships first (one excellent pass matters most).
+    const taskFit: RelayTaskFit =
+      runStep.kind === "review"
+        ? "quality"
+        : (agent.tools ?? []).some((t) => t === "web_search" || t === "read_url")
+          ? "research"
+          : "any";
     // Model Relay (Genius-rotator doctrine): when this step's brain fails
     // before streaming anything, the server rotates down the vault's fallback
     // chain instead of dying — the exact 7am-scheduled-run failure mode.
-    const relayHops = buildRelayWire(settings.settings, {
-      providerId: llm.providerId,
-      model: llm.model,
-    });
+    const relayHops = buildRelayWire(
+      settings.settings,
+      { providerId: llm.providerId, model: llm.model },
+      { taskFit }
+    );
     let relayNotes: string[] = [];
     const MAX_STEP_ATTEMPTS = 2; // 1 real attempt + 1 automatic self-heal retry
 
@@ -326,7 +341,15 @@ export async function executeWorkflowRun(
           },
           {
             onStatus: (m) => {
-              if (/Model relay:/i.test(m)) relayNotes.push(m);
+              if (/Model relay:/i.test(m)) {
+                relayNotes.push(m);
+                // Feed the rotator's health memory: [hop:x] = x failed,
+                // [hopok:x] = x answered after a rotation.
+                const failHop = /\[hop:([^\]]+)\]/.exec(m);
+                if (failHop) recordRelayHopResult(failHop[1], false, m.replace(/\s*\[hop:[^\]]+\]\s*$/, ""));
+                const okHop = /\[hopok:([^\]]+)\]/.exec(m);
+                if (okHop) recordRelayHopResult(okHop[1], true);
+              }
             },
             onToken: (t) => {
               draft += t;

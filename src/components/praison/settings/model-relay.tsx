@@ -9,6 +9,8 @@ import * as React from "react";
 import {
   ArrowDown,
   ArrowUp,
+  CircleCheck,
+  CircleAlert,
   Info,
   RotateCcw,
   ShieldCheck,
@@ -28,7 +30,10 @@ import { Switch } from "@/components/ui/switch";
 import { resolveLlm } from "@/lib/llm-config";
 import {
   buildRelayChain,
+  relayHealthSnapshot,
+  resetRelayHealth,
   TIER_LABEL,
+  type RelayHealthEntry,
   type RelayHop,
 } from "@/lib/relay";
 import { useSettingsStore } from "@/lib/stores";
@@ -44,6 +49,18 @@ export function ModelRelayCard() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
   const enabled = settings.relayEnabled !== false;
+
+  // The rotator's health memory refreshes live (runs record hop outcomes).
+  const [health, setHealth] = React.useState<Record<string, RelayHealthEntry>>(() => relayHealthSnapshot());
+  React.useEffect(() => {
+    const t = window.setInterval(() => setHealth(relayHealthSnapshot()), 15_000);
+    const onVis = () => setHealth(relayHealthSnapshot());
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   const primary = resolveLlm(settings);
   // Mirror buildRelayWire's exclusion: the primary is already shown in its own
@@ -98,6 +115,9 @@ export function ModelRelayCard() {
           limit, out of credits, dead model id — the run rotates down this
           chain until a model responds. Same doctrine as a local model relay:
           tier first, then quality, then the built-in engine as the last resort.
+          The chain also adapts per task: research steps (search tools) try
+          fast models first, writing/review steps try flagships first — and
+          hops that failed recently are demoted automatically.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -135,6 +155,7 @@ export function ModelRelayCard() {
               index={i}
               count={chain.length - 1}
               enabled={enabled}
+              health={health[hop.key]}
               onMove={(d) => move(i, d)}
             />
           ))}
@@ -152,6 +173,21 @@ export function ModelRelayCard() {
             <RotateCcw className="h-3 w-3" aria-hidden />
             Reset order
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground"
+            disabled={Object.keys(health).length === 0}
+            onClick={() => {
+              resetRelayHealth();
+              setHealth({});
+              toast.success("Relay health memory cleared");
+            }}
+          >
+            <RotateCcw className="h-3 w-3" aria-hidden />
+            Clear health memory
+          </Button>
           <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Info className="h-3 w-3" aria-hidden />
             Hops without a saved key are skipped automatically.
@@ -167,21 +203,25 @@ function HopRow({
   index,
   count,
   enabled,
+  health,
   onMove,
 }: {
   hop: RelayHop;
   index: number;
   count: number;
   enabled: boolean;
+  health?: RelayHealthEntry;
   onMove: (dir: -1 | 1) => void;
 }) {
   const isAuto = hop.providerId === "auto";
+  const cooling = !!health?.lastFailAt && Date.now() - health.lastFailAt < 5 * 60_000;
   return (
     <div
       role="listitem"
       className={cn(
         "flex items-center gap-2 rounded-lg border px-2.5 py-2",
-        isAuto ? "border-dashed border-border/70" : "border-border"
+        isAuto ? "border-dashed border-border/70" : "border-border",
+        cooling && "border-amber-500/40 bg-amber-500/5"
       )}
     >
       <span className="w-5 shrink-0 text-center font-mono text-[10px] text-muted-foreground">
@@ -199,6 +239,17 @@ function HopRow({
           <Badge variant="outline" className="font-mono text-[10px] font-normal">
             Elo {hop.elo.toFixed(2)}
           </Badge>
+          {cooling ? (
+            <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-[10px] font-normal text-amber-300">
+              <CircleAlert className="mr-0.5 h-2.5 w-2.5" aria-hidden />
+              demoted — failed recently
+            </Badge>
+          ) : health && health.ok > 0 ? (
+            <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-[10px] font-normal text-emerald-400">
+              <CircleCheck className="mr-0.5 h-2.5 w-2.5" aria-hidden />
+              answered {health.ok}×
+            </Badge>
+          ) : null}
         </div>
         {hop.note && (
           <p className="truncate text-[11px] text-muted-foreground">{hop.note}</p>

@@ -32,7 +32,7 @@ import { MemoryDialog } from "@/components/praison/chat/memory-dialog";
 import { MessageItem } from "@/components/praison/chat/message-item";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
-import { buildRelayWire } from "@/lib/relay";
+import { buildRelayWire, recordRelayHopResult } from "@/lib/relay";
 import {
   DEFAULT_TTS_VOICE,
   MAX_CONTEXT_MESSAGES,
@@ -275,6 +275,17 @@ export function ChatView() {
               });
             },
             onIteration: (n) => setStatusLine(n > 1 ? `iteration ${n}` : null),
+            onStatus: (m) => {
+              // Relay rotation trace: feed the rotator's health memory and
+              // surface a clean status line (marker stripped).
+              if (/Model relay:/i.test(m)) {
+                const failHop = /\[hop:([^\]]+)\]/.exec(m);
+                if (failHop) recordRelayHopResult(failHop[1], false, m.replace(/\s*\[hop:[^\]]+\]\s*$/, ""));
+                const okHop = /\[hopok:([^\]]+)\]/.exec(m);
+                if (okHop) recordRelayHopResult(okHop[1], true);
+                setStatusLine(m.replace(/\s*\[hop(?:ok)?:[^\]]+\]\s*$/, ""));
+              }
+            },
           }
         );
 

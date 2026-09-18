@@ -36,6 +36,8 @@ interface ChatBody {
 }
 
 interface RelayWireHop {
+  /** Stable hop key — echoed in rotation status lines so the client's health memory can learn. */
+  key?: string;
   baseUrl?: string;
   apiKey?: string;
   model: string;
@@ -258,6 +260,11 @@ async function runRelayedCustom(body: ChatBody, send: Send, signal: AbortSignal)
           signal
         );
       }
+      // A backup hop answered after the primary died — tell the client's
+      // health memory so this hop gets promoted next time.
+      if (i > 0 && hop.key) {
+        send({ type: "status", message: `Model relay: ${hop.label ?? hop.model} answered ✓ [hopok:${hop.key}]` });
+      }
       return;
     } catch (err) {
       if (isAbort(err)) throw err;
@@ -268,9 +275,11 @@ async function runRelayedCustom(body: ChatBody, send: Send, signal: AbortSignal)
       if (clientSawTokens) throw err;
       if (i === hops.length - 1) throw err;
       const next = hops[i + 1];
+      // [hop:…] marker is consumed by the client's relay health memory — it
+      // demotes recently-failed hops in future chains (Genius-rotator memory).
       send({
         type: "status",
-        message: `Model relay: ${hop.label ?? hop.model} failed (${shortError(err)}) — rotating to ${next.label ?? next.model}…`,
+        message: `Model relay: ${hop.label ?? hop.model} failed (${shortError(err)}) — rotating to ${next.label ?? next.model}…${hop.key ? ` [hop:${hop.key}]` : ""}`,
       });
     }
   }
@@ -298,9 +307,13 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
     ...withImages(body.messages, body.images),
   ];
 
-  for (let iteration = 1; iteration <= maxIterations + 1; iteration++) {
+  let graceUsed = 0; // tool-calls salvaged from the FINAL pass (max 2)
+  for (let iteration = 1; iteration <= maxIterations + 3 && iteration <= 13; iteration++) {
     send({ type: "iteration", n: iteration });
     const isFinalPass = iteration > maxIterations;
+    // One-time grace: when the FINAL pass leaks a tool call as text (Vyce
+    // gateways serialize it into content instead of delta.tool_calls), we
+    // execute it anyway and grant exactly one extra synthesis round.
     // Resilience (r19): gateways like Vyce sit behind rotating upstream pools
     // and occasionally drop a call mid-run (502/504/socket death) — exactly
     // what killed a Morning-Briefing step after 7 successful tool calls.
@@ -421,7 +434,69 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
       continue;
     }
 
-    send({ type: "done", content, toolCalls: collected, iterations: iteration });
+    // ─── Tool-call-as-text salvage (harness r22) ───────────────────────────
+    // Some gateways (Vyce builds) serialize the model's tool call into the
+    // CONTENT channel — "web_searchnum<arg_value>10</arg_value>query<arg_value>…"
+    // — instead of proper delta.tool_calls. Left alone, that markup becomes
+    // the step's "answer" and poisons every downstream step's context. Parse
+    // it, execute it, continue the loop like a real tool call.
+    if (toolCalls.length === 0 && tools.length > 0) {
+      const salvaged = tryParseContentToolCall(content, tools);
+      if (salvaged) {
+        if (!isFinalPass) {
+          send({ type: "status", message: `Model emitted its tool call as text — salvaging: ${salvaged.name}` });
+          const id = `salvage_${Math.random().toString(36).slice(2, 10)}`;
+          const argsStr = JSON.stringify(salvaged.args);
+          msgs.push({ role: "assistant", content });
+          send({ type: "status", message: `Using tool: ${salvaged.name}` });
+          send({ type: "tool_call", id, name: salvaged.name, args: argsStr });
+          const result = await executeTool(salvaged.name, argsStr);
+          collected.push({ id, name: salvaged.name, args: argsStr, result: result.content, ok: result.ok, ms: result.ms });
+          send({ type: "tool_result", id, name: salvaged.name, ok: result.ok, ms: result.ms, content: clip(result.content, 4000) });
+          msgs.push({
+            role: "user",
+            content: `TOOL_RESULT (${salvaged.name}, ok=${result.ok}):\n${clip(result.content, 6000)}\n\nContinue: use tools if you need more information (call them normally), or give your final markdown answer.`,
+          });
+          continue;
+        }
+        // Final-pass leak: execute the salvaged call, grant up to TWO extra
+        // synthesis rounds (research models are stubborn — the first grace
+        // prompt gets an escalated retry, then the digest fallback fires).
+        if (graceUsed < 2 && iteration <= maxIterations + 2) {
+          graceUsed += 1;
+          send({ type: "status", message: `The model tried another tool call (${salvaged.name}) — running it, then finalizing…` });
+          const id = `salvage_${Math.random().toString(36).slice(2, 10)}`;
+          const argsStr = JSON.stringify(salvaged.args);
+          msgs.push({ role: "assistant", content });
+          send({ type: "tool_call", id, name: salvaged.name, args: argsStr });
+          const result = await executeTool(salvaged.name, argsStr);
+          collected.push({ id, name: salvaged.name, args: argsStr, result: result.content, ok: result.ok, ms: result.ms });
+          send({ type: "tool_result", id, name: salvaged.name, ok: result.ok, ms: result.ms, content: clip(result.content, 4000) });
+          msgs.push({
+            role: "user",
+            content:
+              graceUsed === 1
+                ? `TOOL_RESULT (${salvaged.name}, ok=${result.ok}):\n${clip(result.content, 6000)}\n\nYour tool budget is now spent. Write your FINAL markdown answer now — plain prose/markdown only, no tool calls of any kind.`
+                : `TOOL_RESULT (${salvaged.name}, ok=${result.ok}):\n${clip(result.content, 6000)}\n\nFINAL WARNING: this is your LAST chance. If you reply with another tool call it will be DISCARDED and the run ends with your research notes only. Write your final markdown answer NOW, synthesizing what you already have — plain prose/markdown only.`,
+          });
+          send({ type: "status", message: "Finalizing answer…" });
+          continue;
+        }
+      }
+    }
+
+    // Cleanup: never let leaked tool-call markup masquerade as the answer.
+    const stripped = stripContentToolCall(content);
+    // If the answer was ENTIRELY a leaked tool call, still hand the next
+    // step real material: digest what the tools actually gathered.
+    const finalContent =
+      /^_The model ended/.test(stripped) && collected.length > 0
+        ? `${stripped}\n\n**Research material gathered (auto-digest):**\n${collected
+            .slice(-6)
+            .map((tc) => `- ${tc.name} ${tc.ok ? "✓" : "✗"} — ${clip(tc.result || "(no result)", 160).replace(/\n/g, " ")}`)
+            .join("\n")}`
+        : stripped;
+    send({ type: "done", content: finalContent, toolCalls: collected, iterations: iteration });
     return;
   }
   throw new Error("Agent loop exceeded maximum iterations.");
@@ -706,6 +781,115 @@ function cleanFinalText(text: string): string {
     }
   }
   return text;
+}
+
+// ─── Tool-call-as-text salvage parser (harness r22) ──────────────────────────
+// Gateways like Vyce sometimes serialize a model's tool call into the CONTENT
+// channel instead of delta.tool_calls. Known shapes:
+//   1. Mangled arg-tag soup:  "web_searchnum<arg_value>10</arg_value>query<arg_value>…</arg_value>"
+//      (tool name immediately followed by bare arg keys + <arg_value> pairs)
+//   2. Hermes-style:          "<tool_call>{"name": … , "arguments": …}</tool_call>"
+//   3. Bare JSON protocol:    {"tool": "web_search", "args": { … }}
+function coerceArgValue(v: string): string | number | boolean {
+  const t = v.trim();
+  if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t);
+  if (/^(true|false)$/i.test(t)) return t.toLowerCase() === "true";
+  return t;
+}
+
+function toolArgsFromJson(j: Record<string, unknown>): Record<string, unknown> | null {
+  const raw = (j.args ?? j.arguments ?? j.parameters ?? {}) as unknown;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, unknown>;
+  if (typeof raw === "string" && raw.trim().startsWith("{")) {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function tryJsonObj(s: string): Record<string, unknown> | null {
+  try {
+    const j = JSON.parse(s) as unknown;
+    return j && typeof j === "object" && !Array.isArray(j) ? (j as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse a tool call that leaked into the assistant CONTENT channel.
+ * Returns { name, args } when the text unambiguously matches a known tool.
+ */
+function tryParseContentToolCall(
+  content: string,
+  defs: ToolDef[]
+): { name: string; args: Record<string, unknown> } | null {
+  const text = content.trim();
+  if (!text || text.length > 4000) return null; // long answers are prose, not calls
+
+  // Shape 2 — Hermes-style <tool_call>{json}</tool_call>
+  const hermesRe = new RegExp("<" + "tool_call\\s*>\\s*([\\s\\S]+?)\\s*</" + "tool_call\\s*>", "i");
+  const hermes = hermesRe.exec(text);
+  if (hermes) {
+    const j = tryJsonObj(hermes[1]);
+    if (j) {
+      const name = typeof (j.name ?? j.tool) === "string" ? String(j.name ?? j.tool) : "";
+      const args = toolArgsFromJson(j);
+      if (name && args && defs.some((d) => d.function.name === name)) return { name, args };
+    }
+  }
+
+  // Shape 3 — bare JSON protocol object
+  if (text.startsWith("{")) {
+    const j = tryJsonObj(text);
+    if (j && (j.tool || j.name)) {
+      const name = String(j.tool ?? j.name);
+      const args = toolArgsFromJson(j);
+      if (args && defs.some((d) => d.function.name === name)) return { name, args };
+    }
+  }
+
+  // Shape 1 — mangled arg-tag soup, matched by known tool name prefix:
+  // "web_searchnum<arg_value>10</arg_value>query<arg_value>daily AI news …</arg_value>"
+  for (const d of defs) {
+    const n = d.function.name;
+    if (!text.toLowerCase().startsWith(n.toLowerCase())) continue;
+    const rest = text.slice(n.length).trim();
+    if (!rest) continue;
+    if (/<arg_value>/i.test(rest)) {
+      const args: Record<string, unknown> = {};
+      const pair = /([a-zA-Z_]\w*)\s*<arg_value>([\s\S]*?)<\/arg_value>/gi;
+      let pm: RegExpExecArray | null;
+      while ((pm = pair.exec(rest))) args[pm[1]] = coerceArgValue(pm[2]);
+      if (Object.keys(args).length > 0) return { name: n, args };
+    }
+    if (rest.startsWith("{")) {
+      const j = tryJsonObj(rest);
+      if (j) {
+        const args = toolArgsFromJson(j) ?? {};
+        return { name: n, args };
+      }
+    }
+  }
+  return null;
+}
+
+/** Remove leaked tool-call markup from a final answer (never show it as prose). */
+function stripContentToolCall(content: string): string {
+  const stripped = content
+    .replace(/<arg_(?:key|value)>[\s\S]*?<\/arg_(?:key|value)>/gi, "")
+    .replace(/<arg_(?:key|value)[^>]*>/gi, "")
+    .replace(new RegExp("<" + "tool_call[\\s\\S]*?</" + "tool_call\\s*>", "gi"), "")
+    .replace(new RegExp("<" + "tool_call[^>]*>", "gi"), "")
+    .trim();
+  if (stripped === content.trim()) return content;
+  if (stripped.length === 0) {
+    return "_The model ended with another tool call after the tool budget was spent — the gathered results above are the step's work. Retry the step for a fuller synthesized answer._";
+  }
+  return stripped;
 }
 
 /** The built-in SDK returns the full completion at once; emit it in small chunks for a live feel. */

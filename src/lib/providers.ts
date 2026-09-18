@@ -35,8 +35,13 @@ export interface FreeProvider {
   /** 3-4 concrete steps from zero to a working key. */
   guide: string[];
   models: ProviderModel[];
-  /** Providers whose free catalog rotates — fetched live via /api/providers/free-models. */
-  liveCatalog?: "openrouter" | "pollinations";
+  /**
+   * Live catalog key — when set, the roster can be refreshed at runtime via
+   * /api/providers/free-models (GET for keyless rotating catalogs, POST with
+   * the vault key for key-authed /models). The value doubles as the key into
+   * the persisted LiveCatalog map; it is the provider id for every provider.
+   */
+  liveCatalog?: string;
   /** Optional account-info endpoint (relative to baseUrl) for a credits widget, e.g. "/v1/me". */
   mePath?: string;
 }
@@ -61,6 +66,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       "DeepSeek V4.1 is preselected — the current efficiency-frontier pick; Claude Sonnet 4.6, V4 Flash and Agnes 3.0 (512K ctx) are one click away.",
       "Bonus endpoints: /v1/messages (Anthropic-style) and /v1/images/generations (Grok Imagine 2, $0.50/img).",
     ],
+    liveCatalog: "vyce",
     models: [
       { id: "deepseek-v4.1", label: "DeepSeek V4.1", note: "Flagship MoE · 270K ctx · tools · $0.15/$0.60 per 1M" },
       { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", note: "Ultra-fast · 270K ctx · tools · $0.22/$0.66" },
@@ -81,10 +87,12 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     docsUrl: "https://console.groq.com/docs",
     featured: true,
     limits: "Free: ~30 RPM · 1,000 req/day · 8K tokens/min on the big models",
+    liveCatalog: "groq",
     guide: [
       "Open console.groq.com/keys and sign up (Google or email, ~2 minutes).",
       "Click “Create API Key” and copy it — it starts with gsk_.",
       "Paste it here and hit Validate. That's it.",
+      "Groq ships new open models weekly — hit Refresh models to pull the current roster.",
     ],
     models: [
       { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B", note: "OpenAI open-weight · best all-round" },
@@ -104,16 +112,18 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     docsUrl: "https://ai.google.dev/gemini-api/docs",
     featured: true,
     limits: "Free: ~10-15 RPM · 100-1,000 req/day per model (resets midnight PT)",
+    liveCatalog: "google-ai-studio",
     guide: [
       "Open aistudio.google.com/apikey and sign in with a Google account.",
       "“Create API key” — starts with AIza. No credit card needed.",
       "Paste it here. Note: free-tier data may be used by Google for training.",
+      "Gemini ships fast — hit Refresh models to pull the current roster straight from Google.",
     ],
     models: [
-      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", note: "Fast + vision + 1M ctx" },
-      { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite", note: "Highest free quota" },
-      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", note: "Strongest · tiny free quota" },
-      { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash", note: "Newest generation" },
+      { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", note: "Current generation · fast + vision + 1M ctx" },
+      { id: "gemini-3.8-flash-lite", label: "Gemini 3.8 Flash-Lite", note: "Highest free quota" },
+      { id: "gemini-3.5-pro", label: "Gemini 3.5 Pro", note: "Strongest · tiny free quota" },
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", note: "Legacy · still available" },
     ],
   },
   {
@@ -131,7 +141,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     guide: [
       "Open openrouter.ai/keys, sign up (email or GitHub) — no card needed for free use.",
       "Create a key — starts with sk-or-v1-.",
-      "Use the “Refresh live :free catalog” button below — the free roster rotates weekly.",
+      "Use the “Refresh models” button below — the free roster rotates weekly.",
     ],
     models: [
       { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning", note: "1M ctx · NVIDIA" },
@@ -150,6 +160,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     signupUrl: "https://console.mistral.ai",
     docsUrl: "https://docs.mistral.ai",
     limits: "Free Experiment plan: ~1 req/s, low priority (can queue at peak)",
+    liveCatalog: "mistral",
     guide: [
       "Open console.mistral.ai and sign up (no card required).",
       "Accept the Experiment (free) plan when asked during onboarding.",
@@ -171,6 +182,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     signupUrl: "https://z.ai",
     docsUrl: "https://docs.z.ai",
     limits: "Free: unlimited-ish on Flash models · RPM unpublished",
+    liveCatalog: "zai",
     guide: [
       "Open z.ai and register an account.",
       "Go to the API console and create a key.",
@@ -191,6 +203,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     signupUrl: "https://build.nvidia.com",
     docsUrl: "https://docs.api.nvidia.com",
     limits: "Free: ~1,000 credits (1 credit ≈ 1 call, not per token) · 40 RPM",
+    liveCatalog: "nvidia-nim",
     guide: [
       "Open build.nvidia.com and join the (free) NVIDIA developer program.",
       "Pick any model page → “Get API Key” — starts with nvapi-.",
@@ -214,6 +227,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     signupUrl: "https://cloud.sambanova.ai",
     docsUrl: "https://docs.sambanova.ai",
     limits: "Free tier: per-model RPM/RPD tables (~10-20 RPM) · stays free without a card",
+    liveCatalog: "sambanova",
     guide: [
       "Open cloud.sambanova.ai and sign up.",
       "Create an API key in the dashboard.",
@@ -234,6 +248,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     signupUrl: "https://dashboard.cohere.com/api-keys",
     docsUrl: "https://docs.cohere.com",
     limits: "Trial key: ~1,000 calls/month · 20 RPM — not for production",
+    liveCatalog: "cohere",
     guide: [
       "Open dashboard.cohere.com/api-keys and register.",
       "Create a “trial” key (40-char string, no prefix).",
@@ -254,6 +269,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     signupUrl: "https://api.together.ai",
     docsUrl: "https://docs.together.ai",
     limits: "Free endpoints are rate-limited (unpublished) and rotate periodically",
+    liveCatalog: "together",
     guide: [
       "Open api.together.ai and sign up (no card for the free endpoints).",
       "Create an API key (64-hex string).",
@@ -275,6 +291,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     docsUrl: "https://developers.cloudflare.com/workers-ai/",
     needsAccountId: true,
     limits: "Free: 10,000 Neurons/day (a 70B chat ≈ 1-2K neurons) — light use",
+    liveCatalog: "cloudflare",
     guide: [
       "In the Cloudflare dashboard create an API token (Workers AI edit permission).",
       "Copy your Account ID (dashboard home → right column).",
@@ -301,7 +318,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       "Keyless anonymous access works from some IPs but shares a global budget — mostly exhausted.",
       "Create a free key at enter.pollinations.ai (starts with sk_) for reliable keyed access.",
       "If a chat replies with a “key budget” notice, raise the budget on your key's page, then retry.",
-      "The online roster is small right now (GPT-OSS 20B, reasoning + tools) — “Refresh live catalog” pulls what's up.",
+      "The online roster is small right now (GPT-OSS 20B, reasoning + tools) — “Refresh models” pulls what's up.",
     ],
     models: [{ id: "openai-fast", label: "OpenAI Fast", note: "GPT-OSS 20B · reasoning + tools · online now" }],
   },
@@ -315,6 +332,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     signupUrl: "https://cloud.cerebras.ai",
     cardRequired: true,
     limits: "Trial: $5 credits · 30 days · requires a verified payment method",
+    liveCatalog: "cerebras",
     guide: [
       "Open cloud.cerebras.ai and create an account.",
       "Add a payment method to activate the trial (card required — flagged honestly).",

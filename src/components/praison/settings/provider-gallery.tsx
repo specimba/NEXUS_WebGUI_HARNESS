@@ -44,8 +44,30 @@ type TestResult = { ok: true; ms: number } | { ok: false; error: string };
 type TestMap = Record<string, TestResult | undefined>;
 
 /** Result of an account/credits probe (providers with mePath — Vyce today). */
-type CreditsInfo = { name?: string; balance?: number; rateLimit?: number; enabled?: boolean; at: number; error?: string };
+type CreditsInfo = {
+  name?: string;
+  balance?: number;
+  rateLimit?: number;
+  enabled?: boolean;
+  totalSpent?: number;
+  totalRequests?: number;
+  at: number;
+  error?: string;
+};
 type CreditsMap = Record<string, CreditsInfo | undefined>;
+
+/** Timestamps of the last successful live-model refresh per provider (persisted). */
+type LiveAtMap = Record<string, number>;
+const LIVE_AT_KEY = "praison-free-catalog-at";
+
+function loadLiveAt(): LiveAtMap {
+  try {
+    const raw = localStorage.getItem(LIVE_AT_KEY);
+    return raw ? (JSON.parse(raw) as LiveAtMap) : {};
+  } catch {
+    return {};
+  }
+}
 
 function fmtRel(ts: number | undefined): string {
   if (!ts) return "never";
@@ -69,6 +91,8 @@ export function ProviderGallery() {
   const [tests, setTests] = React.useState<TestMap>({});
   const [credits, setCredits] = React.useState<CreditsMap>({});
   const [live, setLive] = React.useState<LiveCatalog>(() => loadLiveCatalog());
+  const [liveAt, setLiveAt] = React.useState<LiveAtMap>(() => loadLiveAt());
+  const [refreshing, setRefreshing] = React.useState<Record<string, boolean>>({});
 
   const featured = FREE_PROVIDERS.filter((p) => p.featured);
   const rest = FREE_PROVIDERS.filter((p) => !p.featured);
@@ -178,13 +202,20 @@ export function ProviderGallery() {
         balance?: number;
         rateLimit?: number;
         enabled?: boolean;
+        totalSpent?: number;
+        totalRequests?: number;
         error?: string;
       };
       if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
       setCredits((c) => ({ ...c, [p.id]: { ...data, at: Date.now() } }));
+      // Honesty first: some providers (Vyce) apply daily free credits at request
+      // time and report a $0.00 key-level balance — surface USAGE instead of a
+      // misleading "balance $0.00".
+      const zeroBalance = data.balance != null && data.balance === 0;
       toast.success(`${p.name} account checked${data.name ? ` — ${data.name}` : ""}`, {
-        description:
-          data.balance != null
+        description: zeroBalance
+          ? `Key balance reads $0.00 — daily free credits are applied at request time and are not exposed by the API (dashboard-only). Usage so far: $${(data.totalSpent ?? 0).toFixed(2)} spent · ${data.totalRequests ?? 0} calls · ${data.rateLimit ?? "?"} RPM.`
+          : data.balance != null
             ? `Balance $${data.balance.toFixed(2)} · ${data.rateLimit ?? "?"} RPM limit${data.enabled === false ? " · KEY DISABLED" : ""}`
             : "Account reachable.",
       });
@@ -194,6 +225,86 @@ export function ProviderGallery() {
       toast.error("Account check failed", { description: truncate(message, 90) });
     } finally {
       setBusy(null);
+    }
+  }
+
+  /** Persist the live catalog + refresh timestamps. */
+  function persistLive(next: LiveCatalog, nextAt: LiveAtMap) {
+    setLive(next);
+    setLiveAt(nextAt);
+    try {
+      localStorage.setItem(LIVE_CATALOG_KEY, JSON.stringify(next));
+      localStorage.setItem(LIVE_AT_KEY, JSON.stringify(nextAt));
+    } catch {
+      /* quota */
+    }
+  }
+
+  /**
+   * Refresh ONE provider's model roster from its live /models endpoint.
+   * Works for every registry provider (r22): key-authed catalogs POST the
+   * vault key per-request; OpenRouter/Pollinations delegate keyless.
+   * Returns the live model count, or null on failure (error toasted).
+   */
+  async function refreshProviderModels(p: FreeProvider): Promise<number | null> {
+    const entry = settings.providerKeys?.[p.id];
+    const key = entry?.key?.trim() || "";
+    setRefreshing((r) => ({ ...r, [p.id]: true }));
+    try {
+      const res = await fetch("/api/providers/free-models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerId: p.id, key, accountId: entry?.accountId }),
+      });
+      const data = (await res.json()) as {
+        models?: { id: string; label?: string; contextLength?: number }[];
+        error?: string;
+        cached?: boolean;
+      };
+      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
+      const models = data.models ?? [];
+      persistLive({ ...live, [p.id]: models }, { ...liveAt, [p.id]: Date.now() });
+      return models.length;
+    } catch (err) {
+      toast.error(`${p.name} model refresh failed`, {
+        description: truncate(err instanceof Error ? err.message : "Unknown error", 110),
+      });
+      return null;
+    } finally {
+      setRefreshing((r) => ({ ...r, [p.id]: false }));
+    }
+  }
+
+  /** THE single renew button: refresh every READY provider's roster in one pass.
+   *  Providers without a saved key are skipped silently (their /models needs a
+   *  key) — a per-card Refresh still explains what's missing. */
+  async function refreshAllModels() {
+    if (Object.values(refreshing).some(Boolean)) return;
+    const targets = FREE_PROVIDERS.filter(
+      (p) => p.liveCatalog && (p.noKey || !!settings.providerKeys?.[p.id]?.key?.trim())
+    );
+    let total = 0;
+    let okCount = 0;
+    const failures: string[] = [];
+    for (const p of targets) {
+      const n = await refreshProviderModels(p);
+      if (n != null) {
+        total += n;
+        okCount += 1;
+      } else {
+        failures.push(p.name);
+      }
+    }
+    if (okCount > 0) {
+      const skipped = FREE_PROVIDERS.filter((p) => p.liveCatalog && !targets.includes(p)).length;
+      toast.success(`${total} live models across ${okCount}/${targets.length} ready providers`, {
+        description: [
+          failures.length ? `Failed (cached rosters kept): ${failures.join(", ")}` : null,
+          skipped > 0 ? `${skipped} provider${skipped === 1 ? "" : "s"} skipped — add a key on their card to refresh those.` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      });
     }
   }
 
@@ -259,6 +370,36 @@ export function ProviderGallery() {
   const modelOptionsFor = (p: FreeProvider): { id: string; label: string; note?: string; badge?: string; badgeTone?: "violet" | "emerald" | "amber" | "muted" }[] =>
     withSavedOption(providerModelOptions(p, live), entryFor(p).model || p.models[0]?.id);
 
+  /** Universal per-provider refresh button (works for every registry provider). */
+  const renderRefreshButton = (p: FreeProvider, className = "") => {
+    const isRefreshing = !!refreshing[p.id];
+    const liveCount = live[p.id]?.length ?? 0;
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className={cn("h-6 px-2 text-[11px]", className)}
+        onClick={(e) => {
+          e.stopPropagation();
+          void refreshProviderModels(p);
+        }}
+        disabled={isRefreshing}
+        title={`Pull ${p.name}'s current model roster from its /models endpoint${liveCount ? ` · ${liveCount} live now · checked ${fmtRel(liveAt[p.id])}` : ""}`}
+      >
+        {isRefreshing ? (
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+        ) : (
+          <RefreshCw className="h-3 w-3" aria-hidden />
+        )}
+        Refresh models
+        {liveCount > 0 ? (
+          <span className="ml-1 rounded-full bg-violet-500/15 px-1.5 text-[10px] font-medium text-violet-300">{liveCount}</span>
+        ) : null}
+      </Button>
+    );
+  };
+
   const renderCard = (p: FreeProvider, featuredCard = false) => {
     const entry = entryFor(p);
     const hasKey = p.noKey || !!entry.key?.trim();
@@ -311,9 +452,9 @@ export function ProviderGallery() {
                   no card
                 </Badge>
               )}
-              {p.liveCatalog ? (
-                <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                  <RefreshCw className="mr-0.5 h-2.5 w-2.5" aria-hidden /> live catalog
+              {p.liveCatalog && (live[p.id]?.length ?? 0) > 0 ? (
+                <Badge variant="outline" className="border-violet-500/40 px-1.5 py-0 text-[10px] text-violet-300">
+                  <RefreshCw className="mr-0.5 h-2.5 w-2.5" aria-hidden /> {live[p.id]!.length} live
                 </Badge>
               ) : null}
             </span>
@@ -418,25 +559,14 @@ export function ProviderGallery() {
 
             {/* Model picker — searchable curated + live, stale-saved stays visible */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Default model</Label>
-                {p.liveCatalog ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-[11px]"
-                    onClick={refreshLiveCatalog}
-                    disabled={busy === "openrouter-live"}
-                  >
-                    {busy === "openrouter-live" ? (
-                      <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                    ) : (
-                      <RefreshCw className="h-3 w-3" aria-hidden />
-                    )}
-                    Refresh live :free catalog
-                  </Button>
-                ) : null}
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <Label className="text-xs">
+                  Default model
+                  {liveAt[p.id] ? (
+                    <span className="ml-1.5 font-normal text-muted-foreground">· checked {fmtRel(liveAt[p.id])}</span>
+                  ) : null}
+                </Label>
+                {renderRefreshButton(p)}
               </div>
               <ModelPicker
                 value={selectedModel}
@@ -450,30 +580,8 @@ export function ProviderGallery() {
                 placeholder="Pick a model…"
                 searchPlaceholder={`Search ${p.name} models…`}
                 emptyTitle="No model matches"
-                emptyHint={
-                  p.liveCatalog
-                    ? "Curated + live :free models. Clear the search, or refresh the live catalog."
-                    : "Clear the search to see this provider's full catalog."
-                }
-                footer={
-                  p.liveCatalog ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start text-[11px] text-muted-foreground"
-                      onClick={refreshLiveCatalog}
-                      disabled={busy === "openrouter-live"}
-                    >
-                      {busy === "openrouter-live" ? (
-                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                      ) : (
-                        <RefreshCw className="h-3 w-3" aria-hidden />
-                      )}
-                      Refresh live :free catalog
-                    </Button>
-                  ) : undefined
-                }
+                emptyHint="Clear the search, or hit Refresh models to pull the current roster."
+                footer={renderRefreshButton(p, "w-full justify-start")}
               />
             </div>
 
@@ -549,10 +657,23 @@ export function ProviderGallery() {
                   <span className="text-[11px] text-muted-foreground">validated {fmtRel(entry.validatedAt)}</span>
                 ) : null}
                 {credits[p.id] && !credits[p.id]!.error ? (
-                  <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-300">
+                  <Badge
+                    variant="outline"
+                    className="max-w-full border-violet-500/40 bg-violet-500/10 font-normal text-violet-300"
+                    title={
+                      credits[p.id]!.balance === 0
+                        ? "This provider applies daily free credits at request time — the API key-level balance always reads $0.00 and daily credit status is dashboard-only. Usage figures come from the account endpoint."
+                        : `Live from ${p.mePath}`
+                    }
+                  >
                     {credits[p.id]!.name ? `${credits[p.id]!.name} · ` : ""}
-                    {credits[p.id]!.balance != null ? `$${credits[p.id]!.balance!.toFixed(2)}` : "account ok"}
-                    {credits[p.id]!.rateLimit != null ? ` · ${credits[p.id]!.rateLimit} RPM` : ""} · checked {fmtRel(credits[p.id]!.at)}
+                    {credits[p.id]!.balance != null && credits[p.id]!.balance! > 0
+                      ? `$${credits[p.id]!.balance!.toFixed(2)} · `
+                      : credits[p.id]!.totalSpent != null
+                        ? `$${credits[p.id]!.totalSpent!.toFixed(2)} spent · ${credits[p.id]!.totalRequests ?? 0} calls · `
+                        : ""}
+                    {credits[p.id]!.rateLimit != null ? `${credits[p.id]!.rateLimit} RPM · ` : ""}
+                    checked {fmtRel(credits[p.id]!.at)}
                   </Badge>
                 ) : credits[p.id]?.error ? (
                   <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-500 max-w-full font-normal">
@@ -578,16 +699,34 @@ export function ProviderGallery() {
               browser only — zero telemetry, sent nowhere but the provider you pick.
             </CardDescription>
           </div>
-          <a
-            href={FREELLM_SH_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs text-violet-400 transition-colors hover:border-violet-500/40 hover:text-violet-300"
-            title="The community index of free frontier models this gallery is curated against"
-          >
-            freellm.sh index
-            <ExternalLink className="h-3 w-3" aria-hidden />
-          </a>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => void refreshAllModels()}
+              disabled={Object.values(refreshing).some(Boolean)}
+              title="Pull every provider's current model roster in one pass — Gemini, Groq, Vyce, Mistral, NVIDIA and the rest"
+            >
+              {Object.values(refreshing).some(Boolean) ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              )}
+              Refresh all models
+            </Button>
+            <a
+              href={FREELLM_SH_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs text-violet-400 transition-colors hover:border-violet-500/40 hover:text-violet-300"
+              title="The community index of free frontier models this gallery is curated against"
+            >
+              freellm.sh index
+              <ExternalLink className="h-3 w-3" aria-hidden />
+            </a>
+          </div>
           <Button
             type="button"
             size="sm"
@@ -608,9 +747,10 @@ export function ProviderGallery() {
         {/* The rest */}
         <div className="grid items-start gap-3">{rest.map((p) => renderCard(p))}</div>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Catalog curated against freellm.sh + official vendor docs (Sept 2026). OpenRouter&apos;s free roster
-          rotates weekly — use its live refresh. Registering takes 2-5 minutes per provider; nothing is
-          uploaded anywhere by this app.
+          Catalog curated against freellm.sh + official vendor docs, and refreshed live: every provider card
+          has a <span className="text-violet-400">Refresh models</span> button that pulls its current roster
+          straight from the source (rosters rotate — Gemini, Groq and Vyce ship new models constantly).
+          Registering takes 2-5 minutes per provider; nothing is uploaded anywhere by this app.
         </p>
       </CardContent>
     </Card>
