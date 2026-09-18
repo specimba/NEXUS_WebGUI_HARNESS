@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { PageHeader, ThemeToggle } from "@/components/praison/atoms";
 import { ThemePicker } from "@/components/praison/settings/theme-picker";
 import { LocalModelsPanel } from "@/components/praison/settings/local-models";
+import { ModelRelayCard } from "@/components/praison/settings/model-relay";
 import { ProviderCard } from "@/components/praison/settings/provider-card";
 import { ProviderGallery } from "@/components/praison/settings/provider-gallery";
 import { SetupWizard } from "@/components/praison/settings/setup-wizard";
@@ -224,6 +225,7 @@ export function SettingsView() {
           <div id="local-models" className="scroll-mt-4">
             <LocalModelsPanel />
           </div>
+          <ModelRelayCard />
           <ProviderCard />
 
           {/* ── Behavior ─────────────────────────────────────────────── */}

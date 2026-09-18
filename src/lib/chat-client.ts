@@ -17,6 +17,12 @@ export interface RunAgentParams {
   tools?: ToolId[];
   /** Images attached to the newest user message (data URLs) — vision path. */
   images?: { name: string; dataUrl: string }[];
+  /**
+   * Model Relay fallback hops (Genius-rotator doctrine): tried in order when
+   * the primary fails while nothing has streamed. Built from the vault via
+   * buildRelayWire() — keys travel per-request, server stays stateless.
+   */
+  relay?: { baseUrl?: string; apiKey?: string; model: string; label?: string; useAuto?: boolean }[];
   signal?: AbortSignal;
 }
 
@@ -76,6 +82,7 @@ export async function runAgentChat(
       system: params.system,
       messages: params.messages,
       tools: params.tools ?? [],
+      ...(params.relay && params.relay.length > 0 ? { relay: params.relay } : {}),
       ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
     }),
     signal: params.signal,

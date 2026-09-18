@@ -32,6 +32,7 @@ import { MemoryDialog } from "@/components/praison/chat/memory-dialog";
 import { MessageItem } from "@/components/praison/chat/message-item";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
+import { buildRelayWire } from "@/lib/relay";
 import {
   DEFAULT_TTS_VOICE,
   MAX_CONTEXT_MESSAGES,
@@ -226,6 +227,9 @@ export function ChatView() {
           .getState()
           .conversations.find((c) => c.id === convId)?.memory;
         const llm = resolveLlm(settings, selectedAgent.model);
+        const relayHops = settings.relayEnabled === false
+          ? []
+          : buildRelayWire(settings, { providerId: llm.providerId, model: llm.model });
         const result = await runAgentChat(
           {
             provider: llm.provider,
@@ -238,6 +242,7 @@ export function ChatView() {
               selectedAgent.instructions + buildMemoryBlock(convMemory),
             tools: selectedAgent.tools,
             messages: history,
+            ...(relayHops.length > 0 ? { relay: relayHops } : {}),
             images: images && images.length > 0 ? images : undefined,
             signal: controller.signal,
           },

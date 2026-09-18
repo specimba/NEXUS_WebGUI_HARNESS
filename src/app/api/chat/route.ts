@@ -26,6 +26,22 @@ interface ChatBody {
   tools?: ToolId[];
   /** Images attached to the LAST user message (data URLs) — enables vision. */
   images?: ChatImage[];
+  /**
+   * Model Relay — ordered fallback hops (Genius-rotator doctrine). The primary
+   * runs first (baseUrl/model above); when it fails while NOTHING has streamed
+   * to the client, the server rotates down this list until a hop answers.
+   * Keys travel per-request from the user's vault; the server stays stateless.
+   */
+  relay?: RelayWireHop[];
+}
+
+interface RelayWireHop {
+  baseUrl?: string;
+  apiKey?: string;
+  model: string;
+  label?: string;
+  /** True ⇒ use the built-in auto engine for this hop (no external endpoint). */
+  useAuto?: boolean;
 }
 
 const MAX_IMAGES = 4;
@@ -97,7 +113,7 @@ export async function POST(req: NextRequest) {
         // like Pollinations work without one).
         const useCustom = body.provider === "custom" && !!body.baseUrl;
         if (useCustom) {
-          await runCustomEngine(body, send, req.signal);
+          await runRelayedCustom(body, send, req.signal);
         } else {
           await runAutoEngine(body, send, req.signal);
         }
@@ -208,6 +224,59 @@ interface UpstreamToolCall {
   args: string;
 }
 
+/**
+ * Model Relay runner: try the primary endpoint, then rotate down body.relay
+ * while nothing has streamed to the client. Rotation covers every failure the
+ * user cannot fix mid-run — gateway 5xx/network death, 429 rate limits, 402
+ * out-of-credits, dead model ids — the "Genius rotator" contract: the chain
+ * answers even when the head of the chain is having a bad day.
+ */
+async function runRelayedCustom(body: ChatBody, send: Send, signal: AbortSignal): Promise<void> {
+  const primary: RelayWireHop = {
+    baseUrl: body.baseUrl,
+    apiKey: body.apiKey,
+    model: body.model ?? "auto",
+    label: body.model ? `primary (${body.model})` : "primary",
+  };
+  const hops = [primary, ...(body.relay ?? [])];
+  let clientSawTokens = false;
+  const sendGate: Send = (evt) => {
+    if (evt.type === "token") clientSawTokens = true;
+    send(evt);
+  };
+
+  let lastErr: unknown = null;
+  for (let i = 0; i < hops.length; i++) {
+    const hop = hops[i];
+    try {
+      if (hop.useAuto || !hop.baseUrl) {
+        await runAutoEngine({ ...body, provider: "auto", baseUrl: undefined }, sendGate, signal);
+      } else {
+        await runCustomEngine(
+          { ...body, baseUrl: hop.baseUrl, apiKey: hop.apiKey, model: hop.model },
+          sendGate,
+          signal
+        );
+      }
+      return;
+    } catch (err) {
+      if (isAbort(err)) throw err;
+      lastErr = err;
+      // Mid-stream death: the client already rendered partial output from this
+      // hop — rotating now would stitch two models into one answer. Surface it
+      // honestly; the step-level self-heal (if any) recovers cleanly.
+      if (clientSawTokens) throw err;
+      if (i === hops.length - 1) throw err;
+      const next = hops[i + 1];
+      send({
+        type: "status",
+        message: `Model relay: ${hop.label ?? hop.model} failed (${shortError(err)}) — rotating to ${next.label ?? next.model}…`,
+      });
+    }
+  }
+  throw lastErr ?? new Error("Relay exhausted with no error");
+}
+
 async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal): Promise<void> {
   if (body.images?.length) {
     send({ type: "status", message: `Analyzing ${body.images.length} attached image${body.images.length === 1 ? "" : "s"}…` });
@@ -239,6 +308,11 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
     // client yet (a mid-stream death can still surface honestly and is
     // recovered one level up by the step-level auto-retry).
     const MAX_UPSTREAM_ATTEMPTS = 3;
+    // Parameter adaptation (ModelRelay doctrine): some gateways (Vyce builds)
+    // reject the legacy `max_tokens` with "Unknown parameter" and require
+    // `max_completion_tokens`. Flip the field on that exact 5xx/4xx signature
+    // and retry — the request itself is otherwise identical.
+    let maxTokField: "max_tokens" | "max_completion_tokens" = "max_tokens";
     let streamedAny = false;
     let outcome: { content: string; toolCalls: UpstreamToolCall[]; reasoning: string } | null = null;
 
@@ -255,7 +329,7 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
             model,
             messages: msgs,
             temperature: typeof body.temperature === "number" ? body.temperature : 0.7,
-            max_tokens: body.maxTokens ?? 2048,
+            [maxTokField]: body.maxTokens ?? 2048,
             stream: true,
             ...(tools.length > 0 && !isFinalPass ? { tools, tool_choice: "auto" } : {}),
           }),
@@ -278,6 +352,13 @@ async function runCustomEngine(body: ChatBody, send: Send, signal: AbortSignal):
           tools = [];
           iteration -= 1; // retry same iteration without tools
           break attemptLoop;
+        }
+        // Parameter adaptation: gateway rejects `max_tokens` → flip to the
+        // newer `max_completion_tokens` name and retry the same attempt.
+        if (/unknown parameter[\s\S]{0,20}['"]?max_tokens['"]?/i.test(text)) {
+          maxTokField = "max_completion_tokens";
+          send({ type: "status", message: "Provider wants max_completion_tokens — adapting…" });
+          continue attemptLoop;
         }
         const httpErr = new Error(upstreamErrorMessage(res.status, text));
         if (attempt < MAX_UPSTREAM_ATTEMPTS && isTransientNetworkError(httpErr)) {

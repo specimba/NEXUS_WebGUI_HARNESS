@@ -1,0 +1,1845 @@
+https://opencoven.ai/
+"
+OpenCovenOpenCoven
+How it works
+GitHub
+
+Stop being your agents' control plane.
+When two agents reach for the same files, one loses the work. Coven decides who waits, and keeps the record of why.
+
+
+Download Cave for Windows
+▾
+npm i -g @opencoven/cli
+122 stars
+·
+2,207 downloads
+·
+407 members
+click to power
+~/dev/opencoven
+4 sessions
+
+1 needs you
+Projects
+
+opencoven
+~/dev/opencoven
+
+
+4
+
+coven-cave
+~/dev/coven-cave
+
+
+2
+
+castcodes
+~/dev/castcodes
+
+1
+
+grimoire
+~/dev/grimoire
+
+
+2
+Familiar
+Surface
+Session
+Diff
+
+Hexi
+claude code
+ui/composer
+working
+staged 4 files
++86 -41
+
+Sage
+codex
+ui/composer
+holding
+holding · waiting on you
+no diff yet
+
+Charm
+claude code
+api/auth
+working
+opened PR #167
++142 -38
+
+Mote
+codex
+infra/
+bounded
+paused
+held
+Overlap
+Hexi and Sage both hold ui/composer. Neither has merged yet.
+Look at it →
+Split the surface
+Hand it to Hexi
+One shared record.
+Every session keeps its own memory and its own worktree. None of them knows about the other three. Coven caught this overlap before either agent shipped.
+
+
+Download Cave for Windows
+▾
+See how it works
+→
+What changes on day one
+01
+Agents stop overwriting each other
+A claim on a surface holds until the work lands or you release it. Coven tells the second session before it writes.
+
+02
+Claims and memory outlive the session
+Close the terminal, restart the machine. The claims, the events, and what each familiar learned are still there.
+
+03
+You stay the authority
+Guards stop anything past their line and wait for your yes, with the diff in front of you.
+
+How the runtime does this
+→
+Install Cave, then open a repo.
+The daemon runs on your machine. Point it at a project and every session working there shares one record.
+
+
+Download Cave for Windows
+▾
+npm i -g @opencoven/cli
+Docs
+How it works
+Getting started
+Core concepts
+Architecture
+Harnesses
+CLI reference
+Project
+GitHub
+Issues
+Contributing
+Changelog
+Component browser
+MIT licence
+Community
+Discord
+X
+Legal
+Privacy
+Terms
+© 2026 OpenCoven · MIT licensed
+
+OpenCoven
+
+"
+
+https://github.com/OpenCoven/coven
+"
+Skip to content
+OpenCoven
+coven
+Repository navigation
+Code
+Issues
+17
+ (17)
+Pull requests
+13
+ (13)
+Agents
+Actions
+Projects
+Security and quality
+Insights
+OpenCoven
+coven
+Public
+Go to file
+t
+T
+BunsDevclaude
+BunsDev
+and
+claude
+ci(macos): gate the Seatbelt crate on PRs without paying for a full m…
+ce9c1ae
+ · 
+39 minutes ago
+Name		
+.cargo
+feat(ward): route protected-surface edits through the coven-threads a…
+2 months ago
+.github
+ci(macos): gate the Seatbelt crate on PRs without paying for a full m…
+39 minutes ago
+.superpowers/brainstorm/88215-1786734130
+Add review diff and logo brainstorm artifacts
+last month
+assets/opencoven
+chore: refresh OpenCoven logo across repository surfaces (#740)
+last month
+avatars
+feat: update Cody avatar to final locked form (2026-06-17)
+3 months ago
+brand
+fix(theme): lighten the dim violet so USER_LABEL clears WCAG AA (#1108)
+20 hours ago
+conformance/automations/runner
+fix: execute validation scripts through filesystem aliases (#1079)
+2 days ago
+crates
+fix(restricted-runtime): re-read the owner/lease boundary after the w…
+7 hours ago
+docs
+fix(harness): reject interpreter executables in external adapter mani…
+9 hours ago
+npm
+fix(npm): keep the CLI wrapper dependency closure installable
+last month
+packages
+chore(deps-dev): Bump @types/node in /packages/openclaw-coven (#1074)
+18 hours ago
+scripts
+ci(macos): gate the Seatbelt crate on PRs without paying for a full m…
+39 minutes ago
+skills
+fix: polish OpenCoven logo rollout (#744)
+last month
+spec
+feat: add refusal-only session policy admission (#994)
+last week
+specs
+feat(agents): add durable goal loop orchestration
+3 weeks ago
+web
+fix(theme): lighten the dim violet so USER_LABEL clears WCAG AA (#1108)
+20 hours ago
+.gitattributes
+feat: add refusal-only session policy admission (#994)
+last week
+.gitignore
+docs: reconcile Psyche O2 contract boundary (#691)
+last month
+AGENTS.md
+docs(agents): document the Policy guard steps as local CI gates (#1119)
+6 hours ago
+CHAT-QUICKSTART.md
+feat(tui): observe views in Cast and chat — /status, /familiars, /ski…
+2 months ago
+CLAUDE.md
+docs: add AGENTS.md + CLAUDE.md agent-contributor guidance
+2 months ago
+CONTRIBUTING.md
+fix: qualify native audit provenance and source origin
+3 days ago
+Cargo.lock
+chore(deps): Bump libc from 0.2.186 to 0.2.189 (#1070)
+4 hours ago
+Cargo.toml
+feat(restricted-runtime): macOS Seatbelt backend with guardian and ke…
+8 hours ago
+DESIGN.md
+fix: polish OpenCoven logo rollout (#744)
+last month
+LICENSE
+chore: scaffold coven rust workspace
+5 months ago
+PATENTS
+docs: add OpenCoven IP protection records
+2 months ago
+PROVENANCE.md
+docs: add OpenCoven IP protection records
+2 months ago
+README.md
+feat: add shipped reliability scorecard (#928)
+2 weeks ago
+SECURITY.md
+docs: consolidate Coven security policy, threat boundary, and support…
+3 weeks ago
+deny.toml
+feat(ward): route protected-surface edits through the coven-threads a…
+2 months ago
+Repository files navigation
+README
+Contributing
+MIT license
+Security
+OpenCoven logo
+
+Coven
+Local harness substrate for project-scoped agent sessions
+
+Run Codex, Claude Code, GitHub Copilot CLI, and future coding harnesses inside explicit local project boundaries. Launch, observe, attach, and coordinate agent work through one neutral runtime substrate.
+
+MIT License Platform npm Built with Rust
+
+🌐 Ecosystem	💬 Community	🛠️ Development
+Website	Discord	GitHub Issues
+Documentation	X (@OpenCvn)	Public Roadmap
+Submit Feedback		Contributing
+⚠️ Early MVP — Coven is a local-first runtime in active development. It is usable by adventurous developers on macOS, Linux, and Windows x64. The npm package is live. Expect rough edges.
+
+External PRs are open — Start from an issue for larger changes, keep PRs scoped, and include the readiness packet requested by the PR template.
+
+What is Coven?
+Coven is the local harness substrate for the OpenCoven ecosystem. It gives coding-agent CLIs like Codex and Claude Code a shared room where project work can happen visibly and safely.
+
+One project. Any harness. Visible work.
+
+You choose the harness — Codex, Claude Code, GitHub Copilot CLI, or future adapters.
+Coven owns the session — project-scoped boundaries, PTY execution, event logging, SQLite persistence.
+Clients present the work — CastCodes, the CLI/TUI, comux, or your own integration over the same-user local IPC API.
+The Rust daemon is the authority boundary. All clients — including the CLI itself — are convenience layers. Security decisions flow inward to the daemon, never outward to clients. OpenClaw integrates only through the opt-in @opencoven/coven plugin in packages/openclaw-coven; OpenClaw core contains no Coven code.
+
+Install
+npm install -g @opencoven/cli
+coven doctor
+Package	Platform
+@opencoven/cli	Universal wrapper — auto-selects your platform
+@opencoven/cli-macos	macOS Apple Silicon
+@opencoven/cli-macos-x64	macOS Intel x64
+@opencoven/cli-linux-x64	glibc-based Linux x64 (Alpine unsupported)
+@opencoven/cli-windows	Windows x64
+The memory dashboard is an opt-in companion installed separately with npm install -g @opencoven/coven-memory-dashboard (Node.js 24+); see docs/reference/cli-observe.md.
+
+Install routes (npm, cargo, source), platform behavior, service managers, and containers are documented at https://docs.opencoven.ai/docs/guide/install.
+
+Quick start
+cd /path/to/your/project
+
+# 1. Complete provider-owned login
+coven setup codex
+
+# 2. Check local readiness
+coven doctor
+
+# 3. Start the daemon
+coven daemon start
+
+# 4. Launch a session
+coven run codex "fix the failing tests"
+
+# 5. Browse and manage sessions
+coven sessions
+
+# 6. Stop the daemon when done
+coven daemon stop
+Bare coven opens the interactive Coven UI instead — see Interactive UI. The command reference lives at docs.opencoven.ai/docs/cli.
+
+Documentation
+Public installation, CLI, daemon, harness, API, memory, and troubleshooting documentation is canonical at docs.opencoven.ai. Start with:
+
+Getting started
+CLI reference
+Daemon
+Harnesses
+Local API
+Memory
+Troubleshooting — or run coven doctor first
+This repository keeps only documentation that must evolve with the source:
+
+Local document	Why it remains here
+API contract	Normative coven.daemon.v1 request, response, error, and compatibility contract
+Architecture	Source-adjacent crate ownership, authority boundaries, and dependency direction
+Session lifecycle	Normative state-machine and persistence behavior
+Harness adapter contract	Maintainer and adapter-author implementation contract
+CLI core functionality	Maintainer source map and verification loop
+Documentation maintenance	Ownership rules for public docs versus repository contracts
+Security policy	Vulnerability reporting and repository security policy
+Reliability scorecard	Current outcome, recovery, release-quality, benchmark, and usefulness decision view
+Contributing
+See CONTRIBUTING.md for the first-10-minutes checkout path, the full local development loop, and the PR readiness packet. The short rules:
+
+Rust is the authority layer. Launch, cwd validation, PTY lifecycle, session persistence, and IPC enforcement are Rust's responsibility; clients are never the trust boundary.
+Keep harness support focused on Codex, Claude Code, and GitHub Copilot CLI until adapter contracts are stable.
+Run python scripts/check-secrets.py before every PR, including docs-only changes, and never commit runtime state (.coven/, *.sqlite*, *.sock, .env*, *.key).
+Performance baselines collect trend data without gating merges:
+
+cargo build -p coven-cli --locked
+node scripts/benchmark-cli.mjs --binary target/debug/coven --iterations 3 --output /tmp/coven-perf.json
+node scripts/benchmark-chaos.mjs --binary target/debug/coven --output /tmp/coven-chaos.json
+Both use disposable COVEN_HOME directories and a fixture-only fake harness; scripts/benchmark-chaos.test.mjs gates deterministically in CI.
+
+Security
+Coven is pre-1.0 software. Treat it accordingly:
+
+Do not run untrusted harnesses or prompts in sensitive repositories. Session logs capture harness output; if the harness dumps secrets, Coven logs them.
+Do not paste secrets into prompts. Event payloads are redacted before API display, but defense in depth starts with not having secrets in prompts.
+Reporting vulnerabilities: Please use GitHub Security Advisories for this repository. See SECURITY.md for the policy and Safety for the public trust boundary.
+
+Roadmap
+The milestone ledger lives in docs/ROADMAP.md; items move when they are designed, implemented, tested, and released.
+
+License
+MIT © Valentina Alexander and the OpenCoven contributors — see LICENSE for full terms.
+
+OpenCoven — One project. Any harness. Visible work.
+
+About
+Local-first runtime for project-scoped AI coding-agent sessions, with durable state, authority boundaries, and multi-harness interoperability.
+
+opencoven.ai
+Topics
+Resources
+Readme
+MIT license
+Contributing
+Contributing
+Security policy
+Security policy
+Activity
+Custom properties
+Stars
+48 stars
+Watchers
+0 watching
+Forks
+26 forks
+Report repository
+Releases
+46
+ (46)
+Coven v0.4.4
+Latest
+3 days ago
++ 45 releases
+Deployments
+80
+ (80)
+staging - docs
+3 months ago
+npm-publish
+Packages
+No packages published
+Contributors
+19
+ (19)
+@BunsDev
+@Copilot
+@claude
+@dependabot[bot]
+@Copilot
+@CompleteDotTech
+@Copilot
+@mintlify[bot]
+@github-advanced-security[bot]
+@nawneet77
+@romgenie
+@lmvdz
+@snowopsdev
++ 5 contributors
+Languages
+Rust
+87%
+JavaScript
+5.9%
+Python
+4%
+TypeScript
+2.2%
+Shell
+0.5%
+HTML
+0.3%
+Other
+0.1%
+Footer
+© 2026 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Community
+Docs
+Contact
+Manage cookies
+Do not share my personal information
+ 
+
+"
+
+https://opencoven.ai/how-it-works
+"
+OpenCovenOpenCoven
+Overview
+Docs
+GitHub
+Discord
+
+← Back to home
+The layer your agents share.
+Coven sits between the agent CLIs you already run and the project they are working in. Your harness keeps reasoning and writing code. Coven holds the state those sessions have to share: intent, ownership, authority, and evidence.
+
+Three layers, one boundary
+Commands go down. Output and memory come back up. 
+Coven attributes every crossing to a session.
+
+Harness layer
+Claude Code
+Codex
+Hermes
+OpenCode
+OpenClaw
+whatever ships next
+commands down
+Coven runtime
+Sessions
+Memory
+Adapter
+Tool gateway
+output and memory up
+Your project
+Filesystem
+Git
+Terminals
+Docs
+Boundary
+Every session works inside one project root. Anything out of tree needs a written grant.
+What Coven keeps
+Memory, sessions, harnesses, and actions. These four decide what a session can do.
+
+01
+Memory
+02
+Sessions
+03
+Harnesses
+04
+Actions
+01 · Memory
+Memory that carries between sessions
+A file on your disk. The next session reads it first.
+
+~/.coven/familiars/hexi/memory.md
+Project
+opencoven, Astro, no build step
+Habit
+keep PR summaries short
+Left off
+feat/runtime-attach, 4 files staged
+Rule
+ask before touching infra/
+02 · Sessions
+A session outlives its terminal
+Reboot mid-task and the record comes back. The process does not.
+
+hexi · claude code
+resuming
+harness
+process
+record
+running
+connection lost
+terminated
+rebooting
+resuming
+03 · Harnesses
+One adapter contract
+One harness can write files and another can use tools.
+Coven interacts with both through one interface.
+
+×
+0
+combo
+best 0
+04 · Actions
+Every agent asks first
+Before an agent changes a file, runs a command, or pushes code, it asks Coven. 
+Coven looks at who is working where and what you allowed, then gives one of three answers.
+
+edit composer-shell.tsx
+Hexi owns this file right now.
+Yes
+git push --force origin main
+You said main is off limits.
+No
+terraform apply infra/
+This one deletes things, so you decide.
+Asks you
+How a familiar learns a repo
+Each familiar writes it's own notes and reads them back at the start of the next section.
+
+day 001
+Summoned Hexi. It read the repo and wrote nine notes.
+
+Stack, entry points, the test command that works.
+
+
+claude code · session 1 · notes created
+day 009
+Picked up how you review.
+
+Terse PR summaries, no trailing recap. It stopped writing them.
+
+
+claude code · sessions 2 to 6
+day 023
+Shipped feat/runtime-attach across three sessions.
+
+Two of them started after a reboot.
+
+
+
+switched to codex mid-branch · same notes file
+day 047
+Still remembers all of it.
+
+128 notes. You have read maybe six.
+
+
+
+
+
+41 sessions · 4 harnesses · 1 project record
+Every agent already has its own worktree.
+It did not help.
+Two sessions, isolated checkouts, both right about their own context. Each diff was clean on its own, so git raised nothing and CI passed a tree that had already lost work.
+
+WORKTREE ONLY
+00mHexi rewrites the session hook · 12mSage rewrites the same hook · 18m
+COVEN
+00mHexi claims the hook, edits itSage holdsreads Hexi's record, edits after · both land
+One runtime. Every project. Any harness.
+The Coven daemon is per machine. Claims, guards, and events are per project. Pick a project to see who is in it, and open any column for the detail behind it.
+
+~/dev/opencoven
+4 sessions
+Projects
+
+opencoven
+~/dev/opencoven
+
+
+4
+
+coven-cave
+~/dev/coven-cave
+
+
+2
+
+castcodes
+~/dev/castcodes
+
+1
+
+grimoire
+~/dev/grimoire
+
+
+2
+Familiar
+Surface
+Session
+Diff
+
+Hexi
+claude code
+ui/composer
+working
+reading composer-shell.tsx
++86 -41
+
+Sage
+codex
+ui/composer
+working
+opening composer-shell.tsx
+no diff yet
+
+Charm
+claude code
+api/auth
+working
+adding refresh rotation
++142 -38
+
+Mote
+codex
+infra/
+bounded
+reading terraform plan
+held
+Overlap
+Hexi and Sage both hold ui/composer. Neither has merged yet.
+Look at it →
+Split the surface
+Hand it to Hexi
+The circle is open.
+Step in.
+The runtime, the workspace, and the people building both. All of it public, all of it MIT.
+
+
+Download Cave for Windows
+▾
+MIT · runs locally · signed .dmg
+
+Coven CLI ↗
+The runtime itself. Read the source, file an issue, send a PR.
+Docs ↗
+Architecture, the socket API, familiars, and the security model.
+Coven Code ↗
+A terminal that ships no telemetry, built to host sessions.
+Discord ↗
+Ask questions and meet other people's familiars.
+Docs
+How it works
+Getting started
+Core concepts
+Architecture
+Harnesses
+CLI reference
+Project
+GitHub
+Issues
+Contributing
+Changelog
+Component browser
+MIT licence
+Community
+Discord
+X
+Legal
+Privacy
+Terms
+© 2026 OpenCoven · MIT licensed
+
+OpenCoven
+
+"
+
+https://docs.opencoven.ai/docs/guide/architecture
+"
+
+Coven
+Docs
+Search
+Ctrl
+K
+
+Guide
+
+Start with Coven's local runtime
+
+Home
+Docs
+Getting started
+Install Coven
+Platforms
+Deployments
+Core concepts
+Architecture
+OpenCoven ecosystem
+
+
+
+Guide
+Architecture
+Report issue
+Open
+Stable
+Guide
+/
+Contract · OpenCoven/coven-docs
+Architecture
+The local path from a command to a durable session record.
+
+1 min read
+Mermaid v11.15.0
+
+
+
+You or a local client
+
+coven CLI
+
+Coven daemon
+
+Project and session validation
+
+Harness PTY
+
+Codex, Claude Code, or another adapter
+
+SQLite session ledger + events
+
+api/v1 over same-user local IPC
+
+A CLI command or local client asks the daemon to create or inspect a session.
+The daemon validates the project root, working directory, harness id, and session state.
+It starts and supervises the harness in a PTY, recording lifecycle and output events.
+The ledger preserves the record for attach, replay, archive, and diagnostics after the process exits.
+The design is intentionally narrow: Coven is the durable local control plane for coding-agent work, while harnesses remain responsible for provider authentication and model behavior.
+
+Experimental agent filesystem foundation
+
+Coven has an experimental SQLite-backed Agent File System storage crate. It can model a copy-on-write filesystem delta over a read-only base, and its opt-in feature-gated NFSv3 export has completed a macOS mount and throughput spike. Neither capability is part of the daemon's public session or API surface. There is no supported Coven mount workflow, sandbox, or replacement for the current project-root and Git/worktree safeguards.
+
+Read Agent filesystem for the implemented storage and mount boundary, the passed human Terminal validation, the remaining per-process macOS privacy consent requirement, and the phased roadmap for safety, daemon, and review work.
+
+For the operating model, read Daemon. For integration details, read the local API. To understand the boundary between Coven and its neighboring projects, read the OpenCoven ecosystem guide.
+
+Was this page helpful?
+Yes
+No
+Last updated on 8/24/2026
+
+Previous
+Core concepts
+Next
+OpenCoven ecosystem
+On this page
+Experimental agent filesystem foundation
+
+"
+
+https://docs.opencoven.ai/
+"
+
+Coven Docs
+Coven
+Docs
+Home
+Docs
+Search
+Ctrl
+K
+
+Local infrastructure for coding agents
+
+Choose the harness.
+Keep the record.
+Coven is the local runtime around your coding agent: project boundaries, supervised sessions, durable event history, and a stable local API.
+
+Start a session
+GitHub
+surfaces
+cast codes
+local api
+daemon
+ledger · harnesses
+familiar
+Harnesses own models and provider authentication. Coven owns what should remain consistent around them: scope, lifecycle, and evidence.
+
+npm
+npm install -g @opencoven/cli && coven doctor
+
+The layer around the agent
+A small, local control plane that makes agent work governable without replacing the agent you choose.
+
+choice
+Harness freedom
+Run the coding CLI you already trust. Coven leaves provider credentials and model choice with that harness.
+
+control
+Project boundaries
+The local daemon verifies the project root and working directory before it launches a session.
+
+record
+Durable sessions
+Keep a replayable event record across process exits, then attach, archive, or remove it deliberately.
+
+integrate
+Local API
+Build your own local client against the versioned socket contract without bypassing the authority boundary.
+
+Run one session. Keep the evidence.
+Install Coven, verify a harness, and launch from the project you want to protect.
+
+Read the guide
+See the ecosystem
+"
+
+https://docs.opencoven.ai/docs/guide/getting-started
+"
+
+Getting started | Coven Docs
+Coven
+Docs
+Search
+Ctrl
+K
+
+Guide
+
+Start with Coven's local runtime
+
+Home
+Docs
+Getting started
+Install Coven
+Platforms
+Deployments
+Core concepts
+Architecture
+OpenCoven ecosystem
+
+
+
+Guide
+Getting started
+Report issue
+Open
+Stable
+Guide
+/
+Contract · OpenCoven/coven-docs
+Getting started
+Install Coven, run one recorded session, inspect it, and recover when a step fails.
+
+4 min read
+What you get
+
+Coven supervises a coding-agent CLI in a project boundary, then keeps its session record and event log locally. Your harness keeps its own provider login; Coven keeps the lifecycle, replay, and local API consistent.
+
+One pass through this page is the whole first-session journey: install and verify Coven, connect a harness, run one recorded session, inspect its record, and recover from the first failure. Advanced next steps stay one link away until that journey is done.
+
+Interactive default
+
+Run coven when you want Coven's guided interactive front door. The default interactive path is the managed coven-code engine: on first run Coven can install the pinned engine for you, and later interactive launches reuse that managed binary. COVEN_LEGACY_TUI=1 is only a deprecated compatibility escape hatch for the older in-process shell.
+
+1. Install and verify
+
+Install Coven with the published npm wrapper:
+
+
+npm install -g @opencoven/cli
+Verify the install before connecting anything:
+
+
+coven --version
+coven doctor
+doctor reports the next setup action when the local store, project detection, daemon, or a harness is not ready.
+
+Use the package without installing coven on PATH only for a one-off readiness check:
+
+
+npx @opencoven/cli doctor
+That is only a preflight. The daemon and recorded-session steps below expect coven on PATH, so finish a normal install before continuing. Source checkouts install with cargo install --path crates/coven-cli; cargo build --workspace is only an active-development build and does not install coven on PATH. Both routes are detailed in Install Coven, with per-OS notes in Platforms.
+
+2. Connect a harness
+
+Install the provider CLI you want Coven to launch:
+
+
+npm install -g @openai/codex
+npm install -g @anthropic-ai/claude-code
+npm install -g @github/copilot
+Then choose the provider you actually intend to use and hand the terminal to its provider-owned login flow:
+
+
+coven setup codex
+# or: coven setup claude
+# or: coven setup copilot
+Coven shows the exact login command and asks for explicit consent before launching it. Credentials remain in the provider CLI's own store.
+
+A stronger setup check is optional:
+
+
+coven setup codex --verify
+Verification asks for separate consent, requires network access, and may incur provider usage or cost. It is not required for the normal first-session loop.
+
+See Provider setup for verification and report semantics, Install harness CLIs for the setup matrix, and Harnesses for adapter behavior and credential boundaries.
+
+3. Run a first session
+
+From the repository you want to work in, use this exact first-session loop as the checked Codex example. It assumes you installed and verified Coven above and already authenticated Codex. If you chose Claude Code or Copilot CLI instead, keep the same loop and substitute claude or copilot in the coven run command.
+
+
+coven doctor
+coven daemon start
+coven run codex "explain this repo in 5 bullets"
+coven sessions
+This keeps the readiness check, daemon startup, first recorded run, and session browser in one concrete flow. The daemon rejects a missing project root or a working directory outside that root. This is the core distinction: a harness runs the task; Coven enforces and records the session around it.
+
+4. Inspect the result
+
+Use the interactive coven sessions browser to open the recorded run directly, or list plain session IDs when you need one for a later command:
+
+
+coven sessions --plain
+Then attach or inspect the recorded session without attaching:
+
+
+coven attach <session-id>
+Inspect a record without attaching:
+
+
+coven sessions show <session-id>
+coven sessions events <session-id> --limit 100
+coven sessions log <session-id>
+Unique session-id prefixes are accepted when they identify exactly one session. Use coven sessions search "query" for full-text search over recorded event payloads.
+
+Archive a completed record when it is no longer active; sacrifice it only when you intend to delete its events permanently.
+
+
+coven archive <session-id>
+coven sacrifice <session-id> --yes
+For a cross-surface summary of the daemon, open sessions, familiars, skills, research, and hub state:
+
+
+coven status
+5. Recover when a step fails
+
+Every stage above has the same recovery entry point:
+
+
+coven doctor
+Keep recovery narrow:
+
+Fix the first failing branch doctor reports, then rerun coven doctor before changing anything else.
+Inspect before you mutate. coven sessions show, coven sessions events, coven sessions log, and coven status are read-only; coven sacrifice permanently deletes a non-running session and its events.
+Route the failure to the stage it appeared in — harness, daemon, project boundary, or session state — and follow the first fix that matches.
+The ordered decision path for every failure mode, including a broken install, lives in Troubleshooting.
+
+6. Advanced next steps
+
+Once the first recorded session is inspectable, expand along the surface you actually need. Each row is the canonical page for that area:
+
+You want to	Read
+Add a provider or verify a login	Provider setup
+Install another harness CLI	Install harness CLIs
+Understand adapters and credential boundaries	Harnesses
+Run the daemon on a headless host or in a container	Deployments
+Operate the daemon day to day	Daemon
+Manage and search past sessions	CLI session commands
+Build against the local API	Local API and API Reference
+Store and search agent memory (preview)	Memory + Models
+Inspect multi-host hub and scheduler state	Hub and scheduler
+Browse every public command grouped by task with:
+
+
+coven help --all
+For the model behind the runtime, read Core concepts and Architecture.
+
+Was this page helpful?
+Yes
+No
+Last updated on 9/1/2026
+
+Next
+Install Coven
+On this page
+What you get
+Interactive default
+1. Install and verify
+2. Connect a harness
+3. Run a first session
+4. Inspect the result
+5. Recover when a step fails
+6. Advanced next steps
+"
+
+https://docs.opencoven.ai/docs/guide/concepts
+"
+
+Core concepts | Coven Docs
+Coven
+Docs
+Search
+Ctrl
+K
+
+Guide
+
+Start with Coven's local runtime
+
+Home
+Docs
+Getting started
+Install Coven
+Platforms
+Deployments
+Core concepts
+Architecture
+OpenCoven ecosystem
+
+
+
+Guide
+Core concepts
+Report issue
+Open
+Stable
+Guide
+/
+Contract · OpenCoven/coven-docs
+Core concepts
+The four boundaries that make Coven useful.
+
+1 min read
+Coven is not a harness
+
+Coven is the local runtime around a coding-agent CLI. A harness such as Codex or Claude Code owns its model, provider authentication, and in-process tools. Coven owns the project boundary, PTY lifecycle, session record, and local API.
+
+Project boundary
+
+Each session has a canonical project root and an optional working directory inside it. Clients can suggest those values, but the daemon validates them before launch. A harness cannot widen the workspace by passing another path.
+
+Session record
+
+A session is the durable record of one harness run: its identity, project, harness, status, timestamps, output events, and exit details. You can attach to a live session, replay a completed one, archive it, or deliberately delete it.
+
+Local authority
+
+The daemon is one same-user process per COVEN_HOME profile. It owns live PTYs and the SQLite-backed session ledger, then serves the supported /api/v1 contract over a Unix socket on Unix-like hosts or an owner-only named pipe on Windows. The CLI and other local clients ask it to act; they do not become the enforcement boundary.
+
+Provider boundary
+
+Coven does not collect or proxy provider credentials. Authenticate with the harness or its provider, then let Coven supervise the resulting local process. This keeps provider choice separate from session governance.
+
+Read Harnesses, Daemon, or the local API when you need the implementation detail.
+
+Was this page helpful?
+Yes
+No
+Last updated on 8/8/2026
+
+Previous
+Deployments
+Next
+Architecture
+On this page
+Coven is not a harness
+Project boundary
+Session record
+Local authority
+Provider boundary
+"
+
+https://docs.opencoven.ai/docs/guide/ecosystem
+"
+
+OpenCoven ecosystem | Coven Docs
+Coven
+Docs
+Search
+Ctrl
+K
+
+Guide
+
+Start with Coven's local runtime
+
+Home
+Docs
+Getting started
+Install Coven
+Platforms
+Deployments
+Core concepts
+Architecture
+OpenCoven ecosystem
+
+
+
+Guide
+OpenCoven ecosystem
+Report issue
+Open
+Stable
+Guide
+/
+Contract · OpenCoven/coven-docs
+OpenCoven ecosystem
+Where Coven ends, what the neighboring OpenCoven projects own, and which documentation is canonical.
+
+2 min read
+Where Coven ends
+
+Coven is the local runtime and durable session substrate. These docs are canonical for its CLI, daemon, harness boundary, supported local API, and operational security model.
+
+OpenCoven's neighboring projects build on or integrate with that substrate. They do not become part of the stable Coven contract merely because they share an organization or product vocabulary.
+
+Project	Owns	Go there when
+Psyche	Canonical orchestration contracts, authority, execution bindings, durable transitions, and bounded surface ports	You need the protocol and authority model above runtime execution
+Psyche Build	The multi-lane coding cockpit, worktree and pane orchestration, review and integration workflows, and optional Coven session surfaces	You need a human-facing cockpit for parallel agent or terminal work
+Coven Cave	First-party application surfaces, mobile pairing, research and communication experiences, and product-level interaction design	You need Cave-specific UI, pairing, or application behavior
+Coven Threads	Fail-closed authority gates for protected familiar surfaces and approval semantics	You need identity-surface mutation enforcement
+Familiar Contract	The normative identity, purpose, authority, memory, and human-binding requirements for a familiar	You are implementing or evaluating familiar conformance
+OpenCoven SDK	Experimental TypeScript clients and coordination packages	You need package-level client contracts rather than raw local API calls
+Coven Memory	Read-only local and mobile memory browsing surfaces	You need the memory dashboard or its privacy boundary
+Coven Runtimes	Runtime manifests, conformance tooling, and the accepted runtime registry	You are authoring or adopting a runtime adapter
+Documentation ownership rule
+
+When two repositories describe the same boundary:
+
+The repository that implements or normatively specifies the contract owns the facts.
+coven-docs explains how the stable portion affects Coven users.
+Generated inventories may be imported, but explanatory prose remains intentionally authored.
+Preview or experimental integration must stay visibly classified until its owner publishes release evidence.
+For the runtime path, continue with Architecture. For unsupported foundations with explicit remaining gates, use Experimental.
+
+Was this page helpful?
+Yes
+No
+Last updated on 8/24/2026
+
+Previous
+Architecture
+On this page
+Where Coven ends
+Documentation ownership rule
+"
+
+https://docs.opencoven.ai/docs/harnesses
+"
+
+Coven
+Docs
+Search
+Ctrl
+K
+
+Harnesses
+
+Codex, Claude Code, Coven Code, and Copilot Adapters
+
+Home
+Docs
+Harnesses
+What Is a Harness?
+Install Harness CLIs
+Provider Auth Boundary
+Project Roots
+Working Directories
+Codex Harness
+Claude Code Harness
+Copilot CLI Harness
+Coven Code Harness
+Custom Adapters
+Harness Troubleshooting
+
+
+
+Harnesses
+Harnesses
+Report issue
+Open
+Stable
+Harnesses
+/
+Contract · OpenCoven/coven
+Harnesses
+Overview of Coven harnesses, built-in adapters, provider-auth boundaries, project-root rules, and external adapter manifests.
+
+2 min read
+A harness is an external coding-agent CLI that Coven can launch inside a project root. Coven owns the PTY, session record, event log, attach/replay flow, and local API boundary. The harness owns the conversation, provider authentication, and tool execution inside its own process.
+
+The built-in harness ids are codex, claude, coven-code, and copilot. Trusted adapter recipes (grok, hermes) and local manifests can register more — see Custom adapters.
+
+Built-in harnesses
+
+Harness	Harness id	Executable	First command
+Codex	codex	codex	coven run codex "fix the failing tests"
+Claude Code	claude	claude	coven run claude "polish this UI"
+Coven Code	coven-code	coven-code	coven run coven-code "explain this repo"
+Copilot CLI	copilot	copilot	coven run copilot "summarize this repo"
+Runtime boundary
+
+Mermaid v11.15.0
+
+
+
+User or client
+
+coven CLI / API client
+
+Coven daemon
+
+Harness adapter table
+
+Codex PTY
+
+Claude Code PTY
+
+Coven Code PTY
+
+Copilot PTY
+
+OpenAI provider auth
+
+Anthropic provider auth
+
+Connected provider auth
+
+GitHub provider auth
+
+SQLite sessions + events
+
+The daemon validates the harness id, project root, working directory, session id, live-session state, and control actions. It does not read provider credentials and does not become the provider client.
+
+Read next
+
+What is a harness? for the concept boundary.
+Install harness CLIs for harness setup.
+Provider auth boundary before auditing credentials.
+Project roots and working directories before debugging launch rejects.
+Codex, Claude Code, Coven Code, and Copilot CLI for adapter-specific behavior.
+Custom adapters for external adapter manifests and the trusted grok/hermes recipes.
+Troubleshooting when coven doctor or coven run fails.
+Related
+
+CLI run reference
+Session management
+Daemon security posture
+Was this page helpful?
+Yes
+No
+Last updated on 7/27/2026
+
+Next
+What Is a Harness?
+On this page
+Built-in harnesses
+Runtime boundary
+Read next
+Related
+
+"
+
+https://github.com/OpenCoven
+"
+Skip to content
+OpenCoven
+Organization navigation
+Overview
+Repositories
+31
+ (31)
+Discussions
+Projects
+4
+ (4)
+Packages
+People
+1
+ (1)
+@OpenCoven
+OpenCoven
+Workspace for building with agents.
+ 50 followers
+ United States of America
+ https://discord.gg/OpenCoven
+ @OpenCvn
+ https://opencoven.ai
+README.md
+OpenCoven
+An open-source, AI-native workspace for building with agents.
+
+Website · Discord · X
+
+Your agents, tools, and context — scattered across chats, repos, terminals, and browsers.
+
+OpenCoven pulls it all into one local-first, hackable workspace where AI agents remember context, use real tools, and work alongside you across every surface.
+
+Less duct-taped scripts. More living workspace.
+
+Get started
+Install the CLI:
+
+npm install -g @opencoven/cli
+Check your setup (detects harnesses, prints fix hints):
+
+coven doctor
+Enter your project and launch:
+
+cd my-project
+coven
+That's it — you're in. There's no init step: the directory you run from is your workspace. On first launch, OpenCoven offers to download the engine (version-pinned, checksum-verified), then drops you into an interactive workspace. Give it a task straight from the prompt:
+
+coven "fix the failing tests"
+Prefer explicit control? Run the daemon and target a specific agent:
+
+coven daemon start
+coven run codex "fix the failing tests"
+coven run claude "polish this UI"
+coven sessions          # browse and inspect sessions
+Why builders use it
+🧠 Agent-native — build, run, and coordinate agents in one place
+🔧 Real tool access — connect agents to what they need to actually do the work
+💻 Local-first — your workspace stays close, hackable, and yours
+🧩 Extensible — add skills, integrations, agents, and custom workflows
+🌐 Multi-surface — desktop, web, chat, terminal, and beyond
+Contribute
+OpenCoven is early, open, and moving fast — the best time to shape it.
+
+🐛 Open an issue — bugs, ideas, feature requests
+🔀 Send a PR — start with a good first issue
+💬 Join the Discord — plan features and share what you're building
+🧩 Build a skill or integration and share it with the Coven
+We're building in public with the community. Jump in early and help define what the agentic workspace becomes.
+
+Community
+For builders, tinkerers, researchers, and weird little agent enjoyers.
+
+Join the Coven 🌙 · Website · Discord · X
+
+PinnedLoading
+ coven Public
+Local-first runtime for project-scoped AI coding-agent sessions, with durable state, authority boundaries, and multi-harness interoperability.
+
+ Rust  48  26
+
+ coven-cave Public
+Native OpenCoven workspace for familiars, agent sessions, memory, tools, workflows, and local-first development.
+
+ TypeScript  27  31
+
+ psyche Public
+Coven-native familiar runtime and orchestration protocol for persistent AI identities.
+
+ Rust
+
+ psyche-build Public
+Desktop cockpit for running parallel AI coding agents in visible, isolated workspaces — from branch to review, merge, and handoff.
+
+ TypeScript  2  2
+
+ coven-threads Public
+Authority and governance layer for protected familiar identity, memory, and write surfaces.
+
+ Rust
+
+ familiar-contract Public
+Open specification for portable agent identity, authority, memory, and immutable self-governance boundaries.
+
+ JavaScript  6  2
+
+ Repositories
+Find a repository…
+Loading
+Showing 10 of 31 repositories
+coven Public
+Local-first runtime for project-scoped AI coding-agent sessions, with durable state, authority boundaries, and multi-harness interoperability.
+
+ Rust  48 MIT  26  17  13 Updated 22 minutes ago
+chat Public
+Phase 0 desktop scaffold for OpenCoven Chat, with least-privilege Tauri boundaries and future Cave integration.
+
+ TypeScript  1 MIT  0  6  5 Updated 32 minutes ago
+psyche-build Public
+Desktop cockpit for running parallel AI coding agents in visible, isolated workspaces — from branch to review, merge, and handoff.
+
+ TypeScript  2 MIT  2  23  0 Updated 36 minutes ago
+mamase Public
+Training your familiar has never been easier.
+
+ JavaScript  0  0  1  0 Updated 52 minutes ago
+coven-cave Public
+Native OpenCoven workspace for familiars, agent sessions, memory, tools, workflows, and local-first development.
+
+ TypeScript  27  31  28  1 Updated 1 hour ago
+coven-docs Public
+Official OpenCoven documentation site, built with Fumadocs and MDX.
+
+ MDX  2  1  3  11 Updated 1 hour ago
+sdk Public
+Experimental TypeScript SDK and CLI for OpenCoven clients, transports, and shared protocol types. Not for production use.
+
+ TypeScript  0  1  11  1 Updated 2 hours ago
+homebrew-tap Public
+Official Homebrew tap for OpenCoven apps and desktop releases.
+
+ Ruby  0  0  0  0 Updated 3 hours ago
+coven-threads Public
+Authority and governance layer for protected familiar identity, memory, and write surfaces.
+
+ Rust  0 MIT  0  5  0 Updated 11 hours ago
+coven-code Public
+Open-source, multi-provider AI coding-agent TUI in Rust.
+
+ Rust  8 GPL-3.0  6  3  1 Updated 18 hours ago
+View all repositories
+Top discussions this past month
+Discussions are for sharing announcements, creating conversation in your community, answering questions, and more.
+
+Start a new discussion
+People
+@BunsDev
+Top languages
+ Rust  TypeScript  JavaScript  Swift  CSS
+Most used topics
+ 
+opencoven
+ai-agents
+developer-tools
+rust
+typescript
+Developer Program Member
+Report abuse
+Footer
+© 2026 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Community
+Docs
+Contact
+Manage cookies
+Do not share my personal information
+
+"
+
+https://github.com/BunsDev
+"
+Skip to content
+BunsDev
+User navigation
+Overview
+Repositories
+5k+
+ (5k+)
+Projects
+Packages
+Stars
+5k+
+ (5k+)
+Sponsoring
+3
+ (3)
+View BunsDev's full-sized avatar
+👑
+Val Alexander 👑
+BunsDev · she/her
+Founder @OpenCoven 👑
+ 817 followers · 491 following
+@OpenCoven
+USA
+03:26 - 8h behind
+val@opencoven.ai
+BunsDev.com
+https://orcid.org/0009-0003-6311-0717
+@BunsDev
+in/buns
+https://discord.gg/OpenCoven
+https://opencoven.ai
+Sponsors
+@agreenweb
+@Mattycodes69
+Sponsoring
+@haydenbleasel
+@fuma-nama
+@StartAutomating
+Achievements
+Achievement: Starstruckx2
+Achievement: Pair Extraordinairex4
+Achievement: Public Sponsor
+Achievement: Pull Sharkx4
+Achievement: YOLO
+Achievement: Quickdraw
+Highlights
+ Pro
+Organizations
+@RitualChain @DeDevsClub @OpenKnots @OpenCoven
+BunsDev/README.md
+Val Alexander ✦
+Discord ✦ @OpenCvn ✦ @BunsDev ✦ BunsDev.com ✦ OpenCoven
+
+The future is not given — it is made.
+
+Every tool we craft, every system we design, every line of code we commit is a small act of intention: a choice about what kind of world we want to inhabit. We choose one where technology extends human agency rather than replacing it, where power is distributed rather than concentrated, and where the things we build outlast the moment that produced them.
+
+OpenCoven is that commitment in practice. An open ecosystem for persistent AI familiars — agents with names, memory, and purpose. Infrastructure you own, inspect, and extend. A workspace that accumulates power alongside you, not against you.
+
+Bruxae extremae, cum familiaribus alis, initium radicis. Summon Dolls, not Marionnettes.
+
+Featured Projects
+OpenClaw
+A personal AI assistant you run on your own devices. It connects to the channels you already use, supports voice and live Canvas experiences, and keeps the runtime under your control.
+
+OpenClaw website OpenClaw source code
+
+TypeScript Node.js AI Local-first
+
+Coven
+Local harness infrastructure for project-scoped coding-agent sessions. Run multiple harnesses inside explicit boundaries with observable, persistent session state.
+
+Coven documentation Coven source code
+
+Rust TypeScript SQLite IPC
+
+Coven Cave
+A native desktop and mobile control room for familiars, local agent sessions, tasks, memory, GitHub triage, workflows, and phone handoff.
+
+Download Coven Cave Coven Cave source code
+
+Next.js React Tauri SwiftUI
+
+CastCodes
+A local-first AI coding workspace that brings terminal and editor tools, agent lanes, project context, diffs, and review workflows into one native app.
+
+CastCodes website CastCodes source code
+
+Rust React Tauri Local-first
+
+Coven Code
+An open-source agentic coding TUI with chat forking, memory consolidation, a diff viewer, session branching, plugins, and multi-provider support.
+
+Coven Code releases Coven Code source code
+
+Rust Ratatui MCP TUI
+
+Coven GitHub
+Assign an issue to your familiar and get a reviewable pull request back, with signed webhooks, familiar routing, live Check Runs, and Coven Cave oversight.
+
+Coven GitHub architecture Coven GitHub source code
+
+Rust GitHub Apps Webhooks Automation
+
+GitHub Stats
+BunsDev GitHub streak
+Connect with me
+X BunsDev website OpenCoven Discord
+
+We build in the open. We hold ourselves accountable to outcomes, not just outputs. We build what we wish already existed — and in a way we won't be ashamed of later. — Val Alexander
+
+PinnedLoading
+ OpenCoven/coven Public
+Local-first runtime for project-scoped AI coding-agent sessions, with durable state, authority boundaries, and multi-harness interoperability.
+
+ Rust  48  26
+
+ OpenCoven/coven-cave Public
+Native OpenCoven workspace for familiars, agent sessions, memory, tools, workflows, and local-first development.
+
+ TypeScript  27  31
+
+ OpenCoven/familiar-contract Public
+Open specification for portable agent identity, authority, memory, and immutable self-governance boundaries.
+
+ JavaScript  6  2
+
+ OpenCoven/psyche-build Public
+Desktop cockpit for running parallel AI coding agents in visible, isolated workspaces — from branch to review, merge, and handoff.
+
+ TypeScript  2  2
+
+ OpenCoven/coven-threads Public
+Authority and governance layer for protected familiar identity, memory, and write surfaces.
+
+ Rust
+
+ OpenCoven/sdk Public
+Experimental TypeScript SDK and CLI for OpenCoven clients, transports, and shared protocol types. Not for production use.
+
+ TypeScript  1
+
+30,237 contributions in the last year
+Skip to contributions year list
+Contribution Graph
+Day of Week	SeptemberSep	OctoberOct	NovemberNov	DecemberDec	JanuaryJan	FebruaryFeb	MarchMar	AprilApr	MayMay	JuneJun	JulyJul	AugustAug	SeptemberSep
+SundaySun																																																					
+MondayMon																																																					
+TuesdayTue																																																					
+WednesdayWed																																																					
+ThursdayThu																																																					
+FridayFri																																																					
+SaturdaySat																																																					
+Learn how we count contributions
+Less
+No contributions.
+Low contributions.
+Medium-low contributions.
+Medium-high contributions.
+High contributions.
+More
+ @OpenCoven
+ @OpenKnots
+ @openclaw
+ More
+Activity overview
+Contributed to OpenCoven/coven-cave, OpenCoven/coven, OpenCoven/psyche-build and 214 other repositories
+Loading
+4%
+Code review
+3%
+Issues
+27%
+Pull requests
+66%
+Commits
+Contribution activity
+September 2026
+Created a pull request in OpenCoven/coven that received 32 comments
+Sep 9
+feat: publish canonical scheduled proposals from supported Ward intake
+Scope and exact candidate Close out the existing scheduled-publication contribution after its foundation landed through #1022. Related to #888; thi…
+
++8 −0  lines changed •32 comments
+Created an issue in OpenCoven/coven-cave that received 18 comments
+Sep 14
+Retire Beads tracking in favor of GitHub Issues and Projects
+Decision Use GitHub Issues as the development queue and the existing Cave Project (OpenCoven Project 9) for planning. Stop requiring Beads for agen…
+
+18 comments
+620 contributions in private repositoriesSep 1 – Sep 16
+Loading
+2026
+2025
+2024
+2023
+2022
+2021
+2020
+Footer
+© 2026 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Community
+Docs
+Contact
+Manage cookies
+Do not share my personal information
+
+"
+
+https://x.com/BunsDev
+"
+To view keyboard shortcuts, press question mark
+View keyboard shortcuts
+
+
+Val | OpenCoven ❖
+8,807 posts
+
+See new posts
+Val | OpenCoven ❖
+
+@BunsDev
+Lead DevRel 
+@RitualFnd
+ and Founder 
+@OpenCvn
+, building durable agent systems with identity, memory, boundaries, and human belonging. Prev. Maintainer 
+@OpenClaw
+Texas, USAdiscord.gg/OpenCoven
+Joined July 2020
+3,239 Following
+6,518 Followers
+2 Subscriptions
+Followed by Cua, MiniMax (official), and 14 others you follow
+Suggested
+Tigris of Gaul
+@TigrisOfGaul
+Greedy Bastard
+@greedybastard19
+Simone
+@theotherpomp
+Posts 
+Replies
+Reposts
+Media
+Articles
+Val | OpenCoven ❖’s posts
+Pinned
+Val | OpenCoven ❖
+@BunsDev
+·
+Jul 7
+I’m stepping away from #OpenClaw
+
+Within 6 months, I shipped Control UI v2 and ClawHub v2 as a FOSS maintainer. 
+
+I’m incredibly proud of my work and grateful to those who believed in me 🦞
+
+The best part of any ending is what it makes room for. 
+
+Time to build what’s next… 🌙
+Val | OpenCoven ❖
+@BunsDev
+·
+9h
+Yes, it can play (eGirl) Doom 🔫
+
+Translate with DeepL
+Quote
+Val | OpenCoven ❖
+@BunsDev
+·
+15h
+Introducing TypeSafe AI: Build Safer AI Agents with Live Demos https://x.com/i/broadcasts/1YxNrbXDwvnxw
+Val | OpenCoven ❖
+@BunsDev
+·
+15h
+Introducing TypeSafe AI: Build Safer AI Agents with Live Demos
+
+Val | OpenCoven ❖
+@BunsDev
+Introducing TypeSafe AI: Build Safer AI Agents with Live Demos
+Val | OpenCoven ❖
+@BunsDev
+·
+13h
+uWu 
+@typesafeai
+ <3
+
+Translate with DeepL
+Val | OpenCoven ❖
+@BunsDev
+·
+Sep 14
+AGI: Are We Cooked or Cooking? https://x.com/i/broadcasts/1dGYlavkXEvKX
+Val | OpenCoven ❖
+@BunsDev
+·
+Sep 13
+Coven Wands + Astra + Today's AI News | Coven LIVE
+
+Val | OpenCoven ❖
+@BunsDev
+Coven Wands + Astra + Today's AI News | Coven LIVE
+Who to follow
+
+DeGatchi
+@DeGatchi
+mutagenesis ∩ firmware ∩ combinatorics | burnt out podcast 
+@ScrapingBits
+ (math, ai, infosec, hft, crypto)
+Live on X
+You might like
+Blockchain Ecologist
+@block_ecologist
+DeGatchi
+@DeGatchi
+24
+
+@cryptohamm
+Show more
+Trending now
+What’s happening
+Business & finance · Trending
+#battık
+Trending in Turkey
+Katılımevim
+Music · Trending
+Demet Akalın
+Show more
+Terms
+ ·
+Privacy
+ ·
+Cookies
+ ·
+Accessibility
+ ·
+Ads Info
+ ·
+
+More
+© 2026 X Corp.
+
+"

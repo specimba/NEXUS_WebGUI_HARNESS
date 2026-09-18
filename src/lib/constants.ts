@@ -146,6 +146,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiTheme: DEFAULT_UI_THEME,
   providerKeys: { ...PRESEED_PROVIDER_KEYS },
   activeProviderId: "vyce",
+  relayEnabled: true,
   seeded: false,
 };
 

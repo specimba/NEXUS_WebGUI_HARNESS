@@ -5,6 +5,7 @@
 import { toast } from "sonner";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
+import { buildRelayWire } from "@/lib/relay";
 import {
   buildConversationalContext,
   buildReviewContext,
@@ -294,12 +295,21 @@ export async function executeWorkflowRun(
     let draft = "";
     let localToolCalls: ToolCallInfo[] = [];
     const llm = resolveLlm(settings.settings, agent.model);
+    // Model Relay (Genius-rotator doctrine): when this step's brain fails
+    // before streaming anything, the server rotates down the vault's fallback
+    // chain instead of dying — the exact 7am-scheduled-run failure mode.
+    const relayHops = buildRelayWire(settings.settings, {
+      providerId: llm.providerId,
+      model: llm.model,
+    });
+    let relayNotes: string[] = [];
     const MAX_STEP_ATTEMPTS = 2; // 1 real attempt + 1 automatic self-heal retry
 
     for (let attempt = 1; attempt <= MAX_STEP_ATTEMPTS; attempt++) {
       try {
         draft = "";
         localToolCalls = [];
+        relayNotes = [];
         const res = await runAgentChat(
           {
             provider: llm.provider,
@@ -311,9 +321,13 @@ export async function executeWorkflowRun(
             tools: agent.tools,
             system,
             messages: [{ role: "user", content: context }],
+            ...(relayHops.length > 0 ? { relay: relayHops } : {}),
             signal,
           },
           {
+            onStatus: (m) => {
+              if (/Model relay:/i.test(m)) relayNotes.push(m);
+            },
             onToken: (t) => {
               draft += t;
               patchRunStep(runStep.stepId, { output: draft });
@@ -345,6 +359,7 @@ export async function executeWorkflowRun(
           ms: Date.now() - stepStart,
           ok: true,
           attempt,
+          ...(relayNotes.length > 0 ? { note: relayNotes.join(" → ") } : {}),
         });
         patchRunStep(runStep.stepId, {
           output: res.content,
@@ -383,6 +398,7 @@ export async function executeWorkflowRun(
           ok: false,
           error: message,
           attempt,
+          ...(relayNotes.length > 0 ? { note: relayNotes.join(" → ") } : {}),
         });
         // ─── Self-heal: one clean retry for transient engine failures ──────
         const kind = classifyRunError(message).kind;

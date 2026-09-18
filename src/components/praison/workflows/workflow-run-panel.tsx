@@ -313,6 +313,11 @@ function RunRecoveryCard({
                         <span className="text-red-400">✗ {c.error ?? "failed"}</span>
                       )}
                       {c.attempt && c.attempt > 1 ? ` (attempt ${c.attempt})` : ""}
+                      {c.note ? (
+                        <span className="mt-0.5 block font-mono text-[10px] text-amber-300/90">
+                          ↻ {c.note}
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

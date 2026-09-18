@@ -191,6 +191,8 @@ export interface RunCallLogEntry {
   error?: string;
   /** 1-based attempt number for this step call (auto-retries increment it). */
   attempt?: number;
+  /** Relay rotation trace, e.g. "Model relay: Vyce · x failed → rotating to y". */
+  note?: string;
 }
 
 export interface WorkflowRun {
@@ -261,6 +263,10 @@ export interface Settings {
   providerKeys?: Record<string, ProviderKeyEntry>;
   /** Which LLM source is active when provider = "custom": a registry id or "custom" (legacy endpoint). */
   activeProviderId?: string;
+  /** Model Relay — automatic fallback rotation when the active model fails. Default true. */
+  relayEnabled?: boolean;
+  /** Saved hop ordering (keys "providerId::model"); missing = recommended Generation-Era order. */
+  relayOrder?: string[];
   seeded: boolean;
 }
 
