@@ -12,9 +12,14 @@ export const dynamic = "force-dynamic";
 // sends { providerId, key?, accountId? } — the key travels per-request from
 // the user's vault and is used ONLY against the allowlisted /models endpoint
 // of the provider they picked. Nothing is stored or logged server-side.
-// This keeps providers' model rosters current (Gemini 3.8 Flash, new Groq
-// uploads, Vyce additions…) with a single button — like OpenRouter's live
-// catalog, everywhere.
+//
+// r23: the endpoint table + normalizers moved to src/lib/provider-refresh.ts
+// (shared with the BROWSER fallback — when this server is region-blocked by a
+// provider, the gallery retries the same roster straight from the user's
+// network). OrcaRouter added (public keyless /v1/models); Cloudflare URL fixed
+// to /ai/models/search (the old /ai/v1/models answered 405).
+
+import { KEYED_ENDPOINTS, normalizeCf, normalizeOpenAI } from "@/lib/provider-refresh";
 
 interface CacheEntry {
   at: number;
@@ -84,88 +89,6 @@ async function fetchPollinations(): Promise<{ id: string; label?: string; contex
     }));
   if (models.length === 0) throw new Error("No text models in upstream catalog");
   return models;
-}
-
-// ─── Key-authed /models allowlist (one row per registry provider) ────────────
-// {ACCOUNT_ID} is spliced from the vault entry (Cloudflare). Most providers
-// speak the OpenAI `{ data: [...] }` shape; Cloudflare uses { result: [...] }.
-
-interface KeyedEndpoint {
-  url: string;
-  /** Response shape: OpenAI-compatible "openai" | Cloudflare search "cf". */
-  shape: "openai" | "cf";
-  /** Some providers accept a key but work without one. */
-  keyOptional?: boolean;
-}
-
-const KEYED_ENDPOINTS: Record<string, KeyedEndpoint> = {
-  vyce: { url: "https://vyceai.com/v1/models", shape: "openai", keyOptional: true },
-  groq: { url: "https://api.groq.com/openai/v1/models", shape: "openai" },
-  "google-ai-studio": { url: "https://generativelanguage.googleapis.com/v1beta/openai/models", shape: "openai" },
-  mistral: { url: "https://api.mistral.ai/v1/models", shape: "openai", keyOptional: true },
-  zai: { url: "https://api.z.ai/api/paas/v4/models", shape: "openai" },
-  "nvidia-nim": { url: "https://integrate.api.nvidia.com/v1/models", shape: "openai", keyOptional: true },
-  sambanova: { url: "https://api.sambanova.ai/v1/models", shape: "openai" },
-  cohere: { url: "https://api.cohere.ai/compatibility/v1/models", shape: "openai" },
-  together: { url: "https://api.together.xyz/v1/models", shape: "openai", keyOptional: true },
-  cerebras: { url: "https://api.cerebras.ai/v1/models", shape: "openai" },
-  cloudflare: {
-    url: "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1/models",
-    shape: "cf",
-  },
-};
-
-/** Non-text / internal models we never want in a chat picker. */
-const NON_TEXT_RE = /embed|whisper|\btts\b|guard|rerank|moderation|sdxl|imagen|imagine|diffusion|vision-?(?:enc|only)/i;
-
-interface RawModelRow {
-  id?: string;
-  name?: string;
-  context_window?: number;
-  context_length?: number;
-  type?: string;
-  owned_by?: string;
-  description?: string;
-}
-
-function normalizeOpenAI(data: unknown): { id: string; label?: string; contextLength?: number }[] {
-  const rows = (data as { data?: RawModelRow[] } | null)?.data ?? [];
-  const out: { id: string; label?: string; contextLength?: number }[] = [];
-  for (const m of rows) {
-    const id = typeof m.id === "string" ? m.id : typeof m.name === "string" ? m.name : "";
-    if (!id || NON_TEXT_RE.test(id)) continue;
-    if (m.type && m.type !== "model" && m.type !== "text") continue; // e.g. vyce type:"image"
-    const ctx =
-      typeof m.context_window === "number"
-        ? m.context_window
-        : typeof m.context_length === "number"
-          ? m.context_length
-          : undefined;
-    out.push({ id, label: prettifyLabel(id), contextLength: ctx });
-  }
-  return out;
-}
-
-function normalizeCf(data: unknown): { id: string; label?: string; contextLength?: number }[] {
-  const rows = (data as { result?: RawModelRow[] } | null)?.result ?? [];
-  const out: { id: string; label?: string; contextLength?: number }[] = [];
-  for (const m of rows) {
-    const id = typeof m.name === "string" ? m.name : typeof m.id === "string" ? m.id : "";
-    if (!id || NON_TEXT_RE.test(id)) continue;
-    out.push({ id, label: prettifyLabel(id), contextLength: undefined });
-  }
-  return out;
-}
-
-/** "meta-llama/Llama-3.3-70B-Instruct-Turbo" → "Llama 3.3 70B Instruct Turbo" */
-function prettifyLabel(id: string): string {
-  const tail = id.includes("/") ? id.slice(id.lastIndexOf("/") + 1) : id;
-  return tail
-    .replace(/[:_]/g, " ")
-    .replace(/-/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export async function GET(req: NextRequest) {
@@ -238,6 +161,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(url, {
       headers: {
         Accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; PraisonAI-Web/1.0; BYOK local-first)",
         ...(key ? { Authorization: `Bearer ${key}` } : {}),
       },
       signal: AbortSignal.timeout(12_000),
@@ -245,12 +169,14 @@ export async function POST(req: NextRequest) {
     });
     const text = await res.text().catch(() => "");
     if (!res.ok) {
-      const hint =
-        res.status === 401 || res.status === 403
+      const regionish = res.status === 403 || res.status === 451;
+      const hint = regionish
+        ? " — likely a server-region/IP block (your key is fine): the provider card will retry from your browser"
+        : res.status === 401
           ? " — the saved key was rejected; re-check it on the provider card"
           : "";
       return NextResponse.json(
-        { error: `HTTP ${res.status}${hint}: ${text.slice(0, 160) || "models endpoint failed"}` },
+        { error: `HTTP ${res.status}${hint}: ${text.slice(0, 160) || "models endpoint failed"}`, regionBlocked: regionish },
         { status: 502 }
       );
     }

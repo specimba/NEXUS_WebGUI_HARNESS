@@ -68,6 +68,17 @@ const ARENA_CATALOG: Record<
       { id: "agnes-3.0-flash", tier: 2, elo: 0.91, note: "Agentic · 512K ctx" },
     ],
   },
+  orcarouter: {
+    label: "OrcaRouter",
+    models: [
+      { id: "google/gemini-3.8-flash", tier: 1, elo: 0.975, note: "Current-gen Gemini · 1M ctx" },
+      { id: "kimi/kimi-k3", tier: 1, elo: 0.975, note: "Moonshot frontier" },
+      { id: "z-ai/glm-5.3", tier: 1, elo: 0.97, note: "GLM 5.3 flagship" },
+      { id: "minimax/minimax-m3", tier: 1, elo: 0.92, note: "Long-horizon agentic" },
+      { id: "deepseek/deepseek-v4-flash-free", tier: 2, elo: 0.915, note: "Free · 1M ctx" },
+      { id: "orcarouter/free", tier: 2, elo: 0.9, note: "Difficulty-routed free pool · never bills" },
+    ],
+  },
   "google-ai-studio": {
     label: "Google AI Studio",
     models: [
@@ -227,7 +238,7 @@ function recentlyFailed(entry: RelayHealthEntry | undefined): boolean {
 // ─── Task fit heuristics ──────────────────────────────────────────────────────
 
 const FAST_RE = /flash|mini|lite|fast|turbo|lightning|instant|small|20b|8b|compound/i;
-const FLAGSHIP_RE = /pro|ultra|flagship|v4\.1|large|frontier|sonnet|120b|550b|command-a|medium/i;
+const FLAGSHIP_RE = /pro|ultra|flagship|v4\.1|large|frontier|sonnet|120b|550b|command-a|medium|kimi-k3|minimax-m3|glm-5\.3|fusion/i;
 
 function taskBoost(hop: RelayHop, fit: RelayTaskFit): number {
   if (fit === "any") return 0;

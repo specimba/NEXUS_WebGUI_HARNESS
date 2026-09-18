@@ -68,6 +68,10 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
     label: "Network",
     hint: "The connection to the model provider dropped mid-run. This is usually transient — retrying the failed step keeps every completed step's output.",
   },
+  region: {
+    label: "Region block",
+    hint: "The provider refuses datacenter IPs — this is a network-location block, NOT a key problem. Browser-direct mode (on by default) calls from your own network and avoids it; if you still see this, the relay already rotated to another lane — retry the step.",
+  },
   auth: {
     label: "Auth",
     hint: "The API key was rejected (expired, revoked or wrong). Fix the key in Settings → Free frontier providers, then retry the failed step.",
@@ -92,6 +96,12 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
 
 const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
   { kind: "rate-limit", re: /\b429\b|rate.?limit|quota|too many requests/i },
+  {
+    // BEFORE auth: a 403 with block-page signatures is a location block, not
+    // a key problem — "Access forbidden (check key/region)" alone stays auth.
+    kind: "region",
+    re: /blocked this network|region\/?IP block|datacenter|server-region|\b451\b/i,
+  },
   { kind: "auth", re: /\b(401|403)\b|unauthorized|invalid.{0,12}(api )?key|invalid.?key|forbidden|permission denied/i },
   { kind: "model", re: /\b404\b|no such model|model.?not.?found|model (.{0,40} )?does not exist|not found|decommissioned|does not exist or is not supported/i },
   { kind: "timeout", re: /timeout|timed? ?out|etimedout|deadline/i },
@@ -382,7 +392,9 @@ export async function executeWorkflowRun(
           ms: Date.now() - stepStart,
           ok: true,
           attempt,
-          ...(relayNotes.length > 0 ? { note: relayNotes.join(" → ") } : {}),
+          ...(relayNotes.length > 0 || res.transport === "browser-direct"
+            ? { note: [...(res.transport === "browser-direct" ? ["browser-direct — key stayed in your browser"] : []), ...relayNotes].join(" → ") }
+            : {}),
         });
         patchRunStep(runStep.stepId, {
           output: res.content,

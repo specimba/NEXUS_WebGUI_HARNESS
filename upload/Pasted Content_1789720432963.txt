@@ -1,0 +1,3404 @@
+Router Control Center
+
+Dashboard
+Live model telemetry, provider health, and routing controls. Evidence-backed quality and canonical CLI route ranking live in Model Arena.
+
+Version v1.22.1
+✨ Update to v1.22.2
+Evidence Arena ↗
+Exact routes & document checklist ↗
+
+☀️
+
+Best Available Route
+DeepSeek V4.1
+Fresh observed health only; a pinned model remains a request preference.
+Recently Observed Offers
+40
+Recently Observed Providers
+11
+Live Telemetry
+Chat
+Request Logs
+Account Status
+Settings
+Setup Instructions
+Provider telemetry
+Route scores are control-plane metadata, not benchmark evidence. Open Evidence Arena for source-dated rankings.
+Search models, providers, or tiers...
+Filters
+
+Google: Gemini 2.5 Flash
+google/gemini-2.5-flash
+openai-compatible:orcarouter
+52
+88Static*
+941ms
+(941ms)
+100%
+✅
+OBSERVED HEALTHY
+DeepSeek V4.1
+deepseek-v4.1
+openai-compatible:vyce
+50
+98Static*
+2996ms
+(5969ms)
+100%
+✅
+OBSERVED HEALTHY
+Coding GLM 5.3 Flash FREE (AIHubMix) [HIGH PRIO 2026-08-26]
+coding-glm-5.3-flash-free
+openai-compatible:aihubmix
+42
+97Static*
+3835ms
+(3242ms)
+100%
+✅
+OBSERVED HEALTHY
+Claude Sonnet 4.6
+claude-sonnet-4-6
+openai-compatible:vyce
+33
+96Static*
+5403ms
+(10257ms)
+100%
+✅
+OBSERVED HEALTHY
+DeepSeek V4 Flash
+deepseek-v4-flash
+openai-compatible:vyce
+29
+84Static*
+2946ms
+(3908ms)
+100%
+✅
+OBSERVED HEALTHY
+Google: Gemini 2.5 Flash Lite
+google/gemini-2.5-flash-lite
+openai-compatible:orcarouter
+28
+82Static*
+2287ms
+(2287ms)
+100%
+✅
+OBSERVED HEALTHY
+Intern-S2-Preview 397B
+intern-s2-preview-397b
+openai-compatible:internai
+28
+84Static*
+3136ms
+(1599ms)
+100%
+✅
+OBSERVED HEALTHY
+Codestral 2508
+codestral-2508
+openai-compatible:mistral
+28
+70Static*
+400ms
+(385ms)
+96%
+✅
+OBSERVED HEALTHY
+Step 3.7 Flash
+stepfun/step-3.7-flash:free
+kilocode
+fast
+general
+27
+80Static*
+1985ms
+(2238ms)
+100%
+✅
+OBSERVED HEALTHY
+Codestral Latest
+codestral-latest
+codestral
+coding
+27
+70Static*
+452ms
+(424ms)
+100%
+✅
+OBSERVED HEALTHY
+Qwen 3.8 27B
+qwen/qwen3.8-27b
+groq
+27
+68AA
+233ms
+(230ms)
+100%
+✅
+OBSERVED HEALTHY
+Qwen: Qwen3 Max
+qwen/qwen3-max
+openai-compatible:orcarouter
+25
+74Static*
+1158ms
+(1158ms)
+100%
+✅
+OBSERVED HEALTHY
+Intern-S2-Preview 397B
+intern-latest
+openai-compatible:internai
+25
+84Static*
+4038ms
+(1580ms)
+97%
+✅
+OBSERVED HEALTHY
+Codestral Latest
+codestral-latest
+openai-compatible:mistral
+coding
+24
+70Static*
+489ms
+(453ms)
+94%
+✅
+OBSERVED HEALTHY
+OpenAI: GPT-4o-mini
+openai/gpt-4o-mini
+openai-compatible:orcarouter
+24
+70Static*
+904ms
+(904ms)
+100%
+✅
+OBSERVED HEALTHY
+GPT 5.6 Luna (Go)
+gpt-5.6-luna
+openai-compatible:orcarouter
+24
+71AA
+1217ms
+(1217ms)
+100%
+✅
+OBSERVED HEALTHY
+GPT OSS 120B
+openai/gpt-oss-120b
+groq
+general
+24
+64Static*
+363ms
+(701ms)
+100%
+✅
+OBSERVED HEALTHY
+Muse Glimmer 30B
+meta/muse-glimmer-30b
+openai-compatible:nvidia
+23
+76Static*
+1459ms
+(3049ms)
+88%
+✅
+OBSERVED HEALTHY
+Qwen: Qwen3.8 Max (0902)
+qwen/qwen3.8-max-0902
+openai-compatible:orcarouter
+23
+76AA
+2121ms
+(2121ms)
+100%
+✅
+OBSERVED HEALTHY
+OpenAI: GPT-6 Astra
+openai/gpt-6-astra
+openai-compatible:orcarouter
+22
+77AA
+2292ms
+(2292ms)
+100%
+✅
+OBSERVED HEALTHY
+Nemotron 3.5 Lightning 30B
+nemotron-3.5-lightning-free
+openai-compatible:aihubmix
+22
+82Static*
+1198ms
+(1198ms)
+73%
+✅
+OBSERVED HEALTHY
+MoonshotAI: Kimi K3
+kimi/kimi-k3
+openai-compatible:orcarouter
+20
+76AA
+2704ms
+(2704ms)
+100%
+✅
+OBSERVED HEALTHY
+Google: Gemini 3.8 Flash
+google/gemini-3.8-flash
+openai-compatible:orcarouter
+20
+76AA
+2723ms
+(2723ms)
+100%
+✅
+OBSERVED HEALTHY
+Qwen: Qwen3.8 27B
+qwen/qwen3.8-27b
+openai-compatible:orcarouter
+20
+68AA
+1447ms
+(1447ms)
+100%
+✅
+OBSERVED HEALTHY
+Muse Glimmer 30B
+meta/muse-glimmer-30b
+nvidia
+18
+76Static*
+3234ms
+(3718ms)
+96%
+✅
+OBSERVED HEALTHY
+Nemotron 3.5 Lightning 30B
+nvidia/nemotron-3.5-lightning-30b-a3b
+openai-compatible:nvidia
+18
+82Static*
+4599ms
+(4313ms)
+85%
+✅
+OBSERVED HEALTHY
+DeepSeek V4 Flash LR
+deepseek-v4-flash-lr
+openai-compatible:vyce
+16
+84Static*
+6906ms
+(11221ms)
+92%
+✅
+OBSERVED HEALTHY
+Qwen3.8 27B
+obsidian/Qwen3.8-27B
+openai-compatible:orcarouter
+15
+68AA
+2757ms
+(2757ms)
+100%
+✅
+OBSERVED HEALTHY
+Nemotron 3 Super 120B
+nvidia/nemotron-3-super-120b-a12b
+nvidia
+15
+70Static*
+857ms
+(857ms)
+71%
+✅
+OBSERVED HEALTHY
+Qwen: Qwen3.6 Flash
+qwen/qwen3.6-flash
+openai-compatible:orcarouter
+14
+66Static*
+3264ms
+(3264ms)
+100%
+✅
+OBSERVED HEALTHY
+Qwen: Qwen3.6 Plus
+qwen/qwen3.6-plus
+openai-compatible:orcarouter
+13
+76Static*
+5319ms
+(5319ms)
+100%
+✅
+OBSERVED HEALTHY
+GPT OSS 20B (Pollinations free)
+gpt-oss-20b
+pollinations
+fast
+general
+13
+56Static*
+218ms
+(240ms)
+100%
+✅
+OBSERVED HEALTHY
+Qwen: Qwen3.7 Flash
+qwen/qwen3.7-flash
+openai-compatible:orcarouter
+12
+70Static*
+4967ms
+(4967ms)
+100%
+✅
+OBSERVED HEALTHY
+Qwen: Qwen3.5-122B-A10B
+qwen/qwen3.5-122b-a10b
+openai-compatible:orcarouter
+12
+68Static*
+4464ms
+(4464ms)
+100%
+✅
+OBSERVED HEALTHY
+Nemotron 3 Ultra 550B
+nvidia/nemotron-3-ultra-550b-a55b
+openai-compatible:nvidia
+general
+6
+78Static*
+14889ms
+(912ms)
+88%
+✅
+OBSERVED HEALTHY
+Groq Compound Mini
+groq/compound-mini
+groq
+5
+45Default*
+519ms
+(522ms)
+100%
+✅
+OBSERVED HEALTHY
+GPT OSS 20B (NIM)
+openai/gpt-oss-20b
+openai-compatible:nvidia
+fast
+general
+3
+56Static*
+619ms
+(619ms)
+63%
+✅
+OBSERVED HEALTHY
+GPT OSS 20B
+openai/gpt-oss-20b
+nvidia
+fast
+general
+3
+56Static*
+1058ms
+(1058ms)
+60%
+✅
+OBSERVED HEALTHY
+GLM 5.2 Coding FREE (AIHubMix)
+coding-glm-5.2-free
+openai-compatible:aihubmix
+3
+45Default*
+2874ms
+(3456ms)
+94%
+✅
+OBSERVED HEALTHY
+DeepSeek V4 Flash 0731 OrcaPool (OrcaRouter)
+deepseek/deepseek-v4-flash-0731:free
+kilocode
+2
+54Static*
+1676ms
+(1676ms)
+25%
+✅
+OBSERVED HEALTHY
+GLM 5.3
+z-ai/glm-5.3
+openai-compatible:orcarouter
+48
+97Static*
+STALE
+100%
+✅
+STALE · 11h
+Z.ai: GLM 5.3 Flash
+z-ai/glm-5.3-flash
+openai-compatible:orcarouter
+48
+97Static*
+STALE
+100%
+✅
+STALE · 11h
+GLM 5.2
+z-ai/glm-5.2
+openai-compatible:orcarouter
+agentic
+coding
+general
+44
+95Static*
+STALE
+100%
+✅
+STALE · 9h
+Google: Gemini 2.5 Pro
+google/gemini-2.5-pro
+openai-compatible:orcarouter
+42
+93Static*
+STALE
+100%
+✅
+STALE · 8h
+MiniMax: MiniMax M3
+minimax/minimax-m3
+openai-compatible:orcarouter
+41
+92Static*
+STALE
+100%
+✅
+STALE · 10h
+DeepSeek: DeepSeek V4 Pro
+deepseek/deepseek-v4-pro
+openai-compatible:orcarouter
+34
+88Static*
+STALE
+100%
+✅
+STALE · 7h
+Z.ai: GLM 5.1
+z-ai/glm-5.1
+openai-compatible:orcarouter
+32
+86Static*
+STALE
+100%
+✅
+STALE · 7h
+Qwen: Qwen3.5 397B A17B
+qwen/qwen3.5-397b-a17b
+openai-compatible:orcarouter
+general
+coding
+31
+85Static*
+STALE
+100%
+✅
+STALE · 7h
+DeepSeek: DeepSeek V4 Flash
+deepseek/deepseek-v4-flash
+openai-compatible:orcarouter
+29
+84Static*
+STALE
+100%
+✅
+STALE · 10h
+MiniMax: MiniMax M2.5
+minimax/minimax-m2.5
+openai-compatible:orcarouter
+23
+80Static*
+STALE
+100%
+✅
+STALE · 6h
+Kimi K2.6 (Go)
+kimi/kimi-k2.6
+openai-compatible:orcarouter
+21
+78Static*
+STALE
+100%
+✅
+STALE · 6h
+Z.ai: GLM 5.3 Flash
+z-ai/glm-5.3-flash-free
+openai-compatible:orcarouter
+17
+72AA
+STALE
+100%
+✅
+STALE · 10h
+DeepSeek: DeepSeek V4 Pro 0813
+deepseek/deepseek-v4-pro-0813
+openai-compatible:orcarouter
+15
+69AA
+STALE
+100%
+✅
+STALE · 7h
+DeepSeek: DeepSeek V4 Flash Vision (Exp)
+deepseek/deepseek-v4-flash-vision-exp
+openai-compatible:orcarouter
+13
+63Meta*
+STALE
+100%
+✅
+STALE · 10h
+Nemotron 3 Super 120B
+nvidia/nemotron-3-super-120b-a12b
+openai-compatible:nvidia
+10
+70Static*
+STALE
+75%
+✅
+STALE · 10h
+Gemini 3.7 Flash Thinking
+gemini-3.7-flash
+googleai
+9
+94Static*
+STALE
+40%
+✅
+STALE · 10h
+Gemini 3.5 Flash
+gemini-3.5-flash
+googleai
+7
+88Static*
+STALE
+40%
+✅
+STALE · 10h
+GPT OSS 20B
+openai/gpt-oss-20b
+groq
+fast
+general
+7
+56Static*
+STALE
+100%
+✅
+STALE · 8h
+Gemini 2.5 Flash Lite
+gemini-2.5-flash-lite
+googleai
+5
+82Static*
+STALE
+50%
+✅
+STALE · 10h
+DeepSeek: DeepSeek V4 Flash 0731
+deepseek/deepseek-v4-flash-0731
+openai-compatible:orcarouter
+5
+54Static*
+STALE
+100%
+✅
+STALE · 9h
+DeepSeek: DeepSeek V4 Flash
+deepseek/deepseek-v4-flash-free
+openai-compatible:orcarouter
+5
+52AA
+STALE
+100%
+✅
+STALE · 8h
+Groq Compound
+groq/compound
+groq
+5
+52Static*
+STALE
+100%
+✅
+STALE · 10h
+Laguna XS 2.1 (NIM)
+poolside/laguna-xs-2.1
+openai-compatible:nvidia
+4
+75Static*
+STALE
+50%
+✅
+STALE · 10h
+Kilo Auto Router (Kilo Free)
+kilo-auto/free
+kilocode
+3
+46Meta*
+STALE
+100%
+✅
+STALE · 4d
+OpenAI General (Pollinations free)
+openai
+pollinations
+3
+45Default*
+STALE
+100%
+✅
+STALE · 2d
+Inkling 256-MoE Mamba
+thinkingmachines/inkling
+openai-compatible:modal-inkling
+2
+58Static*
+STALE
+52%
+✅
+STALE · 10h
+Nemotron 3 Super 120B FREE (AIHubMix 262K)
+nemotron-3-super-120b-a12b-free
+openai-compatible:aihubmix
+2
+38AA
+STALE
+100%
+✅
+STALE · 4d
+Gemini 3.5 Flash Lite FREE (AIHubMix trial)
+gemini-3.5-flash-lite-free
+openai-compatible:aihubmix
+1
+49AA
+STALE
+57%
+✅
+STALE · 4d
+Gemini 3.5 Flash Lite
+gemini-3.5-flash-lite
+googleai
+1
+49AA
+STALE
+45%
+✅
+STALE · 10h
+DeepSeek: DeepSeek V4.1 Flash
+deepseek/deepseek-v4.1-flash
+openai-compatible:orcarouter
+1
+—
+STALE
+100%
+✅
+STALE · 11h
+Gemini 3.7 Flash FREE (AIHubMix trial)
+gemini-3.7-flash-free
+openai-compatible:aihubmix
+0
+76AA
+NOT PROBED
+82%
+✅
+UNVERIFIED
+Ling 3.0 Flash Fin
+ling-3.0-flash-fin-free
+opencode
+0
+56AA
+NOT PROBED
+43%
+✅
+UNVERIFIED
+GLM 5.3 Flash (AIHubMix)
+glm-5.3-flash
+openai-compatible:aihubmix
+0
+97Static*
+NOT PROBED
+12%
+✅
+UNVERIFIED
+Coding GLM 5.3 (AIHubMix)
+coding-glm-5.3
+openai-compatible:aihubmix
+0
+97Static*
+NOT PROBED
+11%
+✅
+UNVERIFIED
+Agnes 3.0 Flash
+agnes-3.0-flash
+openai-compatible:vyce
+0
+85Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Anthropic: Claude Fable 5.1
+anthropic/claude-fable-5.1
+openai-compatible:orcarouter
+0
+82AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Anthropic: Claude Haiku 4.5
+anthropic/claude-haiku-4.5
+openai-compatible:orcarouter
+0
+55Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Anthropic: Claude Opus 4.5
+anthropic/claude-opus-4.5
+openai-compatible:orcarouter
+0
+60Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Anthropic: Claude Opus 4.6
+anthropic/claude-opus-4.6
+openai-compatible:orcarouter
+0
+68Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Auto
+orcarouter/auto
+openai-compatible:orcarouter
+0
+45Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Claude 3.5 Haiku (AIHubMix)
+claude-3-5-haiku-20241022
+openai-compatible:aihubmix
+0
+75Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Codex Auto Review
+codex-auto-review
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek Chat (AIHubMix)
+deepseek-chat
+openai-compatible:aihubmix
+0
+37Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek Reasoner (AIHubMix)
+deepseek-reasoner
+openai-compatible:aihubmix
+0
+91Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek Reasoner (AIHubMix)
+deepseek/deepseek-reasoner
+openai-compatible:orcarouter
+0
+91Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek V3
+deepseek-ai/DeepSeek-V3
+deepinfra
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek V4 Flash
+deepseek-v4-flash
+openai-compatible:agentrouter
+0
+84Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek V4 Flash 0731 (AIHubMix)
+deepseek-v4-flash-0731
+openai-compatible:aihubmix
+0
+84Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek V4 Flash Fast (AIHubMix)
+deepseek-v4-flash-0731-fast
+openai-compatible:aihubmix
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek V4 Pro 0813 (AIHubMix)
+deepseek-v4-pro-0813
+openai-compatible:aihubmix
+0
+69AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+DeepSeek: DeepSeek V3
+deepseek/deepseek-chat
+openai-compatible:orcarouter
+0
+37Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Free
+orcarouter/free
+openai-compatible:orcarouter
+0
+46Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Free Models Router (50 free models)
+openrouter/free
+kilocode
+0
+46Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Fusion
+orcarouter/fusion
+openai-compatible:orcarouter
+0
+44Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Fusion Flash
+orcarouter/fusion-flash
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Fusion Mini
+orcarouter/fusion-mini
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini 2.5 Flash (AIHubMix)
+gemini-2.5-flash
+openai-compatible:aihubmix
+0
+88Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini 2.5 Pro (AIHubMix)
+gemini-2.5-pro
+openai-compatible:aihubmix
+0
+93Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini 3.1 Flash Lite
+google/gemini-3.1-flash-lite
+openai-compatible:orcarouter
+0
+63Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini 3.6 Flash FREE (AIHubMix trial)
+gemini-3.6-flash-free
+openai-compatible:aihubmix
+0
+69AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini 3.7 Flash (AIHubMix)
+gemini-3.7-flash
+openai-compatible:aihubmix
+0
+94Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini Flash Latest
+google/gemini-flash-latest
+openai-compatible:orcarouter
+0
+51Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini Flash Lite Latest
+google/gemini-flash-lite-latest
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini Pro Latest
+google/gemini-pro-latest
+openai-compatible:orcarouter
+0
+51Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini Robotics Er 1.6 Preview
+google/gemini-robotics-er-1.6-preview
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemma 4 26B A4B
+google/gemma-4-26b-a4b-it
+openai-compatible:orcarouter
+0
+39AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemma 4 26B A4B
+obsidian/gemma-4-26B-A4B
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemma 4 31B
+google/gemma-4-31b-it
+openai-compatible:orcarouter
+0
+58Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+GLM 5.1
+zai-org/GLM-5.1
+openai-compatible:baseten
+0
+56AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+GLM 5.2
+z-ai/glm-5.2
+openai-compatible:zenmux
+agentic
+coding
+general
+0
+95Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+GLM 5.2
+zai-org/GLM-5.2
+openai-compatible:baseten
+agentic
+coding
+general
+0
+95Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Google: Gemini 3 Flash Preview
+google/gemini-3-flash-preview
+openai-compatible:orcarouter
+0
+51Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Google: Gemini 3.1 Flash Lite Preview
+google/gemini-3.1-flash-lite-preview
+openai-compatible:orcarouter
+0
+35AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Google: Gemini 3.1 Pro Preview Custom Tools
+google/gemini-3.1-pro-preview-customtools
+openai-compatible:orcarouter
+0
+57Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Google: Gemini 3.5 Flash-Lite
+google/gemini-3.5-flash-lite
+openai-compatible:orcarouter
+0
+49AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+google/lyria-3-clip-preview
+google/lyria-3-clip-preview
+kilocode
+0
+48Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+google/lyria-3-pro-preview
+google/lyria-3-pro-preview
+kilocode
+0
+50Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 3.5 Turbo 0125
+openai/gpt-3.5-turbo-0125
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 3.5 Turbo 1106
+openai/gpt-3.5-turbo-1106
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 4 0613
+openai/gpt-4-0613
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 4 Turbo 2024 04 09
+openai/gpt-4-turbo-2024-04-09
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 4.1 2025 04 14
+openai/gpt-4.1-2025-04-14
+openai-compatible:orcarouter
+0
+22Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 4.1 Mini 2025 04 14
+openai/gpt-4.1-mini-2025-04-14
+openai-compatible:orcarouter
+0
+20AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 4.1 Nano 2025 04 14
+openai/gpt-4.1-nano-2025-04-14
+openai-compatible:orcarouter
+0
+11AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5 2025 08 07
+openai/gpt-5-2025-08-07
+openai-compatible:orcarouter
+0
+38AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5 Chat Latest
+openai/gpt-5-chat-latest
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5 Mini 2025 08 07
+openai/gpt-5-mini-2025-08-07
+openai-compatible:orcarouter
+0
+16AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5 Nano 2025 08 07
+openai/gpt-5-nano-2025-08-07
+openai-compatible:orcarouter
+0
+32Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5 Pro 2025 10 06
+openai/gpt-5-pro-2025-10-06
+openai-compatible:orcarouter
+0
+49Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5 Search Api
+openai/gpt-5-search-api
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5 Search Api 2025 10 14
+openai/gpt-5-search-api-2025-10-14
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.1 2025 11 13
+openai/gpt-5.1-2025-11-13
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.1 Chat Latest
+openai/gpt-5.1-chat-latest
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.2 2025 12 11
+openai/gpt-5.2-2025-12-11
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.2 Chat Latest
+openai/gpt-5.2-chat-latest
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.2 Pro 2025 12 11
+openai/gpt-5.2-pro-2025-12-11
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.4 2026 03 05
+openai/gpt-5.4-2026-03-05
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.4 Mini 2026 03 17
+openai/gpt-5.4-mini-2026-03-17
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.4 Nano 2026 03 17
+openai/gpt-5.4-nano-2026-03-17
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.4 Pro 2026 03 05
+openai/gpt-5.4-pro-2026-03-05
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.5 2026 04 23
+openai/gpt-5.5-2026-04-23
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gpt 5.5 Pro 2026 04 23
+openai/gpt-5.5-pro-2026-04-23
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+GPT OSS 120B
+gpt-oss-120b
+cerebras
+general
+0
+64Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+GPT-4o Mini (AIHubMix)
+gpt-4o-mini
+openai-compatible:aihubmix
+0
+70Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Grok 4.5 (AIHubMix)
+grok-4.5
+openai-compatible:aihubmix
+0
+72AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Grok 4.6 (AIHubMix)
+grok-4.6
+openai-compatible:aihubmix
+0
+77AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+inclusionai/ling-3.0-flash-sante:free
+inclusionai/ling-3.0-flash-sante:free
+kilocode
+0
+60Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kimi K2.5
+kimi/kimi-k2.5
+openai-compatible:orcarouter
+0
+47AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kimi K2.7 Code
+moonshotai/Kimi-K2.7-Code
+openai-compatible:baseten
+0
+61AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kling V2 1 Master
+kling/kling-v2-1-master
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kling V2 5 Turbo
+kling/kling-v2-5-turbo
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kling V2 6
+kling/kling-v2-6
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kling V2 Master
+kling/kling-v2-master
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kling V3
+kling/kling-v3
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kling V3 Omni
+kling/kling-v3-omni
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kling Video O1
+kling/kling-video-o1
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Kling: Kling 3.0 Turbo
+kling/kling-3-turbo
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Laguna S 2.1
+poolside/laguna-s-2.1:free
+kilocode
+0
+55Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Ling 3.0 Flash
+inclusionai/ling-3.0-flash
+openai-compatible:zenmux
+0
+60Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+liquid/lfm-2.5-2.6b:free
+liquid/lfm-2.5-2.6b:free
+kilocode
+0
+56Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Llama 3.3 70B Turbo
+meta-llama/Llama-3.3-70B-Instruct-Turbo
+deepinfra
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+MiniMax M2.5 highspeed
+minimax/minimax-m2.5-highspeed
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+MiniMax M2.7 highspeed
+minimax/minimax-m2.7-highspeed
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+MiniMax: MiniMax M2.7
+minimax/minimax-m2.7
+openai-compatible:orcarouter
+0
+62Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+MiniMax: MiniMax-H3
+minimax/minimax-h3
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Mistral Large Latest
+mistral-large-latest
+openai-compatible:mistral
+0
+60Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+MoonshotAI: Kimi K2.7 Code
+kimi/kimi-k2.7-code
+openai-compatible:orcarouter
+0
+61AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Muse Spark 1.1 (Meta)
+muse-spark-1.1
+openai-compatible:metaai
+0
+71AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Muse Spark 1.2 (Meta)
+muse-spark-1.2
+openai-compatible:metaai
+0
+72AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Muse Spark 1.2 Contributor
+muse-spark-1.2-contributor
+openai-compatible:metaai
+0
+86Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Nemotron 3 Nano Omni free (TokenRouter)
+nvidia/nemotron-3-nano-omni-30b-a3b-reasoning-free
+tokenrouter
+0
+14AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+North Mini Code (Kilo Free)
+cohere/north-mini-code:free
+kilocode
+0
+50Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+kilocode
+0
+30Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-3.5 Turbo
+openai/gpt-3.5-turbo
+openai-compatible:orcarouter
+0
+11AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-3.5 Turbo 16k
+openai/gpt-3.5-turbo-16k
+openai-compatible:orcarouter
+0
+41Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4
+openai/gpt-4
+openai-compatible:orcarouter
+0
+13AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4 Turbo
+openai/gpt-4-turbo
+openai-compatible:orcarouter
+0
+22AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4.1
+openai/gpt-4.1
+openai-compatible:orcarouter
+0
+22Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4.1 Mini
+openai/gpt-4.1-mini
+openai-compatible:orcarouter
+0
+20AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4.1 Nano
+openai/gpt-4.1-nano
+openai-compatible:orcarouter
+0
+11AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4o
+openai/gpt-4o
+openai-compatible:orcarouter
+0
+20Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4o (2024-05-13)
+openai/gpt-4o-2024-05-13
+openai-compatible:orcarouter
+0
+24AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4o (2024-08-06)
+openai/gpt-4o-2024-08-06
+openai-compatible:orcarouter
+0
+48Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4o (2024-11-20)
+openai/gpt-4o-2024-11-20
+openai-compatible:orcarouter
+0
+49Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-4o-mini (2024-07-18)
+openai/gpt-4o-mini-2024-07-18
+openai-compatible:orcarouter
+0
+50Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5
+openai/gpt-5
+openai-compatible:orcarouter
+0
+38AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5 Mini
+openai/gpt-5-mini
+openai-compatible:orcarouter
+0
+16AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5 Nano
+openai/gpt-5-nano
+openai-compatible:orcarouter
+0
+32Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5 Pro
+openai/gpt-5-pro
+openai-compatible:orcarouter
+0
+49Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5.1
+openai/gpt-5.1
+openai-compatible:orcarouter
+0
+49AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5.1-Codex
+openai/gpt-5.1-codex
+openai-compatible:orcarouter
+0
+44Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5.1-Codex-Mini
+openai/gpt-5.1-codex-mini
+openai-compatible:orcarouter
+0
+34Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5.2
+openai/gpt-5.2
+openai-compatible:orcarouter
+0
+47Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5.2 Pro
+openai/gpt-5.2-pro
+openai-compatible:orcarouter
+0
+50Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5.2-Codex
+openai/gpt-5.2-codex
+openai-compatible:orcarouter
+0
+55Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OpenAI: GPT-5.3-Codex
+openai/gpt-5.3-codex
+openai-compatible:orcarouter
+0
+43Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Orca: OrcaVerify Text 1.0
+orca/orcaverify-text1.0
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Orca: OrcaVerify Text 1.0
+orca/orcaverify-text1.0-free
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OrcaDub: OrcaDub 1.0
+orca/dub
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+OrcaRouter Nexus Free Custom (OrcaRouter)
+orcarouter/nexus-free
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen 3.8 27B
+qwen-3.8-27b
+cerebras
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen 3.8 27B
+qwen/qwen3.8-27b:free
+kilocode
+0
+68AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen 3.8 Flash (AIHubMix)
+qwen3.8-flash
+openai-compatible:aihubmix
+0
+63Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen 3.8 Max (AIHubMix)
+qwen3.8-max
+openai-compatible:aihubmix
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3 VL 235B A22B Instruct
+qwen/qwen3-vl-235b-a22b-instruct
+openai-compatible:orcarouter
+0
+55Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3 VL 235B A22B Thinking
+qwen/qwen3-vl-235b-a22b-thinking
+openai-compatible:orcarouter
+0
+50Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3 VL 8B Instruct
+qwen/qwen3-vl-8b-instruct
+openai-compatible:orcarouter
+0
+54Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3 VL 8B Thinking
+qwen/qwen3-vl-8b-thinking
+openai-compatible:orcarouter
+0
+49Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3.5-27B
+qwen/qwen3.5-27b
+openai-compatible:orcarouter
+0
+55Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3.5-35B-A3B
+qwen/qwen3.5-35b-a3b
+openai-compatible:orcarouter
+0
+58Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3.6 35B A3B
+qwen/qwen3.6-35b-a3b
+openai-compatible:orcarouter
+0
+62Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3.8 Flash
+qwen/qwen3.8-flash
+openai-compatible:orcarouter
+0
+63Meta*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen: Qwen3.8 Max
+qwen/qwen3.8-max
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3 Max Preview
+qwen/qwen3-max-preview
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3.5 Flash
+qwen/qwen3.5-flash
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3.5 Flash 2026 02 23
+qwen/qwen3.5-flash-2026-02-23
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3.5 Plus
+qwen/qwen3.5-plus
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3.5 Plus 2026 02 15
+qwen/qwen3.5-plus-2026-02-15
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3.6 35B A3B
+obsidian/Qwen3.6-35B-A3B
+openai-compatible:orcarouter
+0
+42AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3.6 Flash 2026 04 16
+qwen/qwen3.6-flash-2026-04-16
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3.6 Plus 2026 04 02
+qwen/qwen3.6-plus-2026-04-02
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Qwen3.7 Max (2026-05-20)
+qwen/qwen3.7-max-2026-05-20
+openai-compatible:orcarouter
+0
+45Default*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Tencent: Hy3
+tencent/hy3
+openai-compatible:orcarouter
+0
+58Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Tencent: Hy3
+tencent/hy3-free
+openai-compatible:orcarouter
+0
+49Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Z.ai: GLM 4.5
+z-ai/glm-4.5
+openai-compatible:orcarouter
+0
+42Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Z.ai: GLM 4.5 Air
+z-ai/glm-4.5-air
+openai-compatible:orcarouter
+0
+45Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Z.ai: GLM 4.6
+z-ai/glm-4.6
+openai-compatible:orcarouter
+0
+46Static*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Z.ai: GLM 4.7
+z-ai/glm-4.7
+openai-compatible:orcarouter
+0
+45AA
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Z.ai: GLM 5
+z-ai/glm-5
+openai-compatible:orcarouter
+0
+61Arena*
+NOT PROBED
+0%
+✅
+UNVERIFIED
+Gemini 3.6 Flash
+gemini-3.6-flash
+googleai
+0
+89Static*
+COOLDOWN
+0%
+✅
+RATE LIMITED
+GLM 5.2
+glm-5.2
+zhipu
+agentic
+coding
+general
+0
+95Static*
+COOLDOWN
+0%
+✅
+RATE LIMITED
+GLM 5.2
+z-ai/glm-5.2:free
+kilocode
+0
+95Static*
+COOLDOWN
+0%
+✅
+RATE LIMITED
+GLM 5.3
+glm-5.3
+zhipu
+0
+97Static*
+COOLDOWN
+0%
+✅
+RATE LIMITED
+GLM 5.3 Flash
+glm-5.3-flash
+zhipu
+0
+97Static*
+COOLDOWN
+0%
+✅
+RATE LIMITED
+Inkling Small (Kilo Free)
+thinkingmachines/inkling-small:free
+kilocode
+0
+53AA
+COOLDOWN
+0%
+✅
+RATE LIMITED
+Laguna XS 2.1 (NIM)
+poolside/laguna-xs-2.1:free
+kilocode
+0
+75Static*
+COOLDOWN
+0%
+✅
+RATE LIMITED
+Laguna XS 2.1 FREE (AIHubMix 262K)
+laguna-xs-2.1-free
+openai-compatible:aihubmix
+0
+58Meta*
+COOLDOWN
+0%
+✅
+RATE LIMITED
+Mistral Small Latest
+mistral-small-latest
+openai-compatible:mistral
+0
+50Static*
+COOLDOWN
+0%
+✅
+RATE LIMITED
+DeepSeek V4 Pro
+deepseek-v4-pro
+openai-compatible:agentrouter
+0
+88Static*
+SUBSCRIPTION REQUIRED
+0%
+✅
+SUBSCRIPTION REQUIRED · RECHECK 9M
+GLM 5.3
+z-ai/glm-5.3
+openai-compatible:zenmux
+0
+97Static*
+SUBSCRIPTION REQUIRED
+0%
+✅
+SUBSCRIPTION REQUIRED · RECHECK 1M
+GLM 5.3
+glm-5.3
+openai-compatible:aihubmix
+0
+97Static*
+ACCESS DENIED
+8%
+✅
+ACCESS DENIED · RECHECK 14M
+Nemotron 3.5 Lightning 30B
+nemotron-3.5-lightning-free
+opencode
+0
+82Static*
+ACCESS DENIED
+0%
+✅
+ACCESS DENIED · RECHECK 4M
+Nemotron 3.5 Lightning 30B
+nvidia/nemotron-3.5-lightning:free
+kilocode
+0
+82Static*
+TIMEOUT
+80%
+✅
+TIMEOUT
+Nemotron 3.5 Lightning 30B
+nvidia/nemotron-3.5-lightning-30b-a3b
+nvidia
+0
+82Static*
+TIMEOUT
+89%
+✅
+TIMEOUT
+Nemotron 3 Ultra 550B
+nvidia/nemotron-3-ultra-550b-a55b
+nvidia
+general
+0
+78Static*
+FAILED
+79%
+✅
+UNAVAILABLE
+InternVL 3.5 241B
+internvl3.5-latest
+openai-compatible:internai
+0
+55Static*
+TIMEOUT
+96%
+✅
+TIMEOUT
+Kimi K3
+moonshotai/kimi-k3
+nvidia
+0
+90Static*
+TIMEOUT
+26%
+✅
+TIMEOUT
+GLM-5.3 Flash (Ox-Alpha AIHubMix)
+ox-alpha
+openai-compatible:aihubmix
+0
+97Static*
+TIMEOUT
+98%
+✅
+TIMEOUT
+Intern-S1 Pro
+intern-s1-pro
+openai-compatible:internai
+0
+60Static*
+TIMEOUT
+98%
+✅
+TIMEOUT
+Qwen 3.6 27B
+qwen/qwen3.6-27b
+groq
+0
+60Static*
+FAILED
+93%
+✅
+UNAVAILABLE
+DeepSeek V4 Flash 0731
+deepseek-v4-flash-free
+opencode
+0
+86Static*
+FAILED
+92%
+✅
+UNAVAILABLE
+nex-agi/nex-n2.5-pro:free
+nex-agi/nex-n2.5-pro:free
+kilocode
+0
+62Meta*
+TIMEOUT
+89%
+✅
+TIMEOUT
+Nemotron 3 Super 120B
+nvidia/nemotron-3-super-120b-a12b:free
+kilocode
+0
+70Static*
+FAILED
+86%
+✅
+UNAVAILABLE
+Qwen3.8 Flash (BAI free)
+qwen3.8-flash
+openai-compatible:bai
+0
+63Meta*
+FAILED
+86%
+✅
+UNAVAILABLE
+nex-agi/nex-n2.5-mini:free
+nex-agi/nex-n2.5-mini:free
+kilocode
+0
+61Meta*
+TIMEOUT
+75%
+✅
+TIMEOUT
+Hy3 (BAI free)
+hy3
+openai-compatible:bai
+0
+49Arena*
+FAILED
+71%
+✅
+UNAVAILABLE
+MiMo V2.5 (BAI free)
+mimo-v2.5
+openai-compatible:bai
+0
+57AA
+FAILED
+71%
+✅
+UNAVAILABLE
+MiniMax M3 FREE (AIHubMix 1M)
+minimax-m3-free
+openai-compatible:aihubmix
+0
+59AA
+FAILED
+64%
+✅
+UNAVAILABLE
+MiniMax M3
+minimaxai/minimax-m3
+openai-compatible:nvidia
+agentic
+general
+0
+92Static*
+FAILED
+62%
+✅
+UNAVAILABLE
+Ling 3.0 Flash Fin (Kilo Free)
+inclusionai/ling-3.0-flash-fin:free
+kilocode
+0
+56AA
+FAILED
+60%
+✅
+UNAVAILABLE
+DeepSeek V4 Flash 0731 (NIM)
+deepseek-ai/deepseek-v4-flash-0731
+openai-compatible:nvidia
+0
+86Static*
+TIMEOUT
+58%
+✅
+TIMEOUT
+DeepSeek V4 Flash 0731
+deepseek-ai/deepseek-v4-flash-0731
+nvidia
+0
+86Static*
+TIMEOUT
+56%
+✅
+TIMEOUT
+Nemotron 3 Ultra
+nemotron-3-ultra-free
+opencode
+general
+0
+78Static*
+FAILED
+44%
+✅
+UNAVAILABLE
+GLM-5.3 Flash (BAI free)
+glm-5.3-flash
+openai-compatible:bai
+0
+97Static*
+FAILED
+38%
+✅
+UNAVAILABLE
+Kimi K3
+moonshotai/kimi-k3
+openai-compatible:nvidia
+0
+90Static*
+TIMEOUT
+38%
+✅
+TIMEOUT
+DeepSeek V4 Pro 0813 (NIM)
+deepseek-ai/deepseek-v4-pro-0813
+openai-compatible:nvidia
+0
+88Static*
+FAILED
+37%
+✅
+UNAVAILABLE
+GLM 5.3 Flash
+z-ai/glm-5.3-flash
+nvidia
+0
+97Static*
+FAILED
+31%
+✅
+UNAVAILABLE
+Nemotron 3 Ultra 550B
+nvidia/nemotron-3-ultra-550b-a55b:free
+kilocode
+general
+0
+78Static*
+FAILED
+30%
+✅
+UNAVAILABLE
+Nemotron 3 Ultra 550B FREE (AIHubMix 1M)
+nemotron-3-ultra-550b-a55b-free
+openai-compatible:aihubmix
+0
+49AA
+FAILED
+29%
+✅
+UNAVAILABLE
+Mistral Nemotron (NIM)
+mistralai/mistral-nemotron
+openai-compatible:nvidia
+0
+76Static*
+FAILED
+25%
+✅
+UNAVAILABLE
+DeepSeek V4 Flash
+deepseek-v4-flash
+openai-compatible:bai
+0
+84Static*
+FAILED
+4%
+✅
+UNAVAILABLE
+GLM 5.2
+z-ai/glm-5.2:free
+openrouter
+0
+95Static*
+FAILED
+4%
+✅
+UNAVAILABLE
+Antigravity Agent
+antigravity
+googleai
+0
+92Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Computer Use Preview
+computer-use-preview
+googleai
+0
+90Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Deep Research Pro Preview
+deep-research-pro-preview
+googleai
+0
+93Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+DeepSeek V4 Flash Vision (BAI free)
+deepseek-v4-flash-vision-exp
+openai-compatible:bai
+0
+63Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+DeepSeek V4 Pro 0813
+deepseek-ai/deepseek-v4-pro-0813
+nvidia
+0
+88Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Dots 3 Note Preview (Kilo Free)
+dots-studio/dots-3-note-preview:free
+kilocode
+0
+63Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+Dots3-Note 280B FREE (AIHubMix 512K)
+dots-3-note-preview-free
+openai-compatible:aihubmix
+0
+63Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemini 2.0 Flash
+gemini-2.0-flash
+googleai
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemini 2.0 Flash Lite
+gemini-2.0-flash-lite
+googleai
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemini 2.5 Flash
+gemini-2.5-flash
+googleai
+0
+88Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemini 2.5 Pro
+gemini-2.5-pro
+googleai
+0
+93Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemini 3 Flash
+gemini-3-flash
+googleai
+0
+90Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemini 3.1 Pro
+gemini-3.1-pro
+googleai
+0
+94Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemma 4 26B
+gemma-4-26b
+googleai
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemma 4 31B
+gemma-4-31b
+cerebras
+0
+58Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Gemma 4 31B
+gemma-4-31b
+googleai
+0
+58Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4 32B
+glm-4-32b
+openai-compatible:zhipu
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4.5
+glm-4.5
+openai-compatible:zhipu
+0
+47Arena*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4.5 Air
+glm-4.5-air
+openai-compatible:zhipu
+0
+42Arena*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4.5 Air
+glm-4.5-air:free
+openai-compatible:zhipu
+0
+42Arena*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4.5V
+glm-4.5v
+openai-compatible:zhipu
+0
+49Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4.6
+glm-4.6
+openai-compatible:zhipu
+0
+46Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4.6V
+glm-4.6v
+openai-compatible:zhipu
+0
+54Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4.7
+glm-4.7
+openai-compatible:zhipu
+agentic
+coding
+general
+0
+50Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 4.7 Flash
+glm-4.7-flash
+openai-compatible:zhipu
+0
+49Arena*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 5
+glm-5
+openai-compatible:zhipu
+agentic
+coding
+general
+0
+54Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 5 Turbo
+glm-5-turbo
+openai-compatible:zhipu
+0
+64Arena*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 5.1
+glm-5.1
+openai-compatible:zhipu
+0
+86Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 5.2
+glm-5.2
+openai-compatible:zhipu
+agentic
+coding
+general
+0
+95Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 5.2 Free (AIHubMix)
+glm-5.2-free
+openai-compatible:aihubmix
+0
+69AA
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 5.3
+glm-5.3
+openai-compatible:zhipu
+0
+97Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 5.3 Flash
+glm-5.3-flash
+openai-compatible:zhipu
+0
+97Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GLM 5V Turbo
+glm-5v-turbo
+openai-compatible:zhipu
+0
+58Arena*
+FAILED
+0%
+✅
+UNAVAILABLE
+GPT OSS 120B (NIM)
+openai/gpt-oss-120b
+openai-compatible:nvidia
+general
+0
+64Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+GPT OSS 20B FREE (AIHubMix MoE 131K)
+gpt-oss-20b-free
+openai-compatible:aihubmix
+0
+21AA
+FAILED
+0%
+✅
+UNAVAILABLE
+Grok 4.3
+grok/grok-4.3
+openai-compatible:orcarouter
+0
+80Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Hy3
+hy3-free
+openai-compatible:aihubmix
+0
+58Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+KAT Coder Air v2.5
+kuaishou/kat-coder-air-v2.5
+openai-compatible:zenmux
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+Kimi K3 Coding FREE (AIHubMix)
+coding-kimi-k3-free
+openai-compatible:aihubmix
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+LFM 2.5 2.6B FREE (AIHubMix reasoning 128K)
+lfm-2.5-2.6b-free
+openai-compatible:aihubmix
+0
+56Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+Ling 3.0 Flash
+ling-3.0-flash-free
+openai-compatible:aihubmix
+0
+60Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Ling 3.0 Flash VL (Kilo Free)
+inclusionai/ling-3.0-flash-vl:free
+kilocode
+0
+57AA
+FAILED
+0%
+✅
+UNAVAILABLE
+Ling 3.0 Tiny FREE (AIHubMix MoE 262K)
+ling-3.0-tiny-free
+openai-compatible:aihubmix
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+Meta: Muse Spark 1.1
+meta/muse-spark-1.1
+openai-compatible:orcarouter
+0
+71AA
+FAILED
+0%
+✅
+UNAVAILABLE
+Meta: Muse Spark 1.2
+meta/muse-spark-1.2
+openai-compatible:orcarouter
+0
+72AA
+FAILED
+0%
+✅
+UNAVAILABLE
+MiMo V2.5
+mimo-v2.5-free
+opencode
+0
+60Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+MiniMax M2.7
+minimaxai/minimax-m2.7
+openai-compatible:nvidia
+0
+62Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+MiniMax M2.7 FREE (AIHubMix 196K)
+minimax-m2.7-free
+openai-compatible:aihubmix
+0
+53AA
+FAILED
+0%
+✅
+UNAVAILABLE
+Muse Spark 1.2 Contributor
+muse-spark-1.2-contributor-free
+opencode
+0
+61Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+Muse Spark 1.3 Contributor
+muse-spark-1.3-contributor-free
+opencode
+0
+65Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+Nemotron 3 Nano 30B
+nvidia/nemotron-3-nano-30b-a3b
+openai-compatible:nvidia
+fast
+general
+0
+45Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Nemotron 3 Nano Omni FREE (AIHubMix 256K)
+nemotron-3-nano-omni-30b-a3b-reasoning-free
+openai-compatible:aihubmix
+0
+14AA
+FAILED
+0%
+✅
+UNAVAILABLE
+Nemotron 3.5 Safety FREE (AIHubMix 128K)
+nemotron-3.5-content-safety-free
+openai-compatible:aihubmix
+0
+50Meta*
+FAILED
+0%
+✅
+UNAVAILABLE
+Nemotron Mini 4B (NIM)
+nvidia/nemotron-mini-4b-instruct
+openai-compatible:nvidia
+0
+38Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Nemotron Nano 12B VL FREE (AIHubMix 128K)
+nemotron-nano-12b-v2-vl-free
+openai-compatible:aihubmix
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+Nemotron Nano 9B v2
+nvidia/nvidia-nemotron-nano-9b-v2
+openai-compatible:nvidia
+0
+40Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Nemotron Nano 9B V2 FREE (AIHubMix 128K)
+nemotron-nano-9b-v2-free
+openai-compatible:aihubmix
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+Nemotron Super 49B v1.5 (NIM)
+nvidia/llama-3.3-nemotron-super-49b-v1.5
+openai-compatible:nvidia
+general
+0
+66Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+North Mini Code
+north-mini-code-free
+openai-compatible:aihubmix
+0
+50Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+OpenAI: gpt-oss-120b
+openai/gpt-oss-120b
+openai-compatible:orcarouter
+general
+0
+64Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Qwen3 Next 80B (NIM)
+qwen/qwen3-next-80b-a3b-instruct
+openai-compatible:nvidia
+general
+0
+82Static*
+FAILED
+0%
+✅
+UNAVAILABLE
+Qwen3.8 Max free (TokenRouter)
+qwen/qwen3.8-max-free
+tokenrouter
+0
+45Default*
+FAILED
+0%
+✅
+UNAVAILABLE
+SpaceXAI: Grok 4.6
+grok/grok-4.6
+openai-compatible:orcarouter
+0
+77AA
+FAILED
+0%
+✅
+UNAVAILABLE
+xAI: Grok 4.5
+grok/grok-4.5
+openai-compatible:orcarouter
+0
+72AA
+FAILED
+0%
+✅
+UNAVAILABLE
+Devstral 2 123B
+devstral-2-123b-instruct-2512
+scaleway
+coding
+0
+62Static*
+DISABLED
+0%
+✅
+DISABLED
+GPT OSS 120B
+gpt-oss-120b
+scaleway
+general
+0
+64Static*
+DISABLED
+0%
+✅
+DISABLED
+Llama 3.3 70B
+llama-3.3-70b-instruct
+scaleway
+general
+0
+78Static*
+DISABLED
+0%
+✅
+DISABLED
+Mistral Small 3.2
+mistral-small-3.2-24b-instruct-2506
+scaleway
+general
+0
+32Static*
+DISABLED
+0%
+✅
+DISABLED
+Qwen3 235B
+qwen3-235b-a22b-instruct-2507
+scaleway
+general
+0
+45Static*
+DISABLED
+0%
+✅
+DISABLED
+Qwen3 Coder 30B
+qwen3-coder-30b-a3b-instruct
+scaleway
+coding
+0
+50Static*
+DISABLED
+0%
+✅
+DISABLED
+R1 Distill 70B
+deepseek-r1-distill-llama-70b
+scaleway
+reasoning
+0
+34Static*
+DISABLED
+0%
+✅
+DISABLED
+🚫 Anthropic: Claude Fable 5
+anthropic/claude-fable-5
+openai-compatible:orcarouter
+0
+77AA
+BANNED
+0%
+✅
+BANNED
+🚫 Anthropic: Claude Opus 4.7
+anthropic/claude-opus-4.7
+openai-compatible:orcarouter
+0
+74AA
+BANNED
+0%
+✅
+BANNED
+🚫 Anthropic: Claude Opus 4.8
+anthropic/claude-opus-4.8
+openai-compatible:orcarouter
+0
+74AA
+BANNED
+0%
+✅
+BANNED
+🚫 Anthropic: Claude Opus 5
+anthropic/claude-opus-5
+openai-compatible:orcarouter
+0
+78AA
+BANNED
+0%
+✅
+BANNED
+🚫 Anthropic: Claude Sonnet 4.6
+anthropic/claude-sonnet-4.6
+openai-compatible:orcarouter
+0
+63AA
+BANNED
+0%
+✅
+BANNED
+🚫 Anthropic: Claude Sonnet 5
+anthropic/claude-sonnet-5
+openai-compatible:orcarouter
+0
+72AA
+BANNED
+0%
+✅
+BANNED
+🚫 Gemini 3.5 Flash
+google/gemini-3.5-flash
+openai-compatible:orcarouter
+0
+88Static*
+BANNED
+0%
+✅
+BANNED
+🚫 Google: Gemini 3.1 Pro Preview
+google/gemini-3.1-pro-preview
+openai-compatible:orcarouter
+0
+69AA
+BANNED
+0%
+✅
+BANNED
+🚫 Google: Gemini 3.6 Flash
+google/gemini-3.6-flash
+openai-compatible:orcarouter
+0
+89Static*
+BANNED
+0%
+✅
+BANNED
+🚫 LongCat 2.0 (1T MoE reasoning)
+LongCat-2.0
+openai-compatible:longcat
+0
+45AA
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.4
+openai/gpt-5.4
+openai-compatible:orcarouter
+0
+71AA
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.4 Mini
+openai/gpt-5.4-mini
+openai-compatible:orcarouter
+0
+56AA
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.4 Nano
+openai/gpt-5.4-nano
+openai-compatible:orcarouter
+0
+56AA
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.4 Pro
+openai/gpt-5.4-pro
+openai-compatible:orcarouter
+0
+52Meta*
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.5
+openai/gpt-5.5
+openai-compatible:orcarouter
+0
+75AA
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.5 Pro
+openai/gpt-5.5-pro
+openai-compatible:orcarouter
+0
+54Meta*
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.6 Luna
+openai/gpt-5.6-luna
+openai-compatible:orcarouter
+0
+71AA
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.6 Sol
+openai/gpt-5.6-sol
+openai-compatible:orcarouter
+0
+77AA
+BANNED
+0%
+✅
+BANNED
+🚫 OpenAI: GPT-5.6 Terra
+openai/gpt-5.6-terra
+openai-compatible:orcarouter
+0
+77AA
+BANNED
+0%
+✅
+BANNED
+🚫 Qwen: Qwen3.7 Plus
+qwen/qwen3.7-plus
+openai-compatible:orcarouter
+0
+78Static*
+BANNED
+0%
+✅
+BANNED
+🚫 Qwen3.7 Max
+qwen/qwen3.7-max
+openai-compatible:orcarouter
+0
+83Static*
+BANNED
+0%
+✅
+BANNED
+Model Details
+×

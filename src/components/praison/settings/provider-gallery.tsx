@@ -34,6 +34,7 @@ import {
   type LiveCatalog,
 } from "@/lib/providers";
 import { ModelPicker } from "@/components/praison/model-picker";
+import { browserRefreshModels } from "@/lib/provider-refresh";
 import { truncate } from "@/lib/helpers";
 import { useSettingsStore, useUiStore } from "@/lib/stores";
 import type { ProviderKeyEntry } from "@/lib/types";
@@ -244,7 +245,10 @@ export function ProviderGallery() {
    * Refresh ONE provider's model roster from its live /models endpoint.
    * Works for every registry provider (r22): key-authed catalogs POST the
    * vault key per-request; OpenRouter/Pollinations delegate keyless.
-   * Returns the live model count, or null on failure (error toasted).
+   * r23: when the app SERVER is region-blocked by the provider (Groq /
+   * Cerebras / Google 403 datacenter IPs — the key itself is fine), the same
+   * roster is retried DIRECTLY from your browser, whose network the provider
+   * accepts. Returns the live model count, or null on failure (error toasted).
    */
   async function refreshProviderModels(p: FreeProvider): Promise<number | null> {
     const entry = settings.providerKeys?.[p.id];
@@ -260,8 +264,14 @@ export function ProviderGallery() {
         models?: { id: string; label?: string; contextLength?: number }[];
         error?: string;
         cached?: boolean;
+        regionBlocked?: boolean;
       };
-      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
+      if (!res.ok || data.error) {
+        // Server blocked by the provider's network policy → try the browser.
+        const viaBrowser = await refreshFromBrowser(p, key, entry?.accountId);
+        if (viaBrowser != null) return viaBrowser;
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
       const models = data.models ?? [];
       persistLive({ ...live, [p.id]: models }, { ...liveAt, [p.id]: Date.now() });
       return models.length;
@@ -272,6 +282,28 @@ export function ProviderGallery() {
       return null;
     } finally {
       setRefreshing((r) => ({ ...r, [p.id]: false }));
+    }
+  }
+
+  /**
+   * Browser-direct roster refresh (r23): fetches the provider's /models from
+   * YOUR network when the app server is region-blocked. Returns null (silent)
+   * on failure so the caller can decide whether to toast.
+   */
+  async function refreshFromBrowser(
+    p: FreeProvider,
+    key: string,
+    accountId?: string
+  ): Promise<number | null> {
+    try {
+      const models = await browserRefreshModels(p.id, key, accountId);
+      persistLive({ ...live, [p.id]: models }, { ...liveAt, [p.id]: Date.now() });
+      toast.success(`${p.name} roster refreshed from your browser`, {
+        description: `${models.length} live models — the app server is region-blocked by this provider, your network is not. Keys still never leave your machine.`,
+      });
+      return models.length;
+    } catch {
+      return null;
     }
   }
 

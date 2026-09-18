@@ -157,6 +157,7 @@ function ToolCallChips({ toolCalls }: { toolCalls: ToolCallInfo[] }) {
 
 const ERROR_KIND_BADGE: Record<RunErrorKind, string> = {
   network: "border-amber-500/40 bg-amber-500/10 text-amber-500",
+  region: "border-orange-500/40 bg-orange-500/10 text-orange-500",
   auth: "border-red-500/40 bg-red-500/10 text-red-500",
   "rate-limit": "border-amber-500/40 bg-amber-500/10 text-amber-500",
   timeout: "border-amber-500/40 bg-amber-500/10 text-amber-500",

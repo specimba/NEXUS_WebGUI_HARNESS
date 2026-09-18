@@ -77,6 +77,37 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     mePath: "/v1/me",
   },
   {
+    id: "orcarouter",
+    name: "OrcaRouter",
+    glyph: "🐋",
+    tagline:
+      "One OpenAI-compatible gateway over 190+ frontier models — Gemini 3.8, GLM 5.3, Kimi K3, MiniMax M3, DeepSeek V4 — plus a free difficulty-routing pool.",
+    baseUrl: "https://api.orcarouter.ai/v1",
+    signupUrl: "https://www.orcarouter.ai/console/token",
+    docsUrl: "https://docs.orcarouter.ai/",
+    featured: true,
+    limits:
+      "Free: orcarouter/free routes every request by difficulty across the workspace's free models — rate-capped, never touches your wallet · paid models metered per-token",
+    guide: [
+      "Open orcarouter.ai → console → API Keys (console/token) and create a key.",
+      "Paste it here — the app talks to https://api.orcarouter.ai/v1 (OpenAI-compatible, streaming + tools).",
+      "orcarouter/free is preselected: a meta-router that picks free models per request by difficulty — zero cost, rate-capped.",
+      "Frontier picks one click away: google/gemini-3.8-flash, z-ai/glm-5.3, kimi/kimi-k3, minimax/minimax-m3, deepseek/deepseek-v4.1-flash.",
+      "The model roster is PUBLIC — hit Refresh models even before adding a key to see all 190+ live lanes.",
+    ],
+    liveCatalog: "orcarouter",
+    models: [
+      { id: "orcarouter/free", label: "OrcaRouter Free", note: "Difficulty-routed free pool · never bills · the no-brainer default" },
+      { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash", note: "Current-gen Gemini · fast + vision + 1M ctx" },
+      { id: "z-ai/glm-5.3-flash-free", label: "GLM 5.3 Flash (Free)", note: "Z.ai flagship class · 1M ctx · free tier" },
+      { id: "deepseek/deepseek-v4-flash-free", label: "DeepSeek V4 Flash (Free)", note: "284B MoE · 1M ctx · tools · free tier" },
+      { id: "tencent/hy3-free", label: "Hunyuan Hy3 (Free)", note: "295B MoE (21B active) · 262K ctx · reasoning + tools" },
+      { id: "kimi/kimi-k3", label: "Kimi K3", note: "Moonshot frontier · long-horizon agentic" },
+      { id: "minimax/minimax-m3", label: "MiniMax M3", note: "Efficiency frontier · ~1.1s canary" },
+      { id: "orcarouter/fusion", label: "OrcaRouter Fusion", note: "Routes across the whole pool by quality bar · 1M ctx" },
+    ],
+  },
+  {
     id: "groq",
     name: "Groq",
     glyph: "⚡",
