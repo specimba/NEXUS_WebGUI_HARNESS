@@ -69,6 +69,18 @@ const STORAGE_KEYS = [
   "praison-ui",
 ] as const;
 
+/** Sticky section-nav — ids must match the wrapper elements below. */
+const SETTINGS_SECTIONS = [
+  { id: "usage", label: "Usage" },
+  { id: "providers", label: "Providers" },
+  { id: "local-models", label: "Local models" },
+  { id: "relay", label: "Model Relay" },
+  { id: "behavior", label: "Behavior" },
+  { id: "profile", label: "Profile" },
+  { id: "appearance", label: "Appearance" },
+  { id: "data", label: "Your Data" },
+] as const;
+
 const FRAMEWORK_OPTIONS: { value: Framework; title: string; sub: string }[] = [
   {
     value: "sequential",
@@ -90,6 +102,27 @@ export function SettingsView() {
   const workflows = useWorkflowsStore((s) => s.workflows);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // ── Sticky section nav ─────────────────────────────────────────────────
+  const [activeSection, setActiveSection] = React.useState<string>("usage");
+  React.useEffect(() => {
+    const els = SETTINGS_SECTIONS.map((s) => document.getElementById(s.id)).filter(
+      (el): el is HTMLElement => !!el
+    );
+    if (els.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActiveSection(visible[0].target.id);
+      },
+      // A narrow band just below the sticky chip bar decides "current".
+      { rootMargin: "-64px 0px -70% 0px", threshold: 0 }
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
   // Consume a deep-link scroll target (#/providers · #/local-models hash routes).
   const settingsAnchor = useUiStore((s) => s.settingsAnchor);
@@ -200,6 +233,12 @@ export function SettingsView() {
   const temperature =
     typeof settings.temperature === "number" ? settings.temperature : 0.7;
 
+  function scrollToSection(id: string) {
+    document
+      .getElementById(id)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   const stats = [
     { label: "Agents", value: agents.length },
     { label: "Conversations", value: conversations.length },
@@ -215,20 +254,50 @@ export function SettingsView() {
       />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-5 p-4 md:p-6">
+          {/* ── Sticky section nav ──────────────────────────────────── */}
+          <nav
+            aria-label="Settings sections"
+            className="sticky top-0 z-20 -mx-4 -mt-1 border-b bg-background/90 px-4 py-2 backdrop-blur md:-mx-6 md:px-6"
+          >
+            <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {SETTINGS_SECTIONS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => scrollToSection(s.id)}
+                  aria-current={activeSection === s.id ? "true" : undefined}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1 text-xs transition-colors",
+                    activeSection === s.id
+                      ? "border-violet-500/40 bg-violet-500/10 font-medium text-violet-600 dark:text-violet-400"
+                      : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+
           {/* ── Usage dashboard ──────────────────────────────────────── */}
-          <UsageDashboard />
+          <div id="usage" className="scroll-mt-14">
+            <UsageDashboard />
+          </div>
 
           {/* ── Provider: free frontier gallery + advanced custom endpoint ── */}
-          <div id="providers" className="scroll-mt-4">
+          <div id="providers" className="scroll-mt-14">
             <ProviderGallery />
           </div>
-          <div id="local-models" className="scroll-mt-4">
+          <div id="local-models" className="scroll-mt-14">
             <LocalModelsPanel />
           </div>
-          <ModelRelayCard />
+          <div id="relay" className="scroll-mt-14">
+            <ModelRelayCard />
+          </div>
           <ProviderCard />
 
           {/* ── Behavior ─────────────────────────────────────────────── */}
+          <div id="behavior" className="scroll-mt-14">
           <Card className="gap-4">
             <CardHeader className="pb-3">
               <CardTitle>Agent Behavior</CardTitle>
@@ -349,7 +418,10 @@ export function SettingsView() {
             </CardContent>
           </Card>
 
+          </div>
+
           {/* ── Profile ──────────────────────────────────────────────── */}
+          <div id="profile" className="scroll-mt-14">
           <Card className="gap-4">
             <CardHeader className="pb-3">
               <CardTitle>Profile</CardTitle>
@@ -373,7 +445,10 @@ export function SettingsView() {
             </CardContent>
           </Card>
 
+          </div>
+
           {/* ── Appearance ───────────────────────────────────────────── */}
+          <div id="appearance" className="scroll-mt-14">
           <Card className="gap-4">
             <CardHeader className="pb-3">
               <CardTitle>Accent theme</CardTitle>
@@ -392,7 +467,10 @@ export function SettingsView() {
             </CardContent>
           </Card>
 
+          </div>
+
           {/* ── Data ─────────────────────────────────────────────────── */}
+          <div id="data" className="scroll-mt-14">
           <Card className="gap-4">
             <CardHeader className="pb-3">
               <CardTitle>Your Data</CardTitle>
@@ -476,6 +554,8 @@ export function SettingsView() {
               </div>
             </CardContent>
           </Card>
+
+          </div>
 
           {/* ── About ────────────────────────────────────────────────── */}
           <Card className="gap-4">

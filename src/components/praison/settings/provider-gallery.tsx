@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   ChevronDown,
   CreditCard,
+  Download,
   ExternalLink,
   Eye,
   EyeOff,
@@ -13,6 +14,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Upload,
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -35,9 +37,9 @@ import {
 } from "@/lib/providers";
 import { ModelPicker } from "@/components/praison/model-picker";
 import { browserRefreshModels } from "@/lib/provider-refresh";
-import { truncate } from "@/lib/helpers";
+import { truncate, downloadJson } from "@/lib/helpers";
 import { useSettingsStore, useUiStore } from "@/lib/stores";
-import type { ProviderKeyEntry } from "@/lib/types";
+import type { ProviderKeyEntry, Settings } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type TestResult = { ok: true; ms: number } | { ok: false; error: string };
@@ -83,6 +85,7 @@ function fmtRel(ts: number | undefined): string {
 export function ProviderGallery() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
+  const vaultFileRef = React.useRef<HTMLInputElement>(null);
 
   const [expanded, setExpanded] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -720,6 +723,63 @@ export function ProviderGallery() {
     );
   };
 
+  /* ── Vault backup — export/import the provider key vault as a JSON file.
+     Keys are the slowest thing to re-enter (and the easiest to lose to a
+     browser wipe), so they deserve their own backup separate from the
+     full-data export. Still localStorage-only in operation. */
+  function handleVaultExport() {
+    try {
+      downloadJson("praison-provider-vault.json", {
+        kind: "praison-provider-vault",
+        exportedAt: new Date().toISOString(),
+        providerKeys: settings.providerKeys ?? {},
+        activeProviderId: settings.activeProviderId ?? null,
+        provider: settings.provider,
+        defaultModel: settings.defaultModel,
+      });
+      const n = Object.values(settings.providerKeys ?? {}).filter((k) => k?.key).length;
+      toast.success(`Vault exported — ${n} provider key${n === 1 ? "" : "s"}`);
+    } catch {
+      toast.error("Vault export failed.");
+    }
+  }
+
+  function handleVaultImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(String(reader.result));
+      } catch {
+        toast.error("Vault import failed — not valid JSON.");
+        return;
+      }
+      const bundle = (parsed ?? {}) as Record<string, unknown>;
+      const keys = bundle.providerKeys;
+      if (!keys || typeof keys !== "object" || Array.isArray(keys)) {
+        toast.error("Invalid vault file", {
+          description: 'Expected a PraisonAI provider-vault export with a "providerKeys" object.',
+        });
+        return;
+      }
+      const incoming = keys as Settings["providerKeys"];
+      const merged = { ...(settings.providerKeys ?? {}), ...incoming };
+      const n = Object.values(incoming ?? {}).filter((k) => k?.key).length;
+      update({ providerKeys: merged });
+      if (typeof bundle.activeProviderId === "string" && merged[bundle.activeProviderId]?.key) {
+        update({ providerKeys: merged, activeProviderId: bundle.activeProviderId });
+      }
+      toast.success(`Vault restored — ${n} provider key${n === 1 ? "" : "s"} merged`, {
+        description: "Existing entries were kept; matching providers were overwritten.",
+      });
+    };
+    reader.onerror = () => toast.error("Vault import failed — could not read the file.");
+    reader.readAsText(file);
+  }
+
   return (
     <Card className="gap-4">
       <CardHeader className="pb-3">
@@ -748,6 +808,37 @@ export function ProviderGallery() {
               )}
               Refresh all models
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              title="Back up every saved provider key + active provider as a JSON file"
+              onClick={handleVaultExport}
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden />
+              Vault
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              title="Restore provider keys from a vault backup (merges with what you have)"
+              onClick={() => vaultFileRef.current?.click()}
+            >
+              <Upload className="h-3.5 w-3.5" aria-hidden />
+              Restore
+            </Button>
+            <input
+              ref={vaultFileRef}
+              type="file"
+              accept=".json,application/json"
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden
+              onChange={handleVaultImportFile}
+            />
             <a
               href={FREELLM_SH_URL}
               target="_blank"
