@@ -17,12 +17,19 @@ import { buildToolDefs, httpToolExecutor } from "./tools-defs";
 //    Engaged when the browser-direct call fails BEFORE streaming anything
 //    (CORS refusal, provider down); also the only path for the built-in
 //    auto engine and vision-heavy requests.
+//
+// r25 watchdogs: the /api/chat fetch gets a 20s connect deadline, and the SSE
+// read loop fails honestly when NO bytes (server keep-alive pings count) have
+// arrived for 90s — a dead stream used to spin forever.
 
 export interface RunAgentParams {
   provider?: "auto" | "custom";
   apiKey?: string;
   baseUrl?: string;
   model?: string;
+  /** Registry id of the resolved provider (r25) — stamps the primary hop's
+   *  health-memory key so its failures/successes reach the rotator. */
+  providerId?: string;
   temperature?: number;
   maxTokens?: number;
   maxIterations?: number;
@@ -77,6 +84,11 @@ interface DonePayload {
   iterations: number;
 }
 
+/** Headers budget for the /api/chat fetch (r25 watchdog). */
+const CONNECT_TIMEOUT_MS = 20_000;
+/** Max byte gap tolerated on the /api/chat SSE stream (r25 watchdog). */
+const SERVER_STALL_TIMEOUT_MS = 90_000;
+
 export async function runAgentChat(
   params: RunAgentParams,
   h: AgentHandlers = {}
@@ -115,6 +127,7 @@ async function runBrowserDirect(
     baseUrl: params.baseUrl,
     apiKey: params.apiKey,
     model: params.model,
+    providerId: params.providerId,
     temperature: params.temperature,
     maxTokens: params.maxTokens,
     maxIterations: params.maxIterations,
@@ -163,8 +176,11 @@ async function runBrowserDirect(
         };
         break;
       }
-      case "error":
-        throw new Error(String(evt.message ?? "Unknown agent error"));
+      case "error": {
+        const err = new Error(String(evt.message ?? "Unknown agent error"));
+        if (evt.kind) (err as Error & { kind?: string }).kind = String(evt.kind);
+        throw err;
+      }
       default:
         break;
     }
@@ -189,25 +205,54 @@ async function runBrowserDirect(
 
 /** Legacy transport: POST /api/chat and parse its SSE stream. */
 async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise<AgentRunResult> {
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      provider: params.provider,
-      apiKey: params.apiKey,
-      baseUrl: params.baseUrl,
-      model: params.model,
-      temperature: params.temperature,
-      maxTokens: params.maxTokens,
-      maxIterations: params.maxIterations,
-      system: params.system,
-      messages: params.messages,
-      tools: params.tools ?? [],
-      ...(params.relay && params.relay.length > 0 ? { relay: params.relay } : {}),
-      ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
-    }),
-    signal: params.signal,
-  });
+  // Connect deadline (r25): if the app server is wedged, fail fast with a
+  // human error instead of hanging on the fetch forever. Implemented with an
+  // owned controller + timer so the deadline only covers the HEADER phase —
+  // it is disarmed the moment headers arrive, never killing long streams.
+  const connectCtl = new AbortController();
+  const onCallerAbort = () => connectCtl.abort(params.signal?.reason);
+  if (params.signal?.aborted) connectCtl.abort(params.signal.reason);
+  else params.signal?.addEventListener("abort", onCallerAbort, { once: true });
+  const connectTimer = setTimeout(
+    () => connectCtl.abort(new DOMException(`server did not respond in ${Math.round(CONNECT_TIMEOUT_MS / 1000)}s`, "TimeoutError")),
+    CONNECT_TIMEOUT_MS
+  );
+  let res: Response;
+  try {
+    res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: params.provider,
+        apiKey: params.apiKey,
+        baseUrl: params.baseUrl,
+        model: params.model,
+        providerId: params.providerId,
+        temperature: params.temperature,
+        maxTokens: params.maxTokens,
+        maxIterations: params.maxIterations,
+        system: params.system,
+        messages: params.messages,
+        tools: params.tools ?? [],
+        ...(params.relay && params.relay.length > 0 ? { relay: params.relay } : {}),
+        ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
+      }),
+      signal:
+        params.signal && typeof AbortSignal.any === "function"
+          ? AbortSignal.any([params.signal, connectCtl.signal])
+          : connectCtl.signal,
+    });
+  } catch (err) {
+    clearTimeout(connectTimer);
+    if (!params.signal?.aborted && connectCtl.signal.aborted) {
+      throw new Error(`server did not respond in ${Math.round(CONNECT_TIMEOUT_MS / 1000)}s`);
+    }
+    throw err; // caller abort / network error — original semantics
+  }
+  // Headers arrived — the connect deadline is spent. The caller-abort
+  // forwarding stays attached (it carries user stops into the stream when
+  // AbortSignal.any is unavailable); the stream watchdog takes over below.
+  clearTimeout(connectTimer);
 
   if (!res.ok || !res.body) {
     let message = `Request failed (${res.status})`;
@@ -224,6 +269,10 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
   const decoder = new TextDecoder();
   let buffer = "";
   let done: DonePayload | null = null;
+  // Stream watchdog (r25): the server pings every 15s, so ANY 90s byte gap
+  // (pings count — every successful read refreshes this) means the pipe is
+  // dead. Abort the reader and fail honestly instead of spinning forever.
+  let lastBytesAt = Date.now();
 
   const handleEvent = (raw: string) => {
     let evt: Record<string, unknown>;
@@ -265,16 +314,54 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
           iterations: Number(evt.iterations ?? 1),
         };
         break;
-      case "error":
-        throw new Error(String(evt.message ?? "Unknown agent error"));
+      case "error": {
+        const err = new Error(String(evt.message ?? "Unknown agent error"));
+        if (evt.kind) (err as Error & { kind?: string }).kind = String(evt.kind);
+        throw err;
+      }
       default:
         break;
     }
   };
 
   while (true) {
-    const { value, done: finished } = await reader.read();
+    // Per-read watchdog race (r25): each read competes against a fresh
+    // SERVER_STALL_TIMEOUT_MS timer; a successful read of ANY bytes (data or
+    // keep-alive comments) refreshes lastBytesAt.
+    let stalled: Error | null = null;
+    let rejectStall: (e: Error) => void = () => {};
+    const stallPromise = new Promise<never>((_, reject) => {
+      rejectStall = reject;
+    });
+    const stallTimer = setTimeout(() => {
+      const idleFor = Date.now() - lastBytesAt;
+      if (idleFor < SERVER_STALL_TIMEOUT_MS) return; // a fresh byte just landed
+      stalled = new Error(`stream stalled: no data for ${Math.round(SERVER_STALL_TIMEOUT_MS / 1000)}s (network timeout)`);
+      rejectStall(stalled);
+    }, SERVER_STALL_TIMEOUT_MS);
+    let value: Uint8Array | undefined;
+    let finished: boolean;
+    try {
+      const read = await Promise.race([reader.read(), stallPromise]);
+      value = read.value;
+      finished = read.done;
+    } catch (err) {
+      clearTimeout(stallTimer);
+      if (stalled !== null && err === stalled) {
+        // Watchdog fired — NOT a user abort (plain Error, distinguishable);
+        // kill the stream and surface the honest timeout.
+        try {
+          await reader.cancel();
+        } catch {
+          /* ignore */
+        }
+        throw err;
+      }
+      throw err; // caller abort / stream death — original semantics
+    }
+    clearTimeout(stallTimer);
     if (finished) break;
+    lastBytesAt = Date.now();
     buffer += decoder.decode(value, { stream: true });
     let idx: number;
     while ((idx = buffer.indexOf("\n\n")) !== -1) {

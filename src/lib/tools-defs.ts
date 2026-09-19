@@ -83,7 +83,7 @@ export function buildToolDefs(tools: ToolId[]): ToolDef[] {
 }
 
 /** The executor half — server implements directly, browser via /api/tools/execute. */
-export type ToolExecutor = (name: string, argsJson: string) => Promise<ToolResult>;
+export type ToolExecutor = (name: string, argsJson: string, signal?: AbortSignal) => Promise<ToolResult>;
 
 /** Bundled tool IO for the agent engine: schemas + executor. */
 export interface EngineToolIO {
@@ -91,17 +91,71 @@ export interface EngineToolIO {
   execute: ToolExecutor;
 }
 
-/** Browser-side executor: same server logic, one HTTP hop. */
-export const httpToolExecutor: ToolExecutor = async (name, argsJson) => {
-  const res = await fetch("/api/tools/execute", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, args: argsJson }),
-  });
-  const data = (await res.json().catch(() => null)) as ToolResult | { error?: string } | null;
-  if (!res.ok || !data || (data as ToolResult).content === undefined) {
-    const message = (data as { error?: string } | null)?.error ?? `Tool endpoint failed (HTTP ${res.status})`;
-    return { ok: false, content: `Tool error: ${message}`, ms: 0 };
+/** Hard budget for one browser→server tool call (r25). */
+const TOOL_CALL_TIMEOUT_MS = 30_000;
+
+/**
+ * Compose the caller's signal with the tool deadline. AbortSignal.any when
+ * available, otherwise manual forwarding with a dispose() so per-call
+ * listeners never accumulate on the run-long caller signal.
+ */
+function composeToolSignals(a: AbortSignal, b: AbortSignal): { signal: AbortSignal; dispose: () => void } {
+  if (typeof AbortSignal.any === "function") {
+    return { signal: AbortSignal.any([a, b]), dispose: () => {} };
   }
-  return data as ToolResult;
+  const ctl = new AbortController();
+  const forward = () => ctl.abort((a.aborted ? a : b).reason);
+  if (a.aborted || b.aborted) {
+    forward();
+    return { signal: ctl.signal, dispose: () => {} };
+  }
+  a.addEventListener("abort", forward, { once: true });
+  b.addEventListener("abort", forward, { once: true });
+  return {
+    signal: ctl.signal,
+    dispose: () => {
+      a.removeEventListener("abort", forward);
+      b.removeEventListener("abort", forward);
+    },
+  };
+}
+
+/**
+ * Browser-side executor: same server logic, one HTTP hop.
+ * r25: bounded — the engine's signal (when provided) and a hard 30s deadline
+ * ride the fetch together (AbortSignal.any when available). A timeout reports
+ * the standard ok:false tool-error envelope so the model can adapt mid-run;
+ * a caller abort is rethrown so a user stop stays a user stop.
+ */
+export const httpToolExecutor: ToolExecutor = async (name, argsJson, signal) => {
+  const timeout =
+    typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(TOOL_CALL_TIMEOUT_MS) : null;
+  const composed = timeout ? (signal ? composeToolSignals(signal, timeout) : { signal: timeout, dispose: () => {} }) : null;
+  const started = Date.now();
+  try {
+    const res = await fetch("/api/tools/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, args: argsJson }),
+      ...(composed ? { signal: composed.signal } : {}),
+    });
+    const data = (await res.json().catch(() => null)) as ToolResult | { error?: string } | null;
+    if (!res.ok || !data || (data as ToolResult).content === undefined) {
+      const message = (data as { error?: string } | null)?.error ?? `Tool endpoint failed (HTTP ${res.status})`;
+      return { ok: false, content: `Tool error: ${message}`, ms: 0 };
+    }
+    return data as ToolResult;
+  } catch (err) {
+    if (signal?.aborted) throw err; // caller/user abort — original semantics
+    if (timeout?.aborted && !signal?.aborted) {
+      return {
+        ok: false,
+        content: `Tool error: tool call timed out after ${Math.round(TOOL_CALL_TIMEOUT_MS / 1000)}s (${name})`,
+        ms: Date.now() - started,
+      };
+    }
+    throw err;
+  } finally {
+    composed?.dispose();
+  }
 };

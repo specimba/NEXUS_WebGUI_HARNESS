@@ -18,7 +18,11 @@ async function getZai() {
   return zaiPromise;
 }
 
-export async function executeTool(name: string, argsJson: string): Promise<ToolResult> {
+export async function executeTool(
+  name: string,
+  argsJson: string,
+  signal?: AbortSignal
+): Promise<ToolResult> {
   const started = Date.now();
   let args: Record<string, unknown> = {};
   try {
@@ -31,7 +35,7 @@ export async function executeTool(name: string, argsJson: string): Promise<ToolR
     let content: string;
     switch (name) {
       case "web_search":
-        content = await doWebSearch(args);
+        content = await doWebSearch(args, signal);
         break;
       case "read_url":
         content = await doReadUrl(args);
@@ -53,12 +57,27 @@ export async function executeTool(name: string, argsJson: string): Promise<ToolR
 }
 
 // ─── web_search ──────────────────────────────────────────────────────────────
-async function doWebSearch(args: Record<string, unknown>): Promise<string> {
+async function doWebSearch(args: Record<string, unknown>, signal?: AbortSignal): Promise<string> {
   const query = String(args.query ?? "").trim();
   if (!query) throw new Error("query is required");
   const num = Math.min(Math.max(Number(args.num ?? 6) || 6, 1), 10);
   const zai = await getZai();
-  const results = (await zai.functions.invoke("web_search", { query, num })) as Array<{
+  // r25: search stalls used to hang the whole step — 15s budget, same
+  // envelope shape on timeout as any other tool failure.
+  const SEARCH_TIMEOUT_MS = 15_000;
+  const results = (await Promise.race([
+    zai.functions.invoke("web_search", { query, num }),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("web_search timed out after 15s")), SEARCH_TIMEOUT_MS)
+    ),
+    ...(signal
+      ? [
+          new Promise<never>((_, reject) =>
+            signal.addEventListener("abort", () => reject(new Error("web_search aborted")), { once: true })
+          ),
+        ]
+      : []),
+  ])) as Array<{
     url?: string;
     name?: string;
     snippet?: string;

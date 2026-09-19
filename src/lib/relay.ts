@@ -174,6 +174,18 @@ export interface RelayHealthEntry {
   lastOkAt?: number;
   lastFailAt?: number;
   lastError?: string;
+  /** Soft failures (429s, capacity) are recorded but NEVER demote a hop. */
+  soft?: boolean;
+}
+
+/**
+ * Hard vs soft failures (r25, LiteLLM allowed_fails_policy doctrine):
+ * network death / 5xx / deadlines demote a lane; 429s and other 4xx are
+ * capacity noise and must not sink a healthy provider.
+ */
+export function isHardRelayFailure(error?: string): boolean {
+  if (!error) return true;
+  return !/\b429\b|rate.?limit|quota|too many requests|\b4(?:0[13578]|1[02-9])\b/i.test(error);
 }
 
 type RelayHealth = Record<string, RelayHealthEntry>;
@@ -207,10 +219,27 @@ export function recordRelayHopResult(key: string, ok: boolean, error?: string): 
     e.ok += 1;
     e.lastOkAt = Date.now();
     e.lastError = undefined;
+    e.soft = false;
   } else {
     e.fail += 1;
     e.lastFailAt = Date.now();
+    e.soft = !isHardRelayFailure(error);
     if (error) e.lastError = error.slice(0, 160);
+    // OrcaRouter rate limits are WORKSPACE-wide (all keys share one bucket —
+    // docs.orcarouter.ai/operations/rate-limits): one lane's 429 means every
+    // orca lane is throttled, so stamp them all.
+    if (e.soft && key.startsWith("orcarouter::") && error && /\b429\b|rate.?limit/i.test(error)) {
+      for (const k of Object.keys(h)) {
+        if (k.startsWith("orcarouter::") && k !== key) {
+          h[k] = {
+            ...(h[k] ?? { ok: 0, fail: 0 }),
+            lastFailAt: Date.now(),
+            soft: true,
+            lastError: "workspace-wide rate limit",
+          };
+        }
+      }
+    }
   }
   h[key] = e;
   saveHealth(h);
@@ -232,7 +261,9 @@ export function resetRelayHealth(): void {
 
 /** True when the hop failed inside the cooldown window. */
 function recentlyFailed(entry: RelayHealthEntry | undefined): boolean {
-  return !!entry?.lastFailAt && Date.now() - entry.lastFailAt < HEALTH_COOLDOWN_MS;
+  // Soft failures (429/capacity) never demote — only hard deaths do (r25).
+  if (!entry?.lastFailAt || entry.soft) return false;
+  return Date.now() - entry.lastFailAt < HEALTH_COOLDOWN_MS;
 }
 
 // ─── Task fit heuristics ──────────────────────────────────────────────────────
@@ -328,14 +359,21 @@ export function buildRelayChain(
   });
 
   // Apply the user's saved ordering (if any): listed keys keep their index,
-  // unlisted keys follow in default order.
+  // unlisted keys follow in default order — but demoted hops ALWAYS sink to
+  // the back of the saved order (r25: the old override silently disabled
+  // health-demotion for anyone who had ever dragged a row).
   const order = settings.relayOrder ?? [];
   if (order.length > 0) {
     const idx = (k: string) => {
       const i = order.indexOf(k);
       return i === -1 ? order.length + hops.findIndex((h) => h.key === k) : i;
     };
-    hops.sort((a, b) => idx(a.key) - idx(b.key));
+    hops.sort((a, b) => {
+      const da = recentlyFailed(health[a.key]) ? 1 : 0;
+      const db = recentlyFailed(health[b.key]) ? 1 : 0;
+      if (da !== db) return da - db;
+      return idx(a.key) - idx(b.key);
+    });
   }
 
   // The built-in engine is the unconditional last resort.

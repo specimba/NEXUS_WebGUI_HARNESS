@@ -38,6 +38,9 @@ export interface EngineBody {
   baseUrl?: string;
   apiKey?: string;
   model?: string;
+  /** Registry id of the primary provider (r25) — lets the engine stamp the
+   *  primary hop's health-memory key so primary failures demote it too. */
+  providerId?: string;
   temperature?: number;
   maxTokens?: number;
   maxIterations?: number;
@@ -99,11 +102,63 @@ export function isAbort(err: unknown): boolean {
   );
 }
 
+// ─── Phase-scoped upstream deadlines (r25) ───────────────────────────────────
+// Providers that accept a request and then stall used to hang the whole run —
+// a ~180s silent LLM hang killed a Morning-Briefing step that was otherwise
+// 8/8 green. Two budgets cover the two dead phases of an SSE completion:
+//   • FIRST TOKEN — headers arrived → first byte (ANY byte counts, including
+//     keep-alive comments). OrcaRouter gets a looser budget: it fails over
+//     1-5 upstreams internally before the first byte shows up.
+//   • INTER-CHUNK — once bytes flow, any gap larger than this fails the call.
+// Deadline aborts throw UpstreamDeadlineError so retry/relay classification
+// can tell them apart from user aborts (which keep their original semantics).
+export class UpstreamDeadlineError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UpstreamDeadlineError";
+  }
+}
+
+export const FIRST_TOKEN_TIMEOUT_MS = 12_000;
+/** OrcaRouter internally fails over 1-5 upstreams before the first byte. */
+export const FIRST_TOKEN_TIMEOUT_ORCA_MS = 25_000;
+export const IDLE_CHUNK_TIMEOUT_MS = 15_000;
+
+/**
+ * Combine the caller's abort signal with an engine-owned deadline controller.
+ * AbortSignal.any when the runtime has it, otherwise manual abort forwarding.
+ * dispose() removes the forwarded listeners so per-attempt composition never
+ * accumulates listeners on the long-lived caller signal.
+ */
+export function composeAbortSignals(
+  caller: AbortSignal,
+  owned: AbortSignal
+): { signal: AbortSignal; dispose: () => void } {
+  if (typeof AbortSignal.any === "function") {
+    return { signal: AbortSignal.any([caller, owned]), dispose: () => {} };
+  }
+  const ctl = new AbortController();
+  const forward = () => ctl.abort((caller.aborted ? caller : owned).reason);
+  if (caller.aborted || owned.aborted) {
+    forward();
+    return { signal: ctl.signal, dispose: () => {} };
+  }
+  caller.addEventListener("abort", forward, { once: true });
+  owned.addEventListener("abort", forward, { once: true });
+  return {
+    signal: ctl.signal,
+    dispose: () => {
+      caller.removeEventListener("abort", forward);
+      owned.removeEventListener("abort", forward);
+    },
+  };
+}
+
 /** Transient upstream failures worth an automatic retry (not user aborts). */
 export function isTransientNetworkError(err: unknown): boolean {
   if (isAbort(err)) return false;
   const message = err instanceof Error ? err.message : String(err);
-  return /network error|fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|ETIMEDOUT|socket hang up|undici.*socket|terminated|timeout|\bupstream\b|bad gateway|service unavailable|gateway.*(dropped|unavailable)|http 5\d\d|load failed|failed to fetch/i.test(
+  return /network error|fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|ETIMEDOUT|socket hang up|undici.*socket|terminated|timeout|\bupstream\b|deadline|stalled|bad gateway|service unavailable|gateway.*(dropped|unavailable)|http 5\d\d|load failed|failed to fetch/i.test(
     message
   );
 }
@@ -118,6 +173,8 @@ export function humanizeError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   if (/fetch failed|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|Failed to fetch|load failed/i.test(message))
     return "Could not reach the LLM provider. Check the API Base URL in Settings — or the provider blocks this network (the relay will try another lane).";
+  if (/upstream deadline|upstream stalled|no first token|no data for/i.test(message))
+    return "The model provider accepted the request but stopped sending data, so the call was cut off on a deadline. Retries and relay rotation ran automatically and this attempt still failed — try again shortly or pick another provider.";
   if (/network error/i.test(message))
     return "Upstream network hiccup — the run was retried automatically but the provider stayed unreachable. Try again shortly.";
   return message;
@@ -206,6 +263,46 @@ export function upstreamErrorMessage(status: number, text: string): string {
   return `${prefix}Provider error (HTTP ${status}): ${clip(text || "no details", 300)}`;
 }
 
+// ─── Structured error kinds (r25) ────────────────────────────────────────────
+// The engine knows WHY a call failed; ship that knowledge with the SSE error
+// event so the workflow self-heal stops re-classifying prose by regex (the
+// regex stays as a fallback for browser-direct errors).
+
+export type UpstreamErrorKind =
+  | "network"
+  | "auth"
+  | "rate-limit"
+  | "timeout"
+  | "model"
+  | "region"
+  | "unknown";
+
+export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  if (
+    err instanceof UpstreamDeadlineError ||
+    /upstream deadline|upstream stalled|no first token|no data for|timed? ?out/i.test(msg)
+  ) {
+    return "timeout";
+  }
+  if (/blocked this network|region\/?IP block|datacenter|server-region|\b451\b/i.test(msg)) {
+    return "region";
+  }
+  if (/\b429\b|rate.?limit|quota|too many requests/i.test(msg)) {
+    return "rate-limit";
+  }
+  if (/\b(401|403)\b|unauthorized|invalid.{0,12}(api )?key|invalid.?key|forbidden|permission denied/i.test(msg)) {
+    return "auth";
+  }
+  if (/\b404\b|no such model|model.?not.?found|model_not_found|endpoint not found|decommissioned|does not exist or is not supported/i.test(msg)) {
+    return "model";
+  }
+  if (/network|fetch failed|failed to fetch|could not reach|socket|econn|enotfound|eai_again|dns|connection (refused|reset|closed|error)|load failed|premature close|stream ended without|upstream|http 5\d\d|bad gateway|service unavailable/i.test(msg)) {
+    return "network";
+  }
+  return "unknown";
+}
+
 // ─── Engine 1: custom OpenAI-compatible provider (BYOK) ──────────────────────
 
 interface UpstreamToolCall {
@@ -234,6 +331,13 @@ export async function runRelayedCustom(
     apiKey: body.apiKey,
     model: body.model ?? "auto",
     label: body.model ? `primary (${body.model})` : "primary",
+    // r25: the primary used to be keyless, so its failures NEVER reached the
+    // rotator's health memory and auto-retry kept re-dialing the same dead
+    // hop. Stamp it with the same `${providerId}::${model}` convention the
+    // wire hops use.
+    ...(body.providerId && body.model
+      ? { key: `${body.providerId}::${body.model}` }
+      : {}),
   };
   const hops = [primary, ...(body.relay ?? [])];
   let clientSawTokens = false;
@@ -259,7 +363,7 @@ export async function runRelayedCustom(
       }
       // A backup hop answered after the primary died — tell the client's
       // health memory so this hop gets promoted next time.
-      if (i > 0 && hop.key) {
+      if (hop.key) {
         send({ type: "status", message: `Model relay: ${hop.label ?? hop.model} answered ✓ [hopok:${hop.key}]` });
       }
       return;
@@ -295,6 +399,15 @@ export async function runCustomEngine(
   const base = (body.baseUrl || "").replace(/\/+$/, "");
   // Accept both a base URL (…/v1) and a full chat-completions endpoint.
   const url = base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
+  // FIRST-TOKEN budget (r25): OrcaRouter internally fails over 1-5 upstreams
+  // before the first byte arrives — give its header→first-byte window a
+  // looser deadline than the default.
+  let firstTokenMs = FIRST_TOKEN_TIMEOUT_MS;
+  try {
+    if (new URL(url).host.toLowerCase().includes("orcarouter")) firstTokenMs = FIRST_TOKEN_TIMEOUT_ORCA_MS;
+  } catch {
+    /* unparseable URL — keep the default budget */
+  }
   const model = !body.model || body.model === "auto" ? CUSTOM_FALLBACK_MODEL : body.model;
   const authHeaders: Record<string, string> = body.apiKey
     ? { Authorization: `Bearer ${body.apiKey}` }
@@ -326,9 +439,34 @@ export async function runCustomEngine(
     // and retry — the request itself is otherwise identical.
     let maxTokField: "max_tokens" | "max_completion_tokens" = "max_tokens";
     let streamedAny = false;
-    let outcome: { content: string; toolCalls: UpstreamToolCall[]; reasoning: string } | null = null;
+    let outcome: UpstreamSSEOutcome | null = null;
 
     attemptLoop: for (let attempt = 1; attempt <= MAX_UPSTREAM_ATTEMPTS; attempt++) {
+      // Phase-scoped deadlines (r25): the engine-owned controller carries the
+      // FIRST-TOKEN budget (timer below) and the parser enforces the
+      // INTER-CHUNK budget; both abort through the same fetch signal a
+      // user-cancel uses, but surface as UpstreamDeadlineError so they
+      // retry/rotate instead of looking like a user stop. The caller's own
+      // abort keeps its original semantics.
+      const deadlineCtl = new AbortController();
+      const composed = composeAbortSignals(signal, deadlineCtl.signal);
+      // FIRST-TOKEN budget (phase A): armed when the upstream fetch STARTS so
+      // the silent window is covered even on runtimes whose fetch() only
+      // resolves once body bytes flow (Bun — verified by probe). The parser
+      // clears it on the first byte of any kind; the deadline fires through
+      // deadlineCtl as an UpstreamDeadlineError, never as a user abort.
+      let firstTokenTimer: ReturnType<typeof setTimeout> | undefined;
+      const clearFirstTokenTimer = () => {
+        if (firstTokenTimer) {
+          clearTimeout(firstTokenTimer);
+          firstTokenTimer = undefined;
+        }
+      };
+      firstTokenTimer = setTimeout(() => {
+        deadlineCtl.abort(
+          new UpstreamDeadlineError(`upstream deadline: no first token within ${Math.round(firstTokenMs / 1000)}s`)
+        );
+      }, firstTokenMs);
       let res: Response;
       try {
         res = await fetch(url, {
@@ -345,19 +483,32 @@ export async function runCustomEngine(
             stream: true,
             ...(tools.length > 0 && !isFinalPass ? { tools, tool_choice: "auto" } : {}),
           }),
-          signal,
+          signal: composed.signal,
         });
       } catch (err) {
-        if (isAbort(err)) throw err;
-        if (attempt < MAX_UPSTREAM_ATTEMPTS && !streamedAny && isTransientNetworkError(err)) {
-          send({ type: "status", message: `Upstream hiccup (${shortError(err)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
+        composed.dispose();
+        clearFirstTokenTimer();
+        // Deadline aborts must not be mistaken for caller aborts (and vice
+        // versa): if OUR budget fired, surface the UpstreamDeadlineError even
+        // when the runtime rejects fetch with a generic network error — and
+        // let it join the pre-stream retry like any other transient hiccup.
+        const deadlineReason =
+          !signal.aborted && deadlineCtl.signal.aborted && deadlineCtl.signal.reason instanceof UpstreamDeadlineError
+            ? (deadlineCtl.signal.reason as UpstreamDeadlineError)
+            : null;
+        if (isAbort(err) && !deadlineReason) throw err;
+        const surfaced: unknown = deadlineReason ?? err;
+        if (attempt < MAX_UPSTREAM_ATTEMPTS && !streamedAny && isTransientNetworkError(surfaced)) {
+          send({ type: "status", message: `Upstream hiccup (${shortError(surfaced)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
           await sleep(1200 * attempt);
           continue attemptLoop;
         }
-        throw err;
+        throw surfaced;
       }
 
       if (!res.ok || !res.body) {
+        composed.dispose();
+        clearFirstTokenTimer();
         const text = await res.text().catch(() => "");
         if (res.status === 400 && tools.length > 0 && !isFinalPass && /tool/i.test(text)) {
           send({ type: "status", message: "Model does not support tools — continuing without them" });
@@ -381,9 +532,33 @@ export async function runCustomEngine(
         throw httpErr;
       }
 
-      outcome = await consumeUpstreamSSE(res.body, send, signal, () => {
-        streamedAny = true;
-      });
+      try {
+        outcome = await consumeUpstreamSSE(
+          res.body,
+          send,
+          signal,
+          () => {
+            streamedAny = true;
+          },
+          { ctl: deadlineCtl, clearFirstTokenBudget: clearFirstTokenTimer, idleChunkMs: IDLE_CHUNK_TIMEOUT_MS }
+        );
+      } catch (err) {
+        composed.dispose();
+        clearFirstTokenTimer();
+        // User aborts keep their original semantics. Everything else that is
+        // transient AND pre-stream joins the existing 3x retry — a deadline
+        // abort or an in-band error frame before any token is exactly the
+        // "provider accepted and then stalled" case these retries exist for.
+        if (isAbort(err)) throw err;
+        if (attempt < MAX_UPSTREAM_ATTEMPTS && !streamedAny && isTransientNetworkError(err)) {
+          send({ type: "status", message: `Upstream hiccup (${shortError(err)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
+          await sleep(1200 * attempt);
+          continue attemptLoop;
+        }
+        throw err;
+      }
+      composed.dispose();
+      clearFirstTokenTimer();
       break attemptLoop;
     }
 
@@ -415,7 +590,7 @@ export async function runCustomEngine(
       for (const tc of toolCalls) {
         send({ type: "status", message: `Using tool: ${tc.name}` });
         send({ type: "tool_call", id: tc.id, name: tc.name, args: tc.args });
-        const result = await toolIO.execute(tc.name, tc.args);
+        const result = await toolIO.execute(tc.name, tc.args, signal);
         collected.push({ id: tc.id, name: tc.name, args: tc.args, result: result.content, ok: result.ok, ms: result.ms });
         send({
           type: "tool_result",
@@ -449,7 +624,7 @@ export async function runCustomEngine(
           msgs.push({ role: "assistant", content });
           send({ type: "status", message: `Using tool: ${salvaged.name}` });
           send({ type: "tool_call", id, name: salvaged.name, args: argsStr });
-          const result = await toolIO.execute(salvaged.name, argsStr);
+          const result = await toolIO.execute(salvaged.name, argsStr, signal);
           collected.push({ id, name: salvaged.name, args: argsStr, result: result.content, ok: result.ok, ms: result.ms });
           send({ type: "tool_result", id, name: salvaged.name, ok: result.ok, ms: result.ms, content: clip(result.content, 4000) });
           msgs.push({
@@ -468,7 +643,7 @@ export async function runCustomEngine(
           const argsStr = JSON.stringify(salvaged.args);
           msgs.push({ role: "assistant", content });
           send({ type: "tool_call", id, name: salvaged.name, args: argsStr });
-          const result = await toolIO.execute(salvaged.name, argsStr);
+          const result = await toolIO.execute(salvaged.name, argsStr, signal);
           collected.push({ id, name: salvaged.name, args: argsStr, result: result.content, ok: result.ok, ms: result.ms });
           send({ type: "tool_result", id, name: salvaged.name, ok: result.ok, ms: result.ms, content: clip(result.content, 4000) });
           msgs.push({
@@ -496,86 +671,267 @@ export async function runCustomEngine(
             .join("\n")}`
         : stripped;
 
+    // Honest truncation notice (r25): the stream ended without [DONE] and
+    // without a finish_reason — the provider cut the completion short.
+    if (outcome.truncated) {
+      send({ type: "status", message: "Heads-up: the provider closed this stream early (no end-of-stream marker) — the answer may be cut off." });
+    }
     send({ type: "done", content: finalContent, toolCalls: collected, iterations: iteration });
     return;
   }
   throw new Error("Agent loop exceeded maximum iterations.");
 }
 
+/** Result of one upstream SSE completion (custom OpenAI-compatible engines). */
+export interface UpstreamSSEOutcome {
+  content: string;
+  toolCalls: UpstreamToolCall[];
+  reasoning: string;
+  /**
+   * True when the stream ended WITHOUT `data: [DONE]` and WITHOUT a
+   * finish_reason — the provider cut the completion short (or a gateway ate
+   * the tail). Honest signal for the caller; existing fields are unchanged.
+   */
+  truncated?: boolean;
+}
+
+/** Phase-scoped deadline knobs handed to the SSE consumer by the engine. */
+export interface UpstreamDeadlineConfig {
+  /**
+   * Engine-owned abort controller, already wired into the upstream fetch
+   * signal. The consumer aborts it when a deadline fires; its `.reason` is
+   * the UpstreamDeadlineError so classification never mistakes it for a
+   * user stop.
+   */
+  ctl: AbortController;
+  /**
+   * Engine → consumer: the FIRST-TOKEN budget lives in the engine (armed when
+   * the upstream fetch STARTS — on Bun, fetch() resolves only once body bytes
+   * flow, so a headers→first-byte stall would otherwise sit uncovered inside
+   * the fetch itself). The consumer calls this the moment ANY byte arrives.
+   */
+  clearFirstTokenBudget: () => void;
+  /** Max gap between bytes once the first byte arrived (ms). */
+  idleChunkMs: number;
+}
+
 export async function consumeUpstreamSSE(
   body: ReadableStream<Uint8Array>,
   send: EngineSend,
   signal: AbortSignal,
-  onFirstChunk?: () => void
-): Promise<{ content: string; toolCalls: UpstreamToolCall[]; reasoning: string }> {
+  onFirstChunk?: () => void,
+  deadlines?: UpstreamDeadlineConfig
+): Promise<UpstreamSSEOutcome> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let content = "";
   let reasoning = "";
   let first = true;
+  let sawDone = false;
+  let sawFinishReason = false;
   const toolCalls: UpstreamToolCall[] = [];
 
-  while (true) {
-    if (signal.aborted) {
-      try {
-        await reader.cancel();
-      } catch {
-        /* ignore */
-      }
-      throw new DOMException("Aborted", "AbortError");
+  // ── Phase A: FIRST-TOKEN deadline ─────────────────────────────────────────
+  // The timer itself lives in the ENGINE (armed when the upstream fetch
+  // starts) and is cleared here the moment ANY byte arrives — content,
+  // tool-call deltas AND keep-alive comment lines all count.
+  const clearFirstTokenBudget = () => deadlines?.clearFirstTokenBudget();
+
+  // Deterministic translation of a deadline abort into its error: some
+  // runtimes surface the abort reason on reader.read(), others throw a bare
+  // AbortError — racing every read against this promise covers both. The
+  // no-op catch keeps it "handled" when it fires between reads.
+  let onDeadlineAbort: (() => void) | undefined;
+  const deadlineAborted = deadlines
+    ? new Promise<never>((_, reject) => {
+        onDeadlineAbort = () => reject(deadlines.ctl.signal.reason ?? new UpstreamDeadlineError("upstream deadline exceeded"));
+        deadlines.ctl.signal.addEventListener("abort", onDeadlineAbort, { once: true });
+      })
+    : null;
+  deadlineAborted?.catch(() => {});
+
+  const cancelReader = async () => {
+    try {
+      await reader.cancel();
+    } catch {
+      /* ignore */
     }
-    const { value, done } = await reader.read();
-    if (done) break;
-    if (first) {
-      first = false;
-      onFirstChunk?.();
+  };
+
+  /** Parse one SSE line. Throws on in-band error frames (never "content"). */
+  const processLine = (raw: string): void => {
+    const line = raw.trim();
+    // SSE comment / keep-alive lines (`: ping`) carry no data — skip them.
+    // (Their bytes still counted as deadline activity in the read loop.)
+    if (!line.startsWith("data:")) return;
+    const payload = line.slice(5).trim();
+    if (payload === "[DONE]") {
+      sawDone = true;
+      return;
     }
-    buffer += decoder.decode(value, { stream: true });
-    let idx: number;
-    while ((idx = buffer.indexOf("\n")) !== -1) {
-      const line = buffer.slice(0, idx).trim();
-      buffer = buffer.slice(idx + 1);
-      if (!line.startsWith("data:")) continue;
-      const payload = line.slice(5).trim();
-      if (payload === "[DONE]") continue;
-      let chunk: {
-        model?: string;
-        choices?: Array<{
-          delta?: { content?: string; reasoning?: string; reasoning_content?: string; tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }> };
-        }>;
-      };
-      try {
-        chunk = JSON.parse(payload);
-      } catch {
-        continue;
+    let chunk: {
+      error?: unknown;
+      model?: string;
+      choices?: Array<{
+        finish_reason?: string | null;
+        delta?: {
+          content?: string;
+          reasoning?: string;
+          reasoning_content?: string;
+          tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }>;
+        };
+      }>;
+    };
+    try {
+      chunk = JSON.parse(payload);
+    } catch {
+      return;
+    }
+    // In-band error frames (OrcaRouter/OpenRouter documented shape:
+    // `data: {"error":{...}}`) — fail the stream honestly with the provider's
+    // message instead of silently dropping the chunk. Classified as an
+    // upstream stream failure ("Upstream …"), never as assistant content.
+    if (chunk.error) {
+      const msg =
+        typeof chunk.error === "string"
+          ? chunk.error
+          : ((chunk.error as { message?: string })?.message ?? JSON.stringify(chunk.error));
+      throw new Error(`Upstream stream error: ${clip(String(msg), 300)}`);
+    }
+    // Pollinations injects sponsored chunks from a separate "ad-system" model
+    // into the same stream — they are not assistant output, drop them.
+    if (chunk.model === "ad-system") return;
+    const choice = chunk.choices?.[0];
+    if (choice?.finish_reason) sawFinishReason = true;
+    const delta = choice?.delta;
+    if (!delta) return;
+    if (delta.reasoning || delta.reasoning_content) {
+      const r = delta.reasoning ?? delta.reasoning_content ?? "";
+      reasoning += r;
+      send({ type: "reasoning", text: r });
+    }
+    if (delta.content) {
+      content += delta.content;
+      send({ type: "token", text: delta.content });
+    }
+    if (delta.tool_calls) {
+      for (const tcd of delta.tool_calls) {
+        const i = tcd.index ?? 0;
+        if (!toolCalls[i]) toolCalls[i] = { id: tcd.id ?? `call_${i}_${Date.now()}`, name: "", args: "" };
+        if (tcd.id) toolCalls[i].id = tcd.id;
+        if (tcd.function?.name) toolCalls[i].name += tcd.function.name;
+        if (tcd.function?.arguments) toolCalls[i].args += tcd.function.arguments;
       }
-      // Pollinations injects sponsored chunks from a separate "ad-system" model
-      // into the same stream — they are not assistant output, drop them.
-      if (chunk.model === "ad-system") continue;
-      const delta = chunk.choices?.[0]?.delta;
-      if (!delta) continue;
-      if (delta.reasoning || delta.reasoning_content) {
-        const r = delta.reasoning ?? delta.reasoning_content ?? "";
-        reasoning += r;
-        send({ type: "reasoning", text: r });
+    }
+  };
+
+  try {
+    while (true) {
+      if (signal.aborted) {
+        // Caller/user abort — preserve the original abort semantics exactly.
+        await cancelReader();
+        throw new DOMException("Aborted", "AbortError");
       }
-      if (delta.content) {
-        content += delta.content;
-        send({ type: "token", text: delta.content });
-      }
-      if (delta.tool_calls) {
-        for (const tcd of delta.tool_calls) {
-          const i = tcd.index ?? 0;
-          if (!toolCalls[i]) toolCalls[i] = { id: tcd.id ?? `call_${i}_${Date.now()}`, name: "", args: "" };
-          if (tcd.id) toolCalls[i].id = tcd.id;
-          if (tcd.function?.name) toolCalls[i].name += tcd.function.name;
-          if (tcd.function?.arguments) toolCalls[i].args += tcd.function.arguments;
+      const readPromise = reader.read();
+      let value: Uint8Array | undefined;
+      let done: boolean;
+      if (deadlines && deadlineAborted) {
+        // Race this read against BOTH deadlines: the first-token budget
+        // (phase A) and — once bytes are flowing — the inter-chunk budget
+        // (phase B), recreated per read so any gap > idleChunkMs fails.
+        let idleTimer: ReturnType<typeof setTimeout> | undefined;
+        const idlePromise = first
+          ? null
+          : new Promise<never>((_, reject) => {
+              idleTimer = setTimeout(
+                () =>
+                  reject(
+                    new UpstreamDeadlineError(
+                      `upstream stalled: no data for ${Math.round(deadlines.idleChunkMs / 1000)}s`
+                    )
+                  ),
+                deadlines.idleChunkMs
+              );
+            });
+        try {
+          const raced = await Promise.race(
+            idlePromise ? [readPromise, deadlineAborted, idlePromise] : [readPromise, deadlineAborted]
+          );
+          value = raced.value;
+          done = raced.done;
+        } catch (err) {
+          if (idleTimer) clearTimeout(idleTimer);
+          if (err instanceof UpstreamDeadlineError) {
+            deadlines.ctl.abort(err); // make sure the upstream request itself dies
+            await cancelReader();
+            throw err;
+          }
+          if (signal.aborted) {
+            // caller abort wins — never rebranded as a deadline
+            await cancelReader();
+            throw isAbort(err) ? err : new DOMException("Aborted", "AbortError");
+          }
+          const dr = deadlines.ctl.signal.reason;
+          if (deadlines.ctl.signal.aborted && dr instanceof UpstreamDeadlineError) throw dr;
+          throw err;
+        }
+        if (idleTimer) clearTimeout(idleTimer);
+      } else {
+        try {
+          const read = await readPromise;
+          value = read.value;
+          done = read.done;
+        } catch (err) {
+          if (signal.aborted) {
+            await cancelReader();
+            throw isAbort(err) ? err : new DOMException("Aborted", "AbortError");
+          }
+          const dr = deadlines?.ctl.signal.reason;
+          if (deadlines?.ctl.signal.aborted && dr instanceof UpstreamDeadlineError) throw dr;
+          throw err;
         }
       }
+      if (done) break;
+      if (first) {
+        first = false;
+        clearFirstTokenBudget(); // phase A budget consumed by a real byte
+        onFirstChunk?.();
+      }
+      buffer += decoder.decode(value, { stream: true });
+      try {
+        let idx: number;
+        while ((idx = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          processLine(line);
+        }
+      } catch (err) {
+        // In-band failure — release the upstream connection before failing.
+        await cancelReader();
+        throw err;
+      }
+    }
+    // Flush the residual line buffer — a final `data: {...}` chunk without a
+    // trailing newline used to be discarded (losing the last delta or [DONE]).
+    buffer += decoder.decode();
+    const residual = buffer;
+    buffer = "";
+    for (const line of residual.split("\n")) processLine(line);
+  } finally {
+    clearFirstTokenBudget();
+    if (deadlines && onDeadlineAbort) {
+      deadlines.ctl.signal.removeEventListener("abort", onDeadlineAbort);
     }
   }
-  return { content, toolCalls: toolCalls.filter(Boolean), reasoning };
+
+  return {
+    content,
+    toolCalls: toolCalls.filter(Boolean),
+    reasoning,
+    // Ended without [DONE] AND without a finish_reason → truncated (r25).
+    ...(sawDone || sawFinishReason ? {} : { truncated: true as const }),
+  };
 }
 
 // ─── Tool-call-as-text salvage parser (harness r22) ──────────────────────────

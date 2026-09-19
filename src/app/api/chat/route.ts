@@ -5,7 +5,9 @@ import { buildToolDefs, type EngineToolIO } from "@/lib/tools-defs";
 import type { ToolCallInfo } from "@/lib/types";
 import {
   clampIter,
+  composeAbortSignals,
   composeSystem,
+  classifyUpstreamError,
   humanizeError,
   isAbort,
   isTransientNetworkError,
@@ -50,8 +52,37 @@ export async function POST(req: NextRequest) {
   }
 
   const encoder = new TextEncoder();
+  // r25: engine signal = the request's own abort (client disconnect) plus an
+  // engine-owned controller that fires when the keep-alive ping below finds
+  // the client gone — the same abort path a user-cancel takes.
+  const clientGone = new AbortController();
+  let pingTimer: ReturnType<typeof setInterval> | undefined;
+  const stopPings = () => {
+    if (pingTimer) {
+      clearInterval(pingTimer);
+      pingTimer = undefined;
+    }
+  };
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      // SSE keep-alive pings (r25): between the `start` event and the first
+      // engine event — and during long tool-execution / LLM phases — this
+      // stream used to go completely silent, and idle-killer middlewares /
+      // proxies reaped it (the "8/8 tool calls then network error" report).
+      // A `: ping` comment every 15s keeps the pipe warm for the WHOLE
+      // request lifetime. Comments are their own SSE frames and never split
+      // a `data:` event; both writers share one encoder.
+      pingTimer = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(": ping\n\n"));
+        } catch {
+          // client went away mid-run — stop the heartbeat and let the engine
+          // work die through the same abort path a user-cancel takes
+          stopPings();
+          clientGone.abort();
+        }
+      }, 15_000);
+      const engineAbort = composeAbortSignals(req.signal, clientGone.signal);
       const send: Send = (evt) => {
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`));
@@ -67,21 +98,33 @@ export async function POST(req: NextRequest) {
         // like Pollinations work without one).
         const useCustom = body.provider === "custom" && !!body.baseUrl;
         if (useCustom) {
-          await runRelayedCustom(body, send, req.signal, toolIO, runAutoEngine);
+          await runRelayedCustom(body, send, engineAbort.signal, toolIO, runAutoEngine);
         } else {
-          await runAutoEngine(body, send, req.signal);
+          await runAutoEngine(body, send, engineAbort.signal);
         }
       } catch (err) {
         if (!isAbort(err)) {
-          send({ type: "error", message: humanizeError(err) });
+          send({
+            type: "error",
+            message: humanizeError(err),
+            kind: classifyUpstreamError(err),
+          });
         }
       } finally {
+        engineAbort.dispose();
+        stopPings();
         try {
           controller.close();
         } catch {
           /* already closed */
         }
       }
+    },
+    cancel() {
+      // Client disconnected — stop the heartbeat and abort engine work the
+      // same way the ping's enqueue-failure path does.
+      stopPings();
+      clientGone.abort();
     },
   });
 

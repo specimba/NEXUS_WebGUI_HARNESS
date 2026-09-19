@@ -646,3 +646,21 @@ Stage Summary:
 - Standing prevention: NEVER trust a restored sandbox disk — diff against origin/main first (git fetch + rev-list --left-right --count) before "fixing" missing files; origin is the source of truth, not the workdir.
 - Next-phase ideas: worker-thread WebLLM playground (CreateWebWorkerMLCEngine); ?model= deep-link for local models; per-provider fallback chains in the relay UI; scheduled-run resume from scheduler UI; vault import warnings for providers whose ids no longer exist in the registry.
 - Risks: vault export writes keys in PLAINTEXT json (documented in the button title; same trust model as the browser's localStorage itself); IntersectionObserver band (-64px/-70%) may need tuning on very tall/short viewports (verified 390px + 1280px).
+---
+Task ID: r25-4a
+Agent: full-stack-developer (streaming robustness) — worklog appended by lead after subagent context timeout (code work completed & verified)
+Task: Phase-scoped deadlines (first-token + inter-chunk) on LLM upstream calls, SSE keep-alive pings on /api/chat, client watchdogs, SSE parser hardening, tool executor timeout.
+
+Work Log:
+- agent-engine.ts (+438 lines region): UpstreamDeadlineError class; FIRST_TOKEN_TIMEOUT_MS=12s (25s for orcarouter hosts — it internally fails over 1-5 upstreams before first byte), IDLE_CHUNK_TIMEOUT_MS=15s reset on ANY byte incl. keep-alive comments; composeAbortSignals helper (AbortSignal.any with manual fallback); Promise.race-per-read idle timer; deadline aborts surfaced as UpstreamDeadlineError, never confused with user aborts; transient regex extended (deadline|stalled|no first token|no data for); humanizeError got an honest deadline message.
+- agent-engine.ts SSE parser: sawDone tracking (stream ending without [DONE] and without finish_reason marks result truncated:true); residual line-buffer flush at stream end (final chunk without trailing newline no longer discarded); in-band `data:{"error":...}` mid-stream chunks now fail the stream honestly instead of being silently dropped.
+- api/chat/route.ts: `: ping\n\n` SSE comment every 15s for the WHOLE request lifetime (kills the idle-killer reaping that caused "8/8 tool calls then network error"); client-gone detection aborts engine work through the same path as user-cancel (clientGone controller composed via composeAbortSignals(req.signal, clientGone.signal)).
+- chat-client.ts: 20s connect deadline on the /api/chat fetch; 90s byte-gap stream watchdog (server pings every 15s so any 90s silence = genuinely dead pipe); per-read Promise.race watchdog; caller-abort semantics preserved.
+- tools-defs.ts: TOOL_CALL_TIMEOUT_MS=30s on httpToolExecutor with caller-signal composition; ToolExecutor type now takes signal.
+
+Verification (lead): tsc 0 errors; lint clean; dev.log compiles clean, GET / 200; browser chat round-trip "R25-STREAM-OK" echoed by auto engine with zero page errors (watchdogs do not false-positive on the happy path).
+
+Stage Summary:
+- The ~180s silent-hang class is now structurally impossible: providers get 12s to produce a first token (25s OrcaRouter), 15s between chunks, tools get 30s, the server pings the browser every 15s, and the browser kills any 90s-silent stream. All deadline failures classify as retryable/rotatable.
+- Default numbers chosen per research (Task 2-b): LiteLLM ttft/stream_idle precedent, OrcaRouter pre-stream-failover docs, Cloudflare first-byte-scoped fallback doctrine.
+- Next (Task 4-b): primary-hop health-memory stamping, relayOrder+demotion merge, self-heal hop rebuild, structured error kinds, zombie-run reconciliation, server tool timeouts (web_search).

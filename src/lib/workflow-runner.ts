@@ -103,7 +103,7 @@ const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
     re: /blocked this network|region\/?IP block|datacenter|server-region|\b451\b/i,
   },
   { kind: "auth", re: /\b(401|403)\b|unauthorized|invalid.{0,12}(api )?key|invalid.?key|forbidden|permission denied/i },
-  { kind: "model", re: /\b404\b|no such model|model.?not.?found|model (.{0,40} )?does not exist|not found|decommissioned|does not exist or is not supported/i },
+  { kind: "model", re: /\b404\b|no such model|model.?not.?found|model (.{0,40} )?does not exist|model_not_found|endpoint not found|decommissioned|does not exist or is not supported/i },
   { kind: "timeout", re: /timeout|timed? ?out|etimedout|deadline/i },
   {
     kind: "network",
@@ -112,7 +112,7 @@ const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
 ];
 
 /** Failure kinds the runner heals by itself (one automatic step retry). */
-const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout"];
+const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout", "rate-limit"];
 
 /** Classify an engine error message → kind + copy used by the recovery card. */
 export function classifyRunError(message: string): {
@@ -322,15 +322,20 @@ export async function executeWorkflowRun(
     // Model Relay (Genius-rotator doctrine): when this step's brain fails
     // before streaming anything, the server rotates down the vault's fallback
     // chain instead of dying — the exact 7am-scheduled-run failure mode.
-    const relayHops = buildRelayWire(
-      settings.settings,
-      { providerId: llm.providerId, model: llm.model },
-      { taskFit }
-    );
     let relayNotes: string[] = [];
     const MAX_STEP_ATTEMPTS = 2; // 1 real attempt + 1 automatic self-heal retry
 
     for (let attempt = 1; attempt <= MAX_STEP_ATTEMPTS; attempt++) {
+      // Rebuild the relay wire PER ATTEMPT (r25): attempt 1's failures were
+      // recorded into the rotator's health memory as they happened, so the
+      // self-heal retry now starts on a DIFFERENT lane instead of re-dialing
+      // the same dead primary — the actual "auto-retry hits the same dead
+      // hop" fix.
+      const relayHops = buildRelayWire(
+        settings.settings,
+        { providerId: llm.providerId, model: llm.model },
+        { taskFit }
+      );
       try {
         draft = "";
         localToolCalls = [];
@@ -341,6 +346,7 @@ export async function executeWorkflowRun(
             apiKey: llm.apiKey,
             baseUrl: llm.baseUrl,
             model: llm.model,
+            providerId: llm.providerId,
             temperature: agent.temperature,
             maxIterations: agent.maxIterations,
             tools: agent.tools,
@@ -436,7 +442,11 @@ export async function executeWorkflowRun(
           ...(relayNotes.length > 0 ? { note: relayNotes.join(" → ") } : {}),
         });
         // ─── Self-heal: one clean retry for transient engine failures ──────
-        const kind = classifyRunError(message).kind;
+        // r25: the engine now ships a structured `kind` on server errors —
+        // use it when present; the message-regex stays as the fallback for
+        // browser-direct errors.
+        const kind =
+          ((err as { kind?: RunErrorKind }).kind ?? classifyRunError(message).kind);
         if (attempt < MAX_STEP_ATTEMPTS && SELF_HEAL_KINDS.includes(kind) && !signal.aborted) {
           toast.info(`"${runStep.label}" hit a ${kind} hiccup — retrying once automatically…`, {
             icon: "🛟",

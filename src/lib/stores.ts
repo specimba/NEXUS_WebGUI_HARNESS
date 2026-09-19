@@ -547,6 +547,21 @@ export function ensureSeeded(): void {
     })),
   }));
 
+  // Zombie runs (r25): a workflow run left "running" by a page reload can
+  // never resume — resume() refuses status "running" and no live runner
+  // exists at hydration. Mark them stopped so the resume/recovery path can
+  // pick the run back up from its completed steps.
+  useWorkflowsStore.setState((s) => ({
+    workflows: s.workflows.map((w) => ({
+      ...w,
+      runs: w.runs.map((r) =>
+        r.status === "running"
+          ? { ...r, status: "stopped" as const, finishedAt: r.finishedAt ?? Date.now() }
+          : r
+      ),
+    })),
+  }));
+
   const settings = useSettingsStore.getState().settings;
   const agents = useAgentsStore.getState().agents;
   if (!settings.seeded && agents.length === 0) {

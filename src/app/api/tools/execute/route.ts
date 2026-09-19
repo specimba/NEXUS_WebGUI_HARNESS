@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Unknown tool "${name}"` }, { status: 400 });
   }
   const args = typeof body.args === "string" ? body.args : "{}";
-  const result = await executeTool(name, args);
+  // r25: client disconnects cancel in-flight tool work where the underlying
+  // implementation can honor a signal.
+  const result = await executeTool(name, args, req.signal);
   return NextResponse.json(result);
 }
 
