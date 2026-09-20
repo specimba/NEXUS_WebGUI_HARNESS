@@ -59,6 +59,8 @@ export interface ChatMessage {
   attachments?: MessageAttachment[];
   /** True when this reply was posted proactively by a conversation heartbeat. */
   heartbeat?: boolean;
+  /** r27 route receipt: which serving path produced this answer (arXiv:2605.01710). */
+  receipt?: RouteReceipt;
 }
 
 /** A message typed while the agent was streaming — auto-sent when it settles. */
@@ -112,6 +114,43 @@ export interface Conversation {
   memory?: ConversationMemory;
   /** Opt-in proactive wake-up loop for this conversation. */
   heartbeat?: ConversationHeartbeat;
+  /**
+   * r27 per-chat model override — "providerId::model" (e.g. "zai::glm-5.3-flash")
+   * or "auto::builtin". Empty/missing = follow the global provider setting.
+   * Local-only; travels with the conversation in localStorage.
+   */
+  modelOverride?: string;
+}
+
+/**
+ * Route Receipt (arXiv:2605.01710, adapted — consumer/developer tier): a compact
+ * runtime record of the serving path that produced ONE answer. Model cards
+ * document design time; receipts document runtime. Zero telemetry: the receipt
+ * is created from the run the user already made and stored only in localStorage.
+ */
+export interface RouteReceipt {
+  /** Schema marker so future field additions stay parseable. */
+  schema: "route-receipt.v0.1";
+  /** Model the request asked for ("auto" for the built-in engine). */
+  requested_model: string;
+  /** Model that actually answered. */
+  resolved_model: string;
+  /** Human label of the answering lane ("Provider · model"). */
+  resolved_label: string;
+  /** "fixed" = the exact requested id served the request; else unknown. */
+  model_identifier_type: "fixed" | "router" | "unknown";
+  fallback: {
+    status: "none" | "occurred";
+    /** Coarse reason class (never internals) — capacity / rate_limit / provider_error / unknown. */
+    reason?: "rate_limit" | "provider_error" | "capacity" | "policy" | "unknown";
+    from?: string;
+    to?: string;
+  };
+  /** Tool classes used with invocation counts ("no tools" is information too). */
+  tools_used: { name: string; invocation_count: number }[];
+  completion_status: "complete" | "stopped" | "error" | "unknown";
+  /** Explicit redaction record — we redact nothing today; the field is structural. */
+  redactions: [];
 }
 
 /**
@@ -286,6 +325,12 @@ export interface Settings {
   relayEnabled?: boolean;
   /** Saved hop ordering (keys "providerId::model"); missing = recommended Generation-Era order. */
   relayOrder?: string[];
+  /**
+   * r27 System-One (Jev, typesafe.ai) API key for the decision tier —
+   * classification / judging / routing at ~$0.042/Mtok. Optional: without it
+   * the decision ladder falls back to a fast-model JSON judge via the vault.
+   */
+  typesafeKey?: string;
   seeded: boolean;
 }
 

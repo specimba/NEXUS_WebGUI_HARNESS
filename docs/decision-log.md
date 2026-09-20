@@ -52,3 +52,31 @@
 - Live tool tests (server): arxiv_search returns real papers + alphaXiv links; run_code escape → `ReferenceError: process is not defined`; normal compute intact; cross-origin 403; read_url SSRF block.
 - Browser E2E (agent-browser): Radar view — 3 tabs render, GitHub grid = 300 real starred repos via proxy, HF links real, Paper Radar 36 arXiv/alphaXiv links; Workflows — depth control persists (`Morning Briefing → deep`), deep run completed 5/5 steps with detailed, source-annotated output; mobile 390px: no horizontal overflow; 0 console errors.
 - Both engines share the new validation/fencing (browser-direct + server auto-engine).
+
+---
+
+# r27 · Jev / System-One tier · Route Receipts · roster truth-pass (2026-09-20)
+
+**Inputs:** elvis/@omarsar0 Jev thread (user-supplied), Jev deep-dive (r27-2a: docs.typesafe.ai llms-full.txt 895KB, HN 49717558, HF hub reproductions, OpenRouter/Cloudflare listings), model-roster truth pass (r27-2b: Google/Z.ai/Cohere/Together docs + live OrcaRouter 197-model roster + HF), user complaint ("gemini-3.5-pro doesn't exist — where is glm-5.3-flash?"), paper arXiv:2605.01710 (Route Receipts, user-supplied PDF).
+
+## 1. ADOPTED (implemented this round)
+
+| # | Candidate | Source | What landed | Why it won |
+|---|-----------|--------|-------------|------------|
+| 1 | **System-One decision tier** (`src/lib/systemone.ts`) | Jev (TypeSafe AI) — `POST /v1/systemone`, choice/score/noul, $0.042/Mtok input-only, 250K tok/s; elvis doctrine "not everything requires a frontier model" | `decide()` ladder: ① Jev native (5s deadline, optional `typesafeKey` in Settings → Model Relay card) → ② fast-model JSON judge over the vault with new relay `taskFit: "decision"` (flash lanes first, flagships demoted −2) → ③ `null` = keep current behavior. First consumer: **System-One gate** before the pipeline verification pass — confident PASS (≥0.75) skips the flagship verify call; worst case = status quo. | Jev is NOT a relay hop (different wire API) — the ladder keeps the Genius-rotator model-agnostic while adding the cheap-judging primitive. Works TODAY with zero new keys via ②. |
+| 2 | **Route Receipts v0.1** (arXiv:2605.01710) | User: "this paper also very useful for us" | Engine emits `{type:"receipt"}` on every answered run (both transports + built-in path): requested vs resolved model, `model_identifier_type` fixed/router, fallback {status, coarse reason, from→to}, completion status, structural `redactions: []`. Client merges tool counts (§6 tool ledger) and persists on the message; UI chip = consumer tier (amber "fallback used" only when it happened; hover-quiet "route" otherwise) → popover = developer tier with the full record. Zero telemetry: stored in localStorage only. | Turns relay rotations from invisible magic into auditable runtime facts — exactly the paper's "consumer tier + developer tier" design. "No fallback" is information too. |
+| 3 | **Roster truth pass** (relay + registry) | r27-2b evidence: Google docs (no gemini-3.5-pro / no 3.8-flash-lite; Pro line = 3.1-pro-preview), docs.z.ai pricing (glm-5.3-flash exists, cheap-NOT-free; glm-5.3 flagship), OrcaRouter live roster (z-ai/glm-5.3-flash-free verified), Cohere docs (command-a-03-2025), Together serverless list (Turbo-Free retired → Ternary-Bonsai-27B) | DELETED: `gemini-3.5-pro`, `gemini-3.8-flash-lite`, `command-a-02-2025`, `Llama-3.3-70B-Instruct-Turbo-Free`. ADDED: `glm-5.3` (T1 .97) + `glm-5.3-flash` (T2 .92) on Z.ai, `z-ai/glm-5.3-flash-free` (T2 .91) on OrcaRouter, `gemini-3.1-pro-preview` + `gemini-3.5-flash-lite` on Google, Cohere 03-2025, Together Bonsai+Turbo. "Ordering fixed by removing fiction": fake T1 .965 entries no longer outrank real models. Live-roster-verified hops now carry a **"live ✓"** note. vyce `keyOptional` staleness fixed (keyless /v1/models now 401s). | User-reported + independently evidence-verified. The relay's Elo ordering is only meaningful if the models exist. |
+| 4 | **Per-chat model pin** | User: "why still cannot select models from providers we choosed? at chat etc. that is big fault" | `Conversation.modelOverride` ("providerId::model" / "auto::builtin" / unset = global) + `setModelOverride` in the conversations store + searchable ModelPicker in the composer hint row listing ONLY keyed providers (registry rosters + live-catalog extras badged "live") + "Follow global default". `resolveExplicitLlm()` resolves the pin with graceful fallback (keyless → global + warning toast). | The missing BYOK surface: model choice must live where the conversation lives. Never dead-ends by design. |
+
+## 2. QUEUED (from this round's research)
+
+- Jev-powered **tool-result relevance noul** (LiteLLM compaction pattern) for the budget-digest queue item.
+- Typed **noul verdicts for review gates** (structured pass/rework with confidence instead of prose parsing).
+- Radar triage labeling at scale (System-One batch labeling of starred repos).
+- REJECTED (documented): Jev as primary router (vendor lock-in — Genius-rotator doctrine stays model-agnostic), dynamic UIs, RSI/data-synthesis, ambient autonomy (breaks explicit-action privacy doctrine).
+
+## 3. Verification evidence (r27)
+
+- `bunx tsc --noEmit`: 0 errors in app `src/`; `bun run lint`: clean.
+- Browser E2E (agent-browser): composer picker renders groups (Auto / keyed providers), pin → toast "This chat now runs on DeepSeek V4.1", trigger label updates; chat round-trip answered "R27-RECEIPT-OK" with ROUTE chip; receipt popover = Requested `deepseek-v4.1` / Answered by primary / Fallback `none` / Tools `no tools used` / Completion `complete` / Redactions `none`; Settings → Model Relay shows the System-One (Jev) key card; mobile 390px `scrollWidth == innerWidth` (no overflow); 0 console errors.
+- Security posture unchanged this round (receipts and pins are localStorage-only; Jev key is opt-in, stored locally, sent only to api.typesafe.ai on an explicit decision call).

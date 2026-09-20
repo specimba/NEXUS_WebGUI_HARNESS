@@ -273,6 +273,23 @@ async function runAutoEngine(body: EngineBody, send: Send, signal: AbortSignal):
     const final = cleanFinalText(raw);
     await simulateStream(final, send, signal);
     send({ type: "done", content: final, toolCalls: collected, iterations: iteration });
+    // r27 ROUTE RECEIPT (arXiv:2605.01710) — built-in engine path parity.
+    const toolCounts = new Map<string, number>();
+    for (const tc of collected) toolCounts.set(tc.name, (toolCounts.get(tc.name) ?? 0) + 1);
+    send({
+      type: "receipt",
+      receipt: {
+        schema: "route-receipt.v0.1",
+        requested_model: "auto",
+        resolved_model: "auto",
+        resolved_label: "Built-in engine",
+        model_identifier_type: "fixed",
+        fallback: { status: "none" },
+        tools_used: [...toolCounts.entries()].map(([name, invocation_count]) => ({ name, invocation_count })),
+        completion_status: "complete",
+        redactions: [],
+      },
+    });
     return;
   }
   throw new Error("Agent loop exceeded maximum iterations.");

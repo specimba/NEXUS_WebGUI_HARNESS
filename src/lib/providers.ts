@@ -152,8 +152,10 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     ],
     models: [
       { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", note: "Current generation · fast + vision + 1M ctx" },
-      { id: "gemini-3.8-flash-lite", label: "Gemini 3.8 Flash-Lite", note: "Highest free quota" },
-      { id: "gemini-3.5-pro", label: "Gemini 3.5 Pro", note: "Strongest · tiny free quota" },
+      // r27 roster audit: gemini-3.5-pro / gemini-3.8-flash-lite do not exist
+      // (Google docs + live rosters) — replaced with the real current ids.
+      { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro (preview)", note: "Strongest current Gemini" },
+      { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", note: "Highest free quota" },
       { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", note: "Legacy · still available" },
     ],
   },
@@ -217,9 +219,12 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     guide: [
       "Open z.ai and register an account.",
       "Go to the API console and create a key.",
-      "Pick GLM-4.7-Flash or GLM-4.5-Flash below — both are $0.",
+      "GLM-4.7-Flash / GLM-4.5-Flash below are $0; GLM-5.3-Flash is the cheap flagship-class pick.",
     ],
     models: [
+      // r27 roster audit: GLM-5.3 family verified (docs.z.ai + HF zai-org).
+      { id: "glm-5.3-flash", label: "GLM 5.3 Flash", note: "Flagship class · cheap · 1M ctx" },
+      { id: "glm-5.3", label: "GLM 5.3", note: "Flagship · reasoning · 1M ctx" },
       { id: "glm-4.7-flash", label: "GLM 4.7 Flash", note: "$0 · newest" },
       { id: "glm-4.5-flash", label: "GLM 4.5 Flash", note: "$0 · proven" },
     ],
@@ -286,7 +291,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       "The OpenAI-compatible endpoint is pre-configured for you here.",
     ],
     models: [
-      { id: "command-a-02-2025", label: "Command A", note: "Flagship" },
+      { id: "command-a-03-2025", label: "Command A", note: "Flagship (03-2025 refresh)" },
       { id: "command-r7b-12-2024", label: "Command R7b", note: "Fast + cheap" },
       { id: "aya-expanse-8b", label: "Aya Expanse 8B", note: "Multilingual" },
     ],
@@ -307,7 +312,10 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       "Pick any model ending in “-Free” below.",
     ],
     models: [
-      { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free", label: "Llama 3.3 70B Turbo", note: "Free endpoint" },
+      // r27: the -Free Llama endpoint was retired; free serverless today =
+      // Ternary-Bonsai-27B (ternary-quantized 27B MoE lineage).
+      { id: "Prism-ML/Ternary-Bonsai-27B", label: "Ternary Bonsai 27B", note: "Free serverless" },
+      { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", label: "Llama 3.3 70B Turbo", note: "Paid · reliable fallback" },
       { id: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-Free", label: "R1 Distill 70B", note: "Reasoning · free" },
     ],
   },

@@ -5,6 +5,7 @@
 import { toast } from "sonner";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
+import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
 import { buildRelayWire, recordRelayHopResult, type RelayTaskFit } from "@/lib/relay";
 import {
   buildConversationalContext,
@@ -711,6 +712,51 @@ export async function executeWorkflowRun(
           : buildConversationalContext(task, prev);
 
       try {
+        // ─── r27 SYSTEM-ONE GATE (Jev doctrine: not everything requires a
+        // frontier model): a cheap calibrated judge decides whether the
+        // flagship verification pass is even needed. A confident PASS skips
+        // the extra frontier call entirely; FAIL, low confidence or "no
+        // judge available" keeps the full pass — worst case = status quo.
+        if (step.instruction === VERIFICATION_INSTRUCTION) {
+          const draft = prev[prev.length - 1]?.output ?? "";
+          const gate = await decide({
+            settings: settings.settings,
+            signal,
+            state: `TASK:\n${task}\n\nDRAFT OUTPUT (the previous step's deliverable):\n${draft.slice(0, 6000)}`,
+            question: {
+              id: "verify-gate",
+              type: "noul",
+              prompt:
+                "Is this draft a COMPLETE final deliverable for the task — on-topic, no placeholder text, no unanswered sub-questions, and no obviously unsupported load-bearing claims? Minor polish issues do not count against it.",
+            },
+          });
+          if (gate && gate.answer === "yes" && gate.confidence >= SYSTEMONE_GATE_CONFIDENCE) {
+            patchRunStep(step.stepId, {
+              output: draft,
+              toolCalls: [],
+              status: "done",
+              ms: gate.ms,
+            });
+            pushCall({
+              stepId: step.stepId,
+              stepLabel: step.label,
+              agentName: agentRow.name,
+              engine: gate.judge,
+              model: gate.via,
+              ms: gate.ms,
+              ok: true,
+              attempt: 1,
+              note: `System-One gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — flagship verification pass skipped`,
+            });
+            toast("System-One gate passed", {
+              icon: "✓",
+              description: `${(gate.confidence * 100).toFixed(0)}% confident via ${gate.via === "jev" ? "Jev" : "fast judge"} — verification pass skipped`,
+            });
+            prev.push({ label: step.label, agentName: agentRow.name, output: draft });
+            continue;
+          }
+          // FAIL / uncertain / no judge available → run the full verification pass.
+        }
         const { content } = await streamStep(step, step.agentId, baseSystem, context);
         prev.push({ label: step.label, agentName: agentRow.name, output: content });
       } catch (err) {

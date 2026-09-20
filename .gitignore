@@ -67,3 +67,6 @@ download/
 # sqlite
 db/*.db
 db/*.db-journal
+
+# user uploads (local reference material only)
+/upload

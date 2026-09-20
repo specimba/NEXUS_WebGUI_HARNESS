@@ -31,7 +31,7 @@ import { ConversationList } from "@/components/praison/chat/conversation-list";
 import { MemoryDialog } from "@/components/praison/chat/memory-dialog";
 import { MessageItem } from "@/components/praison/chat/message-item";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
-import { resolveLlm } from "@/lib/llm-config";
+import { resolveExplicitLlm, resolveLlm } from "@/lib/llm-config";
 import { buildRelayWire, recordRelayHopResult } from "@/lib/relay";
 import {
   DEFAULT_TTS_VOICE,
@@ -55,7 +55,7 @@ import {
   useSettingsStore,
   useUiStore,
 } from "@/lib/stores";
-import type { Agent, ChatMessage, MessageAttachment, QueuedMessage, Settings } from "@/lib/types";
+import type { Agent, ChatMessage, MessageAttachment, QueuedMessage, RouteReceipt, Settings } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const NO_MESSAGES: ChatMessage[] = [];
@@ -223,13 +223,21 @@ export function ChatView() {
       abortRef.current = controller;
 
       try {
-        const convMemory = useConversationsStore
-          .getState()
-          .conversations.find((c) => c.id === convId)?.memory;
-        const llm = resolveLlm(settings, selectedAgent.model);
+        const convState = useConversationsStore.getState();
+        const conv = convState.conversations.find((c) => c.id === convId);
+        const convMemory = conv?.memory;
+        // r27 per-chat model override: an explicit "providerId::model" pin wins
+        // over the global provider; unset rides the global resolution.
+        const llm = resolveExplicitLlm(settings, conv?.modelOverride, selectedAgent.model);
+        if (llm.fallbackNote) {
+          toast.warning("Pinned chat model unavailable", { description: llm.fallbackNote });
+        }
         const relayHops = settings.relayEnabled === false
           ? []
           : buildRelayWire(settings, { providerId: llm.providerId, model: llm.model });
+        // r27 route receipt: filled by the engine's `receipt` event, merged
+        // into the final message (with tool counts) once the turn settles.
+        let receipt: RouteReceipt | undefined;
         const result = await runAgentChat(
           {
             provider: llm.provider,
@@ -275,6 +283,9 @@ export function ChatView() {
               });
             },
             onIteration: (n) => setStatusLine(n > 1 ? `iteration ${n}` : null),
+            onReceipt: (r) => {
+              receipt = r;
+            },
             onStatus: (m) => {
               // Relay rotation trace: feed the rotator's health memory and
               // surface a clean status line (marker stripped).
@@ -309,6 +320,27 @@ export function ChatView() {
           status: "done",
           durationMs: Date.now() - startedAt,
           model: selectedAgent.model,
+          ...(receipt
+            ? {
+                receipt: {
+                  ...receipt,
+                  // Primary answered: show the provider label instead of the
+                  // engine's internal "primary (model)" name (receipt polish).
+                  ...(receipt.model_identifier_type === "fixed" && llm.provider === "custom"
+                    ? { resolved_label: `${llm.label} · ${receipt.resolved_model}` }
+                    : {}),
+                  // Merge tool classes + counts (engine sends the route facts,
+                  // the client owns the tool ledger — arXiv:2605.01710 §6).
+                  tools_used: Object.entries(
+                    toolCalls.reduce<Record<string, number>>((acc, tc) => {
+                      acc[tc.name] = (acc[tc.name] ?? 0) + 1;
+                      return acc;
+                    }, {})
+                  ).map(([name, invocation_count]) => ({ name, invocation_count })),
+                  completion_status: "complete" as const,
+                },
+              }
+            : {}),
         });
         return "done";
       } catch (err) {

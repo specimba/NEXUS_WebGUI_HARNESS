@@ -49,6 +49,9 @@ import {
 } from "@/lib/helpers";
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import { UI_THEMES, uiThemeById } from "@/lib/constants";
+import { providerReady, resolveLlm } from "@/lib/llm-config";
+import { FREE_PROVIDERS, loadLiveCatalog } from "@/lib/providers";
+import { ModelPicker, type PickerOption } from "@/components/praison/model-picker";
 import type { Agent, MessageAttachment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -562,6 +565,75 @@ export function Composer({
   const agentName = agent?.name ?? "agent";
   const recSeconds = Math.floor(voice.elapsedMs / 1000);
 
+  // ─── r27 per-chat model pin — pick ANY model from your KEYED providers ────
+  const settings = useSettingsStore((s) => s.settings);
+  const activeConvId = useConversationsStore((s) => s.activeId);
+  const modelOverride = useConversationsStore(
+    (s) => s.conversations.find((c) => c.id === s.activeId)?.modelOverride ?? ""
+  );
+  const setModelOverride = useConversationsStore((s) => s.setModelOverride);
+
+  const modelOptions = React.useMemo<PickerOption[]>(() => {
+    const opts: PickerOption[] = [
+      {
+        id: "default",
+        label: "Follow global default",
+        note: resolveLlm(settings, agent?.model).label,
+        group: "Auto",
+      },
+      { id: "auto::builtin", label: "Built-in engine", note: "Zero-config · always answers", group: "Auto" },
+    ];
+    const live = loadLiveCatalog();
+    for (const p of FREE_PROVIDERS) {
+      if (!providerReady(settings, p.id)) continue; // keyed providers only — every row is answerable
+      const seen = new Set<string>();
+      for (const m of p.models) {
+        seen.add(m.id);
+        opts.push({
+          id: `${p.id}::${m.id}`,
+          label: m.label,
+          note: m.note ?? m.id,
+          group: p.name,
+          keywords: [m.id],
+        });
+      }
+      for (const m of (live[p.id] ?? []).slice(0, 20)) {
+        if (seen.has(m.id) || /embed|whisper|tts|image|imagine/i.test(m.id)) continue;
+        seen.add(m.id);
+        opts.push({
+          id: `${p.id}::${m.id}`,
+          label: m.id,
+          note: "live roster",
+          group: p.name,
+          badge: "live",
+          badgeTone: "emerald",
+          keywords: [m.id],
+        });
+      }
+    }
+    return opts;
+  }, [settings, agent?.model]);
+
+  const onPickModel = React.useCallback(
+    (id: string) => {
+      if (!activeConvId) {
+        toast.error("No chat selected — start a new chat first.");
+        return;
+      }
+      if (id === "default") {
+        setModelOverride(activeConvId, undefined);
+        toast("Model pin cleared — following the global default", { icon: "⟲" });
+        return;
+      }
+      setModelOverride(activeConvId, id);
+      const label = modelOptions.find((o) => o.id === id)?.label ?? id;
+      toast.success(`This chat now runs on ${label}`, {
+        description: "Pinned per-conversation — other chats keep their own pick.",
+      });
+    },
+    [activeConvId, setModelOverride, modelOptions]
+  );
+
   return (
     <div className="shrink-0 border-t bg-background/80 p-3 backdrop-blur">
       <div className="relative mx-auto max-w-3xl">
@@ -952,6 +1024,17 @@ export function Composer({
             </span>
           ) : (
             <>
+              {/* r27: per-chat model pin — searchable picker over every keyed provider */}
+              <ModelPicker
+                value={modelOverride || "default"}
+                options={modelOptions}
+                onSelect={onPickModel}
+                ariaLabel="Model for this chat"
+                searchPlaceholder="Search providers and models…"
+                emptyTitle="No model matches"
+                emptyHint="Add a provider key in Settings to see its models here."
+                className="h-6 max-w-[16rem] min-w-0 shrink-0 gap-1 rounded-lg px-2 text-[11px]"
+              />
               {tools.map((t) => (
                 <ToolBadge key={t} tool={t} className="h-5 gap-1 rounded-md px-1.5 text-[10px]" />
               ))}

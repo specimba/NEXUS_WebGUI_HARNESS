@@ -14,6 +14,7 @@ import {
   Info,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   Waypoints,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { resolveLlm } from "@/lib/llm-config";
 import {
   buildRelayChain,
@@ -192,6 +194,34 @@ export function ModelRelayCard() {
             <Info className="h-3 w-3" aria-hidden />
             Hops without a saved key are skipped automatically.
           </p>
+        </div>
+
+        {/* r27 System-One decisions (Jev) — the cheap calibrated judging tier */}
+        <div className="rounded-lg border border-border/80 bg-muted/20 p-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-fuchsia-400" aria-hidden />
+            <p className="text-xs font-semibold">System-One decisions (Jev)</p>
+            <Badge variant="outline" className="text-[10px] font-normal">
+              optional
+            </Badge>
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Classification, judging and verification gates run on a fast
+            "System One" primitive instead of a frontier model — decision-fit
+            relay lanes (flash models) are tried first. Paste a typesafe.ai key
+            to use Jev natively (choice/noul decisions, ~$0.042/Mtok,
+            input-only); without a key the ladder falls back to the fastest
+            lane in your vault — everything keeps working either way.
+          </p>
+          <Input
+            type="password"
+            value={settings.typesafeKey ?? ""}
+            onChange={(e) => update({ typesafeKey: e.target.value })}
+            placeholder="typesafe.ai API key (optional)"
+            aria-label="System-One (Jev) API key"
+            autoComplete="off"
+            className="mt-2 h-8 border-border/70 bg-background/60 font-mono text-xs"
+          />
         </div>
       </CardContent>
     </Card>

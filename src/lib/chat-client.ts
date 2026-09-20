@@ -1,6 +1,6 @@
 "use client";
 
-import type { ToolCallInfo, ToolId } from "./types";
+import type { RouteReceipt, ToolCallInfo, ToolId } from "./types";
 import { runRelayedCustom, type EngineBody, type RelayWireHop } from "./agent-engine";
 import { buildToolDefs, httpToolExecutor } from "./tools-defs";
 
@@ -76,6 +76,8 @@ export interface AgentHandlers {
   onReasoning?: (text: string) => void;
   onToolCall?: (call: ToolCallEvent) => void;
   onToolResult?: (result: ToolResultEvent) => void;
+  /** r27 route receipt: which serving path answered (arXiv:2605.01710). */
+  onReceipt?: (receipt: RouteReceipt) => void;
 }
 
 interface DonePayload {
@@ -167,6 +169,11 @@ async function runBrowserDirect(
           ms: Number(evt.ms ?? 0),
           content: String(evt.content ?? ""),
         });
+        break;
+      case "receipt":
+        if (evt.receipt && typeof evt.receipt === "object") {
+          h.onReceipt?.(evt.receipt as RouteReceipt);
+        }
         break;
       case "done": {
         done = {
@@ -306,6 +313,11 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
           ms: Number(evt.ms ?? 0),
           content: String(evt.content ?? ""),
         });
+        break;
+      case "receipt":
+        if (evt.receipt && typeof evt.receipt === "object") {
+          h.onReceipt?.(evt.receipt as RouteReceipt);
+        }
         break;
       case "done":
         done = {

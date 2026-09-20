@@ -372,6 +372,33 @@ export async function runRelayedCustom(
       if (hop.key) {
         send({ type: "status", message: `Model relay: ${hop.label ?? hop.model} answered ✓ [hopok:${hop.key}]` });
       }
+      // r27 ROUTE RECEIPT (arXiv:2605.01710): a compact runtime record of the
+      // serving path that produced this answer — requested vs resolved model,
+      // fallback fact ("no fallback" is information too), coarse reason class.
+      // Consumer tier: no internals, no router logic. Client merges tool
+      // counts before persisting the receipt on the message.
+      send({
+        type: "receipt",
+        receipt: {
+          schema: "route-receipt.v0.1",
+          requested_model: body.model ?? "auto",
+          resolved_model: hop.model,
+          resolved_label: hop.label ?? hop.model,
+          model_identifier_type: i === 0 ? "fixed" : "router",
+          fallback:
+            i === 0
+              ? { status: "none" }
+              : {
+                  status: "occurred",
+                  reason: receiptReason(lastErr),
+                  from: primary.model,
+                  to: hop.model,
+                },
+          tools_used: [],
+          completion_status: "complete",
+          redactions: [],
+        },
+      });
       return;
     } catch (err) {
       if (isAbort(err)) throw err;
@@ -391,6 +418,15 @@ export async function runRelayedCustom(
     }
   }
   throw lastErr ?? new Error("Relay exhausted with no error");
+}
+
+/** Map an upstream failure to the receipt's coarse reason class (no internals). */
+function receiptReason(err: unknown): "rate_limit" | "provider_error" | "capacity" | "policy" | "unknown" {
+  const kind = classifyUpstreamError(err);
+  if (kind === "rate-limit") return "rate_limit";
+  if (kind === "region") return "policy";
+  if (kind === "auth" || kind === "timeout" || kind === "network" || kind === "model") return "provider_error";
+  return "unknown";
 }
 
 export async function runCustomEngine(

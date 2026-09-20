@@ -11,6 +11,7 @@ import {
   HeartPulse,
   Loader2,
   Pencil,
+  ReceiptText,
   RotateCcw,
   Users,
   Volume2,
@@ -34,12 +35,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { AgentAvatar, ModelBadge } from "@/components/praison/atoms";
 import { MarkdownRenderer } from "@/components/praison/markdown";
 import { TOOL_META } from "@/lib/constants";
 import { copyText, fmtBytes, fmtMs, fmtTime } from "@/lib/helpers";
-import type { Agent, ChatMessage, MessageAttachment, ToolCallInfo, ToolId } from "@/lib/types";
+import type { Agent, ChatMessage, MessageAttachment, RouteReceipt, ToolCallInfo, ToolId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 // ─── Typing dots (uses the global .typing-dot animation) ─────────────────────
@@ -53,7 +55,95 @@ function TypingDots({ className, dotClassName }: { className?: string; dotClassN
   );
 }
 
-// ─── Tool call card (collapsible args/result inspector) ──────────────────────
+// ─── Route receipt chip (r27 · arXiv:2605.01710) ─────────────────────────────
+// Consumer tier = one compact label ("fallback used" only when it happened —
+// "no fallback" stays hover-quiet). Opening it reveals the developer-tier
+// record: requested vs resolved model, fallback path, tool ledger, redactions.
+function RouteReceiptChip({ receipt }: { receipt: RouteReceipt }) {
+  const fallback = receipt.fallback.status === "occurred";
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Route receipt — which serving path answered"
+          title={
+            fallback
+              ? `Route receipt: ${receipt.resolved_label} answered after a fallback`
+              : `Route receipt: served by ${receipt.resolved_label}`
+          }
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide transition-opacity",
+            fallback
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+              : "border-border bg-muted/40 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover/msg:opacity-100"
+          )}
+        >
+          <ReceiptText className="h-2.5 w-2.5" aria-hidden />
+          {fallback ? "fallback used" : "route"}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(20rem,calc(100vw-2.5rem))] p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Route receipt · v0.1
+        </p>
+        <dl className="mt-2 space-y-1.5 text-[11px] leading-relaxed">
+          <div className="flex items-start justify-between gap-3">
+            <dt className="shrink-0 text-muted-foreground">Requested</dt>
+            <dd className="min-w-0 break-all text-right font-mono">{receipt.requested_model}</dd>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <dt className="shrink-0 text-muted-foreground">Answered by</dt>
+            <dd className="min-w-0 break-all text-right font-mono">{receipt.resolved_label}</dd>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <dt className="shrink-0 text-muted-foreground">Fallback</dt>
+            <dd className="text-right">
+              {fallback ? (
+                <span className="font-medium text-amber-400">
+                  occurred{receipt.fallback.reason ? ` · ${receipt.fallback.reason.replace("_", " ")}` : ""}
+                  {receipt.fallback.from && receipt.fallback.to
+                    ? ` — ${receipt.fallback.from} → ${receipt.fallback.to}`
+                    : ""}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">none</span>
+              )}
+            </dd>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <dt className="shrink-0 text-muted-foreground">Tools</dt>
+            <dd className="min-w-0 text-right">
+              {receipt.tools_used.length === 0 ? (
+                <span className="text-muted-foreground">no tools used</span>
+              ) : (
+                <span className="font-mono">
+                  {receipt.tools_used.map((t) => `${t.name}×${t.invocation_count}`).join(", ")}
+                </span>
+              )}
+            </dd>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <dt className="shrink-0 text-muted-foreground">Completion</dt>
+            <dd className="text-right">{receipt.completion_status}</dd>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <dt className="shrink-0 text-muted-foreground">Redactions</dt>
+            <dd className="text-right text-muted-foreground">
+              {receipt.redactions.length === 0 ? "none" : receipt.redactions.length}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-2 border-t pt-2 text-[10px] leading-relaxed text-muted-foreground/70">
+          Runtime record of the serving path that produced this answer — model
+          cards document design time, receipts document runtime
+          (arXiv:2605.01710). Stored locally only.
+        </p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function ToolCallCard({ call }: { call: ToolCallInfo }) {
   const [open, setOpen] = React.useState(false);
   const meta = TOOL_META[call.name as ToolId];
@@ -510,6 +600,7 @@ export const MessageItem = React.memo(function MessageItem({
             </span>
           )}
           {isStreamingNow && <TypingDots dotClassName="h-1 w-1" />}
+          {message.receipt && !isStreamingNow && <RouteReceiptChip receipt={message.receipt} />}
           {message.status === "stopped" && (
             <span className="text-xs font-medium text-amber-400">(stopped)</span>
           )}

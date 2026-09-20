@@ -20,7 +20,8 @@ interface KeyedEndpoint {
 }
 
 export const KEYED_ENDPOINTS: Record<string, KeyedEndpoint> = {
-  vyce: { url: "https://vyceai.com/v1/models", shape: "openai", keyOptional: true },
+  // r27 roster audit: vyce's keyless /v1/models now 401s — key is required.
+  vyce: { url: "https://vyceai.com/v1/models", shape: "openai", keyOptional: false },
   orcarouter: { url: "https://api.orcarouter.ai/v1/models", shape: "openai", keyOptional: true },
   groq: { url: "https://api.groq.com/openai/v1/models", shape: "openai" },
   "google-ai-studio": { url: "https://generativelanguage.googleapis.com/v1beta/openai/models", shape: "openai" },

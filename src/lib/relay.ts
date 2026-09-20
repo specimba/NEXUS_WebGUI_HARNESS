@@ -51,7 +51,7 @@ export interface RelayWireHop {
 }
 
 /** How the chain should order itself for the task at hand. */
-export type RelayTaskFit = "research" | "quality" | "any";
+export type RelayTaskFit = "research" | "quality" | "decision" | "any";
 
 /** Generation-Era arena catalog (tier → Elo), from the ModelRelay doctrine. */
 const ARENA_CATALOG: Record<
@@ -75,6 +75,8 @@ const ARENA_CATALOG: Record<
       { id: "kimi/kimi-k3", tier: 1, elo: 0.975, note: "Moonshot frontier" },
       { id: "z-ai/glm-5.3", tier: 1, elo: 0.97, note: "GLM 5.3 flagship" },
       { id: "minimax/minimax-m3", tier: 1, elo: 0.92, note: "Long-horizon agentic" },
+      // r27: the $0 GLM-5.3-Flash lane (verified against the live 197-model roster).
+      { id: "z-ai/glm-5.3-flash-free", tier: 2, elo: 0.91, note: "$0 · GLM 5.3 Flash" },
       { id: "deepseek/deepseek-v4-flash-free", tier: 2, elo: 0.915, note: "Free · 1M ctx" },
       { id: "orcarouter/free", tier: 2, elo: 0.9, note: "Difficulty-routed free pool · never bills" },
     ],
@@ -83,8 +85,12 @@ const ARENA_CATALOG: Record<
     label: "Google AI Studio",
     models: [
       { id: "gemini-3.8-flash", tier: 1, elo: 0.975, note: "Current generation · 1M ctx" },
-      { id: "gemini-3.5-pro", tier: 1, elo: 0.965, note: "Strongest Gemini" },
-      { id: "gemini-3.8-flash-lite", tier: 2, elo: 0.9, note: "Highest free quota" },
+      // r27 roster audit (r27-2b): gemini-3.5-pro does NOT exist (user-reported +
+      // Google docs / OrcaRouter / HF all lack it) — the real Pro line today is
+      // gemini-3.1-pro-preview. gemini-3.8-flash-lite also does not exist; the
+      // lite line tops at gemini-3.5-flash-lite.
+      { id: "gemini-3.1-pro-preview", tier: 1, elo: 0.96, note: "Strongest current Gemini" },
+      { id: "gemini-3.5-flash-lite", tier: 2, elo: 0.88, note: "Highest free quota" },
       { id: "gemini-2.5-pro", tier: 2, elo: 0.92, note: "Legacy · stable" },
     ],
   },
@@ -106,7 +112,8 @@ const ARENA_CATALOG: Record<
   },
   cohere: {
     label: "Cohere",
-    models: [{ id: "command-a-02-2025", tier: 2, elo: 0.9, note: "Flagship · trial key" }],
+    // r27: command-a-02-2025 was retired — the live flagship is 03-2025.
+    models: [{ id: "command-a-03-2025", tier: 2, elo: 0.9, note: "Flagship · trial key" }],
   },
   mistral: {
     label: "Mistral",
@@ -121,11 +128,22 @@ const ARENA_CATALOG: Record<
   },
   together: {
     label: "Together AI",
-    models: [{ id: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free", tier: 2, elo: 0.88, note: "Free endpoint" }],
+    // r27: the -Free Llama endpoint was retired; the only free serverless
+    // model today is Ternary-Bonsai-27B (docs.together.ai serverless list).
+    models: [
+      { id: "Prism-ML/Ternary-Bonsai-27B", tier: 2, elo: 0.87, note: "Free serverless · ternary GGUF lineage" },
+      { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", tier: 2, elo: 0.88, note: "Paid · reliable fallback" },
+    ],
   },
   zai: {
     label: "Z.ai",
-    models: [{ id: "glm-4.7-flash", tier: 2, elo: 0.86, note: "$0 Flash" }],
+    models: [
+      // r27 roster audit: GLM-5.3 flagship + the missing GLM-5.3-Flash
+      // (HF zai-org/GLM-5.3-Flash, docs.z.ai pricing — cheap, NOT free).
+      { id: "glm-5.3", tier: 1, elo: 0.97, note: "GLM 5.3 flagship · 1M ctx" },
+      { id: "glm-5.3-flash", tier: 2, elo: 0.92, note: "GLM 5.3 Flash · cheap tier" },
+      { id: "glm-4.7-flash", tier: 3, elo: 0.86, note: "$0 Flash" },
+    ],
   },
   openrouter: {
     label: "OpenRouter",
@@ -268,12 +286,19 @@ function recentlyFailed(entry: RelayHealthEntry | undefined): boolean {
 
 // ─── Task fit heuristics ──────────────────────────────────────────────────────
 
-const FAST_RE = /flash|mini|lite|fast|turbo|lightning|instant|small|20b|8b|compound/i;
-const FLAGSHIP_RE = /pro|ultra|flagship|v4\.1|large|frontier|sonnet|120b|550b|command-a|medium|kimi-k3|minimax-m3|glm-5\.3|fusion/i;
+const FAST_RE = /flash|mini|lite|fast|turbo|lightning|instant|small|20b|8b|bonsai|compound/i;
+const FLAGSHIP_RE = /pro|ultra|flagship|v4\.1|large|frontier|sonnet|120b|550b|command-a|medium|kimi-k3|minimax-m3|glm-5\.3(?!-flash)|fusion/i;
 
 function taskBoost(hop: RelayHop, fit: RelayTaskFit): number {
   if (fit === "any") return 0;
   const hay = `${hop.model} ${hop.note ?? ""}`;
+  if (fit === "decision") {
+    // System-One jobs (classify / judge / route): ONLY fast lanes — a slow
+    // genius pass defeats the whole point of the decision tier (r27 Jev).
+    if (FAST_RE.test(hay)) return 2;
+    if (FLAGSHIP_RE.test(hay)) return -2;
+    return -1;
+  }
   if (fit === "research") {
     // Search steps: fast models first — many quick tool-driven calls matter
     // more than one slow genius pass.
@@ -310,6 +335,10 @@ export function buildRelayChain(
     if (!key) continue; // no key → this provider can't answer
     const baseUrl = providerBaseUrl(reg, settings.providerKeys?.[providerId]?.accountId);
     const seen = new Set<string>();
+    // r27 evidence-grounding: models the user's own live /models roster
+    // confirmed get a "live ✓" badge — fabricated catalog entries are now
+    // visibly distinguishable from verified ones.
+    const live = new Set((loadLiveCatalog()[providerId] ?? []).map((m) => m.id));
     for (const m of catalog.models) {
       seen.add(m.id);
       hops.push({
@@ -321,7 +350,7 @@ export function buildRelayChain(
         apiKey: key,
         tier: m.tier,
         elo: m.elo,
-        note: m.note,
+        note: live.has(m.id) ? `${m.note ? `${m.note} · ` : ""}live ✓` : m.note,
       });
     }
     // Live-roster extras (Refresh models button) join as generic T2 hops.

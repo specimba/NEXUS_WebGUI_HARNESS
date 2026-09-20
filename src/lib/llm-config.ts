@@ -90,3 +90,42 @@ export function providerReady(settings: Settings, providerId: string): boolean {
   if (reg.noKey) return true;
   return !!settings.providerKeys?.[providerId]?.key?.trim();
 }
+
+/**
+ * r27: resolve an EXPLICIT "providerId::model" (or "auto::builtin") pin —
+ * the per-chat model override. Never dead-ends: an unknown provider or a
+ * keyless one falls back to the global resolution with a note.
+ */
+export function resolveExplicitLlm(
+  settings: Settings,
+  override?: string,
+  agentModel?: string
+): ResolvedLlm {
+  const value = override?.trim();
+  if (!value || value === "auto::builtin" || value === "auto") {
+    return resolveLlm(settings, agentModel);
+  }
+  const [pid, ...rest] = value.split("::");
+  const model = rest.join("::");
+  if (!pid || !model) return resolveLlm(settings, agentModel);
+  const reg = providerById(pid);
+  const entry = settings.providerKeys?.[pid];
+  const key = entry?.key?.trim() ?? "";
+  if (reg && (key || reg.noKey)) {
+    return {
+      provider: "custom",
+      apiKey: key || undefined,
+      baseUrl: providerBaseUrl(reg, entry?.accountId),
+      model,
+      label: `${reg.name} · ${model}`,
+      providerId: pid,
+    };
+  }
+  const base = resolveLlm(settings, agentModel);
+  return {
+    ...base,
+    fallbackNote: reg
+      ? `${reg.name} has no key saved — used ${base.label} instead.`
+      : `Unknown provider "${pid}" — used ${base.label} instead.`,
+  };
+}

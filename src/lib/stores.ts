@@ -200,6 +200,8 @@ interface ConversationsState {
   setMemory: (convId: string, memory: ConversationMemory | undefined) => void;
   /** Enable/disable/configure the proactive heartbeat loop. */
   setHeartbeat: (convId: string, heartbeat: ConversationHeartbeat | undefined) => void;
+  /** r27 per-chat model pin ("providerId::model" / "auto::builtin" / undefined = global). */
+  setModelOverride: (convId: string, override: string | undefined) => void;
   clearAll: () => void;
 }
 
@@ -315,6 +317,14 @@ export const useConversationsStore = create<ConversationsState>()(
         set((s) => ({
           conversations: s.conversations.map((c) =>
             c.id === convId ? { ...c, heartbeat } : c
+          ),
+        })),
+      setModelOverride: (convId, override) =>
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === convId
+              ? { ...c, modelOverride: override, updatedAt: Date.now() }
+              : c
           ),
         })),
       clearAll: () => set({ conversations: [], activeId: null }),
