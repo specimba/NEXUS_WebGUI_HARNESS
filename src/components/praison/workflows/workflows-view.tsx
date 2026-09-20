@@ -46,7 +46,7 @@ import {
 import type { Workflow, WorkflowStep } from "@/lib/types";
 import { downloadJson, fmtIn, fmtIntervalShort, fmtRel, uid } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
-import { AgentAvatar, EmptyState, PageHeader } from "@/components/praison/atoms";
+import { AgentAvatar, DepthChip, EmptyState, PageHeader } from "@/components/praison/atoms";
 import { WorkflowEditorDialog } from "./workflow-editor-dialog";
 import { WorkflowRunPanel } from "./workflow-run-panel";
 import { RunKanban } from "./run-kanban";
@@ -77,6 +77,7 @@ function exportWorkflows(workflows: Workflow[]) {
         name: w.name,
         description: w.description,
         steps: w.steps,
+        ...(w.depth ? { depth: w.depth } : {}),
       })),
     }
   );
@@ -116,6 +117,9 @@ function sanitizeWorkflow(raw: unknown, validAgentIds: Set<string>): Workflow | 
     runs: [],
     createdAt: now,
     updatedAt: now,
+    ...(r.depth === "quick" || r.depth === "standard" || r.depth === "deep"
+      ? { depth: r.depth as Workflow["depth"] }
+      : {}),
   };
 }
 
@@ -482,10 +486,13 @@ export function WorkflowsView() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-[11px] text-muted-foreground">
-                      {lastRun
-                        ? `${wf.runs.length} run${wf.runs.length === 1 ? "" : "s"} · last ${fmtRel(lastRun.startedAt)}`
-                        : "Never run"}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <DepthChip depth={wf.depth} />
+                      <span className="text-[11px] text-muted-foreground">
+                        {lastRun
+                          ? `${wf.runs.length} run${wf.runs.length === 1 ? "" : "s"} · last ${fmtRel(lastRun.startedAt)}`
+                          : "Never run"}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       {wf.schedule?.enabled && wf.steps.length > 0 && (

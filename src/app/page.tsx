@@ -10,6 +10,7 @@ import { HeartbeatEngine } from "@/components/praison/chat/chat-heartbeat";
 import { AgentsView } from "@/components/praison/agents/agents-view";
 import { WorkflowsView } from "@/components/praison/workflows/workflows-view";
 import { WorkflowScheduler } from "@/components/praison/workflows/workflow-scheduler";
+import { RadarView } from "@/components/praison/radar/radar-view";
 import { SessionHealth } from "@/components/praison/session-health";
 import { SettingsView } from "@/components/praison/settings/settings-view";
 import { ensureSeeded, useSettingsStore, useUiStore } from "@/lib/stores";
@@ -32,6 +33,7 @@ function useIsClient(): boolean {
 // #/guide/<provider> → wizard pre-opened at that provider's registration step
 // #/providers        → Settings scrolled to the free provider gallery
 // #/local-models     → Settings scrolled to the WebGPU local-model panel
+// #/radar            → Trend Radar view (GitHub stars / HF trending / papers)
 
 function applyHashRoute(): void {
   const hash = window.location.hash.replace(/^#\/?/, "");
@@ -47,6 +49,9 @@ function applyHashRoute(): void {
     ui.setSetupWizardOpen(false);
     ui.setView("settings");
     ui.setSettingsAnchor(head);
+  } else if (head === "radar") {
+    ui.setSetupWizardOpen(false);
+    ui.setView("radar");
   }
 }
 
@@ -97,6 +102,7 @@ export default function Page() {
               {view === "chat" && <ChatView />}
               {view === "agents" && <AgentsView />}
               {view === "workflows" && <WorkflowsView />}
+              {view === "radar" && <RadarView />}
               {view === "settings" && <SettingsView />}
             </motion.div>
           </AnimatePresence>

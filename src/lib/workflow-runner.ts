@@ -22,10 +22,13 @@ import {
 } from "@/lib/stores";
 import { REWORK_LIMIT } from "@/lib/constants";
 import type {
+  Agent,
+  PipelineDepth,
   RunCallLogEntry,
   RunErrorInfo,
   RunErrorKind,
   ToolCallInfo,
+  ToolId,
   Workflow,
   WorkflowRun,
   WorkflowRunStep,
@@ -129,6 +132,112 @@ export function runErrorKindLabel(kind: RunErrorKind): string {
   return ERROR_KIND_META[kind].label;
 }
 
+// ─── Pipeline depth (r26): synthetic passes injected at materialization ──────
+
+const DEEP_RESEARCH_INSTRUCTION =
+  "This is a DEEP-RESEARCH pass. Search for information that previous passes did not cover: " +
+  "different sources, missing numbers, contradicting viewpoints, primary sources. Verify the " +
+  "key claims you see in the conversation context and correct them.";
+
+const VERIFICATION_INSTRUCTION =
+  "VERIFICATION PASS (final pipeline step — your reply IS the deliverable): silently check the " +
+  "conversation context for unsupported claims, missing citations, and gaps. Use the tools " +
+  "available (web_search / arxiv_search) to verify load-bearing facts where needed. Then output " +
+  "the FULL corrected, tightened version of the previous step's output — never a plan, never an " +
+  "announcement of what you are about to do, never a summary of changes alone. If you called " +
+  "tools, continue after their results and still deliver the complete final output in this same " +
+  "reply. End with a one-line 'Verification:' note listing what you checked.";
+
+const DEEP_PASSES: { n: 2 | 3; label: string }[] = [
+  { n: 2, label: "Deep research pass 2 — verify & broaden" },
+  { n: 3, label: "Deep research pass 3 — cross-check sources" },
+];
+
+/**
+ * Fresh-run step materialization with depth control (r26).
+ * - quick:    exactly as authored (no injection)
+ * - standard: + one synthetic "Verification & synthesis" pass at the end when
+ *             the pipeline has NO review-gate step (a real review gate already
+ *             provides verification semantics)
+ * - deep:     + 2 deep-research passes cloned from the FIRST step's agent
+ *             (inserted right after it), then the same verification pass
+ *             Missing depth reads as "standard" (pre-r26 workflows keep working).
+ *
+ * Resume is deliberately NOT routed through here: resumed runs re-use their
+ * already-materialized step rows, so old runs stay byte-identical.
+ */
+export function materializeRunSteps(wf: Workflow, agentsNow: Agent[]): WorkflowRunStep[] {
+  const base: WorkflowRunStep[] = wf.steps.map((s) => {
+    const agent = agentsNow.find((a) => a.id === s.agentId);
+    return {
+      stepId: s.id,
+      agentId: s.agentId,
+      agentName: agent?.name ?? "Unknown agent",
+      agentEmoji: agent?.emoji ?? "🤖",
+      label: s.label || "Untitled step",
+      output: "",
+      toolCalls: [],
+      status: "running" as const,
+      kind: s.kind ?? "generate",
+    };
+  });
+
+  const depth: PipelineDepth = wf.depth ?? "standard";
+  if (depth === "quick" || base.length === 0) return base;
+
+  let steps = base;
+
+  // Deep: clone the FIRST step's agent into 2 extra research passes.
+  if (depth === "deep") {
+    const first = steps[0];
+    const firstAgent = agentsNow.find((a) => a.id === first.agentId);
+    // arXiv fits research — grant the merged tool set only when the base agent
+    // already has any tools (an agent authored without tools stays tool-free).
+    const baseTools = firstAgent?.tools ?? [];
+    const passTools: ToolId[] | undefined =
+      baseTools.length > 0
+        ? Array.from(new Set<ToolId>([...baseTools, "web_search", "arxiv_search"]))
+        : undefined;
+    const passes: WorkflowRunStep[] = DEEP_PASSES.map(({ label }) => ({
+      stepId: uid("deep"),
+      agentId: first.agentId,
+      agentName: firstAgent?.name ?? first.agentName,
+      agentEmoji: firstAgent?.emoji ?? first.agentEmoji,
+      label,
+      output: "",
+      toolCalls: [],
+      status: "running" as const,
+      kind: "generate" as const,
+      instruction: DEEP_RESEARCH_INSTRUCTION,
+      ...(passTools ? { tools: passTools } : {}),
+    }));
+    steps = [first, ...passes, ...steps.slice(1)];
+  }
+
+  // Standard + deep: synthetic verification pass when no review gate exists.
+  const hasReviewSemantics = steps.some((s) => s.kind === "review");
+  if (!hasReviewSemantics) {
+    const last = steps[steps.length - 1];
+    const lastAgent = agentsNow.find((a) => a.id === last.agentId);
+    steps = [
+      ...steps,
+      {
+        stepId: uid("verify"),
+        agentId: last.agentId,
+        agentName: lastAgent?.name ?? last.agentName,
+        agentEmoji: lastAgent?.emoji ?? last.agentEmoji,
+        label: "Verification & synthesis",
+        output: "",
+        toolCalls: [],
+        status: "running" as const,
+        kind: "generate" as const,
+        instruction: VERIFICATION_INSTRUCTION,
+      },
+    ];
+  }
+  return steps;
+}
+
 /**
  * Run a workflow pipeline end-to-end: creates the run row in the store,
  * streams each step through the agent chain, patches statuses live.
@@ -185,20 +294,9 @@ export async function executeWorkflowRun(
     if (options.task.trim() === "") return null;
     runId = uid("run");
     task = options.task.trim();
-    steps = wf.steps.map((s) => {
-      const agent = agentsNow.find((a) => a.id === s.agentId);
-      return {
-        stepId: s.id,
-        agentId: s.agentId,
-        agentName: agent?.name ?? "Unknown agent",
-        agentEmoji: agent?.emoji ?? "🤖",
-        label: s.label || "Untitled step",
-        output: "",
-        toolCalls: [],
-        status: "running" as const,
-        kind: s.kind ?? "generate",
-      };
-    });
+    // r26 depth control: quick = as authored · standard = + verification pass ·
+    // deep = + 2 research passes + verification. Resume (above) is untouched.
+    steps = materializeRunSteps(wf, agentsNow);
     store.addRun(wf.id, {
       id: runId,
       workflowId: wf.id,
@@ -310,13 +408,16 @@ export async function executeWorkflowRun(
     let draft = "";
     let localToolCalls: ToolCallInfo[] = [];
     const llm = resolveLlm(settings.settings, agent.model);
+    // Synthetic deep-research passes carry a merged tool set (base tools +
+    // web_search + arxiv_search) materialized on the run step itself.
+    const effectiveTools: ToolId[] = runStep.tools ?? agent.tools ?? [];
     // Task fit (Genius-rotator doctrine): research steps with search tools
     // prefer fast models first (many quick tool rounds); review/writing steps
     // prefer flagships first (one excellent pass matters most).
     const taskFit: RelayTaskFit =
       runStep.kind === "review"
         ? "quality"
-        : (agent.tools ?? []).some((t) => t === "web_search" || t === "read_url")
+        : effectiveTools.some((t) => t === "web_search" || t === "read_url" || t === "arxiv_search")
           ? "research"
           : "any";
     // Model Relay (Genius-rotator doctrine): when this step's brain fails
@@ -349,7 +450,7 @@ export async function executeWorkflowRun(
             providerId: llm.providerId,
             temperature: agent.temperature,
             maxIterations: agent.maxIterations,
-            tools: agent.tools,
+            tools: effectiveTools,
             system,
             messages: [{ role: "user", content: context }],
             ...(relayHops.length > 0 ? { relay: relayHops } : {}),
@@ -487,7 +588,9 @@ export async function executeWorkflowRun(
       const step = steps[i];
       const def = wf.steps.find((s) => s.id === step.stepId);
       const kind = def?.kind ?? "generate";
-      const instruction = def?.instruction;
+      // Authored steps take their instruction from the definition; synthetic
+      // depth passes (no def) carry their appended focus on the run row itself.
+      const instruction = def ? def.instruction : step.instruction;
       const baseSystem = instruction
         ? `${useAgentsStore.getState().agents.find((a) => a.id === step.agentId)?.instructions ?? ""}\n\nFOCUS FOR THIS STEP: ${instruction}`
         : useAgentsStore.getState().agents.find((a) => a.id === step.agentId)?.instructions ?? "";

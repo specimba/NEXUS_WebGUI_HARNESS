@@ -7,6 +7,7 @@ import {
   KeyRound,
   MessagesSquare,
   Plus,
+  Radar as RadarIcon,
   Search,
   Settings2,
   Sheet as SheetIcon,
@@ -40,6 +41,7 @@ const NAV_ITEMS: { view: View; label: string; icon: React.ElementType; hint: str
   { view: "chat", label: "Chat", icon: MessagesSquare, hint: "Talk to agents & workflows" },
   { view: "agents", label: "Agents", icon: Bot, hint: "Create & manage AI agents" },
   { view: "workflows", label: "Workflows", icon: WorkflowIcon, hint: "Multi-agent pipelines" },
+  { view: "radar", label: "Radar", icon: RadarIcon, hint: "GitHub stars, HF trending & arXiv papers" },
   { view: "settings", label: "Settings", icon: Settings2, hint: "Provider, profile & data" },
 ];
 
@@ -173,6 +175,7 @@ const VIEW_TITLES: Record<View, { title: string; subtitle: string }> = {
   chat: { title: "Chat", subtitle: "Converse with your agents" },
   agents: { title: "Agents", subtitle: "Build your AI workforce" },
   workflows: { title: "Workflows", subtitle: "Orchestrate agent pipelines" },
+  radar: { title: "Trend Radar", subtitle: "GitHub stars · HF trending · arXiv papers" },
   settings: { title: "Settings", subtitle: "Configure providers & preferences" },
 };
 

@@ -2,11 +2,18 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Bot, Moon, Sun, Zap } from "lucide-react";
+import {
+  BadgeCheck,
+  Bot,
+  Microscope,
+  Moon,
+  Sun,
+  Zap,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Agent, AgentColor, ToolId } from "@/lib/types";
+import type { Agent, AgentColor, PipelineDepth, ToolId } from "@/lib/types";
 import { TOOL_META } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +84,37 @@ export function ModelBadge({ model, className }: { model: string; className?: st
       <Zap className="h-3 w-3" />
       {isAuto ? "auto" : model}
     </Badge>
+  );
+}
+
+// ─── Pipeline depth chip (r26) ──────────────────────────────────────────────
+const DEPTH_META: Record<PipelineDepth, { label: string; icon: React.ElementType; hint: string }> = {
+  quick: { label: "Quick", icon: Zap, hint: "Runs exactly as authored — no extra passes" },
+  standard: { label: "Standard", icon: BadgeCheck, hint: "Adds a verification pass at the end" },
+  deep: { label: "Deep", icon: Microscope, hint: "2 extra deep-research passes + verification" },
+};
+
+/** Muted chip showing a workflow's pipeline depth (missing = Standard). */
+export function DepthChip({
+  depth,
+  className,
+}: {
+  depth?: PipelineDepth;
+  className?: string;
+}) {
+  const meta = DEPTH_META[depth ?? "standard"];
+  const Icon = meta.icon;
+  return (
+    <span
+      title={`Pipeline depth: ${meta.label} — ${meta.hint}`}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground",
+        className
+      )}
+    >
+      <Icon className="h-3 w-3" aria-hidden />
+      {meta.label}
+    </span>
   );
 }
 

@@ -1,6 +1,6 @@
 // ─── PraisonAI Web · Shared Types ────────────────────────────────────────────
 
-export type View = "chat" | "agents" | "workflows" | "settings";
+export type View = "chat" | "agents" | "workflows" | "settings" | "radar";
 
 /** Accent theme variants (remap the violet/fuchsia accent scale via CSS vars). */
 export type UiThemeId = "nexus" | "matrix" | "fallout" | "cyber";
@@ -114,6 +114,15 @@ export interface Conversation {
   heartbeat?: ConversationHeartbeat;
 }
 
+/**
+ * Pipeline depth (r26): how much extra rigor the runner injects at run time.
+ * - "quick"    → run exactly as authored (no injection)
+ * - "standard" → + synthetic verification pass at the end (unless a review gate exists)
+ * - "deep"     → + 2 extra deep-research passes after step 1, then verification
+ * Missing (old workflows) reads as "standard".
+ */
+export type PipelineDepth = "quick" | "standard" | "deep";
+
 export interface WorkflowStep {
   id: string;
   agentId: string;
@@ -137,6 +146,14 @@ export interface WorkflowRunStep {
   ms?: number;
   /** Mirrors the step definition kind (missing = "generate"). */
   kind?: StepKind;
+  /**
+   * Per-run instruction for SYNTHETIC steps injected by depth materialization
+   * (deep-research / verification passes have no authored WorkflowStep def, so
+   * the runner reads the appended focus instruction from here instead).
+   */
+  instruction?: string;
+  /** Effective tool set for synthetic passes (merged at materialization). */
+  tools?: ToolId[];
   /** Review-gate outcome for kind = "review" steps. */
   verdict?: "pass" | "rework";
   /** True when this generate step was redone after a review rework. */
@@ -220,6 +237,8 @@ export interface Workflow {
   runs: WorkflowRun[];
   createdAt: number;
   updatedAt: number;
+  /** Pipeline depth (r26) — missing = "standard" for pre-existing workflows. */
+  depth?: PipelineDepth;
   /** Recurring in-app schedule (runs fire while the app tab is open). */
   schedule?: WorkflowSchedule;
 }

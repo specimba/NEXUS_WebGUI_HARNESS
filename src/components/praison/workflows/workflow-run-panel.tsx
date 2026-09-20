@@ -70,7 +70,7 @@ import { SCHEDULE_INTERVALS } from "@/lib/constants";
 import type { Workflow, WorkflowRunStep } from "@/lib/types";
 import { TOOL_META } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { AgentAvatar } from "@/components/praison/atoms";
+import { AgentAvatar, DepthChip } from "@/components/praison/atoms";
 import { MarkdownRenderer } from "@/components/praison/markdown";
 import { WorkflowCompareDialog } from "@/components/praison/workflows/workflow-compare-dialog";
 import type {
@@ -630,6 +630,7 @@ export function WorkflowRunPanel({
           <SheetTitle className="truncate">{liveWorkflow?.name ?? "Workflow"}</SheetTitle>
           <div className="flex items-center gap-2">
             <SheetDescription>Pipeline run</SheetDescription>
+            <DepthChip depth={liveWorkflow?.depth} />
             {scheduleEnabled && (
               <span
                 title={`Recurring schedule · next ${fmtIn(schedule?.nextRunAt)}`}

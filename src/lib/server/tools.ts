@@ -298,7 +298,13 @@ interface ArxivPaper {
   pdf: string;
 }
 
-function parseArxivFeed(xml: string): ArxivPaper[] {
+export type { ArxivPaper };
+
+/**
+ * arXiv Atom feed → paper list. Exported (r26) so server routes outside the
+ * tool engine (e.g. /api/radar/papers) reuse the exact same parser.
+ */
+export function parseArxivFeed(xml: string): ArxivPaper[] {
   const out: ArxivPaper[] = [];
   const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
   let m: RegExpExecArray | null;
@@ -333,7 +339,7 @@ function parseArxivFeed(xml: string): ArxivPaper[] {
   return out;
 }
 
-function decodeXml(s: string): string {
+export function decodeXml(s: string): string {
   return s
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")

@@ -42,12 +42,38 @@ import {
   useSettingsStore,
   useWorkflowsStore,
 } from "@/lib/stores";
-import type { StepKind, Workflow, WorkflowStep } from "@/lib/types";
+import type { PipelineDepth, StepKind, Workflow, WorkflowStep } from "@/lib/types";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
 import { cn } from "@/lib/utils";
 
 // ─── Create / edit a workflow: name, description and ordered steps ──────────
+
+const DEPTH_OPTIONS: {
+  v: PipelineDepth;
+  label: string;
+  desc: string;
+  summary: string;
+}[] = [
+  {
+    v: "quick",
+    label: "Quick",
+    desc: "As authored — no extra passes, fastest and cheapest.",
+    summary: "runs exactly as authored",
+  },
+  {
+    v: "standard",
+    label: "Standard",
+    desc: "Adds one verification pass at the end (skipped when you already have a review gate).",
+    summary: "+ verification pass",
+  },
+  {
+    v: "deep",
+    label: "Deep",
+    desc: "2 extra deep-research passes after step 1, then verification — for briefings that need detail.",
+    summary: "+ 2 deep-research passes · + verification pass",
+  },
+];
 
 interface WorkflowEditorDialogProps {
   open: boolean;
@@ -66,6 +92,7 @@ export function WorkflowEditorDialog({
 
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [depth, setDepth] = React.useState<PipelineDepth>("standard");
   const [steps, setSteps] = React.useState<WorkflowStep[]>([]);
   const [planOpen, setPlanOpen] = React.useState(false);
   const [planTask, setPlanTask] = React.useState("");
@@ -80,6 +107,8 @@ export function WorkflowEditorDialog({
     if (!open) return;
     setName(workflow?.name ?? "");
     setDescription(workflow?.description ?? "");
+    // Old workflows read depth = undefined → treat as "standard".
+    setDepth(workflow?.depth ?? "standard");
     setSteps(
       workflow
         ? workflow.steps.map((s) => ({ ...s }))
@@ -232,10 +261,14 @@ export function WorkflowEditorDialog({
         name: trimmedName,
         description: descriptionTrim,
         steps: validSteps,
+        depth,
       });
       toast.success("Workflow updated");
     } else {
-      addWf({ name: trimmedName, description: descriptionTrim, steps: validSteps });
+      const newId = addWf({ name: trimmedName, description: descriptionTrim, steps: validSteps });
+      // The store's add() only materializes known fields — persist depth via a
+      // follow-up patch so new workflows carry their depth setting too.
+      updateWf(newId, { depth });
       toast.success("Workflow created");
     }
     onOpenChange(false);
@@ -282,6 +315,53 @@ export function WorkflowEditorDialog({
             </div>
           </div>
 
+          {/* Pipeline depth (r26): how much rigor the runner injects at run time */}
+          <div className="space-y-2">
+            <Label>Depth</Label>
+            <div
+              role="group"
+              aria-label="Pipeline depth"
+              className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+            >
+              {DEPTH_OPTIONS.map((opt) => {
+                const active = depth === opt.v;
+                return (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setDepth(opt.v)}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-left transition-all",
+                      active
+                        ? "border-violet-500/60 bg-violet-500/10 ring-1 ring-violet-500/30"
+                        : "border-border/70 hover:bg-muted/60"
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs font-semibold">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          active ? "bg-violet-400 soft-pulse" : "bg-muted-foreground/30"
+                        )}
+                      />
+                      {opt.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-0.5 block text-[11px] leading-snug",
+                        active ? "text-foreground/80" : "text-muted-foreground"
+                      )}
+                    >
+                      {opt.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Steps</Label>
@@ -289,6 +369,17 @@ export function WorkflowEditorDialog({
                 {steps.length} step{steps.length === 1 ? "" : "s"} · run top to bottom · drag ⠿ to reorder
               </span>
             </div>
+
+            {/* Depth summary — what the runner will actually execute */}
+            <p className="text-[11px] text-muted-foreground" aria-live="polite">
+              <span className="font-medium text-violet-500 dark:text-violet-400">
+                {DEPTH_OPTIONS.find((o) => o.v === depth)?.label}
+              </span>{" "}
+              run: {steps.length || "0"} authored step{steps.length === 1 ? "" : "s"}{" "}
+              {steps.some((s) => (s.kind ?? "generate") === "review")
+                ? "· your review gate handles verification"
+                : DEPTH_OPTIONS.find((o) => o.v === depth)?.summary}
+            </p>
 
             {steps.length === 0 ? (
               <div className="rounded-lg border border-dashed px-4 py-6 text-center text-xs text-muted-foreground">
