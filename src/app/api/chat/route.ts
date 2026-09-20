@@ -1,7 +1,14 @@
 import { NextRequest } from "next/server";
 import ZAI from "z-ai-web-dev-sdk";
 import { executeTool } from "@/lib/server/tools";
-import { buildToolDefs, fenceToolOutput, validateToolCall, type EngineToolIO } from "@/lib/tools-defs";
+import {
+  buildToolDefs,
+  fenceToolOutputForModel,
+  newTurnSafetyAudit,
+  validateToolCall,
+  type EngineToolIO,
+  type TurnSafetyAudit,
+} from "@/lib/tools-defs";
 import { guardPublicUrl } from "@/lib/server/url-guard";
 import type { ToolCallInfo } from "@/lib/types";
 import {
@@ -95,6 +102,10 @@ export async function POST(req: NextRequest) {
       try {
         body.images = sanitizeImages(body.images);
         const toolIO: EngineToolIO = { defs: buildToolDefs((body.tools ?? []).filter(Boolean)), execute: executeTool };
+        // v0.2 receipt (r26-3): one audit per turn, fed by whichever engine ran
+        // (relay or auto) via the shared toolIO reference.
+        const audit = newTurnSafetyAudit();
+        toolIO.audit = audit;
         // Custom engine needs a base URL; apiKey is optional (keyless providers
         // like Pollinations work without one).
         // r26 SECURITY (SSRF): the server relay fetches CLIENT-supplied base
@@ -117,7 +128,7 @@ export async function POST(req: NextRequest) {
         if (useCustom) {
           await runRelayedCustom(body, send, engineAbort.signal, toolIO, runAutoEngine);
         } else {
-          await runAutoEngine(body, send, engineAbort.signal);
+          await runAutoEngine(body, send, engineAbort.signal, audit);
         }
       } catch (err) {
         if (!isAbort(err)) {
@@ -184,7 +195,12 @@ async function withRetry<T>(
 }
 
 // ─── Engine 2: auto — built-in SDK with JSON tool protocol ───────────────────
-async function runAutoEngine(body: EngineBody, send: Send, signal: AbortSignal): Promise<void> {
+async function runAutoEngine(
+  body: EngineBody,
+  send: Send,
+  signal: AbortSignal,
+  audit?: TurnSafetyAudit
+): Promise<void> {
   const zai = await ZAI.create();
   const toolIds = (body.tools ?? []).filter(Boolean);
   const toolDefs = buildToolDefs(toolIds);
@@ -239,6 +255,7 @@ async function runAutoEngine(body: EngineBody, send: Send, signal: AbortSignal):
       send({ type: "tool_call", id: call.id, name: call.name, args: JSON.stringify(call.args) });
       // r26: closed-world validation — reject hallucinated args before dispatch.
       const validation = validateToolCall(toolDefs, call.name, JSON.stringify(call.args));
+      if (!validation.ok && audit) audit.rejectedCalls += 1;
       const result = validation.ok
         ? await executeTool(call.name, validation.args ?? "{}")
         : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
@@ -262,7 +279,7 @@ async function runAutoEngine(body: EngineBody, send: Send, signal: AbortSignal):
       msgs.push({
         role: "user",
         content:
-          `TOOL_RESULT (${call.name}, ok=${result.ok}):\n${clipLocal(fenceToolOutput(call.name, result.content), 8000)}\n\n` +
+          `TOOL_RESULT (${call.name}, ok=${result.ok}):\n${clipLocal(fenceToolOutputForModel(call.name, result.content, 8000, audit), 8000)}\n\n` +
           (iteration >= maxIterations
             ? "TOOL LIMIT REACHED. Reply with your final markdown answer now — do NOT call any more tools and do NOT reply with JSON."
             : "Continue: either call another tool (raw JSON object) or give your final markdown answer."),
@@ -276,15 +293,23 @@ async function runAutoEngine(body: EngineBody, send: Send, signal: AbortSignal):
     // r27 ROUTE RECEIPT (arXiv:2605.01710) — built-in engine path parity.
     const toolCounts = new Map<string, number>();
     for (const tc of collected) toolCounts.set(tc.name, (toolCounts.get(tc.name) ?? 0) + 1);
+    const requestId = body.requestId ?? newRequestId();
     send({
       type: "receipt",
       receipt: {
         schema: "route-receipt.v0.1",
+        // v0.2 additive fields (r26-3) — same record shape as the relay engine.
+        receipt_id: newRequestId(),
+        request_id: requestId,
+        served_at: new Date().toISOString(),
         requested_model: "auto",
         resolved_model: "auto",
         resolved_label: "Built-in engine",
         model_identifier_type: "fixed",
         fallback: { status: "none" },
+        safety: receiptSafety(audit),
+        context: { input_truncated: audit?.contextTruncated === true },
+        tools_allowed: toolIds,
         tools_used: [...toolCounts.entries()].map(([name, invocation_count]) => ({ name, invocation_count })),
         completion_status: "complete",
         redactions: [],
@@ -293,6 +318,37 @@ async function runAutoEngine(body: EngineBody, send: Send, signal: AbortSignal):
     return;
   }
   throw new Error("Agent loop exceeded maximum iterations.");
+}
+
+/**
+ * v0.2: turn the turn's safety audit into the receipt's canonical safety
+ * field (mirrors the relay engine's helper in agent-engine.ts).
+ */
+function receiptSafety(audit?: TurnSafetyAudit): {
+  status: "pass" | "intervened" | "blocked";
+  visible_action?: string;
+} {
+  if (!audit || (audit.injectionStrips === 0 && audit.rejectedCalls === 0)) {
+    return { status: "pass" };
+  }
+  const actions: string[] = [];
+  if (audit.injectionStrips > 0) {
+    actions.push(
+      `stripped ${audit.injectionStrips} injection pattern${audit.injectionStrips === 1 ? "" : "s"} from tool output`
+    );
+  }
+  if (audit.rejectedCalls > 0) {
+    actions.push(
+      `rejected ${audit.rejectedCalls} malformed tool call${audit.rejectedCalls === 1 ? "" : "s"}`
+    );
+  }
+  return { status: "intervened", visible_action: actions.join("; ") };
+}
+
+function newRequestId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 interface ParsedCall {

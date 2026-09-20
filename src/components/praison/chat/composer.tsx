@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToolBadge } from "@/components/praison/atoms";
 import {
   CONTEXT_TOKEN_BUDGET,
+  CUSTOM_MODELS,
   isImageFileName,
   isTextFileName,
   MAX_ATTACHMENTS,
@@ -37,6 +38,7 @@ import {
   MAX_CONTEXT_MESSAGES,
   MAX_IMAGE_ATTACHMENTS,
   MAX_IMAGE_SOURCE_BYTES,
+  modelLabel,
 } from "@/lib/constants";
 import {
   conversationToMarkdown,
@@ -609,6 +611,28 @@ export function Composer({
           badgeTone: "emerald",
           keywords: [m.id],
         });
+      }
+    }
+    // r26.2: the legacy custom endpoint (any OpenAI-compatible URL) — its
+    // default model plus the preset catalog become pinnable, so EVERY
+    // configured provider surfaces in this picker, not just registry ones.
+    if (settings.provider === "custom" || (settings.baseUrl?.trim() && settings.defaultModel?.trim())) {
+      let host = "custom endpoint";
+      try {
+        host = new URL(settings.baseUrl).host;
+      } catch {
+        /* keep fallback label */
+      }
+      const pinned = new Set<string>();
+      if (settings.defaultModel?.trim()) {
+        const dm = settings.defaultModel.trim();
+        pinned.add(dm);
+        opts.push({ id: `custom::${dm}`, label: modelLabel(dm), note: `Default on ${host}`, group: host });
+      }
+      for (const m of CUSTOM_MODELS) {
+        if (pinned.has(m.id)) continue;
+        pinned.add(m.id);
+        opts.push({ id: `custom::${m.id}`, label: m.label, note: m.note ?? m.id, group: host });
       }
     }
     return opts;

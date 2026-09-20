@@ -52,8 +52,13 @@ export interface SystemOneVerdict {
 
 // ─── ① Jev native ─────────────────────────────────────────────────────────────
 
+// Wire shape per docs.typesafe.ai (r26.2 verified): questions map to
+// { type, instructions, criteria } and answers come back as
+// { choice, probabilities, confidence } for choice questions or
+// { noul: 0–1 } for noul questions. (r27 shipped `prompt`/`options`/`p` —
+// the Jev rung was silently dead and always fell through to the fast judge.)
 interface JevResponse {
-  answers?: Record<string, { choice?: string; p?: number; confidence?: number }>;
+  answers?: Record<string, { choice?: string; noul?: number; confidence?: number }>;
 }
 
 /** One decision round-trip against Jev. Throws on anything non-2xx. */
@@ -70,8 +75,8 @@ export async function askJev(
       questions.map((q) => [
         q.id,
         q.type === "choice"
-          ? { type: "choice", prompt: q.prompt, options: (q.options ?? []).slice(0, 255) }
-          : { type: "noul", prompt: q.prompt },
+          ? { type: "choice", instructions: q.prompt, criteria: (q.options ?? []).slice(0, 255) }
+          : { type: "noul", instructions: q.prompt },
       ])
     ),
   };
@@ -87,10 +92,18 @@ export async function askJev(
   for (const q of questions) {
     const a = json.answers?.[q.id];
     if (!a) continue;
-    out[q.id] = {
-      answer: a.choice ?? (typeof a.p === "number" ? (a.p >= 0.5 ? "yes" : "no") : ""),
-      confidence: typeof a.confidence === "number" ? a.confidence : (a.p ?? 0),
-    };
+    if (q.type === "noul") {
+      // noul questions answer with a calibrated 0–1 score, not a choice.
+      const n = typeof a.noul === "number" ? a.noul : null;
+      if (n === null) continue;
+      out[q.id] = { answer: n >= 0.5 ? "yes" : "no", confidence: n };
+    } else {
+      if (!a.choice) continue;
+      out[q.id] = {
+        answer: a.choice,
+        confidence: typeof a.confidence === "number" ? a.confidence : 0,
+      };
+    }
   }
   return out;
 }

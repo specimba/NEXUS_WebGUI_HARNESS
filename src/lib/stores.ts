@@ -10,12 +10,13 @@ import type {
   ConversationMemory,
   Settings,
   ToolCallInfo,
+  ToolId,
   View,
   Workflow,
   WorkflowRun,
   WorkflowRunStep,
 } from "./types";
-import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS } from "./constants";
+import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS, TOOL_IDS } from "./constants";
 import { uid } from "./helpers";
 
 // ─── Debounced localStorage (avoid writing on every streamed token) ─────────
@@ -177,7 +178,25 @@ export const useAgentsStore = create<AgentsState>()(
       },
       getById: (id) => (id ? get().agents.find((a) => a.id === id) : undefined),
     }),
-    { name: "praison-agents", storage: createJSONStorage(() => localStorage) }
+    {
+      name: "praison-agents",
+      storage: createJSONStorage(() => localStorage),
+      // r26.2 tool-expansion migration (v0 → v1): seeded agents gain the new
+      // tools (UNION — nothing the user kept is removed) and tool ids that no
+      // longer exist in the closed-world registry are dropped. Runs once.
+      version: 1,
+      migrate: (persisted) => {
+        const state = (persisted ?? {}) as Partial<AgentsState>;
+        const agents = (state.agents ?? []).map((a) => {
+          const valid = (a.tools ?? []).filter((t): t is ToolId => (TOOL_IDS as string[]).includes(t));
+          const seed = SEED_AGENTS.find((s) => s.id === a.id);
+          return seed
+            ? { ...a, tools: [...new Set([...valid, ...seed.tools])] }
+            : { ...a, tools: valid };
+        });
+        return { ...(state as AgentsState), agents } as AgentsState;
+      },
+    }
   )
 );
 

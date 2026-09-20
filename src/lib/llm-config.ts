@@ -108,6 +108,28 @@ export function resolveExplicitLlm(
   const [pid, ...rest] = value.split("::");
   const model = rest.join("::");
   if (!pid || !model) return resolveLlm(settings, agentModel);
+
+  // r26.2: pins against the LEGACY custom endpoint (`custom::<model>`) —
+  // the picker now offers these, so the resolver must honor them too.
+  if (pid === "custom") {
+    const baseUrl = settings.baseUrl?.trim();
+    if (baseUrl) {
+      return {
+        provider: "custom",
+        apiKey: settings.apiKey?.trim() || undefined,
+        baseUrl,
+        model,
+        label: `${hostOf(baseUrl)} · ${model}`,
+        providerId: "custom",
+      };
+    }
+    const base = resolveLlm(settings, agentModel);
+    return {
+      ...base,
+      fallbackNote: `No custom endpoint configured — used ${base.label} instead.`,
+    };
+  }
+
   const reg = providerById(pid);
   const entry = settings.providerKeys?.[pid];
   const key = entry?.key?.trim() ?? "";

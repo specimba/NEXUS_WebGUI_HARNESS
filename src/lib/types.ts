@@ -5,7 +5,20 @@ export type View = "chat" | "agents" | "workflows" | "settings" | "radar";
 /** Accent theme variants (remap the violet/fuchsia accent scale via CSS vars). */
 export type UiThemeId = "nexus" | "matrix" | "fallout" | "cyber";
 
-export type ToolId = "web_search" | "read_url" | "run_code" | "current_time" | "arxiv_search";
+export type ToolId =
+  | "web_search"
+  | "read_url"
+  | "run_code"
+  | "current_time"
+  | "arxiv_search"
+  | "wikipedia_search"
+  | "hacker_news_search"
+  | "github_repo_read"
+  | "package_info"
+  | "market_rates"
+  | "uuid_hash"
+  | "image_generate"
+  | "tts_speak";
 
 export type AgentColor = "violet" | "emerald" | "amber" | "rose" | "cyan" | "fuchsia";
 
@@ -127,10 +140,22 @@ export interface Conversation {
  * runtime record of the serving path that produced ONE answer. Model cards
  * document design time; receipts document runtime. Zero telemetry: the receipt
  * is created from the run the user already made and stored only in localStorage.
+ *
+ * v0.2 (r26-3): receipt_id / request_id / served_at / safety / context /
+ * tools_allowed added ON TOP of v0.1 — all optional so receipts persisted by
+ * older builds stay parseable. The `schema` marker keeps its "route-receipt.v0.1"
+ * value: the version is semantic on the wire and field additions are additive
+ * (canonical v0.1 requires these ids — routereceipt.org/schemas/route-receipt).
  */
 export interface RouteReceipt {
   /** Schema marker so future field additions stay parseable. */
   schema: "route-receipt.v0.1";
+  /** Unique id of THIS receipt (UUIDv4 at emit time; canonical required field). */
+  receipt_id?: string;
+  /** Correlates the receipts of one user request across engines/hops. */
+  request_id?: string;
+  /** ISO timestamp of when the answer was served (canonical required field). */
+  served_at?: string;
   /** Model the request asked for ("auto" for the built-in engine). */
   requested_model: string;
   /** Model that actually answered. */
@@ -146,6 +171,16 @@ export interface RouteReceipt {
     from?: string;
     to?: string;
   };
+  /**
+   * Safety interventions on THIS turn (canonical required field): tool-output
+   * injection scrubbing, closed-world tool-call rejections. "pass" = nothing
+   * intervened; "blocked" is reserved for hard refusals (none emitted today).
+   */
+  safety?: { status: "pass" | "intervened" | "blocked"; visible_action?: string };
+  /** Context economy facts — input_truncated = model-facing content was clipped. */
+  context?: { input_truncated?: boolean };
+  /** Tool ids the agent was ALLOWED this turn (granted registry, not usage). */
+  tools_allowed?: string[];
   /** Tool classes used with invocation counts ("no tools" is information too). */
   tools_used: { name: string; invocation_count: number }[];
   completion_status: "complete" | "stopped" | "error" | "unknown";

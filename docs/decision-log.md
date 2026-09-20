@@ -80,3 +80,46 @@
 - `bunx tsc --noEmit`: 0 errors in app `src/`; `bun run lint`: clean.
 - Browser E2E (agent-browser): composer picker renders groups (Auto / keyed providers), pin → toast "This chat now runs on DeepSeek V4.1", trigger label updates; chat round-trip answered "R27-RECEIPT-OK" with ROUTE chip; receipt popover = Requested `deepseek-v4.1` / Answered by primary / Fallback `none` / Tools `no tools used` / Completion `complete` / Redactions `none`; Settings → Model Relay shows the System-One (Jev) key card; mobile 390px `scrollWidth == innerWidth` (no overflow); 0 console errors.
 - Security posture unchanged this round (receipts and pins are localStorage-only; Jev key is opt-in, stored locally, sent only to api.typesafe.ai on an explicit decision call).
+
+---
+
+# r26.2 · Base integrity: tools restored + tools expansion ×8 + receipt v0.2 (2026-09-20)
+
+**Inputs:** user evidence "our tools already have problems in base still" (all tool calls 403 "Cross-origin tool execution is not allowed"), r26-2a Jev/tools research (docs/research/jev-system-one.md), r26-2b codebase map (docs/research/codebase-map-r26.md), routereceipt.org canonical v0.1 schema.
+
+## 1. FIXED (base bugs — verified in browser)
+
+| # | Bug | Root cause | Fix | Evidence |
+|---|-----|-----------|-----|----------|
+| 1 | **Every tool call 403** (user's screenshot: URL Reader + Web Search "Tool error: Cross-origin tool execution", 0ms) | r26 same-origin guard compared browser `Origin` to server `Host` — behind the preview gateway/iframe the Host is rewritten, so legit calls failed | `csrfOk()` rebuilt: custom-header preflight gate (`x-praison-csrf: 1`, unforgeable cross-origin without preflight we never grant) + `Sec-Fetch-Site: cross-site` rejection; non-browser clients (no Origin/Sec-Fetch headers) still allowed; client sends the header (`httpToolExecutor`) | curl matrix: legit 200 w/ real results, cross-site 403, CLI 200; agent-browser chat round-trip → "Web Search Succeeded 1.2s" + correct answer |
+| 2 | **read_url redirect SSRF hole** | `redirect: "follow"` hopped inside fetch; `guardPublicUrl` only ran pre-flight → public URL could 302 to 169.254.169.254 etc. | manual redirect loop (≤3 hops), fresh `guardPublicUrl` per hop, relative-Location resolution, body cancel on redirect | code review + guard re-runs per hop (P1 from r26-2b closed) |
+| 3 | **Jev rung dead code** | `askJev()` sent `prompt`/`options`/parsed `a.p`; API wants `instructions`/`criteria`/returns `a.noul` | wire shape fixed per docs.typesafe.ai (r26-2a live verification); noul answers map 0–1 → yes/no + confidence | tsc clean; ladder falls through gracefully when key absent (unchanged behavior) |
+| 4 | **Receipts lied on stopped/errored turns** | `completion_status: "complete"` hardcoded in chat-view success path; catch path attached no receipt | `finalizeReceipt()` helper stamps "complete"/"stopped"/"error" per actual outcome; stopped/errored turns now carry their partial receipt + tool ledger | code paths inspected; types.ts enum already allowed the values |
+| 5 | **Custom-endpoint models missing from chat picker** | picker looped `FREE_PROVIDERS` only | "Custom endpoint" group (host-labeled) = `settings.defaultModel` + CUSTOM_MODELS presets; `resolveExplicitLlm` now resolves `custom::<model>` pins | composer.tsx + llm-config.ts; tsc clean |
+
+## 2. ADOPTED — tools expansion ×8 (all live-verified via /api/tools/execute + CSRF gate)
+
+| Tool | Source API | Verification |
+|------|-----------|--------------|
+| `wikipedia_search` | en.wikipedia.org/w/api.php list=search + extracts | ✅ real MCP article + URL |
+| `hacker_news_search` | hn.algolia.com/api/v1/search | ✅ real stories (2346-pt post) |
+| `github_repo_read` | api.github.com repos+readme (+GITHUB_TOKEN opt-in) | ✅ microsoft/TypeScript stats |
+| `package_info` | registry.npmjs.org + api.npmjs.org downloads + PyPI fallback | ✅ zod@4.6.5 MIT |
+| `market_rates` | coingecko simple/price + open.er-api.com | ✅ BTC $81157/€70691 (indicative) |
+| `uuid_hash` | node:crypto (uuid/sha256/hmac/random) | ✅ real UUIDv4, 1ms |
+| `image_generate` | z-ai SDK images (server) | ✅ 1024x1024 generated; status-line-only (localStorage pressure doctrine) |
+| `tts_speak` | z-ai SDK TTS (server) | ✅ 2.9s audio via tongtong; status-line-only, read-aloud button pointed to |
+
+Rejected/deferred (from r26-2a scan, recorded with reasons): `code_search` (grep.app 429s keyless), `wayback_lookup` (archive.org blocked from sandbox — revisit), `wolfram_alpha` (needs key), generic `http_request` (SSRF class — run_code/read_url cover), diff/yaml-json transformers (run_code covers), posting/browser/vector tools (unsafe/heavy for a local-first harness).
+
+## 3. ADOPTED — Route Receipt v0.2 (routereceipt.org canonical schema conformance)
+
+- Added canonical required fields: `receipt_id` (UUIDv4), `request_id`, `served_at` + `safety{status,visible_action}` fed by the turn safety audit (injection strips + closed-world rejections), `context.input_truncated`, `tools_allowed`. All optional in TS → old persisted receipts stay parseable; `schema` stays "route-receipt.v0.1" (additive fields).
+- `TurnSafetyAudit` threads through both engines' tool loops (agent-engine.ts + api/chat/route.ts); UI chip: consumer tier = amber dot only when safety intervened; developer tier = receipt id (first 8), safety badge w/ visible_action tooltip, ctx✂ flag.
+- Deferred per schema: service_tier/effort/region_class fields (no meaningful mapping yet), `moving_alias`/`moderation_refusal` enums (no occurrences today).
+
+## 4. Verification evidence (r26.2)
+
+- `bunx tsc --noEmit`: 0 errors in src/ (examples//skills/ pre-exist); `bun run lint`: clean.
+- curl: all 8 tools ok:true with real content; CSRF matrix correct (legit 200 / cross-site 403 / CLI 200).
+- agent-browser: chat round-trip with web_search → "Web Search Succeeded 1.2s", correct grounded answer, no cross-origin errors.

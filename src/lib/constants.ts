@@ -61,7 +61,21 @@ export function modelLabel(model: string): string {
 }
 
 // ─── Tools ───────────────────────────────────────────────────────────────────
-export const TOOL_IDS: ToolId[] = ["web_search", "read_url", "run_code", "current_time", "arxiv_search"];
+export const TOOL_IDS: ToolId[] = [
+  "web_search",
+  "read_url",
+  "run_code",
+  "current_time",
+  "arxiv_search",
+  "wikipedia_search",
+  "hacker_news_search",
+  "github_repo_read",
+  "package_info",
+  "market_rates",
+  "uuid_hash",
+  "image_generate",
+  "tts_speak",
+];
 
 export const TOOL_META: Record<ToolId, { label: string; description: string; emoji: string }> = {
   web_search: {
@@ -88,6 +102,46 @@ export const TOOL_META: Record<ToolId, { label: string; description: string; emo
     label: "arXiv Papers",
     description: "Search arXiv research papers with alphaXiv discussion links",
     emoji: "🧪",
+  },
+  wikipedia_search: {
+    label: "Wikipedia",
+    description: "Search Wikipedia for encyclopedic grounding on established facts",
+    emoji: "📚",
+  },
+  hacker_news_search: {
+    label: "Hacker News",
+    description: "Search Hacker News discussions, launches and community sentiment",
+    emoji: "🟠",
+  },
+  github_repo_read: {
+    label: "GitHub Repo",
+    description: "Read a GitHub repository's metadata, README and open issues",
+    emoji: "🐙",
+  },
+  package_info: {
+    label: "Package Info",
+    description: "Look up npm/PyPI package versions, licenses and downloads",
+    emoji: "📦",
+  },
+  market_rates: {
+    label: "Market Rates",
+    description: "Indicative crypto prices and fiat FX rates (not financial advice)",
+    emoji: "📈",
+  },
+  uuid_hash: {
+    label: "UUID & Hash",
+    description: "Generate UUIDs, SHA-256/HMAC hashes and random hex in server code",
+    emoji: "🔐",
+  },
+  image_generate: {
+    label: "Image Gen",
+    description: "Generate an image from a prompt (status line — view in the Image Studio)",
+    emoji: "🎨",
+  },
+  tts_speak: {
+    label: "TTS",
+    description: "Convert short text to speech with the built-in voices (status line)",
+    emoji: "🔊",
   },
 };
 
@@ -169,7 +223,19 @@ export const SEED_AGENTS: Agent[] = [
     model: "auto",
     temperature: 0.7,
     maxIterations: 6,
-    tools: ["web_search", "read_url", "run_code", "current_time"],
+    tools: [
+      "web_search",
+      "read_url",
+      "run_code",
+      "current_time",
+      "arxiv_search",
+      "wikipedia_search",
+      "hacker_news_search",
+      "github_repo_read",
+      "package_info",
+      "market_rates",
+      "uuid_hash",
+    ],
     createdAt: 0,
     updatedAt: 0,
   },
@@ -185,7 +251,7 @@ export const SEED_AGENTS: Agent[] = [
     model: "auto",
     temperature: 0.4,
     maxIterations: 10,
-    tools: ["web_search", "read_url", "current_time"],
+    tools: ["web_search", "read_url", "current_time", "arxiv_search", "wikipedia_search", "hacker_news_search", "github_repo_read", "package_info"],
     createdAt: 0,
     updatedAt: 0,
   },
@@ -201,7 +267,7 @@ export const SEED_AGENTS: Agent[] = [
     model: "auto",
     temperature: 0.3,
     maxIterations: 8,
-    tools: ["run_code", "web_search"],
+    tools: ["run_code", "web_search", "package_info", "github_repo_read", "uuid_hash"],
     createdAt: 0,
     updatedAt: 0,
   },

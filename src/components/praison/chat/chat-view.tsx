@@ -60,6 +60,28 @@ import { cn } from "@/lib/utils";
 
 const NO_MESSAGES: ChatMessage[] = [];
 
+/**
+ * r26.2: merge the client-side tool ledger into an engine receipt and stamp
+ * the HONEST completion status (arXiv:2605.01710 — a receipt that claims
+ * "complete" for a stopped or errored turn is a trust violation).
+ */
+function finalizeReceipt(
+  receipt: RouteReceipt,
+  status: RouteReceipt["completion_status"],
+  toolCalls: { name: string }[]
+): RouteReceipt {
+  return {
+    ...receipt,
+    tools_used: Object.entries(
+      toolCalls.reduce<Record<string, number>>((acc, tc) => {
+        acc[tc.name] = (acc[tc.name] ?? 0) + 1;
+        return acc;
+      }, {})
+    ).map(([name, invocation_count]) => ({ name, invocation_count })),
+    completion_status: status,
+  };
+}
+
 export function ChatView() {
   // ─── Stores ────────────────────────────────────────────────────────────────
   const conversations = useConversationsStore((s) => s.conversations);
@@ -221,6 +243,10 @@ export function ChatView() {
       const startedAt = Date.now();
       const controller = new AbortController();
       abortRef.current = controller;
+      // r26.2 route receipt: captured via the engine's `receipt` event and
+      // finalized per outcome — stopped/errored turns now carry a receipt
+      // with a TRUTHFUL completion_status (arXiv:2605.01710 trust rule).
+      let receipt: RouteReceipt | undefined;
 
       try {
         const convState = useConversationsStore.getState();
@@ -235,9 +261,6 @@ export function ChatView() {
         const relayHops = settings.relayEnabled === false
           ? []
           : buildRelayWire(settings, { providerId: llm.providerId, model: llm.model });
-        // r27 route receipt: filled by the engine's `receipt` event, merged
-        // into the final message (with tool counts) once the turn settles.
-        let receipt: RouteReceipt | undefined;
         const result = await runAgentChat(
           {
             provider: llm.provider,
@@ -331,13 +354,10 @@ export function ChatView() {
                     : {}),
                   // Merge tool classes + counts (engine sends the route facts,
                   // the client owns the tool ledger — arXiv:2605.01710 §6).
-                  tools_used: Object.entries(
-                    toolCalls.reduce<Record<string, number>>((acc, tc) => {
-                      acc[tc.name] = (acc[tc.name] ?? 0) + 1;
-                      return acc;
-                    }, {})
-                  ).map(([name, invocation_count]) => ({ name, invocation_count })),
-                  completion_status: "complete" as const,
+                  ...(() => {
+                    const { tools_used, completion_status } = finalizeReceipt(receipt, "complete", toolCalls);
+                    return { tools_used, completion_status };
+                  })(),
                 },
               }
             : {}),
@@ -346,11 +366,20 @@ export function ChatView() {
       } catch (err) {
         const store = useConversationsStore.getState();
         const elapsed = { durationMs: Date.now() - startedAt, model: selectedAgent.model };
+        // r26.2: honest receipts — a stopped/errored turn keeps its (partial)
+        // receipt stamped "stopped"/"error" instead of silently claiming none.
+        const streamedCalls =
+          store.conversations.find((c) => c.id === convId)?.messages.find((m) => m.id === asstId)
+            ?.toolCalls ?? [];
+        const outcomeReceipt = receipt
+          ? { receipt: finalizeReceipt(receipt, isAbortError(err) ? "stopped" : "error", streamedCalls) }
+          : {};
         if (isAbortError(err)) {
           store.patchMessage(convId, asstId, {
             status: "stopped",
             content: draftRef.current || "(stopped)",
             ...elapsed,
+            ...outcomeReceipt,
           });
           return "stopped";
         } else {
@@ -360,6 +389,7 @@ export function ChatView() {
             error: message,
             content: draftRef.current,
             ...elapsed,
+            ...outcomeReceipt,
           });
           toast.error("The agent failed to respond", { description: message });
           return "error";

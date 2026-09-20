@@ -57,90 +57,196 @@ function TypingDots({ className, dotClassName }: { className?: string; dotClassN
 
 // ─── Route receipt chip (r27 · arXiv:2605.01710) ─────────────────────────────
 // Consumer tier = one compact label ("fallback used" only when it happened —
-// "no fallback" stays hover-quiet). Opening it reveals the developer-tier
-// record: requested vs resolved model, fallback path, tool ledger, redactions.
+// "no fallback" stays hover-quiet) + a tiny amber dot when safety intervened.
+// Opening it reveals the developer-tier record: requested vs resolved model,
+// fallback path, tool ledger, safety interventions, context facts, redactions.
 function RouteReceiptChip({ receipt }: { receipt: RouteReceipt }) {
   const fallback = receipt.fallback.status === "occurred";
+  const safety = receipt.safety;
+  const safetyIntervened = safety?.status === "intervened";
+  const safetyBlocked = safety?.status === "blocked";
+  const safetyVisible = safetyIntervened || safetyBlocked;
+  const truncated = receipt.context?.input_truncated === true;
+  const receiptShort = receipt.receipt_id ? receipt.receipt_id.slice(0, 8) : null;
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Route receipt — which serving path answered"
-          title={
-            fallback
-              ? `Route receipt: ${receipt.resolved_label} answered after a fallback`
-              : `Route receipt: served by ${receipt.resolved_label}`
-          }
+    <span className="inline-flex items-center gap-1">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label="Route receipt — which serving path answered"
+            title={
+              safetyVisible
+                ? `Route receipt: served by ${receipt.resolved_label} — safety: ${safety?.status}${safety?.visible_action ? ` (${safety.visible_action})` : ""}`
+                : fallback
+                  ? `Route receipt: ${receipt.resolved_label} answered after a fallback`
+                  : `Route receipt: served by ${receipt.resolved_label}`
+            }
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide transition-opacity",
+              fallback || safetyVisible
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                : "border-border bg-muted/40 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover/msg:opacity-100"
+            )}
+          >
+            <ReceiptText className="h-2.5 w-2.5" aria-hidden />
+            {fallback ? "fallback used" : "route"}
+            {/* consumer-tier safety dot: silent answers stay chip-quiet */}
+            {safetyVisible && (
+              <span
+                aria-hidden
+                className={cn(
+                  "h-1 w-1 rounded-full",
+                  safetyBlocked ? "bg-red-500" : "bg-amber-400"
+                )}
+              />
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[min(20rem,calc(100vw-2.5rem))] p-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Route receipt · v0.1
+            </p>
+            {receiptShort && (
+              <span
+                className="font-mono text-[10px] text-muted-foreground/70"
+                title={`receipt_id: ${receipt.receipt_id}`}
+              >
+                #{receiptShort}
+              </span>
+            )}
+          </div>
+          <dl className="mt-2 space-y-1.5 text-[11px] leading-relaxed">
+            <div className="flex items-start justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">Requested</dt>
+              <dd className="min-w-0 break-all text-right font-mono">{receipt.requested_model}</dd>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">Answered by</dt>
+              <dd className="min-w-0 break-all text-right font-mono">{receipt.resolved_label}</dd>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">Fallback</dt>
+              <dd className="text-right">
+                {fallback ? (
+                  <span className="font-medium text-amber-400">
+                    occurred{receipt.fallback.reason ? ` · ${receipt.fallback.reason.replace("_", " ")}` : ""}
+                    {receipt.fallback.from && receipt.fallback.to
+                      ? ` — ${receipt.fallback.from} → ${receipt.fallback.to}`
+                      : ""}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">none</span>
+                )}
+              </dd>
+            </div>
+            {(safetyVisible || safety?.status === "pass") && (
+              <div className="flex items-start justify-between gap-3">
+                <dt className="shrink-0 text-muted-foreground">Safety</dt>
+                <dd className="min-w-0 text-right">
+                  <span
+                    title={safety?.visible_action}
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide",
+                      safetyBlocked
+                        ? "border-red-500/40 bg-red-500/10 text-red-400"
+                        : safetyIntervened
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                          : "border-border bg-muted/40 text-muted-foreground"
+                    )}
+                  >
+                    {safety?.status === "pass"
+                      ? "pass"
+                      : `safety: ${safety?.status ?? "unknown"}`}
+                  </span>
+                  {safety?.visible_action && (
+                    <span className="mt-0.5 block text-[10px] text-muted-foreground/80">
+                      {safety.visible_action}
+                    </span>
+                  )}
+                </dd>
+              </div>
+            )}
+            <div className="flex items-start justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">Tools</dt>
+              <dd className="min-w-0 text-right">
+                {receipt.tools_used.length === 0 ? (
+                  <span className="text-muted-foreground">no tools used</span>
+                ) : (
+                  <span className="font-mono">
+                    {receipt.tools_used.map((t) => `${t.name}×${t.invocation_count}`).join(", ")}
+                  </span>
+                )}
+                {receipt.tools_allowed && receipt.tools_allowed.length > 0 && (
+                  <span
+                    className="mt-0.5 block text-[10px] text-muted-foreground/70"
+                    title={`Allowed this turn: ${receipt.tools_allowed.join(", ")}`}
+                  >
+                    {receipt.tools_allowed.length} allowed
+                  </span>
+                )}
+              </dd>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">Context</dt>
+              <dd className="text-right">
+                {truncated ? (
+                  <span className="text-amber-400" title="Model-facing context was clipped to fit the budget">
+                    ctx✂ input truncated
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">full</span>
+                )}
+              </dd>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">Completion</dt>
+              <dd className="text-right">{receipt.completion_status}</dd>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">Redactions</dt>
+              <dd className="text-right text-muted-foreground">
+                {receipt.redactions.length === 0 ? "none" : receipt.redactions.length}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-2 border-t pt-2 text-[10px] leading-relaxed text-muted-foreground/70">
+            Runtime record of the serving path that produced this answer — model
+            cards document design time, receipts document runtime
+            (arXiv:2605.01710). Stored locally only.
+            {receipt.request_id && (
+              <>
+                {" "}
+                <span className="font-mono">req {receipt.request_id.slice(0, 8)}</span>
+              </>
+            )}
+          </p>
+        </PopoverContent>
+      </Popover>
+      {/* developer-tier glance badges — only render when something happened */}
+      {safetyVisible && (
+        <span
+          title={safety?.visible_action ?? "A safety intervention ran on this turn"}
           className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide transition-opacity",
-            fallback
-              ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
-              : "border-border bg-muted/40 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover/msg:opacity-100"
+            "inline-flex items-center rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide",
+            safetyBlocked
+              ? "border-red-500/40 bg-red-500/10 text-red-400"
+              : "border-amber-500/40 bg-amber-500/10 text-amber-400"
           )}
         >
-          <ReceiptText className="h-2.5 w-2.5" aria-hidden />
-          {fallback ? "fallback used" : "route"}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(20rem,calc(100vw-2.5rem))] p-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Route receipt · v0.1
-        </p>
-        <dl className="mt-2 space-y-1.5 text-[11px] leading-relaxed">
-          <div className="flex items-start justify-between gap-3">
-            <dt className="shrink-0 text-muted-foreground">Requested</dt>
-            <dd className="min-w-0 break-all text-right font-mono">{receipt.requested_model}</dd>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="shrink-0 text-muted-foreground">Answered by</dt>
-            <dd className="min-w-0 break-all text-right font-mono">{receipt.resolved_label}</dd>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="shrink-0 text-muted-foreground">Fallback</dt>
-            <dd className="text-right">
-              {fallback ? (
-                <span className="font-medium text-amber-400">
-                  occurred{receipt.fallback.reason ? ` · ${receipt.fallback.reason.replace("_", " ")}` : ""}
-                  {receipt.fallback.from && receipt.fallback.to
-                    ? ` — ${receipt.fallback.from} → ${receipt.fallback.to}`
-                    : ""}
-                </span>
-              ) : (
-                <span className="text-muted-foreground">none</span>
-              )}
-            </dd>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="shrink-0 text-muted-foreground">Tools</dt>
-            <dd className="min-w-0 text-right">
-              {receipt.tools_used.length === 0 ? (
-                <span className="text-muted-foreground">no tools used</span>
-              ) : (
-                <span className="font-mono">
-                  {receipt.tools_used.map((t) => `${t.name}×${t.invocation_count}`).join(", ")}
-                </span>
-              )}
-            </dd>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="shrink-0 text-muted-foreground">Completion</dt>
-            <dd className="text-right">{receipt.completion_status}</dd>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="shrink-0 text-muted-foreground">Redactions</dt>
-            <dd className="text-right text-muted-foreground">
-              {receipt.redactions.length === 0 ? "none" : receipt.redactions.length}
-            </dd>
-          </div>
-        </dl>
-        <p className="mt-2 border-t pt-2 text-[10px] leading-relaxed text-muted-foreground/70">
-          Runtime record of the serving path that produced this answer — model
-          cards document design time, receipts document runtime
-          (arXiv:2605.01710). Stored locally only.
-        </p>
-      </PopoverContent>
-    </Popover>
+          safety: {safety?.status}
+        </span>
+      )}
+      {truncated && (
+        <span
+          title="Model-facing context was clipped to fit the budget"
+          className="inline-flex items-center rounded-full border border-border bg-muted/40 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-muted-foreground opacity-0 transition-opacity group-hover/msg:opacity-100 focus-visible:opacity-100"
+        >
+          ctx✂
+        </span>
+      )}
+    </span>
   );
 }
 
