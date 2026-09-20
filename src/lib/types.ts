@@ -5,7 +5,7 @@ export type View = "chat" | "agents" | "workflows" | "settings";
 /** Accent theme variants (remap the violet/fuchsia accent scale via CSS vars). */
 export type UiThemeId = "nexus" | "matrix" | "fallout" | "cyber";
 
-export type ToolId = "web_search" | "read_url" | "run_code" | "current_time";
+export type ToolId = "web_search" | "read_url" | "run_code" | "current_time" | "arxiv_search";
 
 export type AgentColor = "violet" | "emerald" | "amber" | "rose" | "cyan" | "fuchsia";
 

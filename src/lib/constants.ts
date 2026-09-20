@@ -61,7 +61,7 @@ export function modelLabel(model: string): string {
 }
 
 // ─── Tools ───────────────────────────────────────────────────────────────────
-export const TOOL_IDS: ToolId[] = ["web_search", "read_url", "run_code", "current_time"];
+export const TOOL_IDS: ToolId[] = ["web_search", "read_url", "run_code", "current_time", "arxiv_search"];
 
 export const TOOL_META: Record<ToolId, { label: string; description: string; emoji: string }> = {
   web_search: {
@@ -83,6 +83,11 @@ export const TOOL_META: Record<ToolId, { label: string; description: string; emo
     label: "Clock",
     description: "Get the current date and time",
     emoji: "🕒",
+  },
+  arxiv_search: {
+    label: "arXiv Papers",
+    description: "Search arXiv research papers with alphaXiv discussion links",
+    emoji: "🧪",
   },
 };
 

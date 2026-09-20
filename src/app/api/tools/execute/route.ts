@@ -11,9 +11,29 @@ export const dynamic = "force-dynamic";
 // needs a CORS-free fetcher. Body: { name, args } → ToolResult JSON.
 // Allowlist: only known tool ids are executable.
 
-const KNOWN = new Set(["web_search", "read_url", "run_code", "current_time"]);
+const KNOWN = new Set(["web_search", "read_url", "run_code", "current_time", "arxiv_search"]);
+
+// r26 SECURITY: same-origin gate. The executor can search the web, fetch
+// arbitrary URLs and run sandboxed code — a foreign website's page must not
+// be able to drive it from a victim's browser (drive-by CSRF). Same-origin
+// POSTs from our own UI always carry an Origin header matching the host;
+// non-browser clients that send no Origin are allowed (local CLI/server use).
+function sameOrigin(req: NextRequest): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+  const host = req.headers.get("host");
+  if (!host) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(req: NextRequest) {
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Cross-origin tool execution is not allowed" }, { status: 403 });
+  }
   let body: { name?: string; args?: string };
   try {
     body = (await req.json()) as { name?: string; args?: string };

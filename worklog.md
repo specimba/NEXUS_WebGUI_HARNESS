@@ -690,3 +690,48 @@ Stage Summary:
 - The two user-facing failure classes are structurally dead: (1) silent-SSE reaping (15s pings + 20s/90s client watchdogs), (2) same-dead-hop retry (primary in health memory + per-attempt wire rebuild + demotion-aware saved order). Deadline math: 12s TTFT (25s Orca) / 15s inter-chunk / 30s tools / 15s search — every deadline failure classifies retryable and rotates.
 - Security backlog (next round): /api/tools/execute has NO auth/rate-limit and node:vm is not a security boundary (prototype escape → server RCE). Server relay fetches client-supplied baseUrl verbatim (SSRF surface) — needs scheme/host validation.
 - Next-phase ideas: request hedging on TTFT deadline (research sketch ready: 2 lanes race, cancel loser, ~3-10% token tax); X-Orca-Fallback-Model header attribution into the call log; Worker-wrapped browser-direct deadline timers (background-tab safety); CORS capability matrix as a static provider flag + runtime probe; per-step model override UI; tool-result context budget with rolling digest.
+---
+Task ID: r26-2c
+Agent: Explore (codebase integration map)
+Task: Map tool registry / pipeline / shell / security surfaces for r26 features
+
+Work Log:
+- Read tools-defs.ts / server/tools.ts / api/tools/execute/route.ts: ToolDef shape, 4-tool allowlist, vm sandbox + ZAI search server executor, 30s browser executor.
+- Traced agent-engine.ts tool loop (exec at :590-604, salvage :617-659) and workflow-runner.ts step chaining (context builders in helpers.ts:98-138).
+- Mapped shell view switching: types.ts:3 View union, page.tsx:88-101, shell.tsx NAV_ITEMS/VIEW_TITLES, command-palette + use-shortcuts VIEW_ORDER.
+- Audited security: /api/tools/execute has NO auth; run_code uses node:vm with host intrinsics (escapeable); /api/chat fetches client-supplied baseUrl server-side; read_url fetches arbitrary URLs (SSRF).
+- Catalogued zustand stores + localStorage keys (praison-settings/agents/conversations/workflows/ui) and Settings shape.
+
+Stage Summary:
+- New server tool = 4 edits: types.ts:8 ToolId → tools-defs.ts:26 buildToolDefs → server/tools.ts:36 switch → api/tools/execute/route.ts:14 KNOWN.
+- New top-level view = 6 edits (View union, NAV_ITEMS, VIEW_TITLES, page.tsx render, palette NAV, VIEW_ORDER); pipeline depth = Workflow type + editor-dialog + runner :186-211/:486.
+- Critical security: node:vm sandbox seeded with host intrinsics (RCE escape via Math.constructor.constructor), unauthenticated /api/tools/execute, SSRF via body.baseUrl + read_url.
+---
+Task ID: r26-2a
+Agent: general-purpose (GitHub asset audit)
+Task: Audit specimba's starred+forked repos for integration candidates
+
+Work Log:
+- PAT verified (login=specimba); authenticated /user/starred paginated 10 pages = 960 starred repos; captured name/desc/language/stars/topics/pushed_at to /tmp/starred_all.json (+TSV).
+- Pulled 181 owned repos (2 pages): 151 forks / 30 originals; originals = NEXUS_* family (SAGE, consequenceflow, A2A-OS, WEAVER, evidence-fleet, AoA-Spine) + PraisonAI/hermes/garak/harnessrouter forks.
+- Keyword-clustered all 960 into 14 themes (harnesses 190, coding-agents 150, MCP 97, security 77, skills 73, media 64, RAG 59, evals 50, memory 44...); sampled top-by-star representatives per theme.
+- Compared landscape vs platform state from worklog r24/r25 (relay+deadlines, browser-direct, WebLLM panel, pipelines, vault) → 10 ranked integration candidates.
+Stage Summary:
+- 960 stars (49% Python / 17% TS; 828 pushed since 2026-03) skew exactly to our layer: harnesses, skills packs, gateways, memory, deep-research — the user is collecting blueprints for NEXUS.
+- Biggest gaps we can fill: SKILL.md skill registry, deep-research loop, local-first mem0-style memory, tool-output context compression, MCP client.
+- Full six-section report with ranked candidates + effort estimates returned in agent final message.
+---
+Task ID: r26-2b
+Agent: general-purpose (HF Hub + arXiv frontier scan)
+Task: Phase-1 frontier scan — Sep-2026 HF Hub trending + arXiv/alphaXiv for harness-mappable techniques (research-only, no code changes)
+
+Work Log:
+- HF API: models/datasets/spaces trending (30/20/20) + filter=agents (thin, ts≤16) + text-generation fallback; python3-parsed. Trend signal: ternary/2-bit GGUF (#1 Ternary-Bonsai-2-27B), small-active-MoE (29B-A4B), 1-2B on-device (MiniCPM5-2B) + WebGPU spaces = local-first era; relay watch: DeepSeek-V4.1-Flash, Qwen3.8-27B/Flash-Next, GLM-5.3-Flash.
+- arXiv: 4 targeted queries (LLM agent / agent memory / tool-use / inference-opt), May-Sep 2026 window, 15 each; 52 parsed.
+- alphaXiv: /abs/<id> live (200 verified incl. fresh 2609.20625); probed 3 API paths → 404; adopt pure link mapping https://www.alphaxiv.org/abs/<arxiv-id>.
+- Mapped 12 papers to harness (Chronicle replay, harness release-control 2609.20474, tool-hallucination closed-world 2609.19425, ActGuard injection guard, memory portability/eviction/packing, dual-process lessons, WebGPU dispatch overhead, agentic-search study, self-evolving index).
+
+Stage Summary:
+- Shortlist to implement this round (S/M, hours, no telemetry): (1) closed-world tool validation pre-dispatch; (2) tool-output provenance + injection guard; (3) run replay fixtures from persisted callLog; (4) versioned Reflexion lessons store (model/embedding stamps + tombstone revocation); (5) budget-aware tool-result digest with re-fetch pointers.
+- Rejected: RL-training/Dataset corpora (GPU), networked multi-agent memory (breaks local-first), GGUF hype forks, GPU video spaces.
+- Full structured report (HF snapshot, alphaXiv accessibility, 12-paper radar with efforts) delivered in agent final message.

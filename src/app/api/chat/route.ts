@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import ZAI from "z-ai-web-dev-sdk";
 import { executeTool } from "@/lib/server/tools";
-import { buildToolDefs, type EngineToolIO } from "@/lib/tools-defs";
+import { buildToolDefs, fenceToolOutput, validateToolCall, type EngineToolIO } from "@/lib/tools-defs";
+import { guardPublicUrl } from "@/lib/server/url-guard";
 import type { ToolCallInfo } from "@/lib/types";
 import {
   clampIter,
@@ -96,6 +97,22 @@ export async function POST(req: NextRequest) {
         const toolIO: EngineToolIO = { defs: buildToolDefs((body.tools ?? []).filter(Boolean)), execute: executeTool };
         // Custom engine needs a base URL; apiKey is optional (keyless providers
         // like Pollinations work without one).
+        // r26 SECURITY (SSRF): the server relay fetches CLIENT-supplied base
+        // URLs. Guard the custom baseUrl and every relay hop — https-only,
+        // no loopback / private-range / link-local / metadata hosts.
+        // (Browser-direct runs never route their LLM fetches through here.)
+        const guardUrl = (u: string, what: string) => {
+          const verdict = guardPublicUrl(u);
+          if (!verdict.ok) {
+            throw new Error(
+              `${what} rejected by the SSRF guard (${verdict.reason}). Server-relayed calls must target a public https endpoint — use browser-direct for local endpoints.`
+            );
+          }
+        };
+        if (body.baseUrl) guardUrl(body.baseUrl, "Base URL");
+        for (const hop of body.relay ?? []) {
+          if (hop.baseUrl) guardUrl(hop.baseUrl, `Relay hop "${hop.label ?? hop.model}"`);
+        }
         const useCustom = body.provider === "custom" && !!body.baseUrl;
         if (useCustom) {
           await runRelayedCustom(body, send, engineAbort.signal, toolIO, runAutoEngine);
@@ -220,7 +237,11 @@ async function runAutoEngine(body: EngineBody, send: Send, signal: AbortSignal):
     if (call) {
       send({ type: "status", message: `Using tool: ${call.name}` });
       send({ type: "tool_call", id: call.id, name: call.name, args: JSON.stringify(call.args) });
-      const result = await executeTool(call.name, JSON.stringify(call.args));
+      // r26: closed-world validation — reject hallucinated args before dispatch.
+      const validation = validateToolCall(toolDefs, call.name, JSON.stringify(call.args));
+      const result = validation.ok
+        ? await executeTool(call.name, validation.args ?? "{}")
+        : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
       collected.push({
         id: call.id,
         name: call.name,
@@ -241,7 +262,7 @@ async function runAutoEngine(body: EngineBody, send: Send, signal: AbortSignal):
       msgs.push({
         role: "user",
         content:
-          `TOOL_RESULT (${call.name}, ok=${result.ok}):\n${clipLocal(result.content, 6000)}\n\n` +
+          `TOOL_RESULT (${call.name}, ok=${result.ok}):\n${clipLocal(fenceToolOutput(call.name, result.content), 8000)}\n\n` +
           (iteration >= maxIterations
             ? "TOOL LIMIT REACHED. Reply with your final markdown answer now — do NOT call any more tools and do NOT reply with JSON."
             : "Continue: either call another tool (raw JSON object) or give your final markdown answer."),
