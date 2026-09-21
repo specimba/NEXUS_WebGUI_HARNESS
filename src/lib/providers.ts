@@ -55,20 +55,23 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       "Daily free credits ($10/day, streaks to $30) — DeepSeek V4.1, Claude 4.6 & Agnes 3.0 behind one OpenAI-compatible gateway.",
     baseUrl: "https://vyceai.com/v1",
     keyPrefix: "sk-",
-    signupUrl: "https://vyceai.com",
+    // r28: signup link carries the platform's public referral code (referee
+    // gets $50 instead of the base $10/day — see src/lib/referral-registry.ts).
+    signupUrl: "https://vyceai.com/signup?ref=VYCE_8ZYQDC",
     featured: true,
     limits:
       "Free $10.00 credits every day (resets 00:00 UTC) · key limit 150 RPM · per-1M token pricing from $0.05",
     guide: [
-      "Open vyceai.com and sign up — every account gets $10.00 in free credits daily.",
+      "Open vyceai.com and sign up — every account gets $10.00 in free credits daily. Sign up through our referral link and you start with $50 in credits instead.",
       "Claim the Daily Reward (streaks grow it up to $30/day), then create a key in the API Keys tab — it starts with sk-.",
       "Paste it here — this app talks to https://vyceai.com/v1 (OpenAI-compatible, streaming verified).",
-      "DeepSeek V4.1 is preselected — the current efficiency-frontier pick; Claude Sonnet 4.6, V4 Flash and Agnes 3.0 (512K ctx) are one click away.",
+      "DeepSeek V4.1 is preselected — the current efficiency-frontier pick; Qwen 3.8 Flash (1M ctx), Claude Sonnet 4.6, V4 Flash and Agnes 3.0 (512K ctx) are one click away.",
       "Bonus endpoints: /v1/messages (Anthropic-style) and /v1/images/generations (Grok Imagine 2, $0.50/img).",
     ],
     liveCatalog: "vyce",
     models: [
       { id: "deepseek-v4.1", label: "DeepSeek V4.1", note: "Flagship MoE · 270K ctx · tools · $0.15/$0.60 per 1M" },
+      { id: "qwen3.8-flash", label: "Qwen 3.8 Flash", note: "Alibaba Cloud · 1M ctx · tools · $0.10/$0.40 — ultra-fast flagship" },
       { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", note: "Ultra-fast · 270K ctx · tools · $0.22/$0.66" },
       { id: "agnes-3.0-flash", label: "Agnes 3.0 Flash", note: "Agentic · 512K ctx · tools · cheapest $0.05/$0.15" },
       { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", note: "Frontier coding · 270K ctx · $3/$15" },

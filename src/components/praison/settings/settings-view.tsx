@@ -9,6 +9,7 @@ import { LocalModelsPanel } from "@/components/praison/settings/local-models";
 import { ModelRelayCard } from "@/components/praison/settings/model-relay";
 import { ProviderCard } from "@/components/praison/settings/provider-card";
 import { ProviderGallery } from "@/components/praison/settings/provider-gallery";
+import { ReferralCard } from "@/components/praison/settings/referral-card";
 import { SetupWizard } from "@/components/praison/settings/setup-wizard";
 import { UsageDashboard } from "@/components/praison/settings/usage-dashboard";
 import {
@@ -75,6 +76,7 @@ const SETTINGS_SECTIONS = [
   { id: "providers", label: "Providers" },
   { id: "local-models", label: "Local models" },
   { id: "relay", label: "Model Relay" },
+  { id: "referrals", label: "Referrals" },
   { id: "behavior", label: "Behavior" },
   { id: "profile", label: "Profile" },
   { id: "appearance", label: "Appearance" },
@@ -293,6 +295,9 @@ export function SettingsView() {
           </div>
           <div id="relay" className="scroll-mt-14">
             <ModelRelayCard />
+          </div>
+          <div id="referrals" className="scroll-mt-14">
+            <ReferralCard />
           </div>
           <ProviderCard />
 

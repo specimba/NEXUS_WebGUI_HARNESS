@@ -11,6 +11,7 @@ import { AgentsView } from "@/components/praison/agents/agents-view";
 import { WorkflowsView } from "@/components/praison/workflows/workflows-view";
 import { WorkflowScheduler } from "@/components/praison/workflows/workflow-scheduler";
 import { RadarView } from "@/components/praison/radar/radar-view";
+import { ModelTicker } from "@/components/praison/tracker/model-ticker";
 import { SessionHealth } from "@/components/praison/session-health";
 import { SettingsView } from "@/components/praison/settings/settings-view";
 import { ensureSeeded, useSettingsStore, useUiStore } from "@/lib/stores";
@@ -89,6 +90,8 @@ export default function Page() {
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
+        {/* r28: always-on model tracker ticker (firsthand free-model advantage) */}
+        <ModelTicker />
         <main className="app-backdrop min-h-0 flex-1 overflow-hidden">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

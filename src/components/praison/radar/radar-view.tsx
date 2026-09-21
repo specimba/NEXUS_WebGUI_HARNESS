@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState, PageHeader } from "@/components/praison/atoms";
+import { ModelRadarTab } from "@/components/praison/tracker/model-radar-tab";
 import { fmtRel } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
 
@@ -920,11 +921,15 @@ export function RadarView() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="Trend Radar"
-        description="GitHub stars · HF trending · arXiv papers — fetched on demand, cached locally"
+        description="Free/new models · GitHub stars · HF trending · arXiv papers — fetched on demand, cached locally"
       />
-      <Tabs defaultValue="github" className="flex min-h-0 flex-1 flex-col">
+      <Tabs defaultValue="models" className="flex min-h-0 flex-1 flex-col">
         <div className="border-b px-4 pt-3 md:px-6">
           <TabsList aria-label="Trend radar sections">
+            <TabsTrigger value="models" className="gap-1.5">
+              <Database className="h-3.5 w-3.5" aria-hidden />
+              Models
+            </TabsTrigger>
             <TabsTrigger value="github" className="gap-1.5">
               <Github className="h-3.5 w-3.5" aria-hidden />
               GitHub Stars
@@ -939,6 +944,9 @@ export function RadarView() {
             </TabsTrigger>
           </TabsList>
         </div>
+        <TabsContent value="models" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+          <ModelRadarTab />
+        </TabsContent>
         <TabsContent value="github" className="mt-0 min-h-0 flex-1 p-4 md:p-6">
           <GitHubStarsTab />
         </TabsContent>

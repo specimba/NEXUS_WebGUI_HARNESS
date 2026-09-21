@@ -123,3 +123,48 @@ Rejected/deferred (from r26-2a scan, recorded with reasons): `code_search` (grep
 - `bunx tsc --noEmit`: 0 errors in src/ (examples//skills/ pre-exist); `bun run lint`: clean.
 - curl: all 8 tools ok:true with real content; CSRF matrix correct (legit 200 / cross-site 403 / CLI 200).
 - agent-browser: chat round-trip with web_search → "Web Search Succeeded 1.2s", correct grounded answer, no cross-origin errors.
+
+---
+
+# r28 — Referral Advantage Registry · qwen3.8-flash · Free/New Model Tracker (2026-09-21)
+
+Context: user provided the Vyce referral link (https://vyceai.com/signup?ref=VYCE_8ZYQDC), reported a brand-new
+model on Vyce (Qwen 3.8 Flash, Alibaba Cloud, 1M ctx, $0.1/$0.4) and asked for a "free model tracker ticker"
+— a 4-8h watcher that flags brand-new/free models so users catch capacity in its first 1-2 days. Deep-search
+research: docs/research/referral-registry-r28.md (r28-3a) + docs/research/free-model-tracker-r28.md (r28-3b).
+
+## 1. ADOPTED — Referral registry with "harmless anchor redirection"
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Vyce referral (VERIFIED official, from vyceai.com's own bundle) | param `ref` on `/signup` + root; referee **$50** signup credit, referrer $10; code `VYCE_8ZYQDC` | first-party evidence ("You get $50 and your referrer gets $10!"), format `VYCE_XXXXXXXX` confirmed in router code |
+| Integration surface | chat markdown renderer ONLY (+ provider-gallery signupUrl constant) | chat is where links are consumed/shared; tool args, API calls and same-origin links are never touched |
+| Honesty rules | `rel="sponsored nofollow noopener noreferrer"` + visible `ref` chip + full disclosure in `title` | research best-practice; transparency over cloaking; Vyce ToS bans automated registration → decoration only, never signup automation |
+| Idempotence & scope guards | skip when param already present; path allowlist (`/`, `/signup`); http(s) only; verbatim `ownerLink` entries for dashboard-bound programs | "harmless": existing user params never overridden; DigitalOcean/Vast.ai/LLM Gateway/Z.ai stored as inactive verbatim slots (param fabrication would misattribute) |
+| Rejected programs | Together (no free trial), OpenRouter/Neon/Fly.io/Supabase/fal/HF (no referral programs), Novita/SiliconFlow/ElevenLabs (code-entry or PartnerStack-enrolled, not URL-appendable) | no simple, verifiable, append-ready surface |
+
+Unit-tested 11/11 edge cases (signup/root/www rewrite; existing-ref, off-path, foreign-host, relative, mailto, javascript: untouched). Bug caught in QA: `/` prefix initially matched every path → fixed to exact-root-only.
+
+## 2. ADOPTED — qwen3.8-flash (Vyce · Alibaba Cloud)
+
+- Verified REAL via 4 independent sources (r28-3b): Vyce `/v1/models` (`owned_by:"alibaba"`, `context_window:1000000`, landing bundle: `requiredTier:"free"`, `inputPrice:.1/outputPrice:.4`, "new" highlight), HF `Qwen/Qwen3.8-Flash-Next` (761K dl), OpenRouter `qwen/qwen3.8-flash` ($0.15/$0.47), OrcaRouter.
+- Relay: vyce T1 elo 0.965, note "Alibaba Qwen 3.8 · 1M ctx · $0.10/$0.40" (FAST_RE catches "flash" → decision/research fits). Provider roster + guide text updated. Vyce's "48438ms" from the user's screenshot is their live latency probe, not a spec — recorded here to avoid future confusion.
+
+## 3. ADOPTED — Free/New Model Tracker (ticker + radar tab)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Sources | Tier A keyless: OpenRouter (444, real `created` + pricing), OrcaRouter (178), Pollinations (1); Tier A signal-only: HF recent text-gen (60, never alerts); Tier B keyed-when-vault-has-it: Vyce `/v1/models` via per-request BYOK transport | research probes: vyce keyless 401s (keyOptional:false correct); Groq/GitHub-catalog keyless fail; these four are the only live-200 sources |
+| Novelty | OUR diff (firstSeenAt + "new" event), never upstream `created` | vyce `created` is a static placeholder (1719792000 on every row); upstream clocks unreliable |
+| Cadence | server POST with 4h TTL guard + 10-min force throttle; client polls GET on mount/15min/focus; localStorage mirror for instant paint | "every 4-8 hour checker" without a cron process; still catches the 1-2 day firsthand window |
+| False-alert defense | baseline-first sync (no events on first sight of a source), `sightings ≥ 2` for removals, HF demoted to signals, `isNew` earned ONLY by post-baseline arrivals and expiring after 48h | prevents 446-row event spam on day one and badge regression (QA caught 160-badge bug when update pass re-granted isNew) |
+| Storage | Prisma SQLite: TrackedModel (key = `providerId::modelId` = relay hopKey) + TrackerEvent (cap 300) + TrackerMeta | enables one-click "Pin in this chat" straight from the ticker → per-chat model override |
+| UX | always-on 8px marquee strip under the top bar (pauses on hover, reduced-motion respected) + popover panel (NEW/FREE badges, ctx, price, first-seen age, copy, pin) + Radar "Models" tab (filters All/New/Free, source-health chips, HF signals) + toasts for unseen events only | ticker = glanceable firsthand advantage; radar tab = full table; toasts never re-fire for seen events |
+
+Rejected alternatives: scraping vyceai.com's landing bundle for its model list (hash-brittles per deploy — documented as manual fallback only); pure client-side polling (CORS + wasted mobile battery); trusting upstream `created` timestamps.
+
+## 4. Verification evidence (r28)
+
+- Live end-to-end event path: deleted a real row via Prisma → reset throttle → force sync → `{"eventsCreated":1,"newModels":1}` with genuine "new" event for `inclusionai/ling-3.0-flash-vl:free`; ticker badge corrected to 1 after the isNew-grant fix.
+- agent-browser: ticker strip + panel render w/ NEW/FREE badges + source metadata; Pin → "This chat now runs on inclusionai/ling-3.0-flash-vl:free" toast + picker shows honest "pinned" fallback row; chat round-trip with Clock tool "Succeeded" + ROUTE receipt chip; assistant-rendered vyceai.com link decorated (href `?ref=VYCE_8ZYQDC`, rel `sponsored nofollow noopener noreferrer`, REF chip); Radar Models tab (All·160/New·1/Free·30 + source health 444/178/1/60); Settings Referral card w/ ACTIVE vyce + verbatim-placeholder list; relay roster shows "Vyce AI · qwen3.8-flash".
+- `bunx tsc --noEmit`: 0 errors in src/; `bun run lint`: clean; console: no errors (HMR/info only); desktop scrollWidth == innerWidth; ticker panel width clamped for 390px viewports.

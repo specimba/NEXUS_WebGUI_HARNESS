@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
+import { applyReferral, referralAnchorProps, type ReferralRewrite } from "@/lib/referral-registry";
 
 // ─── Shared markdown renderer (chat, workflows, test dialogs) ────────────────
 
@@ -59,14 +60,36 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
           ul: (p) => <ul className="my-2 list-disc space-y-1 pl-5" {...p} />,
           ol: (p) => <ol className="my-2 list-decimal space-y-1 pl-5" {...p} />,
           li: (p) => <li className="pl-0.5" {...p} />,
-          a: (p) => (
-            <a
-              className="font-medium text-violet-400 underline decoration-violet-500/40 underline-offset-2 hover:text-violet-300"
-              target="_blank"
-              rel="noopener noreferrer"
-              {...p}
-            />
-          ),
+          // r28 referral registry: known referral-program links get the public
+          // owner code appended (harmless anchor decoration) + honest anchor
+          // attrs (sponsored/nofollow) + a visible "ref" chip. Everything else
+          // passes through untouched.
+          a: ({ href, children, ...p }) => {
+            const rewrite: ReferralRewrite | null =
+              typeof href === "string" ? applyReferral(href) : null;
+            const refProps = rewrite ? referralAnchorProps(rewrite) : undefined;
+            return (
+              <a
+                className="font-medium text-violet-400 underline decoration-violet-500/40 underline-offset-2 hover:text-violet-300"
+                target="_blank"
+                rel={refProps?.rel ?? "noopener noreferrer"}
+                href={rewrite?.href ?? href}
+                data-ref={refProps?.["data-ref"]}
+                title={refProps?.title}
+                {...p}
+              >
+                {children}
+                {rewrite && (
+                  <sup
+                    className="ml-0.5 rounded bg-violet-500/15 px-1 py-px align-super text-[9px] font-semibold uppercase not-italic tracking-wide text-violet-400"
+                    aria-label="Referral link (supports the platform)"
+                  >
+                    ref
+                  </sup>
+                )}
+              </a>
+            );
+          },
           blockquote: (p) => (
             <blockquote className="my-2 border-l-2 border-violet-500/50 pl-3 italic text-muted-foreground" {...p} />
           ),

@@ -63,6 +63,9 @@ const ARENA_CATALOG: Record<
     models: [
       { id: "deepseek-v4.1", tier: 1, elo: 0.985, note: "Apex flagship · 270K ctx" },
       { id: "claude-sonnet-4-6", tier: 1, elo: 0.978, note: "Frontier coding" },
+      // r28: verified REAL (Vyce /v1/models owned_by:alibaba ctx:1000000 +
+      // HF Qwen/Qwen3.8-Flash-Next + OpenRouter qwen/qwen3.8-flash) — $0.10/$0.40.
+      { id: "qwen3.8-flash", tier: 1, elo: 0.965, note: "Alibaba Qwen 3.8 · 1M ctx · $0.10/$0.40" },
       { id: "deepseek-v4-flash-lr", tier: 2, elo: 0.918, note: "Long-range" },
       { id: "deepseek-v4-flash", tier: 2, elo: 0.915, note: "Ultra-fast" },
       { id: "agnes-3.0-flash", tier: 2, elo: 0.91, note: "Agentic · 512K ctx" },

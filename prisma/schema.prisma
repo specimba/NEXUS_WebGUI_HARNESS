@@ -30,3 +30,52 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ─── r28: Free/New Model Tracker ─────────────────────────────────────────────
+// Snapshot store for the 4-8h catalog watcher. Dedupe key is
+// "providerId::modelId" — the same hopKey the relay uses, so tracker rows can
+// be pinned straight into a chat.
+
+model TrackedModel {
+  id            String   @id // "providerId::modelId"
+  providerId    String
+  modelId       String
+  displayName   String?
+  contextWindow Int?
+  priceIn       Float?
+  priceOut      Float?
+  free          Boolean  @default(false)
+  /// How many syncs have seen this row (false-alert defense: 2+ = confirmed).
+  sightings     Int      @default(1)
+  /// True when firstSeenAt is inside the 48h "firsthand window".
+  isNew         Boolean  @default(true)
+  firstSeenAt   DateTime @default(now())
+  lastSeenAt    DateTime @default(now())
+  removedAt     DateTime?
+  meta          String?  // JSON blob (owned_by, hf downloads, upstream created, …)
+
+  @@index([isNew, firstSeenAt])
+  @@index([free, firstSeenAt])
+  @@index([lastSeenAt])
+}
+
+model TrackerEvent {
+  id         String   @id @default(cuid())
+  type       String // "new" | "removed" | "reappeared"
+  modelKey   String // "providerId::modelId"
+  providerId String
+  modelId    String
+  payload    String? // JSON summary snapshot of the row at event time
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model TrackerMeta {
+  id         String    @id // source id ("openrouter", "vyce", …)
+  lastSyncAt DateTime?
+  lastOk     Boolean   @default(false)
+  lastError  String?
+  modelCount Int       @default(0)
+  payload    String?   // last sync summary JSON
+}

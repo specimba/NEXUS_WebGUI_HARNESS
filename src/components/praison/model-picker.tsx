@@ -78,20 +78,35 @@ export function ModelPicker({
   const [open, setOpen] = React.useState(false);
   const selected = options.find((o) => o.id === value);
 
+  // r28: when the value is a pin that isn't in the enumerated options (e.g. a
+  // tracker/roster model never refreshed into this browser), synthesize an
+  // honest "pinned" row so the trigger names the real model instead of the
+  // placeholder. Pin resolution itself still works — resolveExplicitLlm
+  // accepts any providerId::model.
+  const fallback: PickerOption | undefined =
+    !selected && value && value !== "default" && value !== "auto::builtin"
+      ? (() => {
+          const [pid, ...rest] = value.split("::");
+          const model = rest.join("::") || value;
+          return { id: value, label: model, note: pid !== "custom" ? `${pid} · exact pin` : "custom endpoint", badge: "pinned", badgeTone: "emerald" as const };
+        })()
+      : undefined;
+
   // Groups in first-seen order (stable across re-renders for a given list).
   const groups = React.useMemo(() => {
     const order: string[] = [];
     const map = new Map<string, PickerOption[]>();
-    for (const o of options) {
-      const g = o.group ?? "Models";
+    const push = (g: string, o: PickerOption) => {
       if (!map.has(g)) {
         map.set(g, []);
         order.push(g);
       }
       map.get(g)!.push(o);
-    }
+    };
+    if (fallback) push("Pinned", fallback);
+    for (const o of options) push(o.group ?? "Models", o);
     return order.map((g) => ({ name: g, items: map.get(g)! }));
-  }, [options]);
+  }, [options, fallback]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -105,20 +120,20 @@ export function ModelPicker({
           disabled={disabled}
           className={cn(
             "h-9 w-full justify-between gap-2 px-3 font-normal",
-            !selected && "text-muted-foreground",
+            !selected && !fallback && "text-muted-foreground",
             className
           )}
         >
           <span className="min-w-0 flex-1 truncate text-left">
-            {selected ? (
+            {selected || fallback ? (
               <span className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate font-medium">{selected.label}</span>
-                {selected.badge ? (
+                <span className="truncate font-medium">{(selected ?? fallback)!.label}</span>
+                {(selected ?? fallback)!.badge ? (
                   <Badge
                     variant="outline"
-                    className={cn("shrink-0 px-1 py-0 text-[9px]", BADGE_CLASS[selected.badgeTone ?? "muted"])}
+                    className={cn("shrink-0 px-1 py-0 text-[9px]", BADGE_CLASS[(selected ?? fallback)!.badgeTone ?? "muted"])}
                   >
-                    {selected.badge}
+                    {(selected ?? fallback)!.badge}
                   </Badge>
                 ) : null}
               </span>
