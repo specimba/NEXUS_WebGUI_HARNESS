@@ -889,6 +889,14 @@ export function WorkflowRunPanel({
                           {step.verdict === "pass" ? "passed" : "rework"}
                         </span>
                       ) : null}
+                      {step.degraded ? (
+                        <span
+                          title="This step hit its tool budget mid-research — the output below is an auto-digest of the tool results, not a full synthesis. Retry the step for a fuller answer."
+                          className="inline-flex shrink-0 items-center rounded-full border border-orange-500/40 bg-orange-500/10 px-2 py-0.5 text-[10px] font-semibold text-orange-600 dark:text-orange-400"
+                        >
+                          auto-digest
+                        </span>
+                      ) : null}
                       {step.reworked ? (
                         <span
                           title="This step was redone after the review gate rejected its first attempt"

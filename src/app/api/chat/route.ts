@@ -12,6 +12,7 @@ import {
 import { guardPublicUrl } from "@/lib/server/url-guard";
 import type { ToolCallInfo } from "@/lib/types";
 import {
+  buildMaterialsDigest,
   clampIter,
   composeAbortSignals,
   composeSystem,
@@ -206,6 +207,7 @@ async function runAutoEngine(
   const toolDefs = buildToolDefs(toolIds);
   const maxIterations = clampIter(body.maxIterations);
   const collected: ToolCallInfo[] = [];
+  let graceUsed = false; // r29: one final-pass leak execution
 
   const toolBlock =
     toolDefs.length > 0
@@ -226,7 +228,10 @@ async function runAutoEngine(
     send({ type: "status", message: `Analyzing ${body.images.length} attached image${body.images.length === 1 ? "" : "s"}…` });
   }
 
-  for (let iteration = 1; iteration <= maxIterations + 1; iteration++) {
+  // r29: loop gains one grace round — a stubborn model that replies with a
+  // JSON tool call ON the final pass gets it executed once, plus a hard
+  // warning, instead of the raw JSON becoming the step's "answer".
+  for (let iteration = 1; iteration <= maxIterations + 2; iteration++) {
     send({ type: "iteration", n: iteration });
     send({ type: "status", message: iteration === 1 ? "Thinking…" : "Reasoning with tool results…" });
 
@@ -248,9 +253,14 @@ async function runAutoEngine(
           })
     );
     const raw = completion.choices?.[0]?.message?.content ?? "";
-    const call = toolDefs.length > 0 && iteration <= maxIterations ? tryParseToolCall(raw, toolDefs) : null;
+    // r29: parse on EVERY pass. In-budget calls execute normally; a call
+    // parsed on the final pass is the "stubborn model" case — it gets ONE
+    // grace execution with a FINAL WARNING, then any further JSON reply is
+    // demoted to the materials digest instead of masquerading as an answer.
+    const call = toolDefs.length > 0 ? tryParseToolCall(raw, toolDefs) : null;
+    const finalPassLeak = call !== null && iteration > maxIterations;
 
-    if (call) {
+    if (call && !finalPassLeak) {
       send({ type: "status", message: `Using tool: ${call.name}` });
       send({ type: "tool_call", id: call.id, name: call.name, args: JSON.stringify(call.args) });
       // r26: closed-world validation — reject hallucinated args before dispatch.
@@ -287,7 +297,49 @@ async function runAutoEngine(
       continue;
     }
 
-    const final = cleanFinalText(raw);
+    // r29: final-pass JSON tool leak — one grace execution, then digest.
+    if (call && finalPassLeak) {
+      if (!graceUsed) {
+        graceUsed = true;
+        send({ type: "status", message: `The model tried another tool call (${call.name}) — running it, then finalizing…` });
+        send({ type: "tool_call", id: call.id, name: call.name, args: JSON.stringify(call.args) });
+        const validation = validateToolCall(toolDefs, call.name, JSON.stringify(call.args));
+        if (!validation.ok && audit) audit.rejectedCalls += 1;
+        const result = validation.ok
+          ? await executeTool(call.name, validation.args ?? "{}")
+          : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
+        collected.push({
+          id: call.id,
+          name: call.name,
+          args: JSON.stringify(call.args),
+          result: result.content,
+          ok: result.ok,
+          ms: result.ms,
+        });
+        send({ type: "tool_result", id: call.id, name: call.name, ok: result.ok, ms: result.ms, content: clipLocal(result.content, 4000) });
+        msgs.push({ role: "assistant", content: raw });
+        msgs.push({
+          role: "user",
+          content: `TOOL_RESULT (${call.name}, ok=${result.ok}):\n${clipLocal(fenceToolOutputForModel(call.name, result.content, 8000, audit), 8000)}\n\nFINAL WARNING: this is your LAST chance. If you reply with another tool call it will be DISCARDED and the run ends with your research notes only. Write your final markdown answer NOW, synthesizing what you already have \u2014 plain prose/markdown only, no JSON.`,
+        });
+        continue;
+      }
+      // Grace spent and the model STILL replies with a tool call — digest.
+      const digest = collected.length > 0 ? buildMaterialsDigest(collected) : "_The model ended with another tool call after the tool budget was spent._";
+      await simulateStream(digest, send, signal);
+      send({ type: "done", content: digest, toolCalls: collected, iterations: iteration });
+      return;
+    }
+
+    let final = cleanFinalText(raw);
+    // r29: a "clean" final that is STILL a JSON tool object is not an answer —
+    // demote it to the materials digest so downstream steps get real material.
+    // Same for degenerate empty finals (`""` seen in production).
+    if (/^\s*\{[\s\S]*"[tT]ool"\s*:/.test(final) && collected.length > 0) {
+      final = `_The model ended with another tool call after the tool budget was spent._\n\n${buildMaterialsDigest(collected)}`;
+    } else if (collected.length > 0 && /^(["'`\s]*|(null|undefined|nan))$/i.test(final.trim())) {
+      final = `_The model ended with an empty final answer after its tool rounds — the auto-digest below is what the tools actually gathered. Retry the step for a fuller synthesized answer._\n\n${buildMaterialsDigest(collected)}`;
+    }
     await simulateStream(final, send, signal);
     send({ type: "done", content: final, toolCalls: collected, iterations: iteration });
     // r27 ROUTE RECEIPT (arXiv:2605.01710) — built-in engine path parity.

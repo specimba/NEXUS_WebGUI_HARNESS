@@ -349,8 +349,38 @@ export async function executeWorkflowRun(
   ) => {
     patchRun({ status, finishedAt: Date.now(), ...(errorInfo ? { error: errorInfo } : status === "done" ? { error: undefined } : {}) });
     if (source === "scheduled") {
+      // r29 scheduled-run autonomy (Temporal/Circuit-Breaker doctrine):
+      // failures feed a consecutive-fail streak — 1-2 re-arm SOONER than the
+      // full interval (10m/30m quick retries); 3 trips the breaker and
+      // auto-pauses the schedule so a broken pipeline stops burning slots.
+      // Success resets the streak. A half-open probe = the user re-enabling.
+      const live = useWorkflowsStore.getState().workflows.find((w) => w.id === wf.id);
+      const sched = live?.schedule;
+      if (sched && (status === "done" || status === "error")) {
+        if (status === "done" && sched.failStreak) {
+          useWorkflowsStore.getState().update(wf.id, { schedule: { ...sched, failStreak: 0 } });
+        } else if (status === "error" && sched.enabled) {
+          const streak = (sched.failStreak ?? 0) + 1;
+          if (streak >= 3) {
+            useWorkflowsStore.getState().update(wf.id, { schedule: { ...sched, failStreak: streak, enabled: false } });
+            toast.warning("Schedule auto-paused after 3 consecutive failures", {
+              icon: "🛑",
+              description: `${wf.name} — the pipeline keeps failing at "${errorInfo?.stepLabel ?? "a step"}". Fix it, then re-enable the schedule.`,
+            });
+          } else {
+            const retryIn = Math.min(Math.max(60_000, sched.intervalMs), streak === 1 ? 10 * 60_000 : 30 * 60_000);
+            useWorkflowsStore.getState().update(wf.id, { schedule: { ...sched, failStreak: streak, nextRunAt: Date.now() + retryIn } });
+          }
+        }
+      }
       if (status === "done") toast.success("Scheduled run finished", { icon: "⏰", description: `${wf.name} · ${steps.length} steps` });
-      else if (status === "error") toast.error("Scheduled run failed", { icon: "⏰", description: errorInfo ? `${errorInfo.stepLabel} · ${ERROR_KIND_META[errorInfo.kind].label.toLowerCase()} — open the run to recover` : wf.name });
+      else if (status === "error") {
+        const sched2 = useWorkflowsStore.getState().workflows.find((w) => w.id === wf.id)?.schedule;
+        const retryNote = sched2?.enabled && sched2.failStreak && sched2.failStreak < 3
+          ? ` — auto-retry ${sched2.failStreak === 1 ? "in ~10m" : "in ~30m"}`
+          : "";
+        toast.error("Scheduled run failed", { icon: "⏰", description: errorInfo ? `${errorInfo.stepLabel} · ${ERROR_KIND_META[errorInfo.kind].label.toLowerCase()}${retryNote} — open the run to recover` : wf.name });
+      }
     } else {
       if (status === "done") toast.success(toastMsg);
       else if (status === "error" && errorInfo) {
@@ -509,6 +539,9 @@ export async function executeWorkflowRun(
           toolCalls: res.toolCalls.length > 0 ? res.toolCalls : localToolCalls,
           status: "done",
           ms: Date.now() - stepStart,
+          // r29: budget-sentinel answers are marked degraded — the UI shows an
+          // "auto-digest" chip and downstream steps can tell material is thin.
+          degraded: /^_The model ended/.test(res.content) || undefined,
         });
         return { content: res.content, ms: Date.now() - stepStart };
       } catch (err) {
@@ -581,7 +614,7 @@ export async function executeWorkflowRun(
         ? steps
             .slice(0, startIndex)
             .filter((s) => s.status === "done" && s.output.trim() !== "")
-            .map((s) => ({ label: s.label, agentName: s.agentName, output: s.output }))
+            .map((s) => ({ label: s.label, agentName: s.agentName, output: s.output, degraded: s.degraded }))
         : [];
     const framework = settings.settings.framework;
 
@@ -635,6 +668,7 @@ export async function executeWorkflowRun(
               prev.push({
                 label: step.label,
                 agentName: agentRow.name,
+                degraded: /^_The model ended/.test(content) || undefined,
                 output:
                   verdict === "pass"
                     ? content
@@ -689,6 +723,7 @@ export async function executeWorkflowRun(
             prev.push({
               label: reviewed.label,
               agentName: genAgent.name,
+              degraded: /^_The model ended/.test(gen.content) || undefined,
               output: gen.content,
             });
             // Loop → the review gate runs again on the improved output
@@ -752,13 +787,13 @@ export async function executeWorkflowRun(
               icon: "✓",
               description: `${(gate.confidence * 100).toFixed(0)}% confident via ${gate.via === "jev" ? "Jev" : "fast judge"} — verification pass skipped`,
             });
-            prev.push({ label: step.label, agentName: agentRow.name, output: draft });
+            prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(draft) || undefined, output: draft });
             continue;
           }
           // FAIL / uncertain / no judge available → run the full verification pass.
         }
         const { content } = await streamStep(step, step.agentId, baseSystem, context);
-        prev.push({ label: step.label, agentName: agentRow.name, output: content });
+        prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(content) || undefined, output: content });
       } catch (err) {
         if (isAbortError(err)) {
           stopRemaining(i);

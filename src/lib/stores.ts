@@ -15,6 +15,7 @@ import type {
   Workflow,
   WorkflowRun,
   WorkflowRunStep,
+  WorkflowStep,
 } from "./types";
 import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS, TOOL_IDS } from "./constants";
 import { uid } from "./helpers";
@@ -374,6 +375,8 @@ export const useWorkflowsStore = create<WorkflowsState>()(
       add: (wf) => {
         const id = wf.id ?? uid("wf");
         const now = Date.now();
+        // r29 fix: carry depth/schedule through — add() used to silently drop
+        // them, so seeded/imported workflows lost their pipeline depth.
         const workflow: Workflow = {
           id,
           name: wf.name ?? "Untitled workflow",
@@ -382,6 +385,8 @@ export const useWorkflowsStore = create<WorkflowsState>()(
           runs: [],
           createdAt: now,
           updatedAt: now,
+          ...(wf.depth ? { depth: wf.depth } : {}),
+          ...(wf.schedule ? { schedule: wf.schedule } : {}),
         };
         set((s) => ({ workflows: [workflow, ...s.workflows] }));
         return id;
@@ -563,6 +568,38 @@ export const useUiStore = create<UiState>()(
 );
 
 // ─── Seed on first launch ────────────────────────────────────────────────────
+/**
+ * r29 Morning Briefing v2 steps — the autonomous-friendly pipeline:
+ * dated research (36h recency window, failure-aware) → picker/structure step
+ * → writer with a strict no-invented-stories contract. When no planner agent
+ * exists (deleted roster), the pipeline degrades gracefully to research → writer.
+ */
+function morningBriefingStepsV2(withPlanner: boolean): WorkflowStep[] {
+  const mkStep = (agentId: string, label: string, instruction: string): WorkflowStep => ({
+    id: uid("step"),
+    agentId,
+    label,
+    instruction,
+  });
+  const research = mkStep(
+    "a-researcher",
+    "Scan the web for today's most important developments in AI and tech",
+    "Research TODAY'S developments in AI and tech. Anchor every query to today's date (ask the clock tool first) and prefer results published within the last 36 hours — put the publication date next to each fact and drop anything you cannot date. Diversify: aim for 4+ distinct stories, at most 2 per topic area. When read_url fails (403/404), note the failure once and move on — never spend a second attempt on a dead link, and never present a failed fetch as a story. Finish with a dated, source-linked list of the 5-7 strongest candidate stories."
+  );
+  const writer = mkStep(
+    "a-writer",
+    "Write the 5-bullet morning briefing",
+    "Turn the selected stories into the morning briefing: a one-line header with today's date, then 5 bullets max — one line each: **headline** — why it matters — [source](link). End with 'Focus for the day:' and one recommended action. Use ONLY stories the research step actually sourced; never invent a story or a link. If the selection step reported fewer than 3 usable stories, open with an honest 'Quiet news day' note."
+  );
+  if (!withPlanner) return [research, writer];
+  const picker = mkStep(
+    "a-planner",
+    "Select and structure the briefing",
+    "You receive candidate stories from the research step. Pick EXACTLY 5 for the briefing: deduplicate overlapping coverage, drop anything older than 36 hours, drop items whose source failed to load, rank by importance for a technologist's morning. For each pick output one line: headline — why it matters (max 15 words) — source link — date. If fewer than 3 usable stories survived, say so explicitly so the writer can report a thin news day honestly."
+  );
+  return [research, picker, writer];
+}
+
 export function ensureSeeded(): void {
   // Mark stale "streaming" messages from a mid-stream reload as stopped
   useConversationsStore.setState((s) => ({
@@ -599,22 +636,46 @@ export function ensureSeeded(): void {
   // Starter workflow templates (first launch only — fixed ids keep it idempotent)
   if (!settings.seeded && useWorkflowsStore.getState().workflows.length === 0) {
     const wfStore = useWorkflowsStore.getState();
-    const mkStep = (agentId: string, label: string) => ({ id: uid("step"), agentId, label });
+    const mkStep = (agentId: string, label: string, instruction?: string) => ({
+      id: uid("step"),
+      agentId,
+      label,
+      ...(instruction ? { instruction } : {}),
+    });
     wfStore.add({
       id: "wf-research-brief",
       name: "Research Brief",
       description: "Research a topic with live web sources, distill the insights, publish a polished brief.",
+      depth: "standard",
       steps: [
-        mkStep("a-researcher", "Research the topic with live web sources"),
-        mkStep("a-planner", "Distill key insights and structure the narrative"),
-        mkStep("a-writer", "Write the executive brief"),
+        mkStep(
+          "a-researcher",
+          "Research the topic with live web sources",
+          "Research the topic exhaustively with live sources: start with web_search, then read_url the 3-5 strongest pages. Cite every fact with a markdown link and explicitly mark anything you could not verify. If a fetch fails, note it once and move on — never retry a dead link twice."
+        ),
+        mkStep(
+          "a-planner",
+          "Distill key insights and structure the narrative",
+          "Distill the research into a tight outline: 4-6 key insights, each with its source links. Flag contradictions between sources instead of smoothing them over."
+        ),
+        mkStep(
+          "a-writer",
+          "Write the executive brief",
+          "Write the executive brief from the outline: headline verdict first, then structured markdown sections. Keep every citation; never add facts the research step didn't source."
+        ),
       ],
     });
     wfStore.add({
       id: "wf-build-verify",
       name: "Build & Verify",
       description: "Code Smith writes JavaScript, runs it in the sandbox and iterates until it works.",
-      steps: [mkStep("a-coder", "Write, run and verify the solution")],
+      steps: [
+        mkStep(
+          "a-coder",
+          "Write, run and verify the solution",
+          "Write JavaScript that solves the task, run it with run_code, and iterate on failures until the run passes. Show the final code and the passing output."
+        ),
+      ],
     });
   }
   // Hermes-style daily briefing — added for everyone who doesn't have it yet
@@ -623,17 +684,75 @@ export function ensureSeeded(): void {
     const wfStore = useWorkflowsStore.getState();
     if (!wfStore.workflows.some((w) => w.id === "wf-morning-briefing")) {
       const researcher = useAgentsStore.getState().getById("a-researcher");
+      const planner = useAgentsStore.getState().getById("a-planner");
       const writer = useAgentsStore.getState().getById("a-writer");
       if (researcher && writer) {
-        const mkStep = (agentId: string, label: string) => ({ id: uid("step"), agentId, label });
         wfStore.add({
           id: "wf-morning-briefing",
           name: "Morning Briefing",
           description:
             "A daily digest: scan the web for what happened while you were away, then deliver a tight 5-bullet briefing.",
+          depth: "standard",
+          steps: morningBriefingStepsV2(planner != null),
+        });
+      }
+    }
+    // r29 template migration: pre-existing v1 Morning Briefings have no
+    // per-step instructions (the v1 fingerprint) — upgrade them in place to
+    // the autonomous v2 pipeline. User-authored schedules and any edited
+    // instructions are respected (upgrade only fills what's missing).
+    const mb = wfStore.workflows.find((w) => w.id === "wf-morning-briefing");
+    if (mb && mb.steps.some((s) => !s.instruction)) {
+      const planner = useAgentsStore.getState().getById("a-planner");
+      wfStore.update(mb.id, {
+        depth: mb.depth ?? "standard",
+        steps: morningBriefingStepsV2(planner != null),
+      });
+      console.info("[seed] Morning Briefing upgraded to v2 (dated, deduped, failure-aware)");
+    }
+  }
+  // r29: Deep Research Dossier — demonstrates the sophisticated
+  // planner → gap-fill → writer structure (map, audit gaps, fill them, synthesize).
+  {
+    const wfStore = useWorkflowsStore.getState();
+    if (!wfStore.workflows.some((w) => w.id === "wf-deep-dossier")) {
+      const researcher = useAgentsStore.getState().getById("a-researcher");
+      const planner = useAgentsStore.getState().getById("a-planner");
+      const writer = useAgentsStore.getState().getById("a-writer");
+      if (researcher && planner && writer) {
+        const mkStep = (agentId: string, label: string, instruction: string) => ({
+          id: uid("step"),
+          agentId,
+          label,
+          instruction,
+        });
+        wfStore.add({
+          id: "wf-deep-dossier",
+          name: "Deep Research Dossier",
+          description:
+            "Map a topic, audit what the map is missing, fill exactly those gaps, then publish a cited dossier.",
+          depth: "deep",
           steps: [
-            mkStep("a-researcher", "Search the web for today's most important developments in AI and tech"),
-            mkStep("a-writer", "Write a tight morning briefing: 5 bullets max, one line each, end with one recommended focus for the day"),
+            mkStep(
+              "a-researcher",
+              "Map the landscape",
+              "First pass: map the topic — main players, state of the art, notable disagreements, open questions. 4-6 web searches, then read the 3 most substantive pages. Output a structured map where every claim carries a source link."
+            ),
+            mkStep(
+              "a-planner",
+              "Identify the gaps",
+              "Audit the landscape map: list the 3 most important gaps — questions the research didn't answer or answered shallowly. Output them as precise research briefs, one short paragraph each."
+            ),
+            mkStep(
+              "a-researcher",
+              "Fill the gaps",
+              "Execute the gap briefs from the previous step: one focused search round per brief. Report ONLY what the new searches actually found; mark anything still unresolved as an open question. Do not repeat material the map already covered."
+            ),
+            mkStep(
+              "a-writer",
+              "Write the dossier",
+              "Write the dossier: executive summary (max 5 lines), findings organized by section with inline citations, then Open Questions at the end. Synthesize in your own words — never paste raw research notes."
+            ),
           ],
         });
       }

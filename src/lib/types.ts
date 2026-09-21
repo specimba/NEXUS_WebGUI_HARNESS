@@ -232,6 +232,12 @@ export interface WorkflowRunStep {
   verdict?: "pass" | "rework";
   /** True when this generate step was redone after a review rework. */
   reworked?: boolean;
+  /**
+   * r29: the step ended on a tool-budget sentinel + auto-digest instead of a
+   * synthesized answer — surfaces as an "auto-digest" chip so users (and
+   * downstream instructions) know the material is degraded.
+   */
+  degraded?: boolean;
 }
 
 /** Classified cause of a failed run — drives the recovery card's copy. */
@@ -321,6 +327,11 @@ export interface Workflow {
 export interface WorkflowSchedule {
   enabled: boolean;
   intervalMs: number;
+  /**
+   * r29 autonomy: consecutive scheduled-run failures (reset on success).
+   * 1-2 → quick backoff re-arm; ≥3 → breaker auto-pauses the schedule.
+   */
+  failStreak?: number;
   /** Task text used for each scheduled run (falls back to the description). */
   task: string;
   lastRunAt?: number;

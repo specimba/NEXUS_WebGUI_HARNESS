@@ -114,7 +114,24 @@ async function doWebSearch(args: Record<string, unknown>, signal?: AbortSignal):
     date?: string;
   }>;
   if (!Array.isArray(results) || results.length === 0) return "No results found.";
-  return results
+  // r29 relevance hygiene: drop duplicate URLs and cap per-host spam (3) so
+  // one loud domain can't crowd out the topic in a briefing digest.
+  const seenUrls = new Set<string>();
+  const hostCount = new Map<string, number>();
+  const fresh = results.filter((r) => {
+    const u = (r.url ?? "").replace(/[#?].*$/, "");
+    if (u && seenUrls.has(u)) return false;
+    const host = (r.host_name ?? "").toLowerCase();
+    if (host) {
+      const n = hostCount.get(host) ?? 0;
+      if (n >= 3) return false;
+      hostCount.set(host, n + 1);
+    }
+    if (u) seenUrls.add(u);
+    return true;
+  });
+  if (fresh.length === 0) return "No results found.";
+  return fresh
     .map(
       (r, i) =>
         `${i + 1}. ${r.name ?? "(untitled)"}${r.host_name ? ` — ${r.host_name}` : ""}${
@@ -138,7 +155,13 @@ async function doReadUrl(args: Record<string, unknown>): Promise<string> {
   for (let hop = 0; ; hop++) {
     const verdict = guardPublicUrl(target, { allowHttp: true });
     if (!verdict.ok) throw new Error(`Blocked by the SSRF guard: ${verdict.reason}`);
-    const res = await fetch(target, {
+    // r29 fetch policy (Autonomous-Pipelines doctrine): ONE polite retry for
+    // bot-walls (403) and transient throttles (429/503), upgrading to a
+    // browser UA — 404/410 are terminal (a dead link stays dead). The retry
+    // only fires while the caller's time budget has headroom, so the total
+    // stays under the executor's 30s tool-call timeout.
+    const readStart = Date.now();
+    let res = await fetch(target, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (compatible; PraisonAgent/1.0; +https://github.com/specimba/PraisonAI)",
@@ -147,6 +170,20 @@ async function doReadUrl(args: Record<string, unknown>): Promise<string> {
       signal: AbortSignal.timeout(15_000),
       redirect: "manual",
     });
+    if ((res.status === 403 || res.status === 429 || res.status === 503) && Date.now() - readStart < 10_000) {
+      res.body?.cancel().catch(() => {});
+      await new Promise((r) => setTimeout(r, 2_000));
+      res = await fetch(target, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        signal: AbortSignal.timeout(12_000),
+        redirect: "manual",
+      });
+    }
     if (res.status >= 300 && res.status < 400) {
       res.body?.cancel().catch(() => {});
       const location = res.headers.get("location");

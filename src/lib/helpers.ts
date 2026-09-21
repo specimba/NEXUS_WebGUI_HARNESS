@@ -92,27 +92,46 @@ export interface PrevStepOutput {
   label: string;
   agentName: string;
   output: string;
+  /** r29: the step ended on a tool-budget auto-digest (material is thin). */
+  degraded?: boolean;
+}
+
+/**
+ * r29 date anchoring: scheduled pipelines (Morning Briefing et al.) kept
+ * asking about "today" with no idea what day it was — searches drifted to
+ * stale or off-topic results. Every pipeline context now opens with the
+ * run's real date so "latest/today" is always grounded.
+ */
+export function buildDateAnchor(): string {
+  const now = new Date();
+  const full = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  return `CONTEXT ANCHOR — today is ${full}. Treat "latest/today/this week" relative to this date.`;
 }
 
 /** Sequential (CrewAI-style) context: distilled handoff of previous outputs. */
 export function buildSequentialContext(task: string, prev: PrevStepOutput[]): string {
-  if (prev.length === 0) return `TASK:\n${task}`;
+  if (prev.length === 0) return `${buildDateAnchor()}\n\nTASK:\n${task}`;
   const handoffs = prev
     .map(
       (p, i) =>
-        `--- Step ${i + 1}: ${p.label} (by ${p.agentName}) ---\n${truncate(p.output, 4000)}`
+        `--- Step ${i + 1}: ${p.label} (by ${p.agentName})${p.degraded ? " [ended on auto-digest]" : ""} ---\n${truncate(p.output, 4000)}`
     )
     .join("\n\n");
-  return `ORIGINAL TASK:\n${task}\n\nOUTPUTS FROM PREVIOUS STEPS (use them as your input):\n${handoffs}\n\nContinue the pipeline: do YOUR step only, building on the outputs above.`;
+  return `${buildDateAnchor()}\n\nORIGINAL TASK:\n${task}\n\nOUTPUTS FROM PREVIOUS STEPS (use them as your input):\n${handoffs}\n\nContinue the pipeline: do YOUR step only, building on the outputs above.`;
 }
 
 /** Conversational (AutoGen-style) context: full transcript between agents. */
 export function buildConversationalContext(task: string, prev: PrevStepOutput[]): string {
-  if (prev.length === 0) return `TASK:\n${task}`;
+  if (prev.length === 0) return `${buildDateAnchor()}\n\nTASK:\n${task}`;
   const transcript = prev
-    .map((p) => `${p.agentName} (step: ${p.label}):\n${truncate(p.output, 4000)}`)
+    .map((p) => `${p.agentName} (step: ${p.label})${p.degraded ? " [ended on auto-digest]" : ""}:\n${truncate(p.output, 4000)}`)
     .join("\n\n");
-  return `TASK:\n${task}\n\nCONVERSATION SO FAR BETWEEN TEAM AGENTS:\n${transcript}\n\nYou are the next speaker in this conversation. React to what was said and do YOUR step.`;
+  return `${buildDateAnchor()}\n\nTASK:\n${task}\n\nCONVERSATION SO FAR BETWEEN TEAM AGENTS:\n${transcript}\n\nYou are the next speaker in this conversation. React to what was said and do YOUR step.`;
 }
 
 /** Review-gate prompt: judge the previous step's output, return a strict JSON verdict. */

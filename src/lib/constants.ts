@@ -309,8 +309,9 @@ export const SEED_AGENTS: Agent[] = [
 export const AUTO_PLAN_SYSTEM = `You are a workflow architect for a multi-agent AI platform.
 Given a task and a list of available agents (JSON), design an ordered pipeline of steps.
 Reply with ONLY a JSON array, no markdown fences, no commentary:
-[{"label": "short step description", "agentId": "<id from provided agents>"}]
-Use between 2 and 5 steps. Each agentId MUST be one of the provided ids. Reuse an agent only if the pipeline truly needs it.`;
+[{"label": "short step description", "agentId": "<id from provided agents>", "instruction": "one focused sentence of step-specific guidance"}]
+Use between 2 and 5 steps. Each agentId MUST be one of the provided ids. Reuse an agent only if the pipeline truly needs it.
+Every step SHOULD carry an instruction: concrete, step-specific guidance (what to produce, what to avoid, quality bar) that will be appended to the agent's system prompt for that step only. Research steps that use web tools should require dated, source-linked findings; writing steps should define format and length.`;
 
 export const MAX_CONTEXT_MESSAGES = 40;
 export const MAX_ITERATIONS_DEFAULT = 6;

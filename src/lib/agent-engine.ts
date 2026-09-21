@@ -717,7 +717,17 @@ export async function runCustomEngine(
         });
       }
       if (iteration >= maxIterations) {
-        send({ type: "status", message: "Finalizing answer…" });
+        // r29 autonomous synthesis (Temporal/LangGraph "reserve a final pass"
+        // doctrine): the LAST in-budget tool round is followed by an explicit
+        // synthesis order, so the no-tools final pass is purposeful instead of
+        // a silent gamble. This is what turns "budget exhausted + raw dump"
+        // into an actual synthesized answer.
+        send({ type: "status", message: "Tool budget spent — finalizing answer…" });
+        msgs.push({
+          role: "user",
+          content:
+            "TOOL BUDGET SPENT. You have all the material you will get. Write your FINAL markdown answer now, synthesizing the tool results above — plain prose/markdown only, no tool calls, no JSON. If the material is thin or partially failed, say so honestly and answer with what you have.",
+        });
       }
       continue;
     }
@@ -785,14 +795,21 @@ export async function runCustomEngine(
 
     // Cleanup: never let leaked tool-call markup masquerade as the answer.
     const stripped = stripContentToolCall(content);
-    // If the answer was ENTIRELY a leaked tool call, still hand the next
-    // step real material: digest what the tools actually gathered.
+    // r29 closed the FULL budget-exhaustion family: (1) leaked tool-call
+    // markup, (2) degenerate empty finals — a real production run returned
+    // the literal string `""` after 36 tool calls, starving every downstream
+    // step. Both now fall back to the honest materials digest instead of
+    // shipping silence downstream.
+    const isSentinel = /^_The model ended/.test(stripped);
+    const isTrivialAnswer =
+      !isSentinel && collected.length > 0 && /^(["'`\s]*|(null|undefined|nan))$/i.test(stripped.trim());
     const finalContent =
-      /^_The model ended/.test(stripped) && collected.length > 0
-        ? `${stripped}\n\n**Research material gathered (auto-digest):**\n${collected
-            .slice(-6)
-            .map((tc) => `- ${tc.name} ${tc.ok ? "✓" : "✗"} — ${clip(tc.result || "(no result)", 160).replace(/\n/g, " ")}`)
-            .join("\n")}`
+      isSentinel || isTrivialAnswer
+        ? `${
+            isSentinel
+              ? stripped
+              : "_The model ended with an empty final answer after its tool rounds — the auto-digest below is what the tools actually gathered. Retry the step for a fuller synthesized answer._"
+          }\n\n${buildMaterialsDigest(collected)}`
         : stripped;
 
     // Honest truncation notice (r25): the stream ended without [DONE] and
@@ -1152,6 +1169,42 @@ export function tryParseContentToolCall(
   return null;
 }
 
+/**
+ * r29 materials digest — the honest fallback when a step's answer ends up
+ * being only leaked tool-call markup. Doctrine (Autonomous-Pipelines r29
+ * research): failures are STRUCTURED, not content — the digest body carries
+ * only successful results (with arg provenance so downstream steps can
+ * re-fetch/cite), while failures collapse into a one-line footer.
+ */
+export function buildMaterialsDigest(collected: ToolCallInfo[]): string {
+  const okCalls = collected.filter((tc) => tc.ok === true);
+  const failed = collected.length - okCalls.length;
+  const argHead = (tc: ToolCallInfo): string => {
+    try {
+      const parsed = JSON.parse(tc.args || "{}") as Record<string, unknown>;
+      const first = Object.values(parsed).find((v) => typeof v === "string" && v.trim());
+      return typeof first === "string" ? clip(first, 80).replace(/\n/g, " ") : "";
+    } catch {
+      return "";
+    }
+  };
+  const body = okCalls
+    .slice(-8)
+    .map((tc) => {
+      const head = argHead(tc) ? `${tc.name} [${argHead(tc)}]` : tc.name;
+      return `- ${head} \u2014 ${clip(tc.result || "(empty result)", 400).replace(/\n+/g, " \u00b7 ")}`;
+    })
+    .join("\n");
+  const footer =
+    failed > 0
+      ? `\n_${failed} of ${collected.length} tool calls failed and were excluded from this digest._`
+      : "";
+  if (!body) {
+    return `**Research material gathered (auto-digest):**\n_(every tool call failed \u2014 no usable material was gathered)_`;
+  }
+  return `**Research material gathered (auto-digest):**\n${body}${footer}`;
+}
+
 /** Remove leaked tool-call markup from a final answer (never show it as prose). */
 export function stripContentToolCall(content: string): string {
   const stripped = content
@@ -1162,7 +1215,7 @@ export function stripContentToolCall(content: string): string {
     .trim();
   if (stripped === content.trim()) return content;
   if (stripped.length === 0) {
-    return "_The model ended with another tool call after the tool budget was spent — the gathered results above are the step's work. Retry the step for a fuller synthesized answer._";
+    return "_The model ended with another tool call after the tool budget was spent — the auto-digest below is what the tools actually gathered. Retry the step for a fuller synthesized answer._";
   }
   return stripped;
 }

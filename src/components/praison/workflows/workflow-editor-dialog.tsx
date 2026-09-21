@@ -214,7 +214,7 @@ export function WorkflowEditorDialog({
       }
       const validIds = new Set(available.map((a) => a.id));
       const mapped: WorkflowStep[] = plan.map((raw, i) => {
-        const item = (raw ?? {}) as { label?: unknown; agentId?: unknown };
+        const item = (raw ?? {}) as { label?: unknown; agentId?: unknown; instruction?: unknown };
         const label =
           typeof item.label === "string" && item.label.trim()
             ? item.label.trim()
@@ -223,7 +223,12 @@ export function WorkflowEditorDialog({
           typeof item.agentId === "string" && validIds.has(item.agentId)
             ? item.agentId
             : available[i % available.length].id;
-        return { id: uid("step"), agentId, label };
+        // r29: auto-planned steps now carry step-specific instructions (v2 planner contract).
+        const instruction =
+          typeof item.instruction === "string" && item.instruction.trim()
+            ? item.instruction.trim()
+            : undefined;
+        return { id: uid("step"), agentId, label, ...(instruction ? { instruction } : {}) };
       });
       setSteps(mapped);
       setPlanOpen(false);

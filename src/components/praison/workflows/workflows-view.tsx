@@ -497,7 +497,7 @@ export function WorkflowsView() {
                     <div className="flex items-center gap-2">
                       {wf.schedule?.enabled && wf.steps.length > 0 && (
                         <span
-                          title={`Recurring schedule · next ${fmtIn(wf.schedule.nextRunAt)}`}
+                          title={`Recurring schedule · next ${fmtIn(wf.schedule.nextRunAt)}${wf.schedule.failStreak ? ` · ${wf.schedule.failStreak} consecutive failure${wf.schedule.failStreak === 1 ? "" : "s"}` : ""}`}
                           className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
                         >
                           <span className="relative flex h-1.5 w-1.5">
@@ -505,6 +505,18 @@ export function WorkflowsView() {
                             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           </span>
                           {fmtIntervalShort(wf.schedule.intervalMs)} · next {fmtIn(wf.schedule.nextRunAt)}
+                        </span>
+                      )}
+                      {wf.schedule && !wf.schedule.enabled && (wf.schedule.failStreak ?? 0) >= 3 && (
+                        <span
+                          title="The schedule auto-paused after 3 consecutive failed runs. Fix the pipeline, then re-enable the schedule in its editor."
+                          className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400"
+                        >
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                          </span>
+                          auto-paused · check runs
                         </span>
                       )}
                       <Button size="sm" onClick={() => openRun(wf)}>

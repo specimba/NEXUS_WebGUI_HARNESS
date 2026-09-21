@@ -155,6 +155,7 @@ function RunCard({
 
   const run = card.run!;
   const reworks = run.steps.filter((s) => s.verdict === "rework" || s.reworked).length;
+  const degraded = run.steps.filter((s) => s.degraded).length;
   const doneSteps = run.steps.filter((s) => s.status === "done").length;
 
   return (
@@ -209,6 +210,14 @@ function RunCard({
           <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-px font-semibold text-amber-600 dark:text-amber-400">
             <Undo2 className="h-2.5 w-2.5" aria-hidden />
             {reworks} rework{reworks === 1 ? "" : "s"}
+          </span>
+        ) : null}
+        {degraded > 0 ? (
+          <span
+            title="Steps that hit their tool budget and ended on an auto-digest instead of a synthesized answer"
+            className="inline-flex items-center rounded-full border border-orange-500/40 bg-orange-500/10 px-1.5 py-px font-semibold text-orange-600 dark:text-orange-400"
+          >
+            {degraded} auto-digest
           </span>
         ) : null}
       </div>
