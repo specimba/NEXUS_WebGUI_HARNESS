@@ -71,6 +71,23 @@ const ARENA_CATALOG: Record<
       { id: "agnes-3.0-flash", tier: 2, elo: 0.91, note: "Agentic · 512K ctx" },
     ],
   },
+  aihubmix: {
+    label: "AIHubMix",
+    models: [
+      { id: "claude-opus-5", tier: 1, elo: 0.988, note: "Frontier apex · 1M ctx · $5/$25" },
+      { id: "claude-sonnet-5", tier: 1, elo: 0.982, note: "Frontier workhorse · 1M ctx · $2/$10" },
+      { id: "gpt-5.6-luna", tier: 1, elo: 0.968, note: "OpenAI fast flagship · 1M ctx · $0.20/$1.20" },
+      { id: "gemini-3.6-flash", tier: 1, elo: 0.962, note: "Google current-gen · 1M ctx · $1.50/$7.50" },
+      { id: "grok-4.5", tier: 1, elo: 0.955, note: "xAI frontier · 500K ctx · $2/$6" },
+      { id: "qwen3.8-max", tier: 1, elo: 0.95, note: "Alibaba flagship · 1M ctx · $1.69/$5.07" },
+      { id: "deepseek-v4-flash", tier: 2, elo: 0.93, note: "Budget frontier · 1M ctx · $0.142/$0.284" },
+      { id: "glm-5.3-flash", tier: 2, elo: 0.925, note: "Z.ai fast lane · 1M ctx · $0.11/$0.39" },
+      { id: "coding-glm-5.3-free", tier: 2, elo: 0.912, note: "FREE coding lane · 1M ctx · tools" },
+      { id: "coding-kimi-k3-free", tier: 2, elo: 0.905, note: "FREE · Kimi coding · 1M ctx" },
+      { id: "xiaomi-mimo-v2.6-pro-free", tier: 2, elo: 0.9, note: "FREE · omni-in · 1M ctx" },
+      { id: "nemotron-3-ultra-550b-a55b-free", tier: 2, elo: 0.895, note: "FREE · 550B MoE · 1M ctx" },
+    ],
+  },
   orcarouter: {
     label: "OrcaRouter",
     models: [

@@ -31,7 +31,7 @@ import { BrandMark, ThemeToggle } from "@/components/praison/atoms";
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import { resolveLlm } from "@/lib/llm-config";
 import { FREE_PROVIDERS } from "@/lib/providers";
-import { APP_VERSION, GITHUB_URL, VYCE_INTRO_FLAG } from "@/lib/constants";
+import { APP_VERSION, GITHUB_URL, AIHUBMIX_INTRO_FLAG, VYCE_INTRO_FLAG } from "@/lib/constants";
 import type { View } from "@/lib/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -203,6 +203,24 @@ export function TopBar() {
         },
         duration: 15_000,
       });
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, []);
+
+  // One-time "AIHubMix is here" intro (r30): 45 free lanes + frontier; the
+  // key is preseeded but the active brain is NOT switched (unlike Vyce r18).
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem(AIHUBMIX_INTRO_FLAG)) return;
+      localStorage.setItem(AIHUBMIX_INTRO_FLAG, "1");
+      const s = useSettingsStore.getState().settings;
+      if (s.providerKeys?.aihubmix?.key) {
+        toast("AIHubMix added — 45 free model lanes", {
+          description: "coding-glm-5.3-free (1M ctx, tools) is pre-loaded in the vault — pick it from any model picker.",
+          duration: 15_000,
+        });
+      }
     } catch {
       /* localStorage unavailable */
     }

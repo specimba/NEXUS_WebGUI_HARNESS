@@ -1053,3 +1053,55 @@ Stage Summary:
 - Shipped: autonomous synthesis reserve + honest materials digest (both engines), fetch retry policy + search dedupe + date anchoring, scheduler circuit breaker with quick-retry backoff, template library v2 (upgraded briefing + new dossier + instructed seeds), degraded-step chips end-to-end, workflows add() depth/schedule fix.
 - Production failure mode from the user's screenshot ("model ended with another tool call…" + dead URLs in digest) is now closed at three levels: engine (synthesis order + digest), tools (retry/dedupe), scheduler (breaker + quick retries).
 - Next candidates: per-step tool-budget overrides in the editor, map-reduce fan-out steps, Jev-gated briefing quality gate, workflow-level model pinning.
+
+---
+Task ID: r30-2
+Agent: research (aihubmix)
+Task: Keyless platform research of AIHubMix (aihubmix.com) as an OpenAI-compatible provider — docs, endpoint probes, free-tier limits, router, quirks, integration config.
+
+Work Log:
+- Docs: fetched docs.aihubmix.com/llms.txt (158 EN pages) + 13 key pages as raw .md (llm-router, Model-Mapping-Fallback, structured-output-repair, aihubmix-cli, Models-API, chat-completions OpenAPI spec 899 KB, quick-start, App-code, unified-inference, HTTP-Codes, router leaderboard, News changelog, free-ai-models blog).
+- Probes (all keyless): /v1/models returns 200 (NOT 401) on all three hosts — aihubmix.com, api.aihubmix.com (alias), api.inferera.com (backup) — byte-identical 35,100 B, OpenAI shape, 407 ids incl. 44 free. Public rich catalog GET /api/v1/models = 200, 852 models, USD pricing + context + features + retire_stage, 300 s ETag cache. GET /call/free_quota_config = live enforced free quota. GET /api/router/leaderboard = 200 keyless (23 dims, pool 17). /model/<id>/llms.txt, /model-data/index.json, /agents.md all keyless 200. 404 error body is OpenAI-compatible {error:{message,type,request_id}}.
+- Free tier VERIFIED from 2 independent sources (SSR model page + per-model llms.txt): "5 requests per minute, 100 requests per day, 1 million tokens per day" per account; live config: minute_limit 10 + per-model weight_map (1–10), daily 100 req / 1M tok, trial 10 calls, $1 paid threshold. No credit card needed (agents.md). "60 deprecating" claim overstated — /models/retirements shows ~7 deprecating + ~35 retired (incl. gpt-4o-free, gpt-5.5-free, gemini-3.x-flash-free); free catalog churns fast (60 page links vs 45 live).
+- Catalog verified: 45 live $0 free models (exact ids extracted); frontier ids + pricing confirmed: claude-opus-5 $5/$25, claude-sonnet-5 $2/$10, gpt-5.6-luna $0.2/$1.2, gemini-3.6-flash $1.5/$7.5, grok-4.5 $2/$6, qwen3.8-max $1.69/$5.07, deepseek-v4-flash $0.142/$0.284, glm-5.2, glm-5.3-flash $0.11/$0.39, kimi-k3 $3/$15. "glm-5.2-free" does not exist; "dots3-note-preview-free" is actually dots-3-note-preview-free; jina-ocr-v1 free but type=ocr.
+- Router: model:"auto"|auto:balanced|auto:quality_first|auto:latency_critical on /v1/chat/completions + /v1/images/* (not embeddings/rerank/audio); ~1 ms overhead, stream-safe, resolved model in body.model + x-aihubmix-router-* headers (resolved-model/policy/dimension/decision-id/reason/fallback/sticky); X-Aihubmix-Session-Id stickiness; unknown policy suffix silently → cost_optimized; ?router=off→400. Billed at resolved model list price, no surcharge. Verdict: usable as aihubmix-auto lane.
+- Quirks: body = vanilla OpenAI + top_k/verbosity/web_search_options; max_tokens AND max_completion_tokens both OK; thinking models return reasoning_content + reasoning_details; APP-Code header = 10% off (non-Claude); errors carry tid, Retry-After + IETF RateLimit headers on 429, 403 insufficient_user_quota, 404 model_retired, 410 Gone; Key-level model mapping (char-for-char) + fallback (free models silently skipped as fallback targets, fallback only pre-first-byte); removed models can be auto-remapped; structured-output-repair is a Key toggle (non-streaming only); tools/function_calling flagged for most coding-*-free ids but some free ids have unverified capabilities.
+- Wrote report with endpoint-probe evidence table, verified catalog, rate-limit facts, router verdict, integration config + 5-endpoint keyless tracker polling plan.
+
+Stage Summary:
+- Verdict: AIHubMix is a vanilla-OpenAI-compatible gateway (base https://aihubmix.com/v1, Bearer sk-…, backup api.inferera.com) safe to add as a provider; free lane = 45 live $0 models under 5 rpm/100 req/day/1M tok/day (weight_map multiplies), frontier lane = claude-opus-5/sonnet-5/gpt-5.6-luna/gemini-3.6-flash/grok-4.5/qwen3.8-max/deepseek-v4-flash/glm-5.2/5.3-flash/kimi-k3 verified with pricing; model:"auto" router lane is production-grade and observable; never use free ids as fallback targets (platform skips them) — do relay-side 429 rotation heavy→light.
+- Tracker: poll /api/v1/models (free+retire_stage), /call/free_quota_config, /api/router/leaderboard, /models/retirements, per-model /model/<id>/llms.txt — all keyless.
+- Artifacts: docs/research/aihubmix-r30.md; evidence in /tmp/r30/ (llms.txt, 13 doc pages, openapi.json, probe_*.json/hdr, models_api.json, free_quota_config.json, router_lb2.json, SSR HTML extracts).
+
+---
+Task ID: r30
+Agent: lead (Z.ai Code orchestrator)
+Task: r30 — AIHubMix provider integration: 850+ model gateway (45 live $0 lanes + frontier at list price) into providers registry, relay catalog, model picker, key vault (preseed), tracker Tier-A source, provider gallery + intro toast.
+
+Work Log:
+- SANDBOX ROLLBACK RECOVERED: local git metadata had regressed to r25-era (HEAD cd0a42e) while disk held mixed r29 state and origin/main held the true r29 (ffe50ea). Verified nothing on disk was newer than origin → `git reset --hard origin/main` restored full r29 tree; rollback/r30-base re-tagged at ffe50ea and pushed to both remotes. (Lesson repeated: always fetch-compare after any sandbox gap.)
+- RESEARCH (2 parallel subagents):
+  · Explore (r30-1): definitive "grep vyce" inventory (93 hits / 19 files) → integration checklist; corrected KEYED_ENDPOINTS location (provider-refresh.ts:22, not llm-config); key flow = PRESEED_PROVIDER_KEYS → settings.providerKeys (merge never overwrites user keys) → per-request attach (browser-direct default for keyed).
+  · Research (r30-2, worklog above): /v1/models KEYLESS-200 (407 ids default group) → keyOptional:true; rich keyless catalog /api/v1/models (852 rows: numeric USD pricing, types:"llm" string, context_length, retire_stage, ETag); live quota config /call/free_quota_config (5 RPM/100 req/1M tok/day, minute_limit 10 + weight_map 1-10, trial 10 calls, $1 paid threshold); router model:"auto" verdict (usable lane, bills at resolved model, session stickiness); free ids silently skipped in fallback lists → relay must self-failover; backup domain api.inferera.com byte-identical. → docs/research/aihubmix-r30.md
+- IMPLEMENTED (8 files):
+  · providers.ts: aihubmix FREE_PROVIDERS entry (featured; glyph ⬢; 14 curated models: 8 free coding/reasoning lanes + router auto + 5 frontier with verified pricing; 5-step guide; honest limits string).
+  · provider-refresh.ts: KEYED_ENDPOINTS.aihubmix {shape openai, keyOptional:true} → roster refresh works keyless AND keyed.
+  · relay.ts: ARENA_CATALOG.aihubmix — 12 hops (opus-5 0.988 … nemotron-ultra-free 0.895); free lanes tier-2 → join the vault-keyed fallback chain.
+  · constants.ts: PRESEED_PROVIDER_KEYS.aihubmix (user-supplied sk- key, coding-glm-5.3-free preselected) + AIHUBMIX_INTRO_FLAG.
+  · tracker-sources.ts: fetchAihubmix() Tier-A KEYLESS (types.includes("llm") filter, NON_TEXT_RE, retire_stage≠active skipped, free = pricing 0/0, model_name → displayName) + TRACKER_SOURCES entry (authoritative).
+  · tracker-types.ts: TRACKER_PROVIDER_META.aihubmix.
+  · shell.tsx: one-time intro toast (does NOT switch the active brain — informational, unlike vyce r18).
+  · docs/free-provider-matrix.md: AIHubMix row.
+- QA (agent-browser + curl, all live):
+  · Intro toast fired on load ("AIHubMix added — 45 free model lanes").
+  · Model picker: full AIHubMix group (GLM 5.3/Kimi K3/MiMo/Nemotron/Hy3 free lanes, Router auto, Claude Sonnet 5, GPT-5.6 Luna…); per-chat pin aihubmix::coding-glm-5.3-free set cleanly.
+  · LIVE ROUND PROOF: pinned aihubmix lane → aihubmix 429 → retry 403 ("reached the limit of the free model quota… topup" — account's trial/free budget exhausted, key VALID) → MODEL RELAY AUTO-ROTATED to Vyce → 200, DeepSeek V4.1 answered honestly. The r29 failover doctrine handled the new provider's budget wall with zero code changes.
+  · Direct key probe (single call, user-supplied key): quota-exhausted business error, not auth failure → documented; $1 top-up at console.aihubmix.com/topup re-arms the free lanes.
+  · Tracker force sync: aihubmix source ok 403 models baselined (baseline-first, 0 events — no false alerts); radar Models tab shows aihubmix · 403 health chip + AIHubMix free lanes with FREE badges/$0/$0/ctx in watched table (All 160, Free 74).
+  · Relay roster (Settings): aihubmix hops listed with tier/elo (coding-glm-5.3-free T2 Elo 0.91); provider gallery card renders ("no card" chip).
+  · lint clean, tsc clean, dev.log no errors, page HTTP 200.
+
+Stage Summary:
+- Shipped: AIHubMix end-to-end — provider registry + relay chain + picker + preseeded vault key + keyless tracker source (403 models) + gallery/intro. Free-lane quota exhaustion on this account is honestly surfaced and the relay already fails over gracefully; a $1 top-up re-arms 45 free lanes + unlocks frontier at list price.
+- Design notes kept: aihubmix left keyOptional (roster refresh works pre-key); free ids never used as relay fallback targets (platform skips them silently — our rotation is heavy→light tier order); router "auto" shipped as a picker lane, not a relay hop (non-determinism).
+- Next candidates: APP-Code header support (10% off non-Claude), reasoning_effort passthrough for thinking models, relay health chip for aihubmix quota state (429-aware backoff), Kilo/OpenCode-Zen gateways from the r18 matrix as future providers.

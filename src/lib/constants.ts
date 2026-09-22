@@ -24,10 +24,19 @@ export const PRESEED_PROVIDER_KEYS: Record<string, ProviderKeyEntry> = {
     key: "sk_6irvUWDd8292cklHVE3qir6dGl6tBPxW",
     model: "openai-fast",
   },
+  // AIHubMix (r30): 45 live $0 lanes + frontier at list price; coding GLM 5.3
+  // preselected (1M ctx, tools). Free budget: 5 RPM / 100 req / 1M tok per day.
+  aihubmix: {
+    key: "sk-GlU6TNazMnKBlASg26E36a0d914f4fF88a41F14fD08fFcA0",
+    model: "coding-glm-5.3-free",
+  },
 };
 
 /** localStorage flag so the one-time "Vyce is here" intro toast fires once. */
 export const VYCE_INTRO_FLAG = "praison-vyce-intro";
+
+/** localStorage flag for the one-time "AIHubMix joined the vault" intro toast (r30). */
+export const AIHUBMIX_INTRO_FLAG = "praison-aihubmix-intro";
 
 export const AUTO_MODEL = {
   id: "auto",

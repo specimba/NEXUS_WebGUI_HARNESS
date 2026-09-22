@@ -1,7 +1,7 @@
 // ─── Free/New Model Tracker — source fetchers (r28) ──────────────────────────
 // Server-side only. Every URL here is a FIXED, allowlisted constant (no user
 // input flows into fetch), so no SSRF surface. Sources are tiered:
-//   • Tier A keyless always-on: OpenRouter, OrcaRouter, Pollinations
+//   • Tier A keyless always-on: OpenRouter, OrcaRouter, AIHubMix, Pollinations
 //   • Tier A "signal" (noisy, stored but never ticker-alerted): HuggingFace
 //   • Tier B key-authed-when-key-travels: Vyce (BYOK — key sent per-request
 //     by the client from the vault, never persisted server-side)
@@ -196,7 +196,52 @@ async function fetchVyce(key: string): Promise<TrackerRow[]> {
   return out;
 }
 
+// ── AIHubMix: keyless rich catalog — ~850 rows, USD pricing, lifecycle ──────
+// r30 (docs/research/aihubmix-r30.md): /api/v1/models is the SPA's public
+// catalog (300s cache + ETag): model_id / model_name / pricing{input,output}
+// numeric USD-per-1M / context_length / types ("llm") / retire_stage. `types`
+// is a STRING (not array); rows without "llm" are OCR/TTS/image/video lanes.
+interface AhmModel {
+  model_id?: string;
+  model_name?: string;
+  context_length?: number;
+  pricing?: { input?: number; output?: number };
+  types?: string;
+  retire_stage?: string;
+}
+
+async function fetchAihubmix(): Promise<TrackerRow[]> {
+  const data = (await getJson("https://aihubmix.com/api/v1/models")) as { data?: AhmModel[] };
+  const out: TrackerRow[] = [];
+  for (const m of data.data ?? []) {
+    const id = m.model_id;
+    if (typeof id !== "string" || !id) continue;
+    if (NON_TEXT_RE.test(id)) continue;
+    // types is a plain string — keep only true LLM lanes ("image_generation,llm"
+    // hybrids stay: they chat). Empty types = unverifiable lane → skip.
+    if (!m.types || !m.types.includes("llm")) continue;
+    // Lifecycle: never track rows already leaving the catalog.
+    if (m.retire_stage && m.retire_stage !== "active") continue;
+    const pin = typeof m.pricing?.input === "number" ? m.pricing.input : undefined;
+    const pout = typeof m.pricing?.output === "number" ? m.pricing.output : undefined;
+    out.push({
+      key: `aihubmix::${id}`,
+      providerId: "aihubmix",
+      modelId: id,
+      displayName: m.model_name ?? undefined,
+      contextWindow: typeof m.context_length === "number" ? m.context_length : undefined,
+      priceIn: pin,
+      priceOut: pout,
+      free: pin === 0 && pout === 0,
+      meta: { retire_stage: m.retire_stage ?? null },
+    });
+  }
+  if (out.length === 0) throw new Error("empty catalog");
+  return out;
+}
+
 export const TRACKER_SOURCES = {
+  aihubmix: { label: "AIHubMix", authoritative: true, run: fetchAihubmix },
   openrouter: { label: "OpenRouter", authoritative: true, run: fetchOpenRouter },
   orcarouter: { label: "OrcaRouter", authoritative: true, run: fetchOrcaRouter },
   pollinations: { label: "Pollinations", authoritative: true, run: fetchPollinations },

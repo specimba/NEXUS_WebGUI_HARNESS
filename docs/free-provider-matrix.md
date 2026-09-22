@@ -197,3 +197,20 @@
 - chutes.ai community announcement (Feb 27, 2026, search snippet only — page unreachable)
 
 **Project-internal:** `src/lib/providers.ts` (registry ids/limits), `worklog.md` r14/r15 (sandbox geo-blocks Groq/Cerebras; freellm.sh + live-catalog wiring).
+
+---
+
+## r30 addition — AIHubMix (aihubmix.com) — ✅ verified live 2026-09-22 (keyless probes; docs/research/aihubmix-r30.md)
+
+| Field | Value |
+|---|---|
+| Auth | Static key `sk-…` (console.aihubmix.com) · Bearer · per-key model allowlist/spend-cap/expiry |
+| Base URL | `https://aihubmix.com/v1` (alias `api.aihubmix.com`, backup `https://api.inferera.com/v1` — byte-identical probes) |
+| API style | Vanilla OpenAI wire + SSE; `max_tokens` and `max_completion_tokens` both accepted; `top_k`, `verbosity`, `reasoning_effort` (none…xhigh) extras; Anthropic native lane at `/v1/messages` |
+| Free tier | **45 live $0 chat lanes** (`pricing 0/0`, active) — no card; fresh accounts get 10 trial calls pre-top-up |
+| Free limits | Per account: 5 req/min · 100 req/day · 1M tok/day — LIVE config at keyless `GET /call/free_quota_config` (minute_limit 10 with per-model weight_map 1–10; docs say read the endpoint, don't memorize) |
+| Frontier | claude-opus-5 $5/$25 · claude-sonnet-5 $2/$10 · gpt-5.6-luna $0.20/$1.20 · gemini-3.6-flash $1.50/$7.50 · grok-4.5 $2/$6 · qwen3.8-max $1.69/$5.07 · deepseek-v4-flash $0.142/$0.284 (budget) · glm-5.3-flash $0.11/$0.39 · kimi-k3 $3/$15 — all 1M ctx class |
+| Router | `model:"auto"` (auto:balanced/quality_first/latency_critical) on chat+images; resolution observable via `x-aihubmix-router-resolved-model` headers; billed at resolved model; no surcharge; session stickiness via `X-Aihubmix-Session-Id` |
+| Quirks | Free ids are silently SKIPPED in key-level fallback lists (free may only be primary); retired id → 404 `model_retired`, removed → 410; RFC 9745 Deprecation + Sunset headers; catalog rotates ~20 models/month; `APP-Code` header = 10% off non-Claude |
+| Tracker | Keyless Tier-A: `GET /api/v1/models` (852 rows, numeric pricing, `types:"llm"` string, `retire_stage`, ETag) + `/call/free_quota_config` + `/api/router/leaderboard` |
+| In registry | ✅ `aihubmix` (r30) — providers.ts + KEYED_ENDPOINTS (keyOptional:true) + ARENA_CATALOG (12 hops) + PRESEED key (coding-glm-5.3-free) + tracker source |

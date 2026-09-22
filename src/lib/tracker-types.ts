@@ -64,6 +64,7 @@ export const TRACKER_SYNC_TTL_MS = 4 * 60 * 60_000;
 /** Provider display metadata for tracker rows (glyphs shared with the relay). */
 export const TRACKER_PROVIDER_META: Record<string, { label: string; glyph: string }> = {
   vyce: { label: "Vyce AI", glyph: "◈" },
+  aihubmix: { label: "AIHubMix", glyph: "⬢" },
   orcarouter: { label: "OrcaRouter", glyph: "🐋" },
   openrouter: { label: "OpenRouter", glyph: "🛰" },
   pollinations: { label: "Pollinations", glyph: "🌻" },
