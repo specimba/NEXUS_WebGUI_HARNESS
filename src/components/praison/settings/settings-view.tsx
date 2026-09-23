@@ -560,15 +560,19 @@ export function SettingsView() {
                   </p>
                   <div className="rounded-lg border px-3 py-2 text-xs leading-relaxed text-muted-foreground">
                     <p>
-                      A <span className="font-medium text-foreground">webDevReview</span> agent
-                      loop runs every <span className="font-medium text-foreground">30 minutes</span> at
-                      :13 / :43 (staggered off the busy :00/:15/:30/:45 tops so heavy runs never
-                      overlap — the fix for the platform's “exec limits exceeded” auto-disable).
+                      A <span className="font-medium text-foreground">web dev review</span> agent
+                      loop runs <span className="font-medium text-foreground">hourly at :21</span>{" "}
+                      (staggered off the busy :00/:15/:30/:45 tops) with the full review prompt:
+                      worklog → browser QA → fixes or features → handover update.
                     </p>
                     <p className="mt-1.5">
-                      Platform cron jobs are <span className="font-medium text-foreground">session-scoped</span>:
-                      after a sandbox gap the dashboard can show zero automation even though the app
-                      is healthy. The standing doctrine: <span className="font-medium text-foreground">cron list first, then delete + recreate staggered</span>.
+                      Finding from r34: the platform exec-limits the{" "}
+                      <span className="font-medium text-foreground">webDevReview job class</span>{" "}
+                      itself after the cumulative 15-min runs of earlier rounds — any new
+                      webDevReview cron is born disabled (“exec limits exceeded”), while an
+                      agentTurn loop carrying the identical instructions stays enabled. Platform
+                      cron jobs are also <span className="font-medium text-foreground">session-scoped</span>:
+                      after a sandbox gap, <span className="font-medium text-foreground">cron list first, then recreate staggered</span>.
                     </p>
                   </div>
                 </div>
