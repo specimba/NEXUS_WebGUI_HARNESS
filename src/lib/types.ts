@@ -224,9 +224,46 @@ export interface WorkflowStep {
   instruction?: string;
   /** "review" steps audit the previous step's output and can force a rework. */
   kind?: StepKind;
+  /**
+   * r35 GEPA-inspired prompt evolution: instruction variants for this step
+   * with empirical win rates. The runner picks pinned → best-scoring →
+   * authored; rework/failure outcomes evolve new variants automatically.
+   */
+  promptVariants?: PromptVariant[];
+  /** Explicitly pinned variant (beats score-based selection). */
+  pinnedVariantId?: string;
+  /**
+   * r35 reasoning-effort for this step, forwarded to OpenAI-compatible
+   * custom lanes as `reasoning_effort` (the built-in lane ignores it).
+   * Missing = provider default.
+   */
+  reasoningEffort?: ReasoningEffort;
 }
 
 export type StepKind = "generate" | "review";
+
+export type ReasoningEffort = "minimal" | "low" | "medium" | "high";
+
+/**
+ * r35 prompt-evolution variant (GEPA doctrine, local-first): one concrete
+ * instruction candidate for a step plus its empirical record. Wins = the
+ * step finished without a rework verdict; reworks/fails count against it.
+ */
+export interface PromptVariant {
+  id: string;
+  instruction: string;
+  /** "authored" = the user's original text · "evolved" = generated from feedback. */
+  origin: "authored" | "evolved";
+  /** For evolved variants: what changed and why (≤160 chars, shown in the editor). */
+  note?: string;
+  runs: number;
+  wins: number;
+  reworks: number;
+  fails: number;
+  createdAt: number;
+  /** Run/review feedback that produced this variant (evolved only). */
+  from?: string;
+}
 
 export interface WorkflowRunStep {
   stepId: string;
@@ -264,6 +301,10 @@ export interface WorkflowRunStep {
    * gate-skips.
    */
   llmCalls?: LlmCallTrace[];
+  /** r35: prompt variant used for this step (outcome attribution). */
+  variantId?: string;
+  /** r35: reasoning effort requested for this step (mirrors the definition). */
+  reasoningEffort?: ReasoningEffort;
 }
 
 /** Classified cause of a failed run — drives the recovery card's copy. */
@@ -390,6 +431,12 @@ export interface WorkflowRun {
   suiteCaseId?: string;
   /** Suite result row this run belongs to (groups repeats together). */
   suiteRunId?: string;
+  /**
+   * r35 branch-from-step-k: set when this run was branched from an earlier
+   * run — the original row stays untouched, steps before the branch point
+   * are copied verbatim. Powers the “branched” chip + compare flows.
+   */
+  branchOf?: { runId: string; fromStepIndex: number };
 }
 
 export interface Workflow {

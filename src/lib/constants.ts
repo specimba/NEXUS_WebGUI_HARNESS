@@ -444,3 +444,13 @@ export const DREAM_DELAY_MS = 45_000;
 export const DREAM_MAX_ADD = 2;
 /** Max chars per distilled lesson (dreams are hints, even shorter than run lessons). */
 export const DREAM_LESSON_MAX_CHARS = 220;
+
+// ─── Prompt evolution (r35, GEPA doctrine: prompts mutate from feedback) ─────
+/** Variants kept per step (authored + evolved, worst-dropped when full). */
+export const MAX_PROMPT_VARIANTS = 4;
+/** Minimum gap between automatic evolutions of the same step. */
+export const EVOLVE_COOLDOWN_MS = 10 * 60_000;
+/** Delay after a rework/failure before the evolution pass fires. */
+export const EVOLVE_DELAY_MS = 20_000;
+/** Max chars for an evolved instruction (a focus hint, never a novel). */
+export const VARIANT_INSTRUCTION_MAX_CHARS = 400;

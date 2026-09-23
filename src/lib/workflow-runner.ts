@@ -26,6 +26,11 @@ import {
 } from "@/lib/stores";
 import { REWORK_LIMIT, LESSON_MAX_CHARS, MAX_LESSONS } from "@/lib/constants";
 import { scheduleDream } from "@/lib/dream";
+import {
+  pickVariantForRun,
+  recordVariantOutcome,
+  scheduleEvolution,
+} from "@/lib/prompt-evolution";
 import type {
   Agent,
   LlmCallTrace,
@@ -71,6 +76,12 @@ export interface ExecuteRunOptions {
    * When set, `task` is ignored (the run's original task is reused).
    */
   resume?: { runId: string; fromStepIndex: number };
+  /**
+   * r35 branch-from-step-k: clone a finished run as a NEW row — steps before
+   * the branch point keep their outputs verbatim, the original row stays
+   * untouched (compare + history integrity). Mutually exclusive with `resume`.
+   */
+  branch?: { fromRunId: string; fromStepIndex: number };
 }
 
 // ─── Failure classification (powers the non-silent recovery card) ───────────
@@ -299,6 +310,32 @@ export async function executeWorkflowRun(
       steps,
       resumeCount: (run.resumeCount ?? 0) + 1,
     });
+  } else if (options.branch) {
+    // ─── r35 branch-from-step-k: the original row is NEVER touched ─────────
+    const source = wf.runs.find((r) => r.id === options.branch!.fromRunId);
+    if (!source || source.status === "running") return null;
+    startIndex = Math.min(
+      Math.max(0, options.branch.fromStepIndex),
+      source.steps.length - 1
+    );
+    steps = source.steps.map((s, i) =>
+      i >= startIndex
+        ? { ...s, output: "", toolCalls: [], status: "running" as const, ms: undefined, verdict: undefined, reworked: undefined }
+        : { ...s, status: "done" as const }
+    );
+    runId = uid("run");
+    task = source.task;
+    store.addRun(wf.id, {
+      id: runId,
+      workflowId: wf.id,
+      workflowName: wf.name,
+      task,
+      status: "running",
+      startedAt: Date.now(),
+      steps,
+      schemaVersion: 2,
+      branchOf: { runId: source.id, fromStepIndex: startIndex },
+    });
   } else {
     if (options.task.trim() === "") return null;
     runId = uid("run");
@@ -373,6 +410,10 @@ export async function executeWorkflowRun(
       patchRunStep(steps[j].stepId, { status: "stopped", output: "" });
     }
   };
+
+  // r35 prompt evolution: which variant ran each step index (outcome +
+  // rework attribution). Indexed parallel to `steps`; set at generate start.
+  const variantIds: (string | undefined)[] = new Array(steps.length);
 
   const finish = (
     status: WorkflowRun["status"],
@@ -469,6 +510,14 @@ export async function executeWorkflowRun(
       runId,
       kind,
     });
+    // r35 prompt evolution: the failing variant takes the loss and (unless the
+    // step died for non-prompt reasons like a deleted agent) feeds one
+    // mutation pass — scheduled, rate-limited, never blocking the run UI.
+    const failedVariantId = variantIds[failedIndex];
+    recordVariantOutcome(wf.id, step.stepId, failedVariantId, "fail");
+    if (!/was deleted/.test(err.message)) {
+      scheduleEvolution(wf.id, step.stepId, err.message, { silent: source === "suite" });
+    }
     stopRemaining(failedIndex);
     finish("error", `Step "${step.label}" failed`, info);
   };
@@ -489,7 +538,8 @@ export async function executeWorkflowRun(
     runStep: WorkflowRunStep,
     agentId: string,
     system: string,
-    context: string
+    context: string,
+    opts?: { reasoningEffort?: WorkflowRunStep["reasoningEffort"] }
   ): Promise<{ content: string; ms: number }> => {
     const agent = useAgentsStore.getState().agents.find((a) => a.id === agentId);
     if (!agent) throw new Error(`Agent for step "${runStep.label}" not found`);
@@ -551,6 +601,7 @@ export async function executeWorkflowRun(
             system,
             messages: [{ role: "user", content: context }],
             ...(relayHops.length > 0 ? { relay: relayHops } : {}),
+            ...(opts?.reasoningEffort ? { reasoningEffort: opts.reasoningEffort } : {}),
             signal,
           },
           {
@@ -710,10 +761,27 @@ export async function executeWorkflowRun(
       const kind = def?.kind ?? "generate";
       // Authored steps take their instruction from the definition; synthetic
       // depth passes (no def) carry their appended focus on the run row itself.
-      const instruction = def ? def.instruction : step.instruction;
+      // r35 prompt evolution: an authored GENERATE step with variants runs its
+      // pinned/best-scoring variant instead of the raw authored text — the
+      // run step is tagged with the variant id for outcome attribution.
+      // Review gates keep their authored instruction (their verdicts drive
+      // evolution of the step they audit, not of themselves).
+      const variant =
+        def && kind !== "review" ? pickVariantForRun(def) : null;
+      if (variant) variantIds[i] = variant.id;
+      const instruction = def
+        ? variant?.instruction ?? def.instruction
+        : step.instruction;
       const baseSystem = instruction
         ? `${useAgentsStore.getState().agents.find((a) => a.id === step.agentId)?.instructions ?? ""}\n\nFOCUS FOR THIS STEP: ${instruction}`
         : useAgentsStore.getState().agents.find((a) => a.id === step.agentId)?.instructions ?? "";
+      // r35: mirror the definition's knobs onto the run row (chips + engine).
+      if (variant || def?.reasoningEffort) {
+        patchRunStep(step.stepId, {
+          ...(variant ? { variantId: variant.id } : {}),
+          ...(def?.reasoningEffort ? { reasoningEffort: def.reasoningEffort } : {}),
+        });
+      }
 
       const agentRow = useAgentsStore
         .getState()
@@ -776,6 +844,12 @@ export async function executeWorkflowRun(
               runId,
               kind: "rework",
             });
+            // r35 prompt evolution: the reworked variant takes the rework
+            // penalty and feeds one scheduled mutation pass from the verdict.
+            recordVariantOutcome(wf.id, reviewed.stepId, variantIds[i - 1], "rework");
+            scheduleEvolution(wf.id, reviewed.stepId, feedback, {
+              silent: source === "suite",
+            });
             patchRunStep(step.stepId, {
               status: "done",
               output: feedback,
@@ -797,8 +871,18 @@ export async function executeWorkflowRun(
               return runId;
             }
             const reviewedDef = wf.steps.find((s) => s.id === reviewed.stepId);
-            const genBase = reviewedDef?.instruction
-              ? `${genAgent.instructions}\n\nFOCUS FOR THIS STEP: ${reviewedDef.instruction}`
+            // r35: rework regeneration mutates the SAME instruction that
+            // produced the rejected output (variant or authored), so the
+            // reviewer feedback lands on the prompt that needs fixing.
+            // (variantIds[i-1] is unset when resuming INTO a review gate —
+            // the persisted run row carries the original attribution.)
+            const reviewedVariant = reviewedDef?.promptVariants?.find(
+              (v) => v.id === (variantIds[i - 1] ?? reviewed.variantId)
+            );
+            const effReviewedInstruction =
+              reviewedVariant?.instruction ?? reviewedDef?.instruction;
+            const genBase = effReviewedInstruction
+              ? `${genAgent.instructions}\n\nFOCUS FOR THIS STEP: ${effReviewedInstruction}`
               : genAgent.instructions;
             const reworkSystem = `${genBase}\n\nREWORK REQUIRED — your previous attempt was rejected by the review gate. Reviewer feedback: ${feedback}\nAddress every point and deliver an improved result.`;
 
@@ -890,7 +974,11 @@ export async function executeWorkflowRun(
           }
           // FAIL / uncertain / no judge available → run the full verification pass.
         }
-        const { content } = await streamStep(step, step.agentId, baseSystem, context);
+        const { content } = await streamStep(step, step.agentId, baseSystem, context, {
+          reasoningEffort: def?.reasoningEffort,
+        });
+        // r35: a clean completion is a data point for the variant that ran.
+        recordVariantOutcome(wf.id, step.stepId, variant?.id, "win");
         prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(content) || undefined, output: content });
       } catch (err) {
         if (isAbortError(err)) {

@@ -8,7 +8,7 @@
 // (ms / status / toolCalls / llmCalls) was already persisted by the runner.
 
 import * as React from "react";
-import { FastForward, Pause, Play, Radio } from "lucide-react";
+import { FastForward, GitFork, Pause, Play, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fmtMs } from "@/lib/helpers";
 import type { WorkflowRun, WorkflowRunStep } from "@/lib/types";
@@ -39,6 +39,8 @@ export function RunReplayTimeline({
   onScrub,
   playing,
   onPlayingChange,
+  onBranchFrom,
+  branchBusy,
 }: {
   run: WorkflowRun;
   /** null = live view (all steps); number = last visible step index. */
@@ -46,6 +48,9 @@ export function RunReplayTimeline({
   onScrub: (idx: number | null) => void;
   playing: boolean;
   onPlayingChange: (playing: boolean) => void;
+  /** r35: branch the run from step k+1 as a NEW run (k = current playhead). */
+  onBranchFrom?: (fromStepIndex: number) => void;
+  branchBusy?: boolean;
 }) {
   const steps = run.steps;
   const totalMs =
@@ -100,6 +105,26 @@ export function RunReplayTimeline({
           )}
         </span>
         <span className="flex-1" />
+        {/* r35 branch entry: scrubbed to step k (< last) → re-run from k+1 as a
+            NEW run — the original row stays untouched, k+1's inputs reused. */}
+        {onBranchFrom && playhead != null && playhead < lastIdx ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={branchBusy}
+            className="h-7 gap-1.5 rounded-md px-2 text-[11px] text-violet-500 transition-colors hover:bg-violet-500/10 hover:text-violet-400 dark:text-violet-400"
+            aria-label={`Branch the run from step ${playhead + 2} as a new run`}
+            title={`Re-run from step ${playhead + 2} as a NEW run — the original stays untouched; steps 1–${playhead + 1} are reused verbatim`}
+            onClick={() => {
+              onPlayingChange(false);
+              onBranchFrom(playhead + 1);
+            }}
+          >
+            <GitFork className="h-3.5 w-3.5" />
+            Branch from step {playhead + 2}
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="ghost"
@@ -185,7 +210,7 @@ export function RunReplayTimeline({
               "relative min-w-[10px] rounded-[3px] transition-all hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400",
               i <= (playhead ?? lastIdx) ? SEGMENT_COLOR[s.status] : SEGMENT_COLOR_SOFT[s.status],
               i === current && playhead != null
-                ? "ring-2 ring-violet-400 ring-offset-1 ring-offset-background"
+                ? "ring-2 ring-violet-400 ring-offset-1 ring-offset-background shadow-[0_0_10px_-1px_rgba(167,139,250,0.65)]"
                 : ""
             )}
             // duration-proportional growth (sqrt damps long tails; floored so

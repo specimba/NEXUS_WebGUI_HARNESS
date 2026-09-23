@@ -46,6 +46,8 @@ export interface RunAgentParams {
   relay?: { baseUrl?: string; apiKey?: string; model: string; label?: string; useAuto?: boolean }[];
   /** r34 harness knob: mid-answer stall resumes allowed for this turn (0-3). */
   stallResumes?: number;
+  /** r35 per-step reasoning effort — forwarded to OpenAI-compatible custom lanes. */
+  reasoningEffort?: "minimal" | "low" | "medium" | "high";
   signal?: AbortSignal;
   /** Force the legacy server transport (used after a browser-direct CORS death). */
   forceServer?: boolean;
@@ -148,6 +150,7 @@ async function runBrowserDirect(
     messages: params.messages,
     tools: params.tools ?? [],
     ...(typeof params.stallResumes === "number" ? { stallResumes: params.stallResumes } : {}),
+    ...(params.reasoningEffort ? { reasoningEffort: params.reasoningEffort } : {}),
     ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
     ...(params.relay && params.relay.length > 0
       ? { relay: params.relay as RelayWireHop[] }
@@ -264,6 +267,7 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
         messages: params.messages,
         tools: params.tools ?? [],
         ...(typeof params.stallResumes === "number" ? { stallResumes: params.stallResumes } : {}),
+        ...(params.reasoningEffort ? { reasoningEffort: params.reasoningEffort } : {}),
         ...(params.relay && params.relay.length > 0 ? { relay: params.relay } : {}),
         ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
       }),

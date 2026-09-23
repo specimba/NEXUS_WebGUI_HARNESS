@@ -8,6 +8,8 @@ import {
   GripVertical,
   Loader2,
   MoonStar,
+  Pin,
+  PinOff,
   Plus,
   Sparkles,
   Trash2,
@@ -43,11 +45,16 @@ import {
   useSettingsStore,
   useWorkflowsStore,
 } from "@/lib/stores";
-import type { PipelineDepth, RunLesson, StepKind, Workflow, WorkflowStep } from "@/lib/types";
+import type { PipelineDepth, PromptVariant, ReasoningEffort, RunLesson, StepKind, Workflow, WorkflowStep } from "@/lib/types";
 import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
 import { DREAM_MIN_RUNS, DREAM_COOLDOWN_MS } from "@/lib/constants";
+import {
+  evolveStepPrompt,
+  variantScore,
+  variantWinRate,
+} from "@/lib/prompt-evolution";
 import { dreamDue, runDream } from "@/lib/dream";
 import { cn } from "@/lib/utils";
 
@@ -157,6 +164,124 @@ export function WorkflowEditorDialog({
 
   const removeStep = (id: string) => {
     setSteps((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  // ─── r35 prompt-evolution controls (store-first, draft mirrored) ──────────
+  // Variant state is EMPIRICAL (scores accumulate across runs), so pin/delete
+  // write through to the store immediately; the local draft mirrors the change
+  // so a later save can't clobber it with a stale copy.
+
+  const writeStepToStore = (stepId: string, patch: Partial<WorkflowStep>) => {
+    if (!workflow) return;
+    const live = useWorkflowsStore
+      .getState()
+      .workflows.find((w) => w.id === workflow.id);
+    if (!live) return;
+    updateWf(workflow.id, {
+      steps: live.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s)),
+    });
+  };
+
+  const pinVariant = (stepId: string, variantId: string | null) => {
+    setSteps((prev) =>
+      prev.map((s) =>
+        s.id === stepId
+          ? { ...s, pinnedVariantId: variantId ?? undefined }
+          : s
+      )
+    );
+    writeStepToStore(stepId, { pinnedVariantId: variantId ?? undefined });
+    toast.success(variantId ? "Variant pinned" : "Variant unpinned", {
+      description: variantId
+        ? "Runs will always use this instruction until you unpin it."
+        : "Runs pick the best-scoring variant automatically again.",
+    });
+  };
+
+  const deleteVariant = (stepId: string, variantId: string) => {
+    if (!workflow) return;
+    const live = useWorkflowsStore
+      .getState()
+      .workflows.find((w) => w.id === workflow.id);
+    const liveStep = live?.steps.find((s) => s.id === stepId);
+    const variants = (liveStep?.promptVariants ?? []).filter(
+      (v) => v.id !== variantId
+    );
+    setSteps((prev) =>
+      prev.map((s) =>
+        s.id === stepId
+          ? {
+              ...s,
+              promptVariants: variants,
+              ...(s.pinnedVariantId === variantId
+                ? { pinnedVariantId: undefined }
+                : {}),
+            }
+          : s
+      )
+    );
+    writeStepToStore(stepId, {
+      promptVariants: variants,
+      ...(liveStep?.pinnedVariantId === variantId
+        ? { pinnedVariantId: undefined }
+        : {}),
+    });
+  };
+
+  /** Most recent concrete feedback for a step (error message or rework verdict). */
+  const latestStepFeedback = React.useCallback(
+    (stepId: string): string | null => {
+      if (!workflow) return null;
+      for (const run of [...workflow.runs].reverse()) {
+        if (run.error?.stepId === stepId) {
+          return `${run.error.kind} error: ${run.error.message}`;
+        }
+        const idx = run.steps.findIndex((s) => s.stepId === stepId);
+        if (idx !== -1 && run.steps[idx].reworked) {
+          const gate = run.steps[idx + 1];
+          if (gate?.kind === "review" && gate.output.trim()) {
+            return `review gate sent it back: ${gate.output.trim()}`;
+          }
+        }
+      }
+      return null;
+    },
+    [workflow]
+  );
+
+  const [evolvingStepId, setEvolvingStepId] = React.useState<string | null>(
+    null
+  );
+  const evolveVariant = async (stepId: string) => {
+    if (!workflow) return;
+    const feedback = latestStepFeedback(stepId);
+    if (!feedback) {
+      toast.error("No feedback to evolve from yet", {
+        description:
+          "Run the pipeline once — a failure or a review-gate rework gives the evolver something concrete to fix.",
+      });
+      return;
+    }
+    setEvolvingStepId(stepId);
+    const created = await evolveStepPrompt(workflow.id, stepId, feedback);
+    setEvolvingStepId(null);
+    if (!created) {
+      toast.error("Evolution didn't produce a usable variant");
+      return;
+    }
+    setSteps((prev) =>
+      prev.map((s) => {
+        if (s.id !== stepId) return s;
+        const live = useWorkflowsStore
+          .getState()
+          .workflows.find((w) => w.id === workflow.id)
+          ?.steps.find((x) => x.id === stepId);
+        return { ...s, promptVariants: live?.promptVariants ?? s.promptVariants };
+      })
+    );
+    toast.success("New variant ready", {
+      description: created.note ?? "It runs next time; the table decides if it stays.",
+    });
   };
 
   const moveStep = (index: number, dir: -1 | 1) => {
@@ -632,6 +757,39 @@ export function WorkflowEditorDialog({
                         Produces output for the next step
                       </span>
                     )}
+
+                    {/* r35: per-step reasoning effort — forwarded as
+                        reasoning_effort to OpenAI-compatible custom lanes. */}
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <span className="text-[11px] text-muted-foreground" title="Applies to custom-provider (OpenAI-compatible) lanes; the built-in lane ignores it">
+                        Reasoning
+                      </span>
+                      <Select
+                        value={step.reasoningEffort ?? "default"}
+                        onValueChange={(v) =>
+                          patchStep(step.id, {
+                            reasoningEffort:
+                              v === "default"
+                                ? undefined
+                                : (v as ReasoningEffort),
+                          })
+                        }
+                      >
+                        <SelectTrigger
+                          aria-label={`Reasoning effort for step ${i + 1}`}
+                          className="h-7 w-[104px] text-[11px]"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Provider default</SelectItem>
+                          <SelectItem value="minimal">Minimal</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <Collapsible>
@@ -668,6 +826,142 @@ export function WorkflowEditorDialog({
                       </p>
                     </CollapsibleContent>
                   </Collapsible>
+
+                  {/* r35 prompt evolution (GEPA doctrine): instruction variants
+                      with empirical win rates; evolve from real feedback. */}
+                  {(step.kind ?? "generate") === "generate" ? (
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                          <span aria-hidden>🧬</span>
+                          Prompt variants
+                          {(step.promptVariants?.length ?? 0) > 0 ? (
+                            <span className="text-violet-400">
+                              · {step.promptVariants?.length}
+                              {step.pinnedVariantId ? " · pinned" : ""}
+                            </span>
+                          ) : null}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-2 pt-2">
+                        {(step.promptVariants?.length ?? 0) === 0 ? (
+                          <p className="rounded-lg border bg-muted/30 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                            No variants yet. The runner snapshots one when this step
+                            fails or a review gate sends it back, then mutates the
+                            instruction from that feedback — variants compete on
+                            clean-pass rate and the best one runs automatically.
+                          </p>
+                        ) : (
+                          <ul className="space-y-1.5">
+                            {(step.promptVariants ?? []).map((v: PromptVariant) => {
+                              const pinned = step.pinnedVariantId === v.id;
+                              return (
+                                <li
+                                  key={v.id}
+                                  className={cn(
+                                    "rounded-lg border px-2.5 py-2 transition-colors",
+                                    pinned
+                                      ? "border-violet-500/50 bg-violet-500/[0.07]"
+                                      : "bg-background/60"
+                                  )}
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <div className="min-w-0 flex-1 space-y-1">
+                                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
+                                        <span
+                                          className={cn(
+                                            "rounded-full border px-1.5 py-0",
+                                            v.origin === "authored"
+                                              ? "border-border text-muted-foreground"
+                                              : "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400"
+                                          )}
+                                        >
+                                          {v.origin === "authored" ? "authored" : "evolved"}
+                                        </span>
+                                        {pinned ? (
+                                          <span className="inline-flex items-center gap-0.5 rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0 text-violet-500 dark:text-violet-400">
+                                            <Pin className="h-2.5 w-2.5" aria-hidden />
+                                            pinned
+                                          </span>
+                                        ) : null}
+                                        <span className="tabular-nums text-muted-foreground">
+                                          {v.runs} run{v.runs === 1 ? "" : "s"}
+                                          {" · "}
+                                          {Math.round(variantWinRate(v) * 100)}% clean
+                                          {v.reworks > 0 ? ` · ${v.reworks} rework` : ""}
+                                          {v.fails > 0 ? ` · ${v.fails} fail` : ""}
+                                        </span>
+                                      </div>
+                                      <p className="break-words text-[11px] leading-relaxed text-foreground/90">
+                                        {v.instruction}
+                                      </p>
+                                      {v.note ? (
+                                        <p className="text-[10.5px] italic leading-relaxed text-muted-foreground">
+                                          {v.note}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                    <div className="flex shrink-0 flex-col gap-0.5">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-muted-foreground hover:text-violet-400"
+                                        aria-label={pinned ? `Unpin variant for step ${i + 1}` : `Pin variant for step ${i + 1}`}
+                                        title={pinned ? "Unpin — back to score-based selection" : "Pin — always run this variant"}
+                                        onClick={() => pinVariant(step.id, pinned ? null : v.id)}
+                                      >
+                                        {pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                                        aria-label={`Delete variant for step ${i + 1}`}
+                                        title="Delete this variant"
+                                        onClick={() => deleteVariant(step.id, v.id)}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[10.5px] leading-relaxed text-muted-foreground">
+                            {latestStepFeedback(step.id)
+                              ? "Evolve now mutates this step's instruction from its latest failure/rework feedback."
+                              : "Evolution needs real feedback — run the pipeline once (a failure or rework is enough)."}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 shrink-0 gap-1.5 border-fuchsia-500/40 text-fuchsia-600 hover:bg-fuchsia-500/10 hover:text-fuchsia-700 dark:text-fuchsia-400"
+                            disabled={evolvingStepId === step.id || !latestStepFeedback(step.id)}
+                            onClick={() => void evolveVariant(step.id)}
+                          >
+                            {evolvingStepId === step.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3.5 w-3.5" />
+                            )}
+                            Evolve now
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ) : null}
                 </div>
               );
             })}

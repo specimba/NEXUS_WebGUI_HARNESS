@@ -10,6 +10,7 @@ import {
   Copy,
   Download,
   GitCompareArrows,
+  GitFork,
   KeyRound,
   LifeBuoy,
   Loader2,
@@ -223,10 +224,16 @@ function RunRecoveryCard({
   }
 
   return (
-    <Card className="gap-3 border-l-4 border-l-red-500 border-red-500/30 bg-red-500/[0.03] p-4">
+    <Card
+      role="alert"
+      className="gap-3 border-l-4 border-l-red-500 border-red-500/30 bg-red-500/[0.03] p-4"
+    >
       <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/10" aria-hidden>
-          <LifeBuoy className="h-4 w-4 text-red-400" />
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/10"
+          aria-hidden
+        >
+          <LifeBuoy className="h-4 w-4 animate-pulse text-red-400" />
         </span>
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-semibold leading-tight">
@@ -482,6 +489,13 @@ export function WorkflowRunPanel({
       ? viewedRun.steps.slice(0, replayIdx + 1)
       : (viewedRun?.steps ?? []);
 
+  // r35: cumulative wall-clock before step i (t+ markers on the cards).
+  const cumMsBefore = React.useCallback(
+    (i: number) =>
+      viewedRun?.steps.slice(0, i).reduce((n, s) => n + (s.ms ?? 0), 0) ?? 0,
+    [viewedRun]
+  );
+
   // Time-lapse autoplay follows the playhead card
   React.useEffect(() => {
     if (!replayPlaying || replayIdx == null) return;
@@ -520,6 +534,32 @@ export function WorkflowRunPanel({
       workflow: { id: wf.id },
       task: run.task,
       resume: { runId: run.id, fromStepIndex },
+      source: "manual",
+      onStarted: (runId, controller) => {
+        setViewingRunId(runId);
+        setRunning(true);
+        abortRef.current = controller;
+      },
+      onSettled: () => {
+        setRunning(false);
+        abortRef.current = null;
+      },
+    });
+  }
+
+  /**
+   * r35 branch-from-step-k: re-run from a step as a NEW run row — the
+   * original stays untouched (history + compare integrity), steps before the
+   * branch point are reused verbatim, nothing already paid for is re-billed.
+   */
+  async function branchRun(fromStepIndex: number) {
+    const wf = liveWorkflow;
+    const run = viewedRun;
+    if (!wf || !run || running) return;
+    await executeWorkflowRun({
+      workflow: { id: wf.id },
+      task: run.task,
+      branch: { fromRunId: run.id, fromStepIndex },
       source: "manual",
       onStarted: (runId, controller) => {
         setViewingRunId(runId);
@@ -620,6 +660,12 @@ export function WorkflowRunPanel({
                 ) : (
                   <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-violet-400" aria-hidden />
                 )}
+                {r.branchOf ? (
+                  <GitFork
+                    className="h-3 w-3 shrink-0 text-violet-400"
+                    aria-label={`Branched from an earlier run at step ${r.branchOf.fromStepIndex + 1}`}
+                  />
+                ) : null}
                 <span className="min-w-0 flex-1 truncate text-xs">{r.task}</span>
                 <span className="shrink-0 text-[11px] text-muted-foreground">
                   {fmtRel(r.startedAt)}
@@ -665,6 +711,15 @@ export function WorkflowRunPanel({
           <div className="flex items-center gap-2">
             <SheetDescription>Pipeline run</SheetDescription>
             <DepthChip depth={liveWorkflow?.depth} />
+            {viewedRun?.branchOf ? (
+              <span
+                title={`Branched from a previous run at step ${viewedRun.branchOf.fromStepIndex + 1} — the original run stays untouched`}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500 dark:text-violet-400"
+              >
+                <GitFork className="h-3 w-3" aria-hidden />
+                branched · step {viewedRun.branchOf.fromStepIndex + 1}
+              </span>
+            ) : null}
             {scheduleEnabled && (
               <span
                 title={`Recurring schedule · next ${fmtIn(schedule?.nextRunAt)}`}
@@ -860,7 +915,8 @@ export function WorkflowRunPanel({
                   {viewedRun.task}
                 </p>
               ) : null}
-              {/* r33 scrubable replay timeline (Devin/LangGraph inspiration) */}
+              {/* r33 scrubable replay timeline (Devin/LangGraph inspiration)
+                  + r35 branch entry: scrub to a step, branch from the next one */}
               {replayable && viewedRun ? (
                 <RunReplayTimeline
                   run={viewedRun}
@@ -868,6 +924,8 @@ export function WorkflowRunPanel({
                   onScrub={(idx) => setReplayIdx(idx)}
                   playing={replayPlaying}
                   onPlayingChange={setReplayPlaying}
+                  onBranchFrom={branchRun}
+                  branchBusy={running}
                 />
               ) : null}
               {/* Non-silent failure fallback: options + information, never just a dead end */}
@@ -888,7 +946,7 @@ export function WorkflowRunPanel({
                     key={`${viewedRun.id}-${step.stepId}-${i}`}
                     id={`run-step-card-${i}`}
                     className={cn(
-                      "gap-2 border-l-4 p-4",
+                      "group/step gap-2 border-l-4 p-4 transition-colors",
                       STEP_BORDER[step.status],
                       step.kind === "review" && "bg-amber-500/[0.035]"
                     )}
@@ -904,13 +962,13 @@ export function WorkflowRunPanel({
                         }
                         size="xs"
                       />
-                      <div className="min-w-0 flex-1 text-sm font-medium">
-                        <span className="truncate">{step.agentName}</span>
-                        <span className="text-muted-foreground"> · </span>
-                        <span className="truncate text-muted-foreground">
-                          {step.label}
-                        </span>
-                      </div>
+                    <div className="min-w-0 flex-1 text-sm font-medium">
+                      <span className="truncate">{step.agentName}</span>
+                      <span className="text-muted-foreground"> · </span>
+                      <span className="truncate text-muted-foreground">
+                        {step.label}
+                      </span>
+                    </div>
                       {/* Review-gate verdict + rework badges */}
                       {step.kind === "review" && step.status === "done" && step.verdict ? (
                         <span
@@ -965,6 +1023,14 @@ export function WorkflowRunPanel({
                           redone
                         </span>
                       ) : null}
+                      {step.reasoningEffort ? (
+                        <span
+                          title={`Reasoning effort “${step.reasoningEffort}” requested for this step (custom-provider lanes only)`}
+                          className="inline-flex shrink-0 items-center rounded-full border border-fuchsia-500/40 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-600 dark:text-fuchsia-400"
+                        >
+                          🧠 {step.reasoningEffort}
+                        </span>
+                      ) : null}
                       <StatusIndicator status={step.status} ms={step.ms} />
                     </div>
 
@@ -985,6 +1051,29 @@ export function WorkflowRunPanel({
                     </div>
 
                     <ToolCallChips toolCalls={step.toolCalls} />
+
+                    {/* r35: per-card branch affordance on finished runs — re-run
+                        from this step as a NEW run (original stays untouched). */}
+                    {replayable && !running ? (
+                      <div className="flex items-center justify-between gap-2 border-t pt-2 mt-1">
+                        <span className="font-mono text-[10px] tabular-nums text-muted-foreground/70">
+                          t+{fmtMs(cumMsBefore(i))}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={running}
+                          aria-label={`Branch the run from step ${i + 1} as a new run`}
+                          title={`Re-run from step ${i + 1} as a NEW run — this run stays untouched; steps 1–${i} are reused verbatim`}
+                          className="h-6 gap-1.5 rounded-md px-2 text-[11px] text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover/step:opacity-100 hover:text-violet-400"
+                          onClick={() => void branchRun(i)}
+                        >
+                          <GitFork className="h-3 w-3" aria-hidden />
+                          Branch from here
+                        </Button>
+                      </div>
+                    ) : null}
                   </Card>
                 );
               })}
