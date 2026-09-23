@@ -173,7 +173,40 @@ const ARENA_CATALOG: Record<
       // backstop hop, not a precision lane (non-deterministic routing).
       { id: "openrouter/free", tier: 2, elo: 0.8, note: "Free Models Router · 200k ctx · random free lane" },
       { id: "nvidia/nemotron-3.5-lightning:free", tier: 2, elo: 0.88, note: "1M ctx · rotating :free" },
+      // r32: MiMo V2.6 family — verified live on OpenRouter 2026-09-23
+      // ($0.435/$0.87 for the 1T-class flagship is the cheapest frontier
+      // lane in the vault; flash is the ultra-budget workhorse).
+      { id: "xiaomi/mimo-v2.6-pro", tier: 1, elo: 0.958, note: "1T+ MoE · 1M ctx · $0.435/$0.87" },
+      { id: "xiaomi/mimo-v2.6-flash", tier: 2, elo: 0.92, note: "309B MoE · 1M ctx · $0.14/$0.28" },
       { id: "google/gemma-4-31b-it:free", tier: 2, elo: 0.84, note: "Google open model" },
+    ],
+  },
+  // r32: the two frontier-freedom gateways (live-verified 2026-09-23).
+  // OpenCode Zen freed the frontier: standing -free lanes + the entire
+  // closed frontier on one key. Kilo Gateway's kilo-auto/free rotates a
+  // free pool with no credits required.
+  opencode: {
+    label: "OpenCode Zen",
+    models: [
+      { id: "claude-fable-5", tier: 1, elo: 0.985, note: "Frontier apex · same key as free lanes" },
+      { id: "gpt-6-astra", tier: 1, elo: 0.972, note: "OpenAI flagship" },
+      { id: "gemini-3.8-flash", tier: 1, elo: 0.965, note: "Google current-gen" },
+      { id: "grok-4.7", tier: 1, elo: 0.955, note: "xAI frontier" },
+      { id: "nemotron-3-ultra-free", tier: 2, elo: 0.9, note: "FREE · 550B MoE frontier reasoning" },
+      { id: "mimo-v2.6-flash-free", tier: 2, elo: 0.9, note: "FREE · Xiaomi omni · 1M ctx" },
+      { id: "deepseek-v4-flash-free", tier: 2, elo: 0.89, note: "FREE · fast reasoning" },
+      { id: "nemotron-3.5-lightning-free", tier: 2, elo: 0.87, note: "FREE · fast MoE" },
+    ],
+  },
+  kilo: {
+    label: "Kilo Gateway",
+    models: [
+      { id: "xiaomi/mimo-v2.6-pro", tier: 1, elo: 0.958, note: "1T+ MoE flagship · $0.435/$0.87" },
+      { id: "kilo-auto/efficient", tier: 2, elo: 0.88, note: "Cheapest-capable router" },
+      { id: "nvidia/nemotron-3-ultra-550b-a55b:free", tier: 2, elo: 0.895, note: "FREE · frontier MoE" },
+      { id: "nex-agi/nex-n2.5-pro:free", tier: 2, elo: 0.88, note: "FREE · agentic coding" },
+      { id: "poolside/laguna-s-2.1:free", tier: 2, elo: 0.87, note: "FREE · 118B coding agent" },
+      { id: "kilo-auto/free", tier: 2, elo: 0.82, note: "Rotating free pool · no credits required" },
     ],
   },
   cerebras: {

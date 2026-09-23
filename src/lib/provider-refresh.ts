@@ -26,6 +26,10 @@ export const KEYED_ENDPOINTS: Record<string, KeyedEndpoint> = {
   // r30: aihubmix /v1/models answers 200 keyless (default group, 407 ids);
   // a key widens the group. Rich catalog (/api/v1/models) feeds the tracker.
   aihubmix: { url: "https://aihubmix.com/v1/models", shape: "openai", keyOptional: true },
+  // r32: both new frontier gateways expose PUBLIC rosters (verified keyless
+  // 200 on 2026-09-23) — OpenCode Zen carries 80 lanes, Kilo Gateway 393.
+  opencode: { url: "https://opencode.ai/zen/v1/models", shape: "openai", keyOptional: true },
+  kilo: { url: "https://api.kilo.ai/api/gateway/v1/models", shape: "openai", keyOptional: true },
   groq: { url: "https://api.groq.com/openai/v1/models", shape: "openai" },
   "google-ai-studio": { url: "https://generativelanguage.googleapis.com/v1beta/openai/models", shape: "openai" },
   mistral: { url: "https://api.mistral.ai/v1/models", shape: "openai", keyOptional: true },

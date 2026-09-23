@@ -240,11 +240,88 @@ async function fetchAihubmix(): Promise<TrackerRow[]> {
   return out;
 }
 
+// ── Kilo Gateway (r32): keyless rich catalog — 393 lanes, OpenRouter shape ──
+// Live-verified 2026-09-23: GET /api/gateway/v1/models answers 200 with NO
+// key. Rows carry id / name / created / pricing{prompt,completion} (USD-per-
+// token strings) / context_length / isFree. kilo-auto/* routers sit alongside
+// ~20 :free lanes and the MiMo V2.6 family.
+interface KiloModel {
+  id?: string;
+  name?: string;
+  created?: number;
+  context_length?: number;
+  pricing?: { prompt?: string; completion?: string };
+  isFree?: boolean;
+}
+
+async function fetchKilo(): Promise<TrackerRow[]> {
+  const data = (await getJson("https://api.kilo.ai/api/gateway/v1/models")) as KiloModel[] | { data?: KiloModel[] };
+  const rows = Array.isArray(data) ? data : (data.data ?? []);
+  const out: TrackerRow[] = [];
+  for (const m of rows) {
+    if (typeof m.id !== "string" || !m.id) continue;
+    if (NON_TEXT_RE.test(m.id)) continue;
+    const pin = parseFloat(m.pricing?.prompt ?? "");
+    const pout = parseFloat(m.pricing?.completion ?? "");
+    const priceIn = Number.isFinite(pin) ? pin * 1_000_000 : undefined;
+    const priceOut = Number.isFinite(pout) ? pout * 1_000_000 : undefined;
+    out.push({
+      key: `kilo::${m.id}`,
+      providerId: "kilo",
+      modelId: m.id,
+      displayName: m.name,
+      contextWindow: typeof m.context_length === "number" ? m.context_length : undefined,
+      priceIn,
+      priceOut,
+      free:
+        m.isFree === true ||
+        m.id.endsWith(":free") ||
+        m.id === "kilo-auto/free" ||
+        (priceIn === 0 && priceOut === 0),
+      meta: { created: m.created ?? null, name: m.name ?? null, isFree: m.isFree ?? null },
+    });
+  }
+  if (out.length === 0) throw new Error("empty catalog");
+  return out;
+}
+
+// ── OpenCode Zen (r32): keyless roster — 80 lanes, the full frontier + free ─
+// Live-verified 2026-09-23: GET /zen/v1/models answers 200 with NO key.
+// Rows are sparse ({id, created, owned_by}) and carry NO pricing, so freeness
+// is the standing "-free" lane suffix (nemotron-3-ultra-free,
+// mimo-v2.6-flash-free, deepseek-v4-flash-free, …). Never inferred otherwise.
+interface ZenModel {
+  id?: string;
+  created?: number;
+  owned_by?: string;
+}
+
+async function fetchOpencode(): Promise<TrackerRow[]> {
+  const data = (await getJson("https://opencode.ai/zen/v1/models")) as { data?: ZenModel[] };
+  const out: TrackerRow[] = [];
+  for (const m of data.data ?? []) {
+    if (typeof m.id !== "string" || !m.id) continue;
+    if (NON_TEXT_RE.test(m.id)) continue;
+    out.push({
+      key: `opencode::${m.id}`,
+      providerId: "opencode",
+      modelId: m.id,
+      contextWindow: undefined,
+      free: /-free$/i.test(m.id),
+      meta: { created: m.created ?? null, owned_by: m.owned_by ?? null },
+    });
+  }
+  if (out.length === 0) throw new Error("empty catalog");
+  return out;
+}
+
 export const TRACKER_SOURCES = {
   aihubmix: { label: "AIHubMix", authoritative: true, run: fetchAihubmix },
   openrouter: { label: "OpenRouter", authoritative: true, run: fetchOpenRouter },
   orcarouter: { label: "OrcaRouter", authoritative: true, run: fetchOrcaRouter },
   pollinations: { label: "Pollinations", authoritative: true, run: fetchPollinations },
+  kilo: { label: "Kilo Gateway", authoritative: true, run: fetchKilo },
+  opencode: { label: "OpenCode Zen", authoritative: true, run: fetchOpencode },
   huggingface: { label: "HuggingFace signals", authoritative: false, run: fetchHuggingFaceSignals },
 } as const;
 

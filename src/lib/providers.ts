@@ -118,6 +118,80 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     ],
   },
   {
+    // r32: the user called it "OpenCore" — the platform is OpenCode Zen
+    // (opencode.ai/zen). Live-verified 2026-09-23: GET /zen/v1/models answers
+    // 200 keyless with 80 lanes — the ENTIRE frontier (claude-fable-5,
+    // opus-5-5, gpt-6-astra/sol/luna, gemini-3.8, grok-4.7) plus a standing
+    // -free lane family (nemotron-3-ultra-free, mimo-v2.6-flash-free,
+    // deepseek-v4-flash-free, jev-1.13-free, space-bunny-free, …).
+    id: "opencode",
+    name: "OpenCode Zen",
+    glyph: "◮",
+    tagline:
+      "The open coding-agent gateway that freed the frontier: Claude Fable 5, GPT-6 Astra, Gemini 3.8, Grok 4.7 — plus standing free lanes (Nemotron 3 Ultra 550B, MiMo V2.6 Flash) behind one OpenAI-compatible endpoint.",
+    baseUrl: "https://opencode.ai/zen/v1",
+    signupUrl: "https://opencode.ai/zen",
+    docsUrl: "https://opencode.ai/docs/zen",
+    featured: true,
+    limits:
+      "Free lanes (-free suffix): rate-capped, included with a free account key · frontier lanes metered per-token, often below list · roster refreshes live (80 lanes right now)",
+    guide: [
+      "Open opencode.ai/zen and create an account — the key is issued from the dashboard (no card needed for the -free lanes).",
+      "Paste it here — the app talks to https://opencode.ai/zen/v1 (vanilla OpenAI wire, streaming + tools).",
+      "nemotron-3-ultra-free is preselected: a 550B-A55B frontier MoE on a standing free lane. mimo-v2.6-flash-free, deepseek-v4-flash-free, jev-1.13-free and space-bunny-free are one click away.",
+      "The whole frontier is on the same key — claude-fable-5, gpt-6-astra, gemini-3.8-flash, grok-4.7 — hit Refresh models to pull all 80 live lanes.",
+    ],
+    liveCatalog: "opencode",
+    models: [
+      { id: "nemotron-3-ultra-free", label: "Nemotron 3 Ultra (Free)", note: "550B MoE (55B active) · standing free lane" },
+      { id: "mimo-v2.6-flash-free", label: "MiMo V2.6 Flash (Free)", note: "Xiaomi omnimodal · 1M ctx · free lane" },
+      { id: "deepseek-v4-flash-free", label: "DeepSeek V4 Flash (Free)", note: "Fast reasoning · free lane" },
+      { id: "jev-1.13-free", label: "Jev 1.13 (Free)", note: "Standing free lane" },
+      { id: "space-bunny-free", label: "Space Bunny (Free)", note: "Standing free lane" },
+      { id: "nemotron-3.5-lightning-free", label: "Nemotron 3.5 Lightning (Free)", note: "Fast MoE · free lane" },
+      { id: "claude-fable-5", label: "Claude Fable 5", note: "Frontier apex · on the same key" },
+      { id: "gpt-6-astra", label: "GPT-6 Astra", note: "OpenAI flagship · on the same key" },
+      { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", note: "Google current-gen" },
+      { id: "grok-4.7", label: "Grok 4.7", note: "xAI frontier" },
+    ],
+  },
+  {
+    // r32: Kilo Gateway (kilo.ai — the KiloCode rebrand). Live-verified
+    // 2026-09-23: GET /api/gateway/v1/models answers 200 KEYLESS with 393
+    // OpenRouter-shaped lanes (id/created/pricing/context_length/isFree) —
+    // kilo-auto/free rotates free models with no credits required.
+    id: "kilo",
+    name: "Kilo Gateway",
+    glyph: "❖",
+    tagline:
+      "The KiloCode gateway: 393 lanes including kilo-auto/free (rotating free pool, no credits required), 20+ :free models, Auto-Efficient routing, and the new MiMo V2.6 family at shockingly low prices.",
+    baseUrl: "https://api.kilo.ai/api/gateway/v1",
+    signupUrl: "https://kilo.ai",
+    docsUrl: "https://kilo.ai/docs/gateway/overview",
+    featured: true,
+    limits:
+      "kilo-auto/free: rotating free models, no credits required · :free lanes rate-capped · Auto Efficient routes each request to the cheapest capable model · roster is public (393 lanes right now)",
+    guide: [
+      "The model roster is PUBLIC — hit Refresh models even before adding a key to see all 393 live lanes.",
+      "Create a key at kilo.ai (simple registration, built-in provider) and paste it here.",
+      "The app talks to https://api.kilo.ai/api/gateway/v1 (OpenRouter-shaped, streaming + tools).",
+      "kilo-auto/free is preselected: it rotates through available free models per request — zero cost. kilo-auto/efficient picks the cheapest capable model when you want paid quality at minimum price.",
+    ],
+    liveCatalog: "kilo",
+    models: [
+      { id: "kilo-auto/free", label: "Kilo Auto Free", note: "Rotating free pool · no credits required · the no-brainer default" },
+      { id: "kilo-auto/efficient", label: "Kilo Auto Efficient", note: "Routes to the cheapest capable model per request" },
+      { id: "kilo-auto/balanced", label: "Kilo Auto Balanced", note: "Price/quality balance router" },
+      { id: "xiaomi/mimo-v2.6-pro", label: "MiMo V2.6 Pro", note: "1T+ MoE flagship · 1M ctx · $0.435/$0.87 — absurdly cheap frontier" },
+      { id: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 3 Ultra 550B (Free)", note: "Frontier reasoning MoE · :free lane" },
+      { id: "poolside/laguna-s-2.1:free", label: "Laguna S 2.1 (Free)", note: "118B coding agent · :free lane" },
+      { id: "nex-agi/nex-n2.5-pro:free", label: "Nex N2.5 Pro (Free)", note: "Agentic coding · :free lane" },
+      { id: "inclusionai/ling-3.0-flash-vl:free", label: "Ling 3.0 Flash VL (Free)", note: "Vision-language · :free lane" },
+      { id: "qwen/qwen3.8-27b:free", label: "Qwen 3.8 27B (Free)", note: "Dense VLM · :free lane" },
+      { id: "z-ai/glm-5.2:free", label: "GLM 5.2 (Free)", note: "1M ctx reasoning · :free lane" },
+    ],
+  },
+  {
     id: "orcarouter",
     name: "OrcaRouter",
     glyph: "🐋",
@@ -219,6 +293,11 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     ],
     models: [
       { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning", note: "1M ctx · NVIDIA" },
+      // r32: MiMo V2.6 family verified live on OpenRouter (pricing strings
+      // parsed from /api/v1/models 2026-09-23) — Xiaomi's open-sourced
+      // omnimodal flagship line, absurdly cheap for the frontier class.
+      { id: "xiaomi/mimo-v2.6-pro", label: "MiMo V2.6 Pro", note: "1T+ MoE · 1M ctx · $0.435/$0.87 · omni-in" },
+      { id: "xiaomi/mimo-v2.6-flash", label: "MiMo V2.6 Flash", note: "309B MoE · 1M ctx · $0.14/$0.28" },
       { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B", note: "Google open model" },
       { id: "inclusionai/ling-3.0-flash-vl:free", label: "Ling 3.0 Flash VL", note: "Vision-language" },
       { id: "cohere/north-mini-code:free", label: "North Mini Code", note: "Coding-focused" },

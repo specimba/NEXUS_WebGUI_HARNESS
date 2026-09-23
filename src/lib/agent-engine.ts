@@ -142,6 +142,16 @@ export const FIRST_TOKEN_TIMEOUT_MS = 12_000;
 /** OrcaRouter internally fails over 1-5 upstreams before the first byte. */
 export const FIRST_TOKEN_TIMEOUT_ORCA_MS = 25_000;
 export const IDLE_CHUNK_TIMEOUT_MS = 15_000;
+/**
+ * r32: how many times a run may survive a MID-ANSWER stall (deadline fired
+ * after tokens/tools already streamed) by re-asking for a full answer while
+ * keeping the executed tool results. Production case: a 15-tool research run
+ * died at the finish line and the whole turn was lost — twice in one day.
+ */
+export const MAX_STALL_RESUMES = 2;
+/** Continuation prompt for a stall resume — demands a self-contained answer. */
+const STALL_RESUME_NUDGE =
+  "Your previous reply was interrupted by a provider stall. All tool results above are intact and complete. Write the final answer now, fully self-contained from those findings — never repeat or mention the interruption, never re-run tools that already succeeded.";
 
 /**
  * Combine the caller's abort signal with an engine-owned deadline controller.
@@ -372,6 +382,7 @@ export async function runRelayedCustom(
   const requestId = body.requestId ?? newRequestId();
 
   let lastErr: unknown = null;
+  let autoRetried = false; // r32: one pre-stream retry for the built-in engine
   for (let i = 0; i < hops.length; i++) {
     const hop = hops[i];
     try {
@@ -430,6 +441,15 @@ export async function runRelayedCustom(
     } catch (err) {
       if (isAbort(err)) throw err;
       lastErr = err;
+      // r32: the built-in engine gets ONE retry while nothing has streamed —
+      // free-lane 429s and SDK hiccups before the first token are transient.
+      // After tokens the honest-error path applies (a re-run would duplicate).
+      if (hop.useAuto && !clientSawTokens && !autoRetried && isTransientNetworkError(err)) {
+        autoRetried = true;
+        send({ type: "status", message: `Built-in engine hiccup (${shortError(err)}) — retrying once…` });
+        i -= 1; // re-enter the loop on the same hop
+        continue;
+      }
       // Mid-stream death: the client already rendered partial output from this
       // hop — rotating now would stitch two models into one answer. Surface it
       // honestly; the step-level self-heal (if any) recovers cleanly.
@@ -523,7 +543,12 @@ export async function runCustomEngine(
   ];
 
   let graceUsed = 0; // tool-calls salvaged from the FINAL pass (max 2)
-  for (let iteration = 1; iteration <= maxIterations + 3 && iteration <= 13; iteration++) {
+  let stallResumes = 0; // r32: mid-answer stall survivors (max MAX_STALL_RESUMES)
+  iterationLoop: for (
+    let iteration = 1;
+    iteration <= maxIterations + 3 && iteration <= 13;
+    iteration++
+  ) {
     send({ type: "iteration", n: iteration });
     const isFinalPass = iteration > maxIterations;
     // Resilience (r19): gateways like Vyce sit behind rotating upstream pools
@@ -650,6 +675,29 @@ export async function runCustomEngine(
         // abort or an in-band error frame before any token is exactly the
         // "provider accepted and then stalled" case these retries exist for.
         if (isAbort(err)) throw err;
+        // r32 MID-RUN STALL RESUME: the deadline fired AFTER the answer had
+        // begun (tokens streamed / tools executed). Pre-stream retries cannot
+        // help and the relay cannot rotate (the client already rendered this
+        // hop). Instead of killing the whole turn — which is what wiped a
+        // 15-tool research answer at the finish line — keep the executed tool
+        // results (they live in msgs) and re-ask for a full self-contained
+        // answer. Hard-capped by MAX_STALL_RESUMES.
+        const stalledMidRun =
+          err instanceof UpstreamDeadlineError && (streamedAny || collected.length > 0);
+        if (
+          stalledMidRun &&
+          stallResumes < MAX_STALL_RESUMES &&
+          iteration < maxIterations + 3 &&
+          iteration < 13
+        ) {
+          stallResumes += 1;
+          send({
+            type: "status",
+            message: `Upstream stalled mid-answer — tool findings are intact, finishing the answer (resume ${stallResumes}/${MAX_STALL_RESUMES})…`,
+          });
+          msgs.push({ role: "user", content: STALL_RESUME_NUDGE });
+          continue iterationLoop;
+        }
         if (attempt < MAX_UPSTREAM_ATTEMPTS && !streamedAny && isTransientNetworkError(err)) {
           send({ type: "status", message: `Upstream hiccup (${shortError(err)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
           await sleep(1200 * attempt);
