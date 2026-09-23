@@ -9,9 +9,11 @@ import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
 import { buildRelayWire, recordRelayHopResult, type RelayTaskFit } from "@/lib/relay";
 import {
   buildConversationalContext,
+  buildLessonsBlock,
   buildReviewContext,
   buildSequentialContext,
   parseReviewVerdict,
+  truncate,
   uid,
   type PrevStepOutput,
 } from "@/lib/helpers";
@@ -21,13 +23,15 @@ import {
   useUiStore,
   useWorkflowsStore,
 } from "@/lib/stores";
-import { REWORK_LIMIT } from "@/lib/constants";
+import { REWORK_LIMIT, LESSON_MAX_CHARS, MAX_LESSONS } from "@/lib/constants";
 import type {
   Agent,
+  LlmCallTrace,
   PipelineDepth,
   RunCallLogEntry,
   RunErrorInfo,
   RunErrorKind,
+  RunLesson,
   ToolCallInfo,
   ToolId,
   Workflow,
@@ -49,8 +53,10 @@ export function activeRunCount(): number {
 export interface ExecuteRunOptions {
   workflow: Pick<Workflow, "id">;
   task: string;
-  /** "scheduled" runs toast with a clock icon and a distinct message. */
-  source?: "manual" | "scheduled";
+  /** "scheduled" runs toast with a clock icon; "suite" runs stay silent (the Suites board reports). */
+  source?: "manual" | "scheduled" | "suite";
+  /** Suite provenance (harness rank-①) — tags the run row for the Suites board. */
+  suiteMeta?: { suiteId: string; caseId: string; runTag: string };
   /** Called right after the run row is created (panel uses it to view + wire Stop). */
   onStarted?: (runId: string, controller: AbortController) => void;
   /** Called with the final status whether done, stopped or errored. */
@@ -306,6 +312,12 @@ export async function executeWorkflowRun(
       status: "running",
       startedAt: Date.now(),
       steps,
+      // Harness rank-①: version the trace shape so the suite/diagnostics can
+      // evolve without silently breaking pre-r31 runs (absent = v1).
+      schemaVersion: 2,
+      ...(options.suiteMeta
+        ? { suiteCaseId: options.suiteMeta.caseId, suiteRunId: options.suiteMeta.runTag }
+        : {}),
     });
   }
 
@@ -321,6 +333,24 @@ export async function executeWorkflowRun(
   ) => useWorkflowsStore.getState().patchRunStep(wf.id, runId, stepId, patch);
   const patchRun = (patch: Partial<WorkflowRun>) =>
     useWorkflowsStore.getState().patchRun(wf.id, runId, patch);
+
+  /**
+   * Reflexion lessons (harness rank-3): write a short verbal lesson into the
+   * workflow's living memory. Failed episodes stop being wasted — the block
+   * is injected into the next run's / resume's first-step context. Budgeted
+   * (MAX_LESSONS × LESSON_MAX_CHARS) and user-editable in the editor.
+   */
+  const writeLesson = (lesson: Omit<RunLesson, "at">) => {
+    try {
+      const live = useWorkflowsStore.getState().workflows.find((w) => w.id === wf.id);
+      if (!live) return;
+      const lessons = [...(live.lessons ?? []), { ...lesson, at: Date.now() }].slice(-MAX_LESSONS);
+      useWorkflowsStore.getState().update(wf.id, { lessons });
+    } catch {
+      /* lessons must never break a run */
+    }
+  };
+
 
   /** Append one LLM-call record to the run's call log (harness rank-② slice). */
   const pushCall = (entry: Omit<RunCallLogEntry, "at">) => {
@@ -382,13 +412,16 @@ export async function executeWorkflowRun(
         toast.error("Scheduled run failed", { icon: "⏰", description: errorInfo ? `${errorInfo.stepLabel} · ${ERROR_KIND_META[errorInfo.kind].label.toLowerCase()}${retryNote} — open the run to recover` : wf.name });
       }
     } else {
-      if (status === "done") toast.success(toastMsg);
-      else if (status === "error" && errorInfo) {
-        // Non-silent failure: tell the user WHERE to recover, not just that it broke.
-        toast.error(`Run failed at "${errorInfo.stepLabel}"`, {
-          icon: "🛟",
-          description: `${ERROR_KIND_META[errorInfo.kind].label} issue · ${errorInfo.stepsDone}/${steps.length} steps done — recovery options are in the run panel.`,
-        });
+      // Suite runs stay silent — the Suites board reports aggregate results.
+      if (source !== "suite") {
+        if (status === "done") toast.success(toastMsg);
+        else if (status === "error" && errorInfo) {
+          // Non-silent failure: tell the user WHERE to recover, not just that it broke.
+          toast.error(`Run failed at "${errorInfo.stepLabel}"`, {
+            icon: "🛟",
+            description: `${ERROR_KIND_META[errorInfo.kind].label} issue · ${errorInfo.stepsDone}/${steps.length} steps done — recovery options are in the run panel.`,
+          });
+        }
       }
     }
     onSettled?.(runId, status);
@@ -416,6 +449,17 @@ export async function executeWorkflowRun(
       attempts: attempts + 1,
       autoRetried: meta.autoRetried === true || undefined,
     };
+    // Reflexion (rank-3): a failed episode becomes a verbal lesson for the
+    // next attempt — failure kind + what happened + the recovery hint.
+    const firstSentence = (info.hint.split(". ")[0] ?? info.hint).trim();
+    writeLesson({
+      text: truncate(
+        `${info.stepLabel} failed (${ERROR_KIND_META[kind].label.toLowerCase()}): ${truncate(info.message, 140)} → Try: ${firstSentence}.`,
+        LESSON_MAX_CHARS
+      ),
+      runId,
+      kind,
+    });
     stopRemaining(failedIndex);
     finish("error", `Step "${step.label}" failed`, info);
   };
@@ -438,6 +482,9 @@ export async function executeWorkflowRun(
     const stepStart = Date.now();
     let draft = "";
     let localToolCalls: ToolCallInfo[] = [];
+    // Harness rank-② second slice: per-iteration trace from the engine's
+    // existing `iteration` events — honest about what the runner can see.
+    const llmTrace: LlmCallTrace[] = [];
     const llm = resolveLlm(settings.settings, agent.model);
     // Synthetic deep-research passes carry a merged tool set (base tools +
     // web_search + arxiv_search) materialized on the run step itself.
@@ -472,6 +519,7 @@ export async function executeWorkflowRun(
         draft = "";
         localToolCalls = [];
         relayNotes = [];
+        llmTrace.length = 0;
         const res = await runAgentChat(
           {
             provider: llm.provider,
@@ -498,6 +546,16 @@ export async function executeWorkflowRun(
                 const okHop = /\[hopok:([^\]]+)\]/.exec(m);
                 if (okHop) recordRelayHopResult(okHop[1], true);
               }
+            },
+            onIteration: (n) => {
+              // Record at each loop boundary: iteration 1 carries the assembled
+              // context length (the prompt the model actually saw).
+              llmTrace.push({
+                iter: n,
+                msAt: Date.now() - stepStart,
+                contentChars: draft.length,
+                ...(n === 1 ? { promptChars: context.length } : {}),
+              });
             },
             onToken: (t) => {
               draft += t;
@@ -542,6 +600,8 @@ export async function executeWorkflowRun(
           // r29: budget-sentinel answers are marked degraded — the UI shows an
           // "auto-digest" chip and downstream steps can tell material is thin.
           degraded: /^_The model ended/.test(res.content) || undefined,
+          // r31 harness rank-②: persist the per-iteration timeline (capped).
+          ...(llmTrace.length > 0 ? { llmCalls: llmTrace.slice(-60) } : {}),
         });
         return { content: res.content, ms: Date.now() - stepStart };
       } catch (err) {
@@ -598,6 +658,9 @@ export async function executeWorkflowRun(
         patchRunStep(runStep.stepId, {
           status: "error",
           output: `${draft ? `${draft}\n\n` : ""}**Error:** ${message}`,
+          // The iteration timeline UP TO the failure is exactly what the
+          // logging triad is for — persist it on the failed step too.
+          ...(llmTrace.length > 0 ? { llmCalls: llmTrace.slice(-60) } : {}),
         });
         throw err;
       }
@@ -617,6 +680,10 @@ export async function executeWorkflowRun(
             .map((s) => ({ label: s.label, agentName: s.agentName, output: s.output, degraded: s.degraded }))
         : [];
     const framework = settings.settings.framework;
+    // Reflexion (rank-③): inject the workflow's lessons into the FIRST step
+    // executed by this run — fresh runs learn from past failures, resumes
+    // learn from the failure being resumed past.
+    const lessonsBlock = buildLessonsBlock(wf.lessons);
 
     for (let i = startIndex; i < steps.length; i++) {
       const step = steps[i];
@@ -680,6 +747,16 @@ export async function executeWorkflowRun(
             // ─── Rework: re-run the previous generate step with feedback ───
             reworks++;
             const feedback = content;
+            // Reflexion (rank-③): the gate's feedback becomes a lesson too —
+            // the next run should address these points up front.
+            writeLesson({
+              text: truncate(
+                `Review gate sent "${reviewed.label}" back: ${truncate(feedback, 180)} — address reviewer feedback in the first attempt.`,
+                LESSON_MAX_CHARS
+              ),
+              runId,
+              kind: "rework",
+            });
             patchRunStep(step.stepId, {
               status: "done",
               output: feedback,
@@ -741,10 +818,12 @@ export async function executeWorkflowRun(
       }
 
       // ─── Regular generate step ────────────────────────────────────────────
-      const context =
+      const baseContext =
         framework === "sequential"
           ? buildSequentialContext(task, prev)
           : buildConversationalContext(task, prev);
+      const context =
+        i === startIndex && lessonsBlock ? `${baseContext}\n\n${lessonsBlock}` : baseContext;
 
       try {
         // ─── r27 SYSTEM-ONE GATE (Jev doctrine: not everything requires a

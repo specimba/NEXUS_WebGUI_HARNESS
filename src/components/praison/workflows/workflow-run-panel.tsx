@@ -897,6 +897,20 @@ export function WorkflowRunPanel({
                           auto-digest
                         </span>
                       ) : null}
+                      {step.llmCalls && step.llmCalls.length > 0 ? (
+                        <span
+                          title={
+                            "Per-iteration trace (harness rank-2): " +
+                            step.llmCalls
+                              .slice(-6)
+                              .map((c) => `iter ${c.iter} · ${(c.msAt / 1000).toFixed(1)}s · ${c.contentChars} chars${c.promptChars ? ` · prompt ${c.promptChars}` : ""}`)
+                              .join(" | ")
+                          }
+                          className="inline-flex shrink-0 items-center rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-600 dark:text-sky-400"
+                        >
+                          {step.llmCalls.length} call{step.llmCalls.length === 1 ? "" : "s"}
+                        </span>
+                      ) : null}
                       {step.reworked ? (
                         <span
                           title="This step was redone after the review gate rejected its first attempt"

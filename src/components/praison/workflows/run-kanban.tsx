@@ -13,6 +13,7 @@ import {
   Loader2,
   Undo2,
   X,
+  FlaskConical,
 } from "lucide-react";
 import {
   useUiStore,
@@ -206,6 +207,15 @@ function RunCard({
         <span>
           · {run.status === "running" ? `${doneSteps}/${run.steps.length} steps` : `${run.steps.length} steps`}
         </span>
+        {run.suiteCaseId ? (
+          <span
+            title="Executed by a task suite (harness rank-1) — replayable cases with done-rate metrics"
+            className="inline-flex items-center gap-0.5 rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-px font-semibold text-violet-600 dark:text-violet-400"
+          >
+            <FlaskConical className="h-2.5 w-2.5" aria-hidden />
+            suite
+          </span>
+        ) : null}
         {reworks > 0 ? (
           <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-px font-semibold text-amber-600 dark:text-amber-400">
             <Undo2 className="h-2.5 w-2.5" aria-hidden />

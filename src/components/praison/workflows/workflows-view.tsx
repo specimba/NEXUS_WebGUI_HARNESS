@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Clock,
   Columns3,
+  FlaskConical,
   Copy,
   Download,
   LayoutList,
@@ -50,6 +51,7 @@ import { AgentAvatar, DepthChip, EmptyState, PageHeader } from "@/components/pra
 import { WorkflowEditorDialog } from "./workflow-editor-dialog";
 import { WorkflowRunPanel } from "./workflow-run-panel";
 import { RunKanban } from "./run-kanban";
+import { SuitesBoard } from "./suites-board";
 
 // ─── Workflow import/export helpers ─────────────────────────────────
 
@@ -156,6 +158,8 @@ export function WorkflowsView() {
   // Grid ↔ board layout toggle (persisted in the ui store)
   const boardOpen = useUiStore((s) => s.workflowBoardOpen);
   const setBoardOpen = useUiStore((s) => s.setWorkflowBoardOpen);
+  const suitesOpen = useUiStore((s) => s.workflowSuitesOpen);
+  const setSuitesOpen = useUiStore((s) => s.setWorkflowSuitesOpen);
 
   const agentById = React.useMemo(
     () => new Map(agents.map((a) => [a.id, a])),
@@ -284,13 +288,13 @@ export function WorkflowsView() {
           <button
             type="button"
             role="radio"
-            aria-checked={!boardOpen}
+            aria-checked={!boardOpen && !suitesOpen}
             aria-label="Card grid layout"
             title="Card grid"
             onClick={() => setBoardOpen(false)}
             className={cn(
               "flex h-8 items-center gap-1.5 px-2.5 text-xs font-medium transition-colors",
-              !boardOpen
+              !boardOpen && !suitesOpen
                 ? "bg-violet-500/15 text-violet-500 dark:text-violet-400"
                 : "text-muted-foreground hover:bg-muted"
             )}
@@ -314,6 +318,23 @@ export function WorkflowsView() {
           >
             <Columns3 className="h-3.5 w-3.5" aria-hidden />
             <span className="hidden sm:inline">Runs board</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={suitesOpen}
+            aria-label="Task suites layout"
+            title="Task suites"
+            onClick={() => setSuitesOpen(true)}
+            className={cn(
+              "flex h-8 items-center gap-1.5 border-l px-2.5 text-xs font-medium transition-colors",
+              suitesOpen
+                ? "bg-violet-500/15 text-violet-500 dark:text-violet-400"
+                : "text-muted-foreground hover:bg-muted"
+            )}
+          >
+            <FlaskConical className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">Suites</span>
           </button>
         </div>
         <Button
@@ -370,7 +391,9 @@ export function WorkflowsView() {
           </Alert>
         ) : null}
 
-        {boardOpen ? (
+        {suitesOpen ? (
+          <SuitesBoard />
+        ) : boardOpen ? (
           <RunKanban onSelect={openRunFromBoard} />
         ) : workflows.length === 0 ? (
           <EmptyState

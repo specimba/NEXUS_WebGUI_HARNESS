@@ -168,6 +168,10 @@ const ARENA_CATALOG: Record<
   openrouter: {
     label: "OpenRouter",
     models: [
+      // r31: Free Models Router — picks a random free lane per request
+      // (live-verified: 200k ctx, $0/$0, text+image→text). A free-tier
+      // backstop hop, not a precision lane (non-deterministic routing).
+      { id: "openrouter/free", tier: 2, elo: 0.8, note: "Free Models Router · 200k ctx · random free lane" },
       { id: "nvidia/nemotron-3.5-lightning:free", tier: 2, elo: 0.88, note: "1M ctx · rotating :free" },
       { id: "google/gemma-4-31b-it:free", tier: 2, elo: 0.84, note: "Google open model" },
     ],

@@ -160,6 +160,35 @@ export function parseReviewVerdict(text: string): "pass" | "rework" {
   return /\brework\b/i.test(text) ? "rework" : "pass";
 }
 
+const LESSON_KIND_LABEL: Record<RunErrorKind | "rework", string> = {
+  network: "network",
+  auth: "auth",
+  "rate-limit": "rate limit",
+  timeout: "timeout",
+  model: "model",
+  region: "region block",
+  unknown: "unknown",
+  rework: "review rework",
+};
+
+/**
+ * Reflexion lessons block (harness rank-③): budgeted injection for a run's
+ * first-step context — the most recent lessons only, each ≤300 chars, so the
+ * write-back can never bloat context the way MEMORY docs are budgeted.
+ */
+export function buildLessonsBlock(lessons: RunLesson[] | undefined): string {
+  if (!lessons || lessons.length === 0) return "";
+  const recent = lessons.slice(-LESSONS_INJECTED);
+  const bullets = recent
+    .map((l) => `- [${LESSON_KIND_LABEL[l.kind] ?? l.kind}] ${truncate(l.text, 300)}`)
+    .join("\n");
+  return (
+    "LESSONS FROM PREVIOUS RUNS of this pipeline (learned from real failures — " +
+    "avoid repeating these mistakes and adapt your strategy accordingly):\n" +
+    bullets
+  );
+}
+
 /** Rough token estimate for the NEXT chat turn (4 chars ≈ 1 token). */
 export function estimateNextTurnTokens(
   messages: ChatMessage[],
@@ -416,6 +445,59 @@ export function runToMarkdown(workflow: Pick<Workflow, "name">, run: WorkflowRun
     }
   });
   lines.push("", "---", "", "_Generated locally by PraisonAI Web — multi-agent platform._");
+  return lines.join("\n");
+}
+
+const SUITE_STATUS_LABEL: Record<WorkflowRun["status"], string> = {
+  running: "running",
+  done: "done",
+  error: "error",
+  stopped: "stopped",
+};
+
+/**
+ * Export a suite result as markdown — aggregates only, mirroring the storage
+ * discipline (never raw outputs). Powers the Suites board export button.
+ */
+export function suiteResultToMarkdown(suite: Suite, result: SuiteResult): string {
+  const done = result.results.filter((r) => r.runs !== "skipped" && r.runs.length > 0);
+  const overall =
+    done.length > 0
+      ? Math.round(
+          (done.reduce((acc, r) => acc + r.doneRate, 0) / done.length) * 100
+        )
+      : 0;
+  const lines: string[] = [
+    `# Suite report — ${suite.name}`,
+    "",
+    `> Exported from PraisonAI Web · ${new Date().toLocaleString()}`,
+    "",
+    `- **Status:** ${result.status === "complete" ? "complete" : "stopped (partial)"} · overall done-rate **${overall}%**`,
+    `- **Repeats per case:** ${result.repeats} · cases: ${result.results.length}`,
+    `- **Started:** ${new Date(result.startedAt).toLocaleString()}${
+      result.finishedAt ? ` · finished in **${fmtMs(result.finishedAt - result.startedAt)}**` : ""
+    }`,
+    "",
+    "## Cases",
+  ];
+  for (const r of result.results) {
+    lines.push("", `### ${r.workflowName}`, "", `> ${truncate(r.task, 160)}`);
+    if (r.expect) lines.push(`> Expect: ${r.expect}`);
+    if (r.runs === "skipped" || r.runs.length === 0) {
+      lines.push("", "_skipped — workflow missing or run could not start_");
+      continue;
+    }
+    lines.push("", `Done-rate **${Math.round(r.doneRate * 100)}%** across ${r.runs.length} run(s):`, "");
+    for (const run of r.runs) {
+      lines.push(
+        `- \`${SUITE_STATUS_LABEL[run.status]}\` · steps ${run.stepsDone}/${run.stepsTotal} · ${fmtMs(run.ms)} · ` +
+          `${run.toolCallsOk} tool ok${run.degraded ? ` · ${run.degraded} auto-digest` : ""}${
+            run.reworked ? ` · ${run.reworked} reworked` : ""
+          }`
+      );
+    }
+  }
+  lines.push("", "---", "", "_Aggregates only — suite results never store pipeline outputs._");
   return lines.join("\n");
 }
 

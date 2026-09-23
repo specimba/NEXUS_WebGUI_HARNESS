@@ -9,6 +9,10 @@ import type {
   ConversationHeartbeat,
   ConversationMemory,
   Settings,
+  Suite,
+  SuiteCase,
+  SuiteCaseResult,
+  SuiteResult,
   ToolCallInfo,
   ToolId,
   View,
@@ -17,7 +21,15 @@ import type {
   WorkflowRunStep,
   WorkflowStep,
 } from "./types";
-import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS, TOOL_IDS } from "./constants";
+import {
+  ATTACHMENT_KEEP_RECENT,
+  DEFAULT_SETTINGS,
+  MAX_MESSAGES_HARD,
+  PRESEED_PROVIDER_KEYS,
+  SEED_AGENTS,
+  SUITE_RESULTS_CAP,
+  TOOL_IDS,
+} from "./constants";
 import { uid } from "./helpers";
 
 // ─── Debounced localStorage (avoid writing on every streamed token) ─────────
@@ -31,7 +43,13 @@ function debouncedStorage(delay = 500): StateStorage {
     try {
       localStorage.setItem(name, v);
     } catch {
-      /* quota — ignore */
+      // r31 landmine fix: quota failures were silently swallowed — surface
+      // them once so users know old chats may lose heavy attachments.
+      try {
+        window.dispatchEvent(new CustomEvent("praison:storage-quota"));
+      } catch {
+        /* ignore */
+      }
     }
   };
   const flushAll = () => {
@@ -202,6 +220,36 @@ export const useAgentsStore = create<AgentsState>()(
 );
 
 // ─── Conversations ───────────────────────────────────────────────────────────
+
+/**
+ * r31 landmine fix: praison-conversations grew unbounded (attachment bodies +
+ * image data URLs persist forever) under the ~5MB localStorage ceiling, and
+ * quota failures were swallowed. Bounded policy, applied on every append:
+ * 1) strip heavy attachment payloads from messages older than the latest 12
+ *    (text stub keeps the name/size so the UI can still show what was there);
+ * 2) hard-cap the message list (drop the OLDEST rows beyond MAX_MESSAGES_HARD).
+ */
+function compactMessages(messages: ChatMessage[]): ChatMessage[] {
+  let msgs = messages;
+  if (msgs.length > ATTACHMENT_KEEP_RECENT) {
+    const cutoff = msgs.length - ATTACHMENT_KEEP_RECENT;
+    msgs = msgs.map((m, i) => {
+      const heavy = m.attachments?.some((a) => a.content && a.content.length > 2048);
+      if (i >= cutoff || !heavy) return m;
+      return {
+        ...m,
+        attachments: m.attachments!.map((a) =>
+          a.content && a.content.length > 2048 ? { ...a, content: "" } : a
+        ),
+      };
+    });
+  }
+  if (msgs.length > MAX_MESSAGES_HARD) {
+    msgs = msgs.slice(msgs.length - MAX_MESSAGES_HARD);
+  }
+  return msgs;
+}
+
 interface ConversationsState {
   conversations: Conversation[];
   activeId: string | null;
@@ -266,7 +314,11 @@ export const useConversationsStore = create<ConversationsState>()(
         set((s) => ({
           conversations: s.conversations.map((c) =>
             c.id === convId
-              ? { ...c, messages: [...c.messages, msg], updatedAt: Date.now() }
+              ? {
+                  ...c,
+                  messages: compactMessages([...c.messages, msg]),
+                  updatedAt: Date.now(),
+                }
               : c
           ),
         })),
@@ -462,6 +514,73 @@ export const useWorkflowsStore = create<WorkflowsState>()(
   )
 );
 
+// ─── Task suites (harness rank-①, r31) ──────────────────────────────────────
+interface SuitesState {
+  suites: Suite[];
+  add: (suite: Partial<Suite> & { name: string; cases: SuiteCase[] }) => string;
+  update: (id: string, patch: Partial<Suite>) => void;
+  remove: (id: string) => void;
+  addCase: (id: string, c: SuiteCase) => void;
+  removeCase: (id: string, caseId: string) => void;
+  recordResult: (suiteId: string, result: SuiteResult) => void;
+}
+
+export const useSuitesStore = create<SuitesState>()(
+  persist(
+    (set, get) => ({
+      suites: [],
+      add: (suite) => {
+        const id = suite.id ?? uid("suite");
+        const now = Date.now();
+        const row: Suite = {
+          id,
+          name: suite.name,
+          description: suite.description ?? "",
+          cases: suite.cases,
+          createdAt: now,
+          updatedAt: now,
+        };
+        set((s) => ({ suites: [row, ...s.suites] }));
+        return id;
+      },
+      update: (id, patch) =>
+        set((s) => ({
+          suites: s.suites.map((x) => (x.id === id ? { ...x, ...patch, updatedAt: Date.now() } : x)),
+        })),
+      remove: (id) => set((s) => ({ suites: s.suites.filter((x) => x.id !== id) })),
+      addCase: (id, c) =>
+        set((s) => ({
+          suites: s.suites.map((x) =>
+            x.id === id ? { ...x, cases: [...x.cases, c], updatedAt: Date.now() } : x
+          ),
+        })),
+      removeCase: (id, caseId) =>
+        set((s) => ({
+          suites: s.suites.map((x) =>
+            x.id === id
+              ? { ...x, cases: x.cases.filter((c) => c.id !== caseId), updatedAt: Date.now() }
+              : x
+          ),
+        })),
+      /** Persist a finished (or stopped/partial) run — aggregates only, capped. */
+      recordResult: (suiteId, result) =>
+        set((s) => ({
+          suites: s.suites.map((x) =>
+            x.id === suiteId
+              ? {
+                  ...x,
+                  lastResult: result,
+                  history: [...(x.history ?? []), result].slice(-SUITE_RESULTS_CAP),
+                  updatedAt: Date.now(),
+                }
+              : x
+          ),
+        })),
+    }),
+    { name: "praison-suites", storage: createJSONStorage(() => debouncedStorage(450)) }
+  )
+);
+
 // ─── UI state ────────────────────────────────────────────────────────────────
 
 /** Cross-view “jump into a message” request (global search → chat). */
@@ -487,6 +606,8 @@ interface UiState {
   busy: boolean;
   /** Workflows view layout: card grid or the runs kanban board. */
   workflowBoardOpen: boolean;
+  /** Workflows view: task-suites board layout (harness rank-①, r31). */
+  workflowSuitesOpen: boolean;
   /** Guided "get your free frontier key" wizard visibility (+ optional deep-linked provider). */
   setupWizardOpen: boolean;
   setupWizardProviderId: string | null;
@@ -507,6 +628,7 @@ interface UiState {
   clearPendingFocus: () => void;
   setBusy: (v: boolean) => void;
   setWorkflowBoardOpen: (v: boolean) => void;
+  setWorkflowSuitesOpen: (v: boolean) => void;
   openSetupWizard: (providerId?: string) => void;
   setSetupWizardOpen: (v: boolean) => void;
   setSettingsAnchor: (a: "providers" | "local-models" | null) => void;
@@ -525,6 +647,7 @@ export const useUiStore = create<UiState>()(
       pendingFocus: null,
       busy: false,
       workflowBoardOpen: false,
+      workflowSuitesOpen: false,
       setupWizardOpen: false,
       setupWizardProviderId: null,
       imageStudioOpen: false,
@@ -543,7 +666,11 @@ export const useUiStore = create<UiState>()(
         set({ pendingFocus: { convId, msgId }, view: "chat", mobileNavOpen: false }),
       clearPendingFocus: () => set({ pendingFocus: null }),
       setBusy: (busy) => set({ busy }),
-      setWorkflowBoardOpen: (workflowBoardOpen) => set({ workflowBoardOpen }),
+      setWorkflowBoardOpen: (workflowBoardOpen) =>
+        // Switching to grid OR board always leaves the suites board.
+        set({ workflowBoardOpen, workflowSuitesOpen: false }),
+      setWorkflowSuitesOpen: (workflowSuitesOpen) =>
+        set({ workflowSuitesOpen, ...(workflowSuitesOpen ? { workflowBoardOpen: false } : {}) }),
       openSetupWizard: (providerId) =>
         set({
           setupWizardOpen: true,
@@ -561,6 +688,7 @@ export const useUiStore = create<UiState>()(
         activeAgentId: s.activeAgentId,
         chatListOpen: s.chatListOpen,
         workflowBoardOpen: s.workflowBoardOpen,
+        workflowSuitesOpen: s.workflowSuitesOpen,
       }),
       storage: createJSONStorage(() => localStorage),
     }
@@ -620,6 +748,21 @@ export function ensureSeeded(): void {
   useWorkflowsStore.setState((s) => ({
     workflows: s.workflows.map((w) => ({
       ...w,
+      // r31 boot resilience (OpenClaw gateway doctrine): a malformed schedule
+      // must never block app boot — quarantine it (disabled + console flag)
+      // instead of throwing during rehydration.
+      ...(w.schedule?.enabled &&
+      (!Number.isFinite(w.schedule.intervalMs) ||
+        w.schedule.intervalMs < 1_000 ||
+        typeof w.schedule.task !== "string" ||
+        (w.schedule.nextRunAt != null && !Number.isFinite(w.schedule.nextRunAt)))
+        ? (() => {
+            console.warn(
+              `[boot] quarantined malformed schedule on "${w.name}" — fix interval/task, then re-enable`
+            );
+            return { schedule: { ...w.schedule, enabled: false } };
+          })()
+        : {}),
       runs: w.runs.map((r) =>
         r.status === "running"
           ? { ...r, status: "stopped" as const, finishedAt: r.finishedAt ?? Date.now() }
@@ -754,6 +897,84 @@ export function ensureSeeded(): void {
               "Write the dossier: executive summary (max 5 lines), findings organized by section with inline citations, then Open Questions at the end. Synthesize in your own words — never paste raw research notes."
             ),
           ],
+        });
+      }
+    }
+  }
+  // r31 harness rank-①: Loop Health Check — the roadmap's mandatory
+  // "correct action is to stop" suite case: verifies the engine reaches a
+  // clean tool-free exit (done, 0 tool calls, ~1s). Fixed id, idempotent.
+  {
+    const wfStore = useWorkflowsStore.getState();
+    if (!wfStore.workflows.some((w) => w.id === "wf-loop-health")) {
+      const assistant = useAgentsStore.getState().getById("a-assistant");
+      if (assistant) {
+        wfStore.add({
+          id: "wf-loop-health",
+          name: "Loop Health Check",
+          description:
+            "One-step probe: verifies the engine reaches a clean tool-free exit. The task suite's stop-case — expect done, 0 tool calls, output OK.",
+          depth: "quick",
+          steps: [
+            {
+              id: uid("step"),
+              agentId: "a-assistant",
+              label: "Health probe",
+              instruction:
+                "This is a health probe. Reply with exactly OK and nothing else. Do not use any tools.",
+            },
+          ],
+        });
+      }
+    }
+  }
+  // r31: Harness Baseline Suite — replayable cases over the seeded pipelines
+  // (cheap stop-case first, sandbox case, then the web pipelines). Deep
+  // Dossier deliberately excluded: suites must stay cost-honest.
+  {
+    const sStore = useSuitesStore.getState();
+    if (!sStore.suites.some((x) => x.id === "suite-baseline")) {
+      const wfs = useWorkflowsStore.getState().workflows;
+      const has = (id: string) => wfs.some((w) => w.id === id);
+      const mkCase = (workflowId: string, task: string, expect?: string, maxToolCalls?: number): SuiteCase => ({
+        id: uid("case"),
+        workflowId,
+        task,
+        ...(expect ? { expect } : {}),
+        ...(maxToolCalls != null ? { maxToolCalls } : {}),
+      });
+      const cases: SuiteCase[] = [];
+      if (has("wf-loop-health"))
+        cases.push(
+          mkCase("wf-loop-health", "Health probe — reply with exactly OK. Do not use any tools.", "done · 0 tool calls · output OK", 0)
+        );
+      if (has("wf-build-verify"))
+        cases.push(
+          mkCase(
+            "wf-build-verify",
+            "Write and run a JavaScript function that returns the first 10 Fibonacci numbers joined by commas, then show the passing output.",
+            "done · code runs clean in the sandbox"
+          )
+        );
+      if (has("wf-research-brief"))
+        cases.push(
+          mkCase(
+            "wf-research-brief",
+            "In one short brief: what shipped recently in open-source AI agent frameworks? Cite sources.",
+            "done · brief with citations"
+          )
+        );
+      if (has("wf-morning-briefing"))
+        cases.push(
+          mkCase("wf-morning-briefing", "Today's top AI model releases and platform news, briefed professionally.", "done · 5-bullet briefing")
+        );
+      if (cases.length > 0) {
+        sStore.add({
+          id: "suite-baseline",
+          name: "Harness Baseline Suite",
+          description:
+            "Replayable health + quality cases over the seeded pipelines — converts harness changes from vibes into experiments. Suites run REAL pipelines and spend provider quota.",
+          cases,
         });
       }
     }

@@ -226,6 +226,24 @@ export function TopBar() {
     }
   }, []);
 
+  // r31 landmine fix companion: the debounced storage layer now DISPATCHES
+  // praison:storage-quota instead of silently swallowing quota errors — the
+  // user hears about it once per session, with an actionable hint.
+  React.useEffect(() => {
+    let shown = false;
+    const onQuota = () => {
+      if (shown) return;
+      shown = true;
+      toast.warning("Browser storage is full", {
+        icon: "\u{1F4BE}",
+        description:
+          "Old chats keep their text but heavy attachments were dropped to keep saving. Delete old conversations in Chat to free space.",
+      });
+    };
+    window.addEventListener("praison:storage-quota", onQuota);
+    return () => window.removeEventListener("praison:storage-quota", onQuota);
+  }, []);
+
   // Resolve the active provider for the badge + quick-switch dropdown.
   const resolved = React.useMemo(() => resolveLlm(settings), [settings]);
   const registryReady = React.useMemo(

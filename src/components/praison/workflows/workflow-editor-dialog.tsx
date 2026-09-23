@@ -36,13 +36,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AUTO_PLAN_SYSTEM } from "@/lib/constants";
-import { extractJsonArray, uid } from "@/lib/helpers";
+import { extractJsonArray, fmtRel, uid } from "@/lib/helpers";
 import {
   useAgentsStore,
   useSettingsStore,
   useWorkflowsStore,
 } from "@/lib/stores";
-import type { PipelineDepth, StepKind, Workflow, WorkflowStep } from "@/lib/types";
+import type { PipelineDepth, RunLesson, StepKind, Workflow, WorkflowStep } from "@/lib/types";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
 import { cn } from "@/lib/utils";
@@ -677,6 +677,70 @@ export function WorkflowEditorDialog({
             ) : null}
           </div>
         </div>
+
+        {/* r31 harness rank-3: Reflexion lessons — visible, deletable, never
+            a hidden model-written doc (UX verdict from the expert panel). */}
+        {workflow && (workflow.lessons?.length ?? 0) > 0 ? (
+          <div className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-semibold text-sky-600 dark:text-sky-400">
+                  Lessons from failed runs ({workflow.lessons!.length})
+                </h4>
+                <p className="text-[11px] text-muted-foreground">
+                  Written automatically when a run fails or a review gate sends work back — injected into the
+                  next run's context so the pipeline learns. Max {workflow.lessons!.length}/5 kept.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 shrink-0 text-muted-foreground hover:text-red-500"
+                onClick={() => updateWf(workflow.id, { lessons: [] })}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Clear all
+              </Button>
+            </div>
+            <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
+              {workflow.lessons!.map((l: RunLesson, i: number) => (
+                <li
+                  key={`${l.at}-${i}`}
+                  className="flex items-start justify-between gap-2 rounded-md border bg-background/70 px-2 py-1.5"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "rounded-full border px-1.5 py-px text-[10px] font-semibold",
+                          l.kind === "rework"
+                            ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                            : "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+                        )}
+                      >
+                        {l.kind}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">{fmtRel(l.at)}</span>
+                    </div>
+                    <p className="mt-0.5 text-xs leading-snug text-foreground/90">{l.text}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0 text-muted-foreground hover:text-red-500"
+                    aria-label="Delete lesson"
+                    onClick={() =>
+                      updateWf(workflow.id, { lessons: workflow.lessons!.filter((_, j) => j !== i) })
+                    }
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
