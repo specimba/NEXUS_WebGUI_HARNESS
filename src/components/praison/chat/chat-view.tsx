@@ -50,6 +50,7 @@ import {
   uid,
 } from "@/lib/helpers";
 import { buildMemoryBlock, maybeAutoConsolidate } from "@/lib/memory";
+import { buildSkillsBlock } from "@/lib/skills";
 import {
   useAgentsStore,
   useConversationsStore,
@@ -279,7 +280,9 @@ export function ChatView() {
             maxIterations: selectedAgent.maxIterations + harness.knobs.maxIterationsBonus,
             ...(harness.knobs.stallResumes !== 2 ? { stallResumes: harness.knobs.stallResumes } : {}),
             system:
-              selectedAgent.instructions + buildMemoryBlock(convMemory),
+              selectedAgent.instructions +
+              buildSkillsBlock(settings.skills) +
+              buildMemoryBlock(convMemory),
             tools: selectedAgent.tools,
             messages: history,
             ...(relayHops.length > 0 ? { relay: relayHops } : {}),

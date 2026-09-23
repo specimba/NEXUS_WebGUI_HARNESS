@@ -3,11 +3,16 @@
 // ─── Task-suite executor (harness rank-①, r31) ────────────────────────────────
 // Replays fixed cases over real workflows: sequential, abortable, rate-polite.
 // Metrics are aggregates only (never outputs) — the localStorage discipline.
+//
+// r36 Harness A/B lab: a case may list several harness presets; the runner
+// executes the SAME task under EACH preset (harness × repeats) and the board
+// crowns an empirical winner — "which harness actually finishes this job?"
 
 import { executeWorkflowRun, type ExecuteRunOptions } from "@/lib/workflow-runner";
 import { useSuitesStore, useWorkflowsStore } from "@/lib/stores";
-import { SUITE_GAP_MS } from "@/lib/constants";
+import { SUITE_GAP_MS, SUITE_HARNESSES_MAX } from "@/lib/constants";
 import { uid } from "@/lib/helpers";
+import { HARNESS_PRESETS, harnessById, isHarnessId } from "@/lib/harness";
 import type { SuiteCaseResult, SuiteCaseRun, SuiteResult, WorkflowRun } from "@/lib/types";
 
 let activeController: AbortController | null = null;
@@ -27,12 +32,14 @@ export interface SuiteProgress {
   workflowName: string;
   repeat: number;
   repeats: number;
+  /** r36 A/B lab: which harness preset is driving the current run. */
+  harness?: string;
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Aggregate one finished run row into suite metrics (no outputs kept). */
-function collectRun(run: WorkflowRun): SuiteCaseRun {
+function collectRun(run: WorkflowRun, harness?: string): SuiteCaseRun {
   return {
     runId: run.id,
     status: run.status,
@@ -45,6 +52,7 @@ function collectRun(run: WorkflowRun): SuiteCaseRun {
       (acc, s) => acc + s.toolCalls.filter((t) => t.ok === true).length,
       0
     ),
+    ...(harness ? { harness } : {}),
   };
 }
 
@@ -55,10 +63,37 @@ function onceRun(opts: Omit<ExecuteRunOptions, "onSettled">): Promise<string | n
   });
 }
 
+/** r36 A/B lab: per-harness aggregates + the winner for one case's runs. */
+function aggregateByHarness(runs: SuiteCaseRun[]) {
+  const groups = new Map<string, SuiteCaseRun[]>();
+  for (const r of runs) {
+    const key = r.harness ?? "inherit";
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(r);
+    else groups.set(key, [r]);
+  }
+  const byHarness = [...groups.entries()].map(([harness, rs]) => ({
+    harness,
+    doneRate: rs.filter((x) => x.status === "done").length / rs.length,
+    runs: rs.length,
+    meanMs: rs.reduce((a, x) => a + x.ms, 0) / rs.length,
+    reworks: rs.reduce((a, x) => a + x.reworked, 0),
+    toolCallsOk: rs.reduce((a, x) => a + x.toolCallsOk, 0),
+  }));
+  // Winner: highest done-rate; ties broken by lower mean latency. Only crowned
+  // when at least one run actually finished (an all-fail bake-off has no winner).
+  const best = [...byHarness].sort((a, b) =>
+    b.doneRate !== a.doneRate ? b.doneRate - a.doneRate : a.meanMs - b.meanMs
+  )[0];
+  const winner = best && best.doneRate > 0 ? best.harness : undefined;
+  return { byHarness, winner };
+}
+
 /**
- * Run every case of a suite sequentially, `repeats` times each, collecting
- * done-rates + quality counters. A stopped suite keeps partial results and
- * is recorded with status "stopped" — nothing is silently discarded.
+ * Run every case of a suite sequentially, `repeats` times each — under EACH
+ * harness the case lists (r36 A/B lab) — collecting done-rates + quality
+ * counters. A stopped suite keeps partial results and is recorded with status
+ * "stopped" — nothing is silently discarded.
  */
 export async function runSuite(
   suiteId: string,
@@ -98,31 +133,49 @@ export async function runSuite(
         result.results.push(skipped);
         continue;
       }
+      // r36 A/B lab: sanitize the case's harness rotation — unknown ids (old
+      // persisted state, renamed presets) drop out; the list is capped. An
+      // empty rotation = a single pass under the workflow's own inheritance.
+      const rotation = (c.harnesses ?? []).filter(isHarnessId).slice(0, SUITE_HARNESSES_MAX);
+      const lanes: (string | undefined)[] = rotation.length > 0 ? rotation : [undefined];
       onProgress?.({ caseIndex: ci, caseTotal: suite.cases.length, workflowName: wf.name, repeat: 0, repeats });
 
       const runs: SuiteCaseRun[] = [];
-      for (let r = 0; r < repeats; r++) {
-        if (controller.signal.aborted) break;
-        onProgress?.({ caseIndex: ci, caseTotal: suite.cases.length, workflowName: wf.name, repeat: r + 1, repeats });
-        const runId = await onceRun({
-          workflow: { id: wf.id },
-          task: c.task,
-          source: "suite",
-          suiteMeta: { suiteId, caseId: c.id, runTag: result.id },
-          signal: controller.signal,
-        });
-        if (runId) {
-          const run = useWorkflowsStore
-            .getState()
-            .workflows.find((w) => w.id === wf.id)
-            ?.runs.find((x) => x.id === runId);
-          if (run) runs.push(collectRun(run));
+      outer: for (const lane of lanes) {
+        const laneHarness = lane ? harnessById(lane) : undefined;
+        for (let r = 0; r < repeats; r++) {
+          if (controller.signal.aborted) break outer;
+          onProgress?.({
+            caseIndex: ci,
+            caseTotal: suite.cases.length,
+            workflowName: wf.name,
+            repeat: r + 1,
+            repeats,
+            ...(laneHarness ? { harness: laneHarness.name } : {}),
+          });
+          const runId = await onceRun({
+            workflow: { id: wf.id },
+            task: c.task,
+            source: "suite",
+            suiteMeta: { suiteId, caseId: c.id, runTag: result.id },
+            ...(lane ? { harnessOverride: lane } : {}),
+            signal: controller.signal,
+          });
+          if (runId) {
+            const run = useWorkflowsStore
+              .getState()
+              .workflows.find((w) => w.id === wf.id)
+              ?.runs.find((x) => x.id === runId);
+            if (run) runs.push(collectRun(run, lane));
+          }
+          // Rate-polite gap between repeats (never after the last one).
+          if (r < repeats - 1 && !controller.signal.aborted) await sleep(SUITE_GAP_MS);
         }
-        // Rate-polite gap between repeats (never after the last one).
-        if (r < repeats - 1 && !controller.signal.aborted) await sleep(SUITE_GAP_MS);
+        // Also pause between A/B lanes — free providers feel bursts.
+        if (lane !== lanes[lanes.length - 1] && !controller.signal.aborted) await sleep(SUITE_GAP_MS);
       }
 
-      result.results.push({
+      const base: SuiteCaseResult = {
         caseId: c.id,
         workflowId: c.workflowId,
         workflowName: wf.name,
@@ -130,7 +183,15 @@ export async function runSuite(
         expect: c.expect,
         runs,
         doneRate: runs.length > 0 ? runs.filter((x) => x.status === "done").length / runs.length : 0,
-      });
+      };
+      // A/B verdict only when the case actually rotated multiple presets —
+      // single-lane cases keep the pre-r36 report shape.
+      if (lanes.length > 1) {
+        const { byHarness, winner } = aggregateByHarness(runs);
+        base.byHarness = byHarness;
+        base.winner = winner;
+      }
+      result.results.push(base);
     }
     result.finishedAt = Date.now();
     if (controller.signal.aborted) result.status = "stopped";
@@ -162,3 +223,6 @@ export function suiteDiff(result: SuiteResult, previous?: SuiteResult): Map<stri
   }
   return diff;
 }
+
+/** r36: preset lookup exposed for board rendering (glyphs + names). */
+export const SUITE_HARNESS_PRESETS = HARNESS_PRESETS;

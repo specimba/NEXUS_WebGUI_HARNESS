@@ -61,6 +61,7 @@ import {
 } from "@/lib/stores";
 import type { Conversation, Framework } from "@/lib/types";
 import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
+import { SkillsCard } from "@/components/praison/settings/skills-card";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEYS = [
@@ -79,6 +80,7 @@ const SETTINGS_SECTIONS = [
   { id: "relay", label: "Model Relay" },
   { id: "referrals", label: "Referrals" },
   { id: "harness", label: "Harness" },
+  { id: "skills", label: "Skills" },
   { id: "behavior", label: "Behavior" },
   { id: "automation", label: "Automation" },
   { id: "profile", label: "Profile" },
@@ -369,6 +371,11 @@ export function SettingsView() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* ── Skills gallery (r36, PraisonAI SKILL.md doctrine) ────── */}
+          <div id="skills" className="scroll-mt-14">
+            <SkillsCard />
           </div>
 
           {/* ── Behavior ─────────────────────────────────────────────── */}

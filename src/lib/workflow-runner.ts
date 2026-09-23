@@ -25,6 +25,7 @@ import {
   useWorkflowsStore,
 } from "@/lib/stores";
 import { REWORK_LIMIT, LESSON_MAX_CHARS, MAX_LESSONS } from "@/lib/constants";
+import { buildSkillsBlock } from "@/lib/skills";
 import { scheduleDream } from "@/lib/dream";
 import {
   pickVariantForRun,
@@ -64,6 +65,12 @@ export interface ExecuteRunOptions {
   source?: "manual" | "scheduled" | "suite";
   /** Suite provenance (harness rank-①) — tags the run row for the Suites board. */
   suiteMeta?: { suiteId: string; caseId: string; runTag: string };
+  /**
+   * r36 A/B lab: explicit harness id that WINS over the workflow's own
+   * selection and the global one (precedence: override > workflow > global).
+   * Used by the suite runner so one case can be replayed under each preset.
+   */
+  harnessOverride?: string;
   /** Called right after the run row is created (panel uses it to view + wire Stop). */
   onStarted?: (runId: string, controller: AbortController) => void;
   /** Called with the final status whether done, stopped or errored. */
@@ -335,6 +342,7 @@ export async function executeWorkflowRun(
       steps,
       schemaVersion: 2,
       branchOf: { runId: source.id, fromStepIndex: startIndex },
+      harness: options.harnessOverride ?? wf.harness ?? settings.settings.activeHarness,
     });
   } else {
     if (options.task.trim() === "") return null;
@@ -357,6 +365,8 @@ export async function executeWorkflowRun(
       ...(options.suiteMeta
         ? { suiteCaseId: options.suiteMeta.caseId, suiteRunId: options.suiteMeta.runTag }
         : {}),
+      // r36: record the harness that actually drives this run (override wins).
+      harness: options.harnessOverride ?? wf.harness ?? settings.settings.activeHarness,
     });
   }
 
@@ -472,7 +482,7 @@ export async function executeWorkflowRun(
     // consolidation check (fire-time re-verifies due-ness + running guards).
     // r34 harness knob: the “fast” harness opts the pipeline out of dream
     // overhead entirely (latency-critical turns never pay for consolidation).
-    if (harnessById(wf.harness ?? settings.settings.activeHarness).knobs.dreamEligible) {
+    if (harnessById(options.harnessOverride ?? wf.harness ?? settings.settings.activeHarness).knobs.dreamEligible) {
       scheduleDream(wf.id, { silent: source === "suite" });
     }
   };
@@ -522,10 +532,11 @@ export async function executeWorkflowRun(
     finish("error", `Step "${step.label}" failed`, info);
   };
 
-  // r34 harness selection: per-workflow override (editor Select) or the global
-  // active harness. One object retunes relay ordering, tool budget, stall
-  // resilience, lessons injection and dreams for EVERY step of this run.
-  const harness = harnessById(wf.harness ?? settings.settings.activeHarness);
+  // r34 harness selection: explicit override (suite A/B lab) wins, then the
+  // per-workflow editor Select, then the global active harness. One object
+  // retunes relay ordering, tool budget, stall resilience, lessons injection
+  // and dreams for EVERY step of this run.
+  const harness = harnessById(options.harnessOverride ?? wf.harness ?? settings.settings.activeHarness);
 
   /**
    * Stream one agent call for a run step; returns the final content + duration.
@@ -754,6 +765,10 @@ export async function executeWorkflowRun(
     // learn from the failure being resumed past. r34: the “fast” harness
     // skips lesson injection to keep the prompt lean.
     const lessonsBlock = harness.knobs.lessonsInject ? buildLessonsBlock(wf.lessons) : "";
+    // r36 Skills (PraisonAI SKILL.md doctrine): enabled skills ride along in
+    // the first step's context, same budget pattern as lessons. Always on —
+    // the user curated them explicitly.
+    const skillsBlock = buildSkillsBlock(settings.settings.skills);
 
     for (let i = startIndex; i < steps.length; i++) {
       const step = steps[i];
@@ -925,8 +940,13 @@ export async function executeWorkflowRun(
         framework === "sequential"
           ? buildSequentialContext(task, prev)
           : buildConversationalContext(task, prev);
-      const context =
-        i === startIndex && lessonsBlock ? `${baseContext}\n\n${lessonsBlock}` : baseContext;
+      const firstStepBlocks = [
+        i === startIndex ? skillsBlock : "",
+        i === startIndex && lessonsBlock ? lessonsBlock : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      const context = firstStepBlocks ? `${baseContext}\n\n${firstStepBlocks}` : baseContext;
 
       try {
         // ─── r27 SYSTEM-ONE GATE (Jev doctrine: not everything requires a

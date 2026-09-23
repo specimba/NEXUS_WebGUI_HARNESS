@@ -426,6 +426,16 @@ export const SUITE_RESULTS_CAP = 5;
 export const SUITE_REPEATS_MAX = 3;
 /** Pause between suite runs — rate-polite to free providers. */
 export const SUITE_GAP_MS = 1_500;
+/** r36 A/B lab: harness presets a single case may rotate through, max. */
+export const SUITE_HARNESSES_MAX = 3;
+
+// ─── Skills (r36, PraisonAI SKILL.md doctrine — instructions-only) ───────────
+/** Skills kept in the gallery (localStorage discipline: old ones must drop). */
+export const SKILLS_MAX = 12;
+/** Per-skill body cap — a skill that long is a doc, not a capability. */
+export const SKILL_BODY_MAX_CHARS = 4_000;
+/** Total chars of enabled skill instructions injected into one agent context. */
+export const SKILLS_INJECT_MAX_CHARS = 6_000;
 
 // ─── Conversations storage guard (r31 landmine fix) ──────────────────────────
 /** Hard per-conversation message cap; oldest messages are trimmed beyond it. */

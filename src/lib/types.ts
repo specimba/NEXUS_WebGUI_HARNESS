@@ -437,6 +437,12 @@ export interface WorkflowRun {
    * are copied verbatim. Powers the “branched” chip + compare flows.
    */
   branchOf?: { runId: string; fromStepIndex: number };
+  /**
+   * r36: which harness preset actually drove this run — explicit override
+   * (suite A/B lab) > workflow editor selection > global active harness.
+   * Powers the harness chip on run rows; absent = pre-r36 run.
+   */
+  harness?: string;
 }
 
 export interface Workflow {
@@ -525,10 +531,37 @@ export interface Settings {
    *  tool budget, stall resilience, lessons and dreams in one pick.
    *  Missing ⇒ "balanced". */
   activeHarness?: string;
+  /**
+   * r36 Skills gallery (PraisonAI SKILL.md doctrine) — parsed skill documents
+   * injected into agent context when enabled. Instructions-only; scripts never
+   * executed. Missing = no skills imported yet.
+   */
+  skills?: AgentSkill[];
   seeded: boolean;
 }
 
 // ─── SSE event protocol emitted by /api/chat ────────────────────────────────
+
+/**
+ * r36 Skills (PraisonAI-repo doctrine): a SKILL.md document parsed into a
+ * reusable agent capability. v1 is INSTRUCTIONS-ONLY by design — the body is
+ * plain guidance injected into agent context; a skill's scripts/ folder is
+ * never executed (the node:vm sandbox discipline holds).
+ */
+export interface AgentSkill {
+  id: string;
+  /** Frontmatter `name` (or first heading / filename fallback). */
+  name: string;
+  /** Frontmatter `description` — what the skill teaches, shown in the gallery. */
+  description: string;
+  /** Markdown body below the frontmatter (the actual instructions). */
+  body: string;
+  /** Enabled skills ride along in chat + pipeline context (budgeted). */
+  enabled: boolean;
+  /** Body length in chars — shown honestly in the gallery, drives the budget. */
+  chars: number;
+  addedAt: number;
+}
 
 // ─── Task suite (harness rank-①): replayable cases over workflows ───────────
 
@@ -543,6 +576,13 @@ export interface SuiteCase {
   expect?: string;
   /** Optional machine expectation: run should finish with ≤ this many tool calls. */
   maxToolCalls?: number;
+  /**
+   * r36 Harness A/B lab: ordered harness ids this case rotates through
+   * (e.g. ["balanced","free-frontier"]) so the SAME task runs under EACH
+   * preset and the board can crown an empirical winner. Missing/empty = a
+   * single pass under the workflow's own harness inheritance.
+   */
+  harnesses?: string[];
 }
 
 /** Metrics collected from one executed suite run (aggregates only — no outputs). */
@@ -554,6 +594,18 @@ export interface SuiteCaseRun {
   ms: number;
   degraded: number;
   reworked: number;
+  toolCallsOk: number;
+  /** r36 A/B lab: which harness preset drove this run (missing = inherited). */
+  harness?: string;
+}
+
+/** r36 A/B lab: per-harness aggregate for one case. */
+export interface SuiteHarnessAggregate {
+  harness: string;
+  doneRate: number;
+  runs: number;
+  meanMs: number;
+  reworks: number;
   toolCallsOk: number;
 }
 
@@ -567,6 +619,10 @@ export interface SuiteCaseResult {
   runs: SuiteCaseRun[] | "skipped";
   /** Mean share of repeats that finished done (0..1); 0 for skipped. */
   doneRate: number;
+  /** r36 A/B lab: per-harness breakdown (present only for multi-harness cases). */
+  byHarness?: SuiteHarnessAggregate[];
+  /** r36 A/B lab: best harness id — highest doneRate, ties broken by latency. */
+  winner?: string;
 }
 
 export interface SuiteResult {

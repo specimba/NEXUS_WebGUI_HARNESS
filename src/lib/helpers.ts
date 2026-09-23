@@ -494,8 +494,20 @@ export function suiteResultToMarkdown(suite: Suite, result: SuiteResult): string
         `- \`${SUITE_STATUS_LABEL[run.status]}\` · steps ${run.stepsDone}/${run.stepsTotal} · ${fmtMs(run.ms)} · ` +
           `${run.toolCallsOk} tool ok${run.degraded ? ` · ${run.degraded} auto-digest` : ""}${
             run.reworked ? ` · ${run.reworked} reworked` : ""
-          }`
+          }${run.harness ? ` · harness: **${run.harness}**` : ""}`
       );
+    }
+    // r36 A/B lab: per-harness verdict table when the case rotated presets.
+    if (r.byHarness && r.byHarness.length > 1) {
+      lines.push("", "| Harness | Done rate | Runs | Mean latency | Reworks |", "|---|---|---|---|---|");
+      for (const h of r.byHarness) {
+        lines.push(
+          `| ${h.harness} | ${Math.round(h.doneRate * 100)}% | ${h.runs} | ${fmtMs(h.meanMs)} | ${h.reworks} |`
+        );
+      }
+      if (r.winner) {
+        lines.push("", `**Winner: ${r.winner}** (highest done-rate; ties broken by latency).`);
+      }
     }
   }
   lines.push("", "---", "", "_Aggregates only — suite results never store pipeline outputs._");

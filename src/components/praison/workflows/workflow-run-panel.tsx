@@ -68,6 +68,7 @@ import {
 } from "@/lib/stores";
 import { executeWorkflowRun, runErrorKindLabel } from "@/lib/workflow-runner";
 import { SCHEDULE_INTERVALS } from "@/lib/constants";
+import { harnessById } from "@/lib/harness";
 import type { Workflow, WorkflowRunStep } from "@/lib/types";
 import { TOOL_META } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -666,6 +667,14 @@ export function WorkflowRunPanel({
                     aria-label={`Branched from an earlier run at step ${r.branchOf.fromStepIndex + 1}`}
                   />
                 ) : null}
+                {r.harness ? (
+                  <span
+                    className="shrink-0 rounded-full border border-violet-500/25 bg-violet-500/10 px-1.5 text-[10px] font-semibold text-violet-600 dark:text-violet-300"
+                    title={`Driven by the ${harnessById(r.harness).name} harness`}
+                  >
+                    {harnessById(r.harness).glyph}
+                  </span>
+                ) : null}
                 <span className="min-w-0 flex-1 truncate text-xs">{r.task}</span>
                 <span className="shrink-0 text-[11px] text-muted-foreground">
                   {fmtRel(r.startedAt)}
@@ -718,6 +727,14 @@ export function WorkflowRunPanel({
               >
                 <GitFork className="h-3 w-3" aria-hidden />
                 branched · step {viewedRun.branchOf.fromStepIndex + 1}
+              </span>
+            ) : null}
+            {viewedRun?.harness ? (
+              <span
+                title={`This run is driven by the ${harnessById(viewedRun.harness).name} harness — relay order, tool budget, stall resilience and lessons follow its knobs`}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-300"
+              >
+                {harnessById(viewedRun.harness).glyph} {harnessById(viewedRun.harness).name}
               </span>
             ) : null}
             {scheduleEnabled && (

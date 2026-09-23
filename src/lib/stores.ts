@@ -522,6 +522,8 @@ interface SuitesState {
   remove: (id: string) => void;
   addCase: (id: string, c: SuiteCase) => void;
   removeCase: (id: string, caseId: string) => void;
+  /** r36 A/B lab: set (or clear) a case's harness rotation in place. */
+  setCaseHarnesses: (id: string, caseId: string, harnesses: string[]) => void;
   recordResult: (suiteId: string, result: SuiteResult) => void;
 }
 
@@ -559,6 +561,20 @@ export const useSuitesStore = create<SuitesState>()(
           suites: s.suites.map((x) =>
             x.id === id
               ? { ...x, cases: x.cases.filter((c) => c.id !== caseId), updatedAt: Date.now() }
+              : x
+          ),
+        })),
+      setCaseHarnesses: (id, caseId, harnesses) =>
+        set((s) => ({
+          suites: s.suites.map((x) =>
+            x.id === id
+              ? {
+                  ...x,
+                  cases: x.cases.map((c) =>
+                    c.id === caseId ? { ...c, harnesses: harnesses.length > 0 ? harnesses : undefined } : c
+                  ),
+                  updatedAt: Date.now(),
+                }
               : x
           ),
         })),
