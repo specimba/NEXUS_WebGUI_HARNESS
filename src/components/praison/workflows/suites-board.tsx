@@ -214,11 +214,16 @@ function HarnessPicker({
 
 /** r36 A/B lab: per-harness done-rate bars + the crowned winner. */
 function AbBars({ result }: { result: SuiteCaseResult }) {
+  // r38 winner adoption: a bake-off verdict is evidence — one click makes the
+  // winning harness the workflow's default (editor selection stays editable).
+  const workflow = useWorkflowsStore((s) => s.workflows.find((w) => w.id === result.workflowId));
+  const updateWorkflow = useWorkflowsStore((s) => s.update);
+  const adoptable = !!result.winner && !!workflow && workflow.harness !== result.winner;
   const byHarness = result.byHarness ?? [];
   if (byHarness.length < 2) return null;
   return (
     <div className="mt-2 space-y-1.5 rounded-lg border border-violet-500/25 bg-violet-500/[0.04] p-2.5">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">
           Harness A/B
         </p>
@@ -231,6 +236,40 @@ function AbBars({ result }: { result: SuiteCaseResult }) {
           <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
             no lane finished
           </span>
+        )}
+        {result.winner && (
+          <button
+            type="button"
+            disabled={!adoptable}
+            onClick={() => {
+              if (!result.winner || !workflow) return;
+              updateWorkflow(workflow.id, { harness: result.winner });
+              toast.success(
+                `“${workflow.name}” now defaults to ${harnessById(result.winner).name}`,
+                {
+                  description: `Adopted from the ${result.workflowName} bake-off verdict (${result.winner}). Editor selection stays editable.`,
+                  icon: "⚖️",
+                }
+              );
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold transition-colors",
+              adoptable
+                ? "border-violet-500/50 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 dark:text-violet-300"
+                : "border-dashed text-muted-foreground"
+            )}
+            title={
+              adoptable
+                ? `Set ${result.workflowName}'s default harness to the empirical winner`
+                : !workflow
+                  ? "The workflow behind this case was deleted"
+                  : `Already adopted — ${result.workflowName} defaults to ${harnessById(result.winner).name}`
+            }
+          >
+            {adoptable
+              ? `⬆ adopt on ${result.workflowName}`
+              : `✓ adopted on ${result.workflowName}`}
+          </button>
         )}
       </div>
       <ul className="space-y-1">

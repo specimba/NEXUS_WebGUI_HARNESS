@@ -19,6 +19,7 @@ import {
   SendHorizontal,
   Square,
   Sun,
+  Waypoints,
   Workflow as WorkflowIcon,
   Wrench,
   X,
@@ -570,6 +571,16 @@ export function Composer({
   // ─── r27 per-chat model pin — pick ANY model from your KEYED providers ────
   const settings = useSettingsStore((s) => s.settings);
   const activeConvId = useConversationsStore((s) => s.activeId);
+  // r38 MCP: which MCP tools will ride this turn — honest visibility in the
+  // composer, since MCP defs are browser-direct-only (server engine never
+  // sees them) and the model is the only place they were visible before.
+  const mcpOffer = React.useMemo(() => {
+    const servers = (settings.mcpServers ?? []).filter((s) => s.enabled);
+    const per = servers
+      .map((s) => ({ name: s.name, tools: (s.tools ?? []).filter((t) => t.enabled).length }))
+      .filter((p) => p.tools > 0);
+    return { servers: per.length, tools: per.reduce((n, p) => n + p.tools, 0), per };
+  }, [settings.mcpServers]);
   const modelOverride = useConversationsStore(
     (s) => s.conversations.find((c) => c.id === s.activeId)?.modelOverride ?? ""
   );
@@ -1062,6 +1073,17 @@ export function Composer({
               {tools.map((t) => (
                 <ToolBadge key={t} tool={t} className="h-5 gap-1 rounded-md px-1.5 text-[10px]" />
               ))}
+              {mcpOffer.tools > 0 && (
+                <span
+                  title={`MCP servers riding this turn (browser-direct lanes): ${mcpOffer.per
+                    .map((p) => `${p.name} · ${p.tools} tool${p.tools === 1 ? "" : "s"}`)
+                    .join(", ")}. Manage them in Settings → MCP.`}
+                  className="inline-flex h-5 items-center gap-1 rounded-md border border-violet-500/40 bg-violet-500/10 px-1.5 text-[10px] font-medium text-violet-600 dark:text-violet-300"
+                >
+                  <Waypoints className="h-3 w-3" aria-hidden />
+                  MCP · {mcpOffer.tools}
+                </span>
+              )}
               <span className="text-[11px] text-muted-foreground">
                 {tools.length > 0 ? "tools available" : "no tools — pure reasoning"}
               </span>

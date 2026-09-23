@@ -499,6 +499,53 @@ export interface ProviderKeyEntry {
   validatedAt?: number;
 }
 
+// ─── r38 MCP (Model Context Protocol) — stateless-first client ──────────────
+// Doctrine (r31-2 research, spec 2026-07-28): NO sessions, NO handshake
+// persistence, NO SSE resumability — every request is self-contained JSON-RPC
+// over HTTP POST. Transport is browser-direct (CORS-verified servers: keys
+// never touch the app server) with an opt-in SSRF-guarded proxy fallback.
+
+/** One tool offered by an MCP server, cached from the last discovery. */
+export interface McpToolInfo {
+  /** Raw tool name on the server (e.g. "ask_wiki_question"). */
+  name: string;
+  /** Prefixed server name — shown to the model for provenance. */
+  serverName: string;
+  /** Tool description (trimmed). */
+  description?: string;
+  /** Sanitized JSON Schema for the LLM function definition. */
+  inputSchema?: Record<string, unknown>;
+  /** Per-tool switch (default true on discovery). */
+  enabled: boolean;
+}
+
+/** A user-registered MCP server (Streamable-HTTP POST endpoint). */
+export interface McpServer {
+  id: string;
+  name: string;
+  /** Endpoint URL (POST target), e.g. https://mcp.deepwiki.com/mcp. */
+  url: string;
+  /** BYOK auth headers sent browser→server directly. Never synced anywhere. */
+  headers?: Record<string, string>;
+  enabled: boolean;
+  /**
+   * Fallback route through /api/mcp (SSRF-guarded) when the server blocks
+   * browser CORS. OFF by default — when on, headers transit the app server
+   * (honest tradeoff, surfaced in the UI).
+   */
+  useProxy?: boolean;
+  /** Protocol version that answered in the last discovery (ladder top first). */
+  protocolVersion?: string;
+  /** Cached catalog from the last successful discovery. */
+  tools?: McpToolInfo[];
+  discoveredAt?: number;
+  /** Last discovery/call error (honest surfacing, cleared on success). */
+  lastError?: string;
+  /** Which transport last succeeded. */
+  lastVia?: "browser" | "proxy";
+  addedAt: number;
+}
+
 export interface Settings {
   provider: ProviderMode; // auto = built-in SDK, custom = BYOK OpenAI-compatible
   apiKey: string;
@@ -537,6 +584,11 @@ export interface Settings {
    * executed. Missing = no skills imported yet.
    */
   skills?: AgentSkill[];
+  /**
+   * r38 MCP registry — user-registered stateless MCP servers whose enabled
+   * tools join chat + pipeline tool registries (capped). Missing = none yet.
+   */
+  mcpServers?: McpServer[];
   seeded: boolean;
 }
 

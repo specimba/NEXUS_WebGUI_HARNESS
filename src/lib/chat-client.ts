@@ -1,8 +1,9 @@
 "use client";
 
-import type { RouteReceipt, ToolCallInfo, ToolId } from "./types";
+import type { McpServer, RouteReceipt, ToolCallInfo, ToolId } from "./types";
 import { runRelayedCustom, type EngineBody, type RelayWireHop } from "./agent-engine";
-import { buildToolDefs, httpToolExecutor } from "./tools-defs";
+import { buildToolDefs, httpToolExecutor, type EngineToolIO } from "./tools-defs";
+import { buildMcpToolPlan, executeMcpDefCall, parseMcpToolDefName } from "./mcp";
 
 // ─── Client agent runner ─────────────────────────────────────────────────────
 // TWO transports, tried in order (r23):
@@ -51,6 +52,12 @@ export interface RunAgentParams {
   signal?: AbortSignal;
   /** Force the legacy server transport (used after a browser-direct CORS death). */
   forceServer?: boolean;
+  /**
+   * r38 MCP registry slice (see mcpRunParams): enabled servers whose enabled
+   * tools ride this run. Browser-direct only — the server engine never sees
+   * MCP defs (registry is browser-local by design).
+   */
+  mcpServers?: McpServer[];
 }
 
 export interface ToolCallEvent {
@@ -219,11 +226,29 @@ async function runBrowserDirect(
   };
 
   let done: DonePayload | null = null;
+  // r38 MCP bridge: enabled MCP tools join the built-in defs; calls whose name
+  // parses as mcp__<server>__<tool> route to the MCP client, everything else
+  // to the standard server executor. Output then flows through the same
+  // fencing/scrubbing as built-in tools (fenceToolOutputForModel downstream).
+  const mcpPlan =
+    params.mcpServers && params.mcpServers.length > 0
+      ? buildMcpToolPlan(params.mcpServers)
+      : null;
+  const toolIO: EngineToolIO = {
+    defs: [...buildToolDefs(params.tools ?? []), ...(mcpPlan?.defs ?? [])],
+    execute:
+      mcpPlan && mcpPlan.offered.length > 0
+        ? (name, argsJson, signal) =>
+            parseMcpToolDefName(name)
+              ? executeMcpDefCall(params.mcpServers ?? [], name, argsJson, signal)
+              : httpToolExecutor(name, argsJson, signal)
+        : httpToolExecutor,
+  };
   await runRelayedCustom(
     body,
     send,
     params.signal ?? new AbortController().signal,
-    { defs: buildToolDefs(params.tools ?? []), execute: httpToolExecutor },
+    toolIO,
     // No autoRunner in the browser — a useAuto hop throws here, the relay
     // rotates past it, and if the chain exhausts we fall back to the server
     // (which owns the built-in engine) in runAgentChat.

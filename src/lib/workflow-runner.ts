@@ -26,6 +26,7 @@ import {
 } from "@/lib/stores";
 import { REWORK_LIMIT, LESSON_MAX_CHARS, MAX_LESSONS } from "@/lib/constants";
 import { buildSkillsBlock } from "@/lib/skills";
+import { mcpRunParams } from "@/lib/mcp";
 import { scheduleDream } from "@/lib/dream";
 import {
   pickVariantForRun,
@@ -609,6 +610,8 @@ export async function executeWorkflowRun(
             maxIterations: agent.maxIterations + harness.knobs.maxIterationsBonus,
             ...(harness.knobs.stallResumes !== 2 ? { stallResumes: harness.knobs.stallResumes } : {}),
             tools: effectiveTools,
+            // r38 MCP: enabled MCP-server tools join this pipeline run.
+            ...mcpRunParams(settings.settings),
             system,
             messages: [{ role: "user", content: context }],
             ...(relayHops.length > 0 ? { relay: relayHops } : {}),

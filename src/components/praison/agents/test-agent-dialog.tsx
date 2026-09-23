@@ -15,6 +15,7 @@ import { MarkdownRenderer } from "@/components/praison/markdown";
 import { TOOL_META } from "@/lib/constants";
 import { fmtMs, uid } from "@/lib/helpers";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { mcpRunParams } from "@/lib/mcp";
 import { resolveLlm } from "@/lib/llm-config";
 import { useSettingsStore } from "@/lib/stores";
 import type { Agent, ToolCallInfo, ToolId } from "@/lib/types";
@@ -165,6 +166,8 @@ export function TestAgentDialog({
           system: agent.instructions || undefined,
           messages: history,
           tools: agent.tools,
+          // r38 MCP: agent test dialog honors MCP tools too.
+          ...mcpRunParams(settings),
           signal: controller.signal,
         },
         {

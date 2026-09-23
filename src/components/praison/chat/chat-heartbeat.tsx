@@ -18,6 +18,7 @@ import {
 } from "@/lib/constants";
 import { msgContextText, fmtRel, fmtIn, uid } from "@/lib/helpers";
 import { buildMemoryBlock } from "@/lib/memory";
+import { mcpRunParams } from "@/lib/mcp";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
 import {
@@ -92,6 +93,8 @@ async function fireBeat(conv: Conversation): Promise<void> {
         maxIterations: agent.maxIterations,
         system: agent.instructions + buildMemoryBlock(conv.memory) + "\n\n" + HEARTBEAT_SYSTEM,
         tools: agent.tools,
+        // r38 MCP: heartbeat turns can drive MCP tools too.
+        ...mcpRunParams(settings),
         messages: history,
       },
       {}

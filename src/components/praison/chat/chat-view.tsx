@@ -51,6 +51,7 @@ import {
 } from "@/lib/helpers";
 import { buildMemoryBlock, maybeAutoConsolidate } from "@/lib/memory";
 import { buildSkillsBlock } from "@/lib/skills";
+import { mcpRunParams } from "@/lib/mcp";
 import {
   useAgentsStore,
   useConversationsStore,
@@ -286,6 +287,8 @@ export function ChatView() {
               buildSkillsBlock(settings.skills, history.filter((m) => m.role === "user").at(-1)?.content) +
               buildMemoryBlock(convMemory),
             tools: selectedAgent.tools,
+            // r38 MCP: enabled MCP-server tools join this chat turn.
+            ...mcpRunParams(settings),
             messages: history,
             ...(relayHops.length > 0 ? { relay: relayHops } : {}),
             images: images && images.length > 0 ? images : undefined,

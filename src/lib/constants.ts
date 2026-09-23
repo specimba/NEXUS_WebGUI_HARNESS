@@ -439,6 +439,28 @@ export const SUITE_SCHEDULE_FAIL_BREAKER = 3;
 /** r37 relevance ranking: chars of each skill body scanned for term overlap. */
 export const SKILL_RELEVANCE_SCAN_CHARS = 800;
 
+// ─── r38 MCP client (stateless-first, spec 2026-07-28 doctrine) ──────────────
+/** Registry hygiene: max registered MCP servers. */
+export const MAX_MCP_SERVERS = 8;
+/** Catalog hygiene: max tools cached per server from one discovery. */
+export const MAX_MCP_TOOLS_PER_SERVER = 24;
+/** Tool-defs budget: max MCP tools offered to the model in ONE run. */
+export const MAX_MCP_TOOL_DEFS = 12;
+/** Protocol-version ladder — tried top-down on discovery, winner cached. */
+export const MCP_PROTOCOL_LADDER = ["2026-07-28", "2025-11-25", "2025-06-18"] as const;
+/** Discovery deadline (stateless tools/list round-trip). */
+export const MCP_DISCOVER_TIMEOUT_MS = 20_000;
+/** Tool-call deadline (MCP tools can legitimately be slow — e.g. deep wiki Q&A). */
+export const MCP_CALL_TIMEOUT_MS = 60_000;
+/** Schema hygiene: max properties kept in one sanitized input schema. */
+export const MCP_SCHEMA_MAX_PROPS = 32;
+/** Schema hygiene: max serialized size of one sanitized input schema. */
+export const MCP_SCHEMA_MAX_CHARS = 4_000;
+/** Description trim per tool (defs ride EVERY request — keep them lean). */
+export const MCP_DESC_MAX_CHARS = 400;
+/** Proxy response cap (bytes of text passed back through /api/mcp). */
+export const MCP_PROXY_RESPONSE_CAP = 512 * 1024;
+
 // ─── Skills (r36, PraisonAI SKILL.md doctrine — instructions-only) ───────────
 /** Skills kept in the gallery (localStorage discipline: old ones must drop). */
 export const SKILLS_MAX = 12;
