@@ -7,7 +7,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { Crown, Download, FlaskConical, Play, Plus, Square, Trash2, X } from "lucide-react";
+import { CalendarClock, Crown, Download, FlaskConical, Play, Plus, Square, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,12 +19,124 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSuitesStore, useUiStore, useWorkflowsStore } from "@/lib/stores";
-import { downloadText, fmtRel, slugify, suiteResultToMarkdown } from "@/lib/helpers";
+import { downloadText, fmtIntervalShort, fmtRel, slugify, suiteResultToMarkdown } from "@/lib/helpers";
 import { isSuiteRunning, runSuite, stopSuite, suiteDiff, type SuiteProgress } from "@/lib/suite-runner";
-import { SUITE_REPEATS_MAX, SUITE_HARNESSES_MAX } from "@/lib/constants";
+import { SUITE_REPEATS_MAX, SUITE_HARNESSES_MAX, SUITE_SCHEDULE_MIN_MS, SUITE_SCHEDULE_FAIL_BREAKER } from "@/lib/constants";
 import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
 import { cn } from "@/lib/utils";
-import type { SuiteCaseResult, SuiteCaseRun, SuiteResult } from "@/lib/types";
+import type { Suite, SuiteCaseResult, SuiteCaseRun, SuiteResult } from "@/lib/types";
+
+/** r37: offered bake-off cadences — the user's own sustainability ordering. */
+const SUITE_CADENCES: { value: string; label: string; ms: number }[] = [
+  { value: "1800000", label: "Every 30 min", ms: 30 * 60_000 },
+  { value: "3600000", label: "Hourly", ms: 3_600_000 },
+  { value: "21600000", label: "Every 6 h", ms: 6 * 3_600_000 },
+  { value: "43200000", label: "Every 12 h", ms: 12 * 3_600_000 },
+  { value: "86400000", label: "Daily", ms: 24 * 3_600_000 },
+];
+
+/**
+ * r37 scheduled bake-offs: arm/disarm a suite's recurring cadence. Armed
+ * suites re-run on their own while the app tab is open (re-arm-before-fire,
+ * 30-min quota floor, failure breaker after repeated all-fail rounds).
+ */
+function SuiteScheduleRow({ suite, disabled }: { suite: Suite; disabled?: boolean }) {
+  const setSchedule = useSuitesStore((s) => s.setSchedule);
+  const schedule = suite.schedule;
+  const armed = schedule?.enabled === true;
+  const breakerPaused = armed === false && (schedule?.failStreak ?? 0) >= SUITE_SCHEDULE_FAIL_BREAKER;
+  const [repeats, setRepeats] = React.useState(String(schedule?.repeats ?? 1));
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2",
+        armed
+          ? "border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.06] to-transparent"
+          : breakerPaused
+            ? "border-amber-500/40 bg-amber-500/[0.06]"
+            : "border-dashed border-border/70"
+      )}
+    >
+      <CalendarClock
+        className={cn("h-3.5 w-3.5 shrink-0", armed ? "text-emerald-500" : breakerPaused ? "text-amber-500" : "text-muted-foreground")}
+        aria-hidden
+      />
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Bake-off schedule
+      </span>
+      <Select
+        value={armed ? String(Math.max(SUITE_SCHEDULE_MIN_MS, schedule!.intervalMs)) : "off"}
+        disabled={disabled}
+        onValueChange={(v) => {
+          if (v === "off") {
+            setSchedule(suite.id, undefined);
+            toast("Bake-off schedule removed", { icon: "🗓️", description: `${suite.name} no longer re-runs on its own.` });
+          } else {
+            const ms = Number(v);
+            setSchedule(suite.id, { intervalMs: ms, repeats: Math.min(Math.max(1, Number(repeats) || 1), SUITE_REPEATS_MAX) });
+            toast.success("Bake-off schedule armed", {
+              icon: "🔬",
+              description: `${suite.name} re-runs every ${fmtIntervalShort(ms)} while the app tab is open — first fire ${fmtRel(Date.now() + ms)}.`,
+            });
+          }
+        }}
+      >
+        <SelectTrigger className="h-8 w-[124px] text-xs" aria-label="Bake-off cadence">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="off">Off</SelectItem>
+          {SUITE_CADENCES.map((c) => (
+            <SelectItem key={c.value} value={c.value}>
+              {c.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={repeats}
+        disabled={disabled || !armed}
+        onValueChange={(v) => {
+          setRepeats(v);
+          if (armed) {
+            setSchedule(suite.id, { intervalMs: Math.max(SUITE_SCHEDULE_MIN_MS, schedule!.intervalMs), repeats: Number(v) });
+          }
+        }}
+      >
+        <SelectTrigger className="h-8 w-[92px] text-xs" aria-label="Repeats for scheduled runs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: SUITE_REPEATS_MAX }, (_, i) => i + 1).map((n) => (
+            <SelectItem key={n} value={String(n)}>
+              {n} repeat{n === 1 ? "" : "s"}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span className="min-w-0 flex-1 text-[11px] leading-tight text-muted-foreground">
+        {armed ? (
+          <>
+            <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 soft-pulse" aria-hidden />
+              next {schedule!.nextRunAt ? fmtRel(schedule!.nextRunAt) : "awaiting slot"}
+            </span>
+            {schedule!.lastRunAt ? <span className="ml-1.5">· last {fmtRel(schedule!.lastRunAt)}</span> : null}
+            {schedule!.failStreak ? <span className="ml-1.5 text-amber-600 dark:text-amber-400">· {schedule!.failStreak} all-fail round{schedule!.failStreak === 1 ? "" : "s"}</span> : null}
+            <span className="block">fires only while the app is open · 3 all-fail rounds auto-pause</span>
+          </>
+        ) : breakerPaused ? (
+          <span className="font-medium text-amber-600 dark:text-amber-400">
+            paused by the failure breaker — pick a cadence again to re-arm
+          </span>
+        ) : (
+          <span>re-runs the A/B lanes on their own and keeps fresh verdicts in history</span>
+        )}
+      </span>
+    </div>
+  );
+}
 
 const STATUS_DOT: Record<SuiteCaseRun["status"], string> = {
   done: "bg-emerald-500",
@@ -311,6 +423,15 @@ export function SuitesBoard() {
     return () => clearInterval(t);
   }, [runningId]);
 
+  // r37: scheduled bake-offs run WITHOUT the board's progress callback —
+  // poll the runner so the board still shows a truthful "running" state.
+  const [scheduledRunning, setScheduledRunning] = React.useState(false);
+  React.useEffect(() => {
+    if (runningId) return;
+    const t = setInterval(() => setScheduledRunning(isSuiteRunning()), 1_500);
+    return () => clearInterval(t);
+  }, [runningId]);
+
   const handleRun = async (suiteId: string) => {
     if (isSuiteRunning()) return;
     const n = Math.min(Math.max(1, Number(repeats) || 1), SUITE_REPEATS_MAX);
@@ -446,6 +567,20 @@ export function SuitesBoard() {
                 </Button>
               </div>
             </div>
+
+            {/* r37: per-suite recurring bake-off schedule */}
+            <SuiteScheduleRow suite={suite} disabled={isRunning} />
+
+            {scheduledRunning && !isRunning ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.05] px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400"
+              >
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden />
+                Scheduled bake-off in progress — live metrics land here when it finishes
+              </div>
+            ) : null}
 
             {isRunning && progress ? (
               <div

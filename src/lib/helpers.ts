@@ -37,6 +37,15 @@ export function fmtTime(ts: number): string {
 
 export function fmtRel(ts: number): string {
   const diff = Date.now() - ts;
+  // r37: future timestamps (scheduled next-fire times) render as "in …"
+  // instead of collapsing into "just now" — schedules must read honestly.
+  if (diff < 0) {
+    const ahead = -diff;
+    if (ahead < 60_000) return "in <1m";
+    if (ahead < 3_600_000) return `in ${Math.floor(ahead / 60_000)}m`;
+    if (ahead < 86_400_000) return `in ${Math.floor(ahead / 3_600_000)}h`;
+    return `in ${Math.floor(ahead / 86_400_000)}d`;
+  }
   if (diff < 60_000) return "just now";
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;

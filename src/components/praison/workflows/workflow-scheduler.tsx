@@ -2,8 +2,11 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { useWorkflowsStore } from "@/lib/stores";
+import { useSuitesStore, useWorkflowsStore } from "@/lib/stores";
 import { executeWorkflowRun, isWorkflowRunning } from "@/lib/workflow-runner";
+import { isSuiteRunning, runSuite } from "@/lib/suite-runner";
+import { SUITE_REPEATS_MAX, SUITE_SCHEDULE_FAIL_BREAKER, SUITE_SCHEDULE_MIN_MS } from "@/lib/constants";
+import { fmtIntervalShort } from "@/lib/helpers";
 
 // ─── In-app workflow scheduler ───────────────────────────────────────────────
 // Ticks every 10s and fires any enabled workflow schedule whose nextRunAt is
@@ -67,6 +70,91 @@ export function WorkflowScheduler() {
     };
 
     tick(); // catch any schedule that came due while unmounted
+    const t = setInterval(tick, TICK_MS);
+    return () => clearInterval(t);
+  }, []);
+
+  return null;
+}
+
+// ─── r37: Suite bake-off scheduler ───────────────────────────────────────────
+// Same doctrine as the workflow scheduler, pointed at suites: a 10s tick fires
+// any enabled suite schedule whose nextRunAt is due, RE-ARMING BEFORE the
+// bake-off starts so a slow round can never double-fire. Quota discipline:
+// never two suites at once (isSuiteRunning gate), 30-min cadence floor
+// (SUITE_SCHEDULE_MIN_MS, clamped at arm time), and a failure breaker that
+// auto-pauses a suite after repeated all-fail scheduled rounds.
+
+/** Module-level singleton guard (StrictMode mounts effects twice). */
+let suiteTicking = false;
+
+export function SuiteScheduler() {
+  React.useEffect(() => {
+    const tick = () => {
+      if (suiteTicking || document.visibilityState === "hidden") return;
+      suiteTicking = true;
+      try {
+        const now = Date.now();
+        const store = useSuitesStore.getState();
+        const due = store.suites.filter(
+          (s) =>
+            s.schedule?.enabled === true &&
+            s.cases.length > 0 &&
+            (s.schedule.nextRunAt == null || s.schedule.nextRunAt <= now) &&
+            !isSuiteRunning()
+        );
+
+        for (const suite of due) {
+          const schedule = suite.schedule;
+          if (!schedule) continue;
+          const interval = Math.max(SUITE_SCHEDULE_MIN_MS, schedule.intervalMs);
+          const repeats = Math.min(Math.max(1, schedule.repeats || 1), SUITE_REPEATS_MAX);
+
+          // Re-arm FIRST — a slow bake-off can never double-fire on the next tick.
+          store.update(suite.id, {
+            schedule: { ...schedule, lastRunAt: now, nextRunAt: now + interval, repeats },
+          });
+
+          toast(`Scheduled bake-off started`, {
+            icon: "🔬",
+            description: `${suite.name} · every ${fmtIntervalShort(interval)} · ${repeats} repeat${repeats === 1 ? "" : "s"} per case — real quota spend`,
+          });
+
+          void runSuite(suite.id, repeats).then((result) => {
+            if (!result) return; // aborted by a manual run taking over, etc.
+            // Failure breaker: an all-fail scheduled round (overall done-rate
+            // 0 across executed cases) counts toward the streak; any round
+            // with a completed case resets it. ≥3 → auto-pause honestly.
+            const executed = result.results.filter((r) => r.runs !== "skipped" && r.runs.length > 0);
+            const overall = executed.length > 0
+              ? executed.reduce((a, r) => a + r.doneRate, 0) / executed.length
+              : 0;
+            const fresh = useSuitesStore.getState().suites.find((s) => s.id === suite.id);
+            const sched = fresh?.schedule;
+            if (!sched?.enabled) return; // disarmed while running — leave it be
+            const streak = overall > 0 ? 0 : (sched.failStreak ?? 0) + 1;
+            if (streak >= SUITE_SCHEDULE_FAIL_BREAKER) {
+              useSuitesStore.getState().update(suite.id, {
+                schedule: { ...sched, enabled: false, failStreak: streak },
+              });
+              toast.warning("Scheduled bake-off paused by failure breaker", {
+                icon: "🛑",
+                description: `${suite.name} finished 0% done ${streak} rounds in a row — schedule disarmed to protect quota. Re-arm it from the Suites board.`,
+                duration: 12_000,
+              });
+            } else {
+              useSuitesStore.getState().update(suite.id, {
+                schedule: { ...sched, failStreak: streak > 0 ? streak : 0 },
+              });
+            }
+          });
+        }
+      } finally {
+        suiteTicking = false;
+      }
+    };
+
+    tick();
     const t = setInterval(tick, TICK_MS);
     return () => clearInterval(t);
   }, []);

@@ -9,7 +9,7 @@ import { ChatView } from "@/components/praison/chat/chat-view";
 import { HeartbeatEngine } from "@/components/praison/chat/chat-heartbeat";
 import { AgentsView } from "@/components/praison/agents/agents-view";
 import { WorkflowsView } from "@/components/praison/workflows/workflows-view";
-import { WorkflowScheduler } from "@/components/praison/workflows/workflow-scheduler";
+import { WorkflowScheduler, SuiteScheduler } from "@/components/praison/workflows/workflow-scheduler";
 import { RadarView } from "@/components/praison/radar/radar-view";
 import { ModelTicker } from "@/components/praison/tracker/model-ticker";
 import { SessionHealth } from "@/components/praison/session-health";
@@ -115,6 +115,7 @@ export default function Page() {
       <CommandPalette />
       <GlobalSearchDialog />
       <WorkflowScheduler />
+      <SuiteScheduler />
       <HeartbeatEngine />
       <SessionHealth />
     </div>

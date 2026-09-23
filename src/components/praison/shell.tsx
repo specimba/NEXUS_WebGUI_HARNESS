@@ -28,13 +28,100 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BrandMark, ThemeToggle } from "@/components/praison/atoms";
-import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
+import { useConversationsStore, useSettingsStore, useSuitesStore, useUiStore, useWorkflowsStore } from "@/lib/stores";
 import { resolveLlm } from "@/lib/llm-config";
 import { FREE_PROVIDERS } from "@/lib/providers";
 import { APP_VERSION, GITHUB_URL, AIHUBMIX_INTRO_FLAG, VYCE_INTRO_FLAG } from "@/lib/constants";
+import { fmtRel } from "@/lib/helpers";
 import type { View } from "@/lib/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// ─── r37: automation pulse (shared helpers) ──────────────────────────────────
+// The r32 complaint — "the dashboard shows 0 cron" — must never be a silent
+// mystery again. These helpers aggregate every in-app automation layer
+// (workflow schedules + scheduled suite bake-offs) into one honest count.
+
+function useAutomationCounts() {
+  const workflows = useWorkflowsStore((s) => s.workflows);
+  const suites = useSuitesStore((s) => s.suites);
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const armedPipelines = workflows.filter((w) => w.schedule?.enabled === true);
+  const armedSuites = suites.filter((s) => s.schedule?.enabled === true && s.cases.length > 0);
+  const nextFire = [...armedPipelines.map((w) => w.schedule!.nextRunAt), ...armedSuites.map((s) => s.schedule!.nextRunAt)]
+    .filter((t): t is number => typeof t === "number")
+    .sort((a, b) => a - b)[0];
+  const anyPaused = armedPipelines.some((w) => (w.schedule!.failStreak ?? 0) >= 3);
+  return {
+    pipelines: armedPipelines.length,
+    suites: armedSuites.length,
+    total: armedPipelines.length + armedSuites.length,
+    nextFire: nextFire != null ? Math.max(0, nextFire - now) : undefined,
+    anyPaused,
+  };
+}
+
+/** Sidebar pulse chip: glanceable automation status between nav and footer. */
+function AutomationPulse({ onNavigate }: { onNavigate?: () => void }) {
+  const { pipelines, suites, total, nextFire, anyPaused } = useAutomationCounts();
+  const setView = useUiStore((s) => s.setView);
+  const parts = [
+    ...(pipelines > 0 ? [`${pipelines} pipeline${pipelines === 1 ? "" : "s"}`] : []),
+    ...(suites > 0 ? [`${suites} bake-off${suites === 1 ? "" : "s"}`] : []),
+  ];
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setView("workflows");
+        onNavigate?.();
+      }}
+      title={
+        total > 0
+          ? `${parts.join(" + ")} armed — next fire ${nextFire != null ? fmtRel(Date.now() + nextFire) : "pending"}. Click to open Workflows.`
+          : "No in-app automation armed yet. Arm a pipeline schedule from a workflow's Run panel, or a suite bake-off from the Suites board."
+      }
+      className={cn(
+        "group mx-3 mt-3 flex w-[calc(100%-1.5rem)] items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-xs transition-colors",
+        total > 0
+          ? "border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.08] to-transparent hover:border-emerald-500/50"
+          : "border-dashed border-border/70 text-muted-foreground hover:border-violet-500/40 hover:text-foreground"
+      )}
+      aria-label={
+        total > 0
+          ? `Automation armed: ${parts.join(", ")}`
+          : "Automation idle — nothing scheduled"
+      }
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "h-2 w-2 shrink-0 rounded-full",
+          total > 0 ? (anyPaused ? "bg-amber-400 soft-pulse" : "bg-emerald-400 soft-pulse") : "bg-muted-foreground/30"
+        )}
+      />
+      {total > 0 ? (
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block font-medium text-foreground">{parts.join(" + ")} armed</span>
+          <span className="block truncate tabular-nums text-[10px] text-muted-foreground">
+            {anyPaused ? "⚠ breaker paused one schedule · " : ""}
+            {nextFire != null ? `next ${fmtRel(Date.now() + nextFire)}` : "awaiting next slot"}
+          </span>
+        </span>
+      ) : (
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block font-medium">Automation idle</span>
+          <span className="block truncate text-[10px]">arm a schedule to go 24/7</span>
+        </span>
+      )}
+    </button>
+  );
+}
 
 // ─── Nav items ───────────────────────────────────────────────────────────────
 const NAV_ITEMS: { view: View; label: string; icon: React.ElementType; hint: string }[] = [
@@ -48,10 +135,14 @@ const NAV_ITEMS: { view: View; label: string; icon: React.ElementType; hint: str
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const view = useUiStore((s) => s.view);
   const setView = useUiStore((s) => s.setView);
+  // r37: an armed-automation count rides the Workflows nav item — the pulse
+  // chip tells the story in words, the badge makes it glanceable at all times.
+  const armedTotal = useAutomationCounts().total;
   return (
     <nav aria-label="Primary" className="flex flex-col gap-1 px-3">
       {NAV_ITEMS.map(({ view: v, label, icon: Icon, hint }) => {
         const active = view === v;
+        const badge = v === "workflows" && armedTotal > 0 ? armedTotal : 0;
         return (
           <button
             key={v}
@@ -76,7 +167,15 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             )}
             <Icon className={cn("h-4 w-4 shrink-0", active ? "text-violet-400" : "")} />
             {label}
-            {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-400 soft-pulse" />}
+            {badge > 0 ? (
+              <span
+                className="ml-auto rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[10px] font-bold tabular-nums text-emerald-600 dark:text-emerald-400"
+                aria-label={`${badge} automations armed`}
+              >
+                {badge}
+              </span>
+            ) : null}
+            {active && <span className={cn(badge > 0 ? "ml-1.5" : "ml-auto", "h-1.5 w-1.5 rounded-full bg-violet-400 soft-pulse")} />}
             {!active && <span className="sr-only">{hint}</span>}
           </button>
         );
@@ -115,6 +214,7 @@ export function AppSidebar() {
       <NewChatButton />
       <div className="mt-3" />
       <NavList />
+      <AutomationPulse />
       <div className="mt-auto px-3 pb-4">
         <Separator className="mb-3 opacity-60" />
         <div className="flex items-center justify-between px-1">
@@ -154,6 +254,7 @@ export function MobileNav() {
         <NewChatButton onDone={() => setOpen(false)} />
         <div className="mt-3" />
         <NavList onNavigate={() => setOpen(false)} />
+        <AutomationPulse onNavigate={() => setOpen(false)} />
         <div className="mt-auto px-4 pb-6 pt-4">
           <a
             href={GITHUB_URL}

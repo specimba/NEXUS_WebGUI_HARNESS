@@ -51,11 +51,12 @@ import {
   SPEECH_RATES,
   TTS_VOICES,
 } from "@/lib/constants";
-import { downloadJson, fmtRel } from "@/lib/helpers";
+import { downloadJson, fmtIntervalShort, fmtRel } from "@/lib/helpers";
 import {
   useAgentsStore,
   useConversationsStore,
   useSettingsStore,
+  useSuitesStore,
   useUiStore,
   useWorkflowsStore,
 } from "@/lib/stores";
@@ -69,6 +70,7 @@ const STORAGE_KEYS = [
   "praison-conversations",
   "praison-workflows",
   "praison-settings",
+  "praison-suites",
   "praison-ui",
 ] as const;
 
@@ -107,6 +109,7 @@ export function SettingsView() {
   const agents = useAgentsStore((s) => s.agents);
   const conversations = useConversationsStore((s) => s.conversations);
   const workflows = useWorkflowsStore((s) => s.workflows);
+  const suites = useSuitesStore((s) => s.suites);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -158,6 +161,7 @@ export function SettingsView() {
         agents,
         conversations,
         workflows,
+        suites, // r37: task suites are user-curated (cases, A/B rotations, schedules) — they ride along
       });
       toast.success("Export downloaded");
     } catch {
@@ -217,6 +221,13 @@ export function SettingsView() {
             version: 0,
           })
         );
+        // r37: suites restore when present (older exports simply lack the key).
+        if (Array.isArray(bundle.suites)) {
+          localStorage.setItem(
+            "praison-suites",
+            JSON.stringify({ state: { suites: bundle.suites }, version: 0 })
+          );
+        }
       } catch {
         toast.error("Import failed — could not write to localStorage.");
         return;
@@ -552,6 +563,43 @@ export function SettingsView() {
                                   : s.nextRunAt
                                     ? `next run ${fmtRel(s.nextRunAt)}`
                                     : "awaiting next slot"}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    );
+                  })()}
+                </div>
+                {/* r37: scheduled suite bake-offs (the A/B lab on a cadence) */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Scheduled bake-offs (suites, run while the app is open)
+                  </p>
+                  {(() => {
+                    const armed = suites.filter((s) => s.schedule?.enabled === true && s.cases.length > 0);
+                    if (armed.length === 0) {
+                      return (
+                        <p className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                          No suites on a schedule. Open Workflows → Suites and arm a bake-off
+                          cadence (30 min · hourly · 6 h · 12 h · daily) to keep fresh A/B verdicts.
+                        </p>
+                      );
+                    }
+                    return (
+                      <ul className="space-y-1.5">
+                        {armed.map((s) => {
+                          const sched = s.schedule!;
+                          return (
+                            <li
+                              key={s.id}
+                              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+                            >
+                              <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 soft-pulse" />
+                              <span className="min-w-0 flex-1 truncate font-medium">🔬 {s.name}</span>
+                              <span className="shrink-0 text-muted-foreground">
+                                every {fmtIntervalShort(sched.intervalMs)} · {sched.repeats} repeat{sched.repeats === 1 ? "" : "s"}
+                                {sched.nextRunAt ? ` · next ${fmtRel(sched.nextRunAt)}` : ""}
                               </span>
                             </li>
                           );

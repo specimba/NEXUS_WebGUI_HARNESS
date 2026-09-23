@@ -281,7 +281,9 @@ export function ChatView() {
             ...(harness.knobs.stallResumes !== 2 ? { stallResumes: harness.knobs.stallResumes } : {}),
             system:
               selectedAgent.instructions +
-              buildSkillsBlock(settings.skills) +
+              // r37 relevance ranking: the latest user message steers which
+              // skills ride first within the injection budget.
+              buildSkillsBlock(settings.skills, history.filter((m) => m.role === "user").at(-1)?.content) +
               buildMemoryBlock(convMemory),
             tools: selectedAgent.tools,
             messages: history,

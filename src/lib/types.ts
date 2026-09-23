@@ -646,6 +646,30 @@ export interface Suite {
   lastResult?: SuiteResult;
   /** Result history (aggregates only), oldest first, capped. */
   history?: SuiteResult[];
+  /**
+   * r37 scheduled bake-offs: re-run this suite on a cadence (while the app
+   * tab is open) so the A/B verdicts stay fresh instead of being one-off
+   * experiments. Same doctrine as WorkflowSchedule — misses are skipped,
+   * re-arm happens BEFORE the work starts, and a failure breaker auto-pauses
+   * after repeated all-fail rounds to protect quota.
+   */
+  schedule?: SuiteSchedule;
+}
+
+/** r37: interval-based bake-off schedule for a suite (app-open runners). */
+export interface SuiteSchedule {
+  enabled: boolean;
+  /** Fire interval in ms (clamped to SUITE_SCHEDULE_MIN_MS — quota discipline). */
+  intervalMs: number;
+  /** Repeats per case for scheduled runs (1..SUITE_REPEATS_MAX). */
+  repeats: number;
+  /**
+   * Consecutive scheduled rounds with an overall done-rate of 0 (reset on any
+   * completed case). ≥3 → the breaker auto-pauses the schedule (enabled=false).
+   */
+  failStreak?: number;
+  lastRunAt?: number;
+  nextRunAt?: number;
 }
 
 // ─── Workflow run comparison ─────────────────────────────────────────────────

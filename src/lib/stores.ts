@@ -27,7 +27,9 @@ import {
   MAX_MESSAGES_HARD,
   PRESEED_PROVIDER_KEYS,
   SEED_AGENTS,
+  SUITE_REPEATS_MAX,
   SUITE_RESULTS_CAP,
+  SUITE_SCHEDULE_MIN_MS,
   TOOL_IDS,
 } from "./constants";
 import { uid } from "./helpers";
@@ -525,6 +527,12 @@ interface SuitesState {
   /** r36 A/B lab: set (or clear) a case's harness rotation in place. */
   setCaseHarnesses: (id: string, caseId: string, harnesses: string[]) => void;
   recordResult: (suiteId: string, result: SuiteResult) => void;
+  /**
+   * r37 scheduled bake-offs: arm/disarm a suite's cadence. Interval is
+   * clamped to SUITE_SCHEDULE_MIN_MS (quota discipline), repeats to
+   * 1..SUITE_REPEATS_MAX; the first slot re-arms from "now".
+   */
+  setSchedule: (id: string, schedule?: { intervalMs: number; repeats: number }) => void;
 }
 
 export const useSuitesStore = create<SuitesState>()(
@@ -587,6 +595,26 @@ export const useSuitesStore = create<SuitesState>()(
                   ...x,
                   lastResult: result,
                   history: [...(x.history ?? []), result].slice(-SUITE_RESULTS_CAP),
+                  updatedAt: Date.now(),
+                }
+              : x
+          ),
+        })),
+      setSchedule: (id, schedule) =>
+        set((s) => ({
+          suites: s.suites.map((x) =>
+            x.id === id
+              ? {
+                  ...x,
+                  schedule: schedule
+                    ? {
+                        enabled: true,
+                        intervalMs: Math.max(SUITE_SCHEDULE_MIN_MS, schedule.intervalMs),
+                        repeats: Math.min(Math.max(1, Math.round(schedule.repeats || 1)), SUITE_REPEATS_MAX),
+                        failStreak: 0,
+                        nextRunAt: Date.now() + Math.max(SUITE_SCHEDULE_MIN_MS, schedule.intervalMs),
+                      }
+                    : undefined,
                   updatedAt: Date.now(),
                 }
               : x

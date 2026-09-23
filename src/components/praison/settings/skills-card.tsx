@@ -118,6 +118,15 @@ export function SkillsCard() {
           PraisonAI-repo doctrine: skills teach; they never execute — a skill&apos;s
           scripts/ folder is ignored by design.
         </CardDescription>
+        <CardDescription className="flex items-start gap-1.5 rounded-md border border-violet-500/25 bg-violet-500/[0.05] px-2.5 py-2 text-[11px] leading-relaxed">
+          <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-violet-500" aria-hidden />
+          <span>
+            <span className="font-semibold text-violet-600 dark:text-violet-300">r37 relevance ranking:</span>{" "}
+            when a budget squeeze hits, the skills whose name &amp; description share
+            vocabulary with the current task ride FIRST — an off-topic skill is the one
+            that gets truncated, never the on-topic one.
+          </span>
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">

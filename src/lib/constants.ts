@@ -428,6 +428,16 @@ export const SUITE_REPEATS_MAX = 3;
 export const SUITE_GAP_MS = 1_500;
 /** r36 A/B lab: harness presets a single case may rotate through, max. */
 export const SUITE_HARNESSES_MAX = 3;
+/**
+ * r37 scheduled bake-offs: slowest allowed cadence. Suites run REAL pipelines
+ * and spend quota — the 30-min floor mirrors the user's own sustainability
+ * ordering ("30 mins or 1 hours or at least per six or 12 hours").
+ */
+export const SUITE_SCHEDULE_MIN_MS = 30 * 60_000;
+/** r37: consecutive all-fail scheduled rounds before the breaker auto-pauses. */
+export const SUITE_SCHEDULE_FAIL_BREAKER = 3;
+/** r37 relevance ranking: chars of each skill body scanned for term overlap. */
+export const SKILL_RELEVANCE_SCAN_CHARS = 800;
 
 // ─── Skills (r36, PraisonAI SKILL.md doctrine — instructions-only) ───────────
 /** Skills kept in the gallery (localStorage discipline: old ones must drop). */

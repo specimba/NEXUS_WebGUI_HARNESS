@@ -767,8 +767,9 @@ export async function executeWorkflowRun(
     const lessonsBlock = harness.knobs.lessonsInject ? buildLessonsBlock(wf.lessons) : "";
     // r36 Skills (PraisonAI SKILL.md doctrine): enabled skills ride along in
     // the first step's context, same budget pattern as lessons. Always on —
-    // the user curated them explicitly.
-    const skillsBlock = buildSkillsBlock(settings.settings.skills);
+    // the user curated them explicitly. r37: the run's task steers relevance
+    // ranking, so the most on-topic skill wins the budget race.
+    const skillsBlock = buildSkillsBlock(settings.settings.skills, task);
 
     for (let i = startIndex; i < steps.length; i++) {
       const step = steps[i];
