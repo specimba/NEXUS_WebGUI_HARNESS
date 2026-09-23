@@ -410,3 +410,25 @@ export const MEMORY_CONSOLIDATE_EVERY = 10;
 export const MEMORY_MAX_CHARS = 1200;
 /** Messages (most recent first) fed into a consolidation pass. */
 export const MEMORY_SOURCE_MESSAGES = 24;
+
+// ─── Reflexion lessons (harness rank-③, r31) ─────────────────────────────────
+/** Lessons kept per workflow (oldest-dropped) — budgeted like MEMORY_MAX_CHARS. */
+export const MAX_LESSONS = 5;
+/** Max chars per lesson — a verbal hint, never a transcript. */
+export const LESSON_MAX_CHARS = 300;
+/** Lessons injected into a run's first-step context (most recent ones win). */
+export const LESSONS_INJECTED = 4;
+
+// ─── Task suite (harness rank-①, r31) ────────────────────────────────────────
+/** Result rows kept per suite (aggregates only — never outputs). */
+export const SUITE_RESULTS_CAP = 5;
+/** Repeats per case offered by the UI (roadmap says n≥3; 1 keeps cost honest). */
+export const SUITE_REPEATS_MAX = 3;
+/** Pause between suite runs — rate-polite to free providers. */
+export const SUITE_GAP_MS = 1_500;
+
+// ─── Conversations storage guard (r31 landmine fix) ──────────────────────────
+/** Hard per-conversation message cap; oldest messages are trimmed beyond it. */
+export const MAX_MESSAGES_HARD = 120;
+/** Attachment payloads are stripped from messages beyond the latest N. */
+export const ATTACHMENT_KEEP_RECENT = 12;

@@ -238,10 +238,46 @@ export interface WorkflowRunStep {
    * downstream instructions) know the material is degraded.
    */
   degraded?: boolean;
+  /**
+   * r31 harness rank-②: per-iteration trace recorded at each engine loop
+   * boundary (see LlmCallTrace). Absent on pre-r31 runs and synthetic
+   * gate-skips.
+   */
+  llmCalls?: LlmCallTrace[];
 }
 
 /** Classified cause of a failed run — drives the recovery card's copy. */
 export type RunErrorKind = "network" | "auth" | "rate-limit" | "timeout" | "model" | "region" | "unknown";
+
+/**
+ * Reflexion lesson (harness rank-③): a ≤300-char verbal lesson written back
+ * from a failed run (or a rework verdict) into the workflow's living memory,
+ * injected into the context of the next run / resume so failed episodes stop
+ * being wasted. Visible + deletable in the editor — a model-written doc the
+ * user can't inspect would erode trust.
+ */
+export interface RunLesson {
+  text: string;
+  at: number;
+  /** Run that produced it (if any) — links to the recovery card. */
+  runId?: string;
+  /** Classified failure kind, or "rework" when a review gate wrote it. */
+  kind: RunErrorKind | "rework";
+}
+
+/**
+ * One per-iteration trace row (harness rank-② second slice). Recorded at each
+ * engine iteration boundary from the existing `iteration` SSE events:
+ * honest about what the runner can see — promptChars only on iteration 1
+ * (the assembled context), contentChars = streamed draft length so far,
+ * msAt = elapsed since the step started.
+ */
+export interface LlmCallTrace {
+  iter: number;
+  msAt: number;
+  contentChars: number;
+  promptChars?: number;
+}
 
 /**
  * Everything the user needs to understand WHY a run failed and what their
@@ -307,6 +343,15 @@ export interface WorkflowRun {
   resumeCount?: number;
   /** Chronological log of LLM calls made during this run (capped, oldest-dropped). */
   callLog?: RunCallLogEntry[];
+  /**
+   * Trace schema version (harness rank-①): lets the suite/trace shape evolve
+   * without silently breaking old runs. Absent = v1 (pre-r31).
+   */
+  schemaVersion?: number;
+  /** Set when the run was executed by a task-suite case (rank-①). */
+  suiteCaseId?: string;
+  /** Suite result row this run belongs to (groups repeats together). */
+  suiteRunId?: string;
 }
 
 export interface Workflow {
@@ -321,6 +366,12 @@ export interface Workflow {
   depth?: PipelineDepth;
   /** Recurring in-app schedule (runs fire while the app tab is open). */
   schedule?: WorkflowSchedule;
+  /**
+   * r31 harness rank-③: Reflexion lessons from failed runs / rework verdicts
+   * (cap 5, ≤300 chars each). Injected into the next run's first-step context;
+   * visible + deletable in the workflow editor.
+   */
+  lessons?: RunLesson[];
 }
 
 /** Interval-based schedule for a workflow. Missed runs (app closed) are skipped. */
@@ -381,6 +432,68 @@ export interface Settings {
 }
 
 // ─── SSE event protocol emitted by /api/chat ────────────────────────────────
+
+// ─── Task suite (harness rank-①): replayable cases over workflows ───────────
+
+/** One suite case: a fixed task executed against a workflow pipeline. */
+export interface SuiteCase {
+  id: string;
+  /** Target workflow id — resolved at execution time (missing → skipped). */
+  workflowId: string;
+  /** Frozen task text so repeated runs are comparable. */
+  task: string;
+  /** Human expectation note (e.g. "done · 0 tool calls · output OK"). */
+  expect?: string;
+  /** Optional machine expectation: run should finish with ≤ this many tool calls. */
+  maxToolCalls?: number;
+}
+
+/** Metrics collected from one executed suite run (aggregates only — no outputs). */
+export interface SuiteCaseRun {
+  runId: string;
+  status: WorkflowRun["status"];
+  stepsDone: number;
+  stepsTotal: number;
+  ms: number;
+  degraded: number;
+  reworked: number;
+  toolCallsOk: number;
+}
+
+export interface SuiteCaseResult {
+  caseId: string;
+  workflowId: string;
+  workflowName: string;
+  task: string;
+  expect?: string;
+  /** "skipped" = workflow missing/deleted at execution time. */
+  runs: SuiteCaseRun[] | "skipped";
+  /** Mean share of repeats that finished done (0..1); 0 for skipped. */
+  doneRate: number;
+}
+
+export interface SuiteResult {
+  id: string;
+  suiteId: string;
+  startedAt: number;
+  finishedAt?: number;
+  repeats: number;
+  results: SuiteCaseResult[];
+  /** "stopped" = user aborted mid-suite; partial results kept. */
+  status: "complete" | "stopped";
+}
+
+export interface Suite {
+  id: string;
+  name: string;
+  description: string;
+  cases: SuiteCase[];
+  createdAt: number;
+  updatedAt: number;
+  lastResult?: SuiteResult;
+  /** Result history (aggregates only), oldest first, capped. */
+  history?: SuiteResult[];
+}
 
 // ─── Workflow run comparison ─────────────────────────────────────────────────
 

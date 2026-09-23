@@ -4,10 +4,14 @@ import type {
   Conversation,
   MessageAttachment,
   RunComparison,
+  RunErrorKind,
+  RunLesson,
+  Suite,
+  SuiteResult,
   Workflow,
   WorkflowRun,
 } from "./types";
-import { IMAGE_MAX_DIMENSION, MAX_IMAGE_DATAURL_CHARS } from "./constants";
+import { IMAGE_MAX_DIMENSION, MAX_IMAGE_DATAURL_CHARS, LESSONS_INJECTED } from "./constants";
 
 export function uid(prefix = "id"): string {
   const rand =
