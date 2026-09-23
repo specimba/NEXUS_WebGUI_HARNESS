@@ -44,6 +44,7 @@ import {
   useWorkflowsStore,
 } from "@/lib/stores";
 import type { PipelineDepth, RunLesson, StepKind, Workflow, WorkflowStep } from "@/lib/types";
+import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
 import { DREAM_MIN_RUNS, DREAM_COOLDOWN_MS } from "@/lib/constants";
@@ -78,6 +79,10 @@ const DEPTH_OPTIONS: {
   },
 ];
 
+/** Sentinel for the editor's harness Select: "inherit the global harness".
+ *  Radix Select forbids empty-string values, so the editor maps "" ⇄ this. */
+const HARNESS_INHERIT = "__inherit";
+
 interface WorkflowEditorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -92,10 +97,14 @@ export function WorkflowEditorDialog({
   const agents = useAgentsStore((s) => s.agents);
   const addWf = useWorkflowsStore((s) => s.add);
   const updateWf = useWorkflowsStore((s) => s.update);
+  // Reactive so the "Inherit global" item shows the CURRENT global harness.
+  const globalHarnessId = useSettingsStore((s) => s.settings.activeHarness);
 
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [depth, setDepth] = React.useState<PipelineDepth>("standard");
+  // r34 harness selection: "" = inherit the global active harness.
+  const [harnessId, setHarnessId] = React.useState<string>("");
   const [steps, setSteps] = React.useState<WorkflowStep[]>([]);
   const [planOpen, setPlanOpen] = React.useState(false);
   const [planTask, setPlanTask] = React.useState("");
@@ -114,6 +123,7 @@ export function WorkflowEditorDialog({
     setDescription(workflow?.description ?? "");
     // Old workflows read depth = undefined → treat as "standard".
     setDepth(workflow?.depth ?? "standard");
+    setHarnessId(workflow?.harness ?? "");
     setSteps(
       workflow
         ? workflow.steps.map((s) => ({ ...s }))
@@ -272,13 +282,15 @@ export function WorkflowEditorDialog({
         description: descriptionTrim,
         steps: validSteps,
         depth,
+        // "" clears the override → the workflow follows the global harness.
+        harness: harnessId || undefined,
       });
       toast.success("Workflow updated");
     } else {
       const newId = addWf({ name: trimmedName, description: descriptionTrim, steps: validSteps });
       // The store's add() only materializes known fields — persist depth via a
       // follow-up patch so new workflows carry their depth setting too.
-      updateWf(newId, { depth });
+      updateWf(newId, { depth, harness: harnessId || undefined });
       toast.success("Workflow created");
     }
     onOpenChange(false);
@@ -369,6 +381,52 @@ export function WorkflowEditorDialog({
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Harness (r34): which capability preset tunes this pipeline's runs.
+              Defaults to inheriting the global active harness from Settings. */}
+          <div className="grid gap-2 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-4">
+            <Label htmlFor="wf-harness" className="sm:w-20">
+              Harness
+            </Label>
+            <div className="space-y-1.5">
+              <Select
+                value={harnessId || HARNESS_INHERIT}
+                onValueChange={(v) => setHarnessId(v === HARNESS_INHERIT ? "" : v)}
+              >
+                <SelectTrigger
+                  id="wf-harness"
+                  aria-label="Harness preset"
+                  className="h-9 w-full gap-2"
+                >
+                  <span aria-hidden className="text-sm">
+                    {harnessById(harnessId || undefined).glyph}
+                  </span>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value={HARNESS_INHERIT}>
+                    <span className="mr-1" aria-hidden>🔗</span>
+                    Inherit global
+                    <span className="ml-1.5 text-xs text-muted-foreground">
+                      · currently {harnessById(globalHarnessId).name}
+                    </span>
+                  </SelectItem>
+                  {HARNESS_PRESETS.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <span className="mr-1" aria-hidden>{p.glyph}</span>
+                      {p.name}
+                      <span className="ml-1.5 text-xs text-muted-foreground">· {p.tagline}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                {harnessId
+                  ? harnessById(harnessId).description
+                  : `Follows your global harness (currently ${harnessById(globalHarnessId).name}) — pick one above to override for this pipeline.`}
+              </p>
             </div>
           </div>
 

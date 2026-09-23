@@ -13,6 +13,7 @@ import {
   Pencil,
   ReceiptText,
   RotateCcw,
+  Route,
   Users,
   Volume2,
   X,
@@ -41,7 +42,7 @@ import { AgentAvatar, ModelBadge } from "@/components/praison/atoms";
 import { MarkdownRenderer } from "@/components/praison/markdown";
 import { TOOL_META } from "@/lib/constants";
 import { copyText, fmtBytes, fmtMs, fmtTime } from "@/lib/helpers";
-import type { Agent, ChatMessage, MessageAttachment, RouteReceipt, ToolCallInfo, ToolId } from "@/lib/types";
+import type { Agent, ChatMessage, MessageAttachment, RouteReceipt, RouterReceipt, ToolCallInfo, ToolId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 // ─── Typing dots (uses the global .typing-dot animation) ─────────────────────
@@ -51,6 +52,31 @@ function TypingDots({ className, dotClassName }: { className?: string; dotClassN
       <span className={cn("typing-dot h-1.5 w-1.5 rounded-full bg-violet-400", dotClassName)} />
       <span className={cn("typing-dot h-1.5 w-1.5 rounded-full bg-violet-400", dotClassName)} />
       <span className={cn("typing-dot h-1.5 w-1.5 rounded-full bg-violet-400", dotClassName)} />
+    </span>
+  );
+}
+
+// ─── Gateway-router receipt chip (r34 · AIHubMix LLM Router headers) ─────────
+// An “auto” lane must never hide which brain actually answered: this chip
+// shows the REAL resolved model (body/header backfill), the policy that won,
+// and — on hover — the gateway’s own decision summary.
+function RouterChip({ router }: { router: RouterReceipt }) {
+  const parts = [
+    router.policy ? `policy: ${router.policy}` : null,
+    router.sticky ? "session-sticky" : null,
+  ].filter(Boolean) as string[];
+  return (
+    <span
+      className="inline-flex max-w-[16rem] items-center gap-1 truncate rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-emerald-400"
+      title={
+        `LLM Router → ${router.resolved}` +
+        (parts.length ? ` · ${parts.join(" · ")}` : "") +
+        (router.reason ? `\n${router.reason}` : "")
+      }
+      aria-label={`Gateway router resolved ${router.resolved}`}
+    >
+      <Route className="h-2.5 w-2.5 shrink-0" aria-hidden />
+      <span className="truncate normal-case">{router.resolved}</span>
     </span>
   );
 }
@@ -707,6 +733,7 @@ export const MessageItem = React.memo(function MessageItem({
           )}
           {isStreamingNow && <TypingDots dotClassName="h-1 w-1" />}
           {message.receipt && !isStreamingNow && <RouteReceiptChip receipt={message.receipt} />}
+          {message.router && !isStreamingNow && <RouterChip router={message.router} />}
           {message.status === "stopped" && (
             <span className="text-xs font-medium text-amber-400">(stopped)</span>
           )}

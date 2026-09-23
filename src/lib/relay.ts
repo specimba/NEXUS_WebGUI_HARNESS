@@ -53,6 +53,16 @@ export interface RelayWireHop {
 /** How the chain should order itself for the task at hand. */
 export type RelayTaskFit = "research" | "quality" | "decision" | "any";
 
+/**
+ * r34 free-frontier doctrine: “tons of good, free frontier LLMs now — we
+ * should handle them working really.” A lane is FREE when its model id marks
+ * it so (`:free`, `-free`, `router/free`); notes are deliberately NOT trusted
+ * (r28 truth pass: big-pickle is paid despite a misleading note).
+ */
+export function isFreeLane(model: string): boolean {
+  return /(^|[\/:_-])free$/i.test(model.trim()) || /:free(:|$)/i.test(model.trim());
+}
+
 /** Generation-Era arena catalog (tier → Elo), from the ModelRelay doctrine. */
 const ARENA_CATALOG: Record<
   string,
@@ -86,6 +96,15 @@ const ARENA_CATALOG: Record<
       { id: "coding-kimi-k3-free", tier: 2, elo: 0.905, note: "FREE · Kimi coding · 1M ctx" },
       { id: "xiaomi-mimo-v2.6-pro-free", tier: 2, elo: 0.9, note: "FREE · omni-in · 1M ctx" },
       { id: "nemotron-3-ultra-550b-a55b-free", tier: 2, elo: 0.895, note: "FREE · 550B MoE · 1M ctx" },
+      // r34: gateway-router lanes — the user-supplied advisory (docs.aihubmix.com
+      // LLM Router, pasted verbatim) documents model=auto[+policy]: the gateway
+      // picks per request (cost/balanced/quality/latency) and writes the REAL
+      // resolved model into the response body + x-aihubmix-router-* headers,
+      // which the engine surfaces as an honest router receipt.
+      { id: "auto:quality_first", tier: 1, elo: 0.985, note: "LLM Router · quality-first per request" },
+      { id: "auto:latency_critical", tier: 1, elo: 0.965, note: "LLM Router · fastest capable lane" },
+      { id: "auto:balanced", tier: 2, elo: 0.94, note: "LLM Router · balanced policy" },
+      { id: "auto", tier: 2, elo: 0.9, note: "LLM Router · cost-first (free-biased pool)" },
     ],
   },
   orcarouter: {
@@ -380,10 +399,14 @@ function taskBoost(hop: RelayHop, fit: RelayTaskFit): number {
  */
 export function buildRelayChain(
   settings: Settings,
-  opts?: { taskFit?: RelayTaskFit }
+  opts?: { taskFit?: RelayTaskFit; freeFirst?: boolean }
 ): RelayHop[] {
   const hops: RelayHop[] = [];
   const fit = opts?.taskFit ?? "any";
+  // r34 free-frontier harness: when set, free lanes lead the chain (after
+  // health demotion) even ahead of paid tier-1 — paid frontier becomes the
+  // backup, not the default.
+  const freeFirst = opts?.freeFirst === true;
 
   for (const [providerId, catalog] of Object.entries(ARENA_CATALOG)) {
     const reg = providerById(providerId);
@@ -430,12 +453,16 @@ export function buildRelayChain(
   }
 
   // Generation-Era doctrine: health first (don't queue recently-dead hops),
-  // then tier, then Elo, then task fit, stable within equal rank.
+  // then — under the free-frontier harness — free lanes, then tier, then Elo,
+  // then task fit, stable within equal rank.
   const health = loadHealth();
+  const freeBonus = (h: RelayHop) => (freeFirst && isFreeLane(h.model) ? 1 : 0);
   hops.sort((a, b) => {
     const hp = recentlyFailed(health[a.key]) ? 1 : 0;
     const hb = recentlyFailed(health[b.key]) ? 1 : 0;
     if (hp !== hb) return hp - hb;
+    const fb = freeBonus(b) - freeBonus(a);
+    if (fb !== 0) return fb;
     if (a.tier !== b.tier) return a.tier - b.tier;
     if (b.elo !== a.elo) return b.elo - a.elo;
     const tb = taskBoost(b, fit);
@@ -458,6 +485,8 @@ export function buildRelayChain(
       const da = recentlyFailed(health[a.key]) ? 1 : 0;
       const db = recentlyFailed(health[b.key]) ? 1 : 0;
       if (da !== db) return da - db;
+      const fb = freeBonus(b) - freeBonus(a);
+      if (fb !== 0) return fb;
       return idx(a.key) - idx(b.key);
     });
   }
@@ -476,7 +505,7 @@ export function buildRelayChain(
 export function buildRelayWire(
   settings: Settings,
   primary?: { providerId?: string; model?: string },
-  opts?: { taskFit?: RelayTaskFit }
+  opts?: { taskFit?: RelayTaskFit; freeFirst?: boolean }
 ): RelayWireHop[] {
   if (settings.relayEnabled === false) return [];
   const excludeKey =

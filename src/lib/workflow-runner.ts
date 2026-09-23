@@ -7,6 +7,7 @@ import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
 import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
 import { buildRelayWire, recordRelayHopResult, type RelayTaskFit } from "@/lib/relay";
+import { composeTaskFit, harnessById } from "@/lib/harness";
 import {
   buildConversationalContext,
   buildLessonsBlock,
@@ -428,7 +429,11 @@ export async function executeWorkflowRun(
     onSettled?.(runId, status);
     // r33 dreaming-lite: real activity just landed — re-arm the idle
     // consolidation check (fire-time re-verifies due-ness + running guards).
-    scheduleDream(wf.id, { silent: source === "suite" });
+    // r34 harness knob: the “fast” harness opts the pipeline out of dream
+    // overhead entirely (latency-critical turns never pay for consolidation).
+    if (harnessById(wf.harness ?? settings.settings.activeHarness).knobs.dreamEligible) {
+      scheduleDream(wf.id, { silent: source === "suite" });
+    }
   };
 
   /** Build the full RunErrorInfo for a failed step and finish the run. */
@@ -468,6 +473,11 @@ export async function executeWorkflowRun(
     finish("error", `Step "${step.label}" failed`, info);
   };
 
+  // r34 harness selection: per-workflow override (editor Select) or the global
+  // active harness. One object retunes relay ordering, tool budget, stall
+  // resilience, lessons injection and dreams for EVERY step of this run.
+  const harness = harnessById(wf.harness ?? settings.settings.activeHarness);
+
   /**
    * Stream one agent call for a run step; returns the final content + duration.
    * Self-healing (r19): a transient engine failure (network drop / timeout —
@@ -495,13 +505,16 @@ export async function executeWorkflowRun(
     const effectiveTools: ToolId[] = runStep.tools ?? agent.tools ?? [];
     // Task fit (Genius-rotator doctrine): research steps with search tools
     // prefer fast models first (many quick tool rounds); review/writing steps
-    // prefer flagships first (one excellent pass matters most).
-    const taskFit: RelayTaskFit =
+    // prefer flagships first (one excellent pass matters most). r34: a
+    // specialized harness overrides the step-derived fit; a neutral harness
+    // defers to it.
+    const stepFit: RelayTaskFit =
       runStep.kind === "review"
         ? "quality"
         : effectiveTools.some((t) => t === "web_search" || t === "read_url" || t === "arxiv_search")
           ? "research"
           : "any";
+    const taskFit: RelayTaskFit = composeTaskFit(harness, stepFit);
     // Model Relay (Genius-rotator doctrine): when this step's brain fails
     // before streaming anything, the server rotates down the vault's fallback
     // chain instead of dying — the exact 7am-scheduled-run failure mode.
@@ -517,7 +530,7 @@ export async function executeWorkflowRun(
       const relayHops = buildRelayWire(
         settings.settings,
         { providerId: llm.providerId, model: llm.model },
-        { taskFit }
+        { taskFit, freeFirst: harness.knobs.freeFirst }
       );
       try {
         draft = "";
@@ -532,7 +545,8 @@ export async function executeWorkflowRun(
             model: llm.model,
             providerId: llm.providerId,
             temperature: agent.temperature,
-            maxIterations: agent.maxIterations,
+            maxIterations: agent.maxIterations + harness.knobs.maxIterationsBonus,
+            ...(harness.knobs.stallResumes !== 2 ? { stallResumes: harness.knobs.stallResumes } : {}),
             tools: effectiveTools,
             system,
             messages: [{ role: "user", content: context }],
@@ -686,8 +700,9 @@ export async function executeWorkflowRun(
     const framework = settings.settings.framework;
     // Reflexion (rank-③): inject the workflow's lessons into the FIRST step
     // executed by this run — fresh runs learn from past failures, resumes
-    // learn from the failure being resumed past.
-    const lessonsBlock = buildLessonsBlock(wf.lessons);
+    // learn from the failure being resumed past. r34: the “fast” harness
+    // skips lesson injection to keep the prompt lean.
+    const lessonsBlock = harness.knobs.lessonsInject ? buildLessonsBlock(wf.lessons) : "";
 
     for (let i = startIndex; i < steps.length; i++) {
       const step = steps[i];

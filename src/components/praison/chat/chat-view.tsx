@@ -31,6 +31,7 @@ import { ConversationList } from "@/components/praison/chat/conversation-list";
 import { MemoryDialog } from "@/components/praison/chat/memory-dialog";
 import { MessageItem } from "@/components/praison/chat/message-item";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { harnessById, HARNESS_PRESETS } from "@/lib/harness";
 import { resolveExplicitLlm, resolveLlm } from "@/lib/llm-config";
 import { buildRelayWire, recordRelayHopResult } from "@/lib/relay";
 import {
@@ -92,6 +93,10 @@ export function ChatView() {
   const toggleChatList = useUiStore((s) => s.toggleChatList);
   const uiActiveAgentId = useUiStore((s) => s.activeAgentId);
   const setActiveAgentId = useUiStore((s) => s.setActiveAgentId);
+  // r34 harness selection: reactive so the header chip follows changes made in Settings.
+  const activeHarnessId = useSettingsStore((s) => s.settings.activeHarness);
+  const updateSettings = useSettingsStore((s) => s.update);
+  const harness = harnessById(activeHarnessId);
 
   const conversation = React.useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
@@ -260,7 +265,10 @@ export function ChatView() {
         }
         const relayHops = settings.relayEnabled === false
           ? []
-          : buildRelayWire(settings, { providerId: llm.providerId, model: llm.model });
+          : buildRelayWire(settings, { providerId: llm.providerId, model: llm.model }, {
+              taskFit: harness.knobs.taskFit,
+              freeFirst: harness.knobs.freeFirst,
+            });
         const result = await runAgentChat(
           {
             provider: llm.provider,
@@ -268,7 +276,8 @@ export function ChatView() {
             baseUrl: llm.baseUrl,
             model: llm.model,
             temperature: selectedAgent.temperature,
-            maxIterations: selectedAgent.maxIterations,
+            maxIterations: selectedAgent.maxIterations + harness.knobs.maxIterationsBonus,
+            ...(harness.knobs.stallResumes !== 2 ? { stallResumes: harness.knobs.stallResumes } : {}),
             system:
               selectedAgent.instructions + buildMemoryBlock(convMemory),
             tools: selectedAgent.tools,
@@ -308,6 +317,19 @@ export function ChatView() {
             onIteration: (n) => setStatusLine(n > 1 ? `iteration ${n}` : null),
             onReceipt: (r) => {
               receipt = r;
+            },
+            // r34 gateway-router receipt: surface the REAL resolved model so
+            // an "auto" lane never hides which brain actually answered.
+            onRouter: (r) => {
+              useConversationsStore.getState().patchMessage(convId, asstId, {
+                router: {
+                  resolved: r.resolved,
+                  ...(r.policy ? { policy: r.policy } : {}),
+                  ...(r.reason ? { reason: r.reason } : {}),
+                  ...(r.sticky ? { sticky: true } : {}),
+                  at: Date.now(),
+                },
+              });
             },
             onStatus: (m) => {
               // Relay rotation trace: feed the rotator's health memory and
@@ -941,6 +963,39 @@ export function ChatView() {
             {agent?.role ?? "No agent selected"}
           </p>
           <ModelBadge model={agent?.model ?? "auto"} className="hidden sm:inline-flex" />
+
+          {/* r34 harness selector — one pick retunes relay ordering, tool budget,
+              stall resilience, lessons and dreams for chat + pipelines alike. */}
+          <Select
+            value={harness.id}
+            onValueChange={(id) => {
+              const preset = harnessById(id);
+              updateSettings({ activeHarness: preset.id });
+              toast(`${preset.glyph} ${preset.name} harness active`, {
+                description: preset.tagline,
+              });
+            }}
+          >
+            <SelectTrigger
+              aria-label="Switch harness"
+              title={`Harness: ${harness.name} — ${harness.tagline}`}
+              className="hidden h-9 w-auto max-w-[9.5rem] gap-1.5 rounded-full px-3 md:inline-flex"
+            >
+              <span aria-hidden className="text-sm">{harness.glyph}</span>
+              <span className="truncate text-sm font-medium">{harness.name}</span>
+            </SelectTrigger>
+            <SelectContent align="start">
+              {HARNESS_PRESETS.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  <span className="mr-1" aria-hidden>{p.glyph}</span>
+                  {p.name}
+                  <span className="ml-1.5 hidden text-xs text-muted-foreground lg:inline">
+                    · {p.tagline}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <div className="ml-auto flex items-center gap-1">
             {streaming ? (

@@ -44,6 +44,8 @@ export interface RunAgentParams {
    * buildRelayWire().
    */
   relay?: { baseUrl?: string; apiKey?: string; model: string; label?: string; useAuto?: boolean }[];
+  /** r34 harness knob: mid-answer stall resumes allowed for this turn (0-3). */
+  stallResumes?: number;
   signal?: AbortSignal;
   /** Force the legacy server transport (used after a browser-direct CORS death). */
   forceServer?: boolean;
@@ -69,6 +71,13 @@ export interface AgentRunResult {
   transport: "browser-direct" | "server";
 }
 
+export interface RouterEvent {
+  resolved: string;
+  policy?: string;
+  reason?: string;
+  sticky?: boolean;
+}
+
 export interface AgentHandlers {
   onStatus?: (message: string) => void;
   onIteration?: (n: number) => void;
@@ -78,6 +87,8 @@ export interface AgentHandlers {
   onToolResult?: (result: ToolResultEvent) => void;
   /** r27 route receipt: which serving path answered (arXiv:2605.01710). */
   onReceipt?: (receipt: RouteReceipt) => void;
+  /** r34 gateway-router receipt: which model the gateway's auto policy picked. */
+  onRouter?: (router: RouterEvent) => void;
 }
 
 interface DonePayload {
@@ -136,6 +147,7 @@ async function runBrowserDirect(
     system: params.system,
     messages: params.messages,
     tools: params.tools ?? [],
+    ...(typeof params.stallResumes === "number" ? { stallResumes: params.stallResumes } : {}),
     ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
     ...(params.relay && params.relay.length > 0
       ? { relay: params.relay as RelayWireHop[] }
@@ -173,6 +185,16 @@ async function runBrowserDirect(
       case "receipt":
         if (evt.receipt && typeof evt.receipt === "object") {
           h.onReceipt?.(evt.receipt as RouteReceipt);
+        }
+        break;
+      case "router":
+        if (evt.resolved) {
+          h.onRouter?.({
+            resolved: String(evt.resolved),
+            ...(evt.policy ? { policy: String(evt.policy) } : {}),
+            ...(evt.reason ? { reason: String(evt.reason) } : {}),
+            sticky: evt.sticky === true,
+          });
         }
         break;
       case "done": {
@@ -241,6 +263,7 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
         system: params.system,
         messages: params.messages,
         tools: params.tools ?? [],
+        ...(typeof params.stallResumes === "number" ? { stallResumes: params.stallResumes } : {}),
         ...(params.relay && params.relay.length > 0 ? { relay: params.relay } : {}),
         ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
       }),
@@ -317,6 +340,16 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
       case "receipt":
         if (evt.receipt && typeof evt.receipt === "object") {
           h.onReceipt?.(evt.receipt as RouteReceipt);
+        }
+        break;
+      case "router":
+        if (evt.resolved) {
+          h.onRouter?.({
+            resolved: String(evt.resolved),
+            ...(evt.policy ? { policy: String(evt.policy) } : {}),
+            ...(evt.reason ? { reason: String(evt.reason) } : {}),
+            sticky: evt.sticky === true,
+          });
         }
         break;
       case "done":

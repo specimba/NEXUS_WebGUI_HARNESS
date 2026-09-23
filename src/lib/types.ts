@@ -74,6 +74,26 @@ export interface ChatMessage {
   heartbeat?: boolean;
   /** r27 route receipt: which serving path produced this answer (arXiv:2605.01710). */
   receipt?: RouteReceipt;
+  /** r34 gateway-router receipt (AIHubMix LLM Router headers) — which model
+   *  the gateway's auto policy actually picked for this reply. */
+  router?: RouterReceipt;
+}
+
+/**
+ * r34: what an LLM gateway's request-level router decided, taken from its
+ * response headers (AIHubMix `x-aihubmix-router-*`). Honest traceability: the
+ * chip always shows the REAL resolved model, never the "auto" alias.
+ */
+export interface RouterReceipt {
+  /** The model that actually answered (e.g. "xiaomi-mimo-v2.6-pro"). */
+  resolved: string;
+  /** Routing policy applied (e.g. "quality_first"). */
+  policy?: string;
+  /** Short human decision summary from the gateway. */
+  reason?: string;
+  /** True when the gateway reused the session's previous model. */
+  sticky?: boolean;
+  at: number;
 }
 
 /** A message typed while the agent was streaming — auto-sent when it settles. */
@@ -396,6 +416,8 @@ export interface Workflow {
    * dream; drives the "due for a dream" heuristic + editor note.
    */
   dream?: DreamState;
+  /** r34 harness selection — missing ⇒ inherit the global active harness. */
+  harness?: string;
 }
 
 /** Interval-based schedule for a workflow. Missed runs (app closed) are skipped. */
@@ -452,6 +474,10 @@ export interface Settings {
    * the decision ladder falls back to a fast-model JSON judge via the vault.
    */
   typesafeKey?: string;
+  /** r34 harness selection (see lib/harness.ts) — retunes relay ordering,
+   *  tool budget, stall resilience, lessons and dreams in one pick.
+   *  Missing ⇒ "balanced". */
+  activeHarness?: string;
   seeded: boolean;
 }
 

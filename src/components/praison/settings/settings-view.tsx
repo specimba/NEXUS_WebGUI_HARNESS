@@ -51,7 +51,7 @@ import {
   SPEECH_RATES,
   TTS_VOICES,
 } from "@/lib/constants";
-import { downloadJson } from "@/lib/helpers";
+import { downloadJson, fmtRel } from "@/lib/helpers";
 import {
   useAgentsStore,
   useConversationsStore,
@@ -60,6 +60,7 @@ import {
   useWorkflowsStore,
 } from "@/lib/stores";
 import type { Conversation, Framework } from "@/lib/types";
+import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEYS = [
@@ -77,7 +78,9 @@ const SETTINGS_SECTIONS = [
   { id: "local-models", label: "Local models" },
   { id: "relay", label: "Model Relay" },
   { id: "referrals", label: "Referrals" },
+  { id: "harness", label: "Harness" },
   { id: "behavior", label: "Behavior" },
+  { id: "automation", label: "Automation" },
   { id: "profile", label: "Profile" },
   { id: "appearance", label: "Appearance" },
   { id: "data", label: "Your Data" },
@@ -301,6 +304,73 @@ export function SettingsView() {
           </div>
           <ProviderCard />
 
+          {/* ── Harness selection (r34) ───────────────────────────────── */}
+          <div id="harness" className="scroll-mt-14">
+            <Card className="gap-4">
+              <CardHeader className="pb-3">
+                <CardTitle>Harness</CardTitle>
+                <CardDescription>
+                  One pick retunes the whole agentic stack — relay ordering, tool budget,
+                  stall resilience, lessons and dreams — for chat turns AND pipeline runs
+                  alike. Pipelines can override this per-workflow in their editor.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div
+                  role="radiogroup"
+                  aria-label="Active harness"
+                  className="grid gap-2 md:grid-cols-2"
+                >
+                  {HARNESS_PRESETS.map((p) => {
+                    const selected = harnessById(settings.activeHarness).id === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => update({ activeHarness: p.id })}
+                        className={cn(
+                          "rounded-lg border p-3 text-left transition-all",
+                          selected
+                            ? "border-violet-500/60 bg-violet-500/10 ring-1 ring-violet-500/30"
+                            : "border-border/70 hover:bg-muted/60"
+                        )}
+                      >
+                        <span className="flex items-center gap-2 text-sm font-semibold">
+                          <span aria-hidden className="text-base">{p.glyph}</span>
+                          {p.name}
+                          {selected && (
+                            <Badge variant="secondary" className="ml-auto text-[9px] uppercase">
+                              active
+                            </Badge>
+                          )}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] font-medium text-violet-600 dark:text-violet-400">
+                          {p.tagline}
+                        </span>
+                        <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
+                          {p.description}
+                        </span>
+                        <span className="mt-2 flex flex-wrap gap-1">
+                          {p.chips.map((chip) => (
+                            <Badge
+                              key={chip}
+                              variant="outline"
+                              className="px-1.5 py-0 text-[9px] font-normal text-muted-foreground"
+                            >
+                              {chip}
+                            </Badge>
+                          ))}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* ── Behavior ─────────────────────────────────────────────── */}
           <div id="behavior" className="scroll-mt-14">
           <Card className="gap-4">
@@ -423,6 +493,87 @@ export function SettingsView() {
             </CardContent>
           </Card>
 
+          </div>
+
+          {/* ── Automation (r34): make every automation layer VISIBLE ── */}
+          <div id="automation" className="scroll-mt-14">
+            <Card className="gap-4">
+              <CardHeader className="pb-3">
+                <CardTitle>Automation</CardTitle>
+                <CardDescription>
+                  Everything that runs on its own — in-app schedules and the platform
+                  heartbeat — in one honest view.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* In-app schedules (tab-open runners) */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Scheduled pipelines (run while the app is open)
+                  </p>
+                  {(() => {
+                    const scheduled = workflows.filter((w) => w.schedule?.enabled);
+                    if (scheduled.length === 0) {
+                      return (
+                        <p className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                          No pipelines on a schedule. Open a workflow's Run panel → Scheduler
+                          to arm one (30 min · hourly · 6 h · 12 h · daily).
+                        </p>
+                      );
+                    }
+                    return (
+                      <ul className="space-y-1.5">
+                        {scheduled.map((w) => {
+                          const s = w.schedule!;
+                          const paused = (s.failStreak ?? 0) >= 3;
+                          return (
+                            <li
+                              key={w.id}
+                              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+                            >
+                              <span
+                                aria-hidden
+                                className={cn(
+                                  "h-1.5 w-1.5 shrink-0 rounded-full",
+                                  paused ? "bg-amber-400" : "bg-emerald-400 soft-pulse"
+                                )}
+                              />
+                              <span className="min-w-0 flex-1 truncate font-medium">{w.name}</span>
+                              <span className="shrink-0 text-muted-foreground">
+                                {paused
+                                  ? "paused by failure breaker"
+                                  : s.nextRunAt
+                                    ? `next run ${fmtRel(s.nextRunAt)}`
+                                    : "awaiting next slot"}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    );
+                  })()}
+                </div>
+                {/* Platform heartbeat (external cron) */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Platform heartbeat (external cron)
+                  </p>
+                  <div className="rounded-lg border px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                    <p>
+                      A <span className="font-medium text-foreground">webDevReview</span> agent
+                      loop runs every <span className="font-medium text-foreground">30 minutes</span> at
+                      :13 / :43 (staggered off the busy :00/:15/:30/:45 tops so heavy runs never
+                      overlap — the fix for the platform's “exec limits exceeded” auto-disable).
+                    </p>
+                    <p className="mt-1.5">
+                      Platform cron jobs are <span className="font-medium text-foreground">session-scoped</span>:
+                      after a sandbox gap the dashboard can show zero automation even though the app
+                      is healthy. The standing doctrine: <span className="font-medium text-foreground">cron list first, then delete + recreate staggered</span>.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* ── Profile ──────────────────────────────────────────────── */}

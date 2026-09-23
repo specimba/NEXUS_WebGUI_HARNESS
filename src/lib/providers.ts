@@ -110,6 +110,12 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       { id: "nemotron-3.5-lightning-free", label: "Nemotron 3.5 Lightning (Free)", note: "30B MoE (3B active) · 1M ctx · high-throughput · $0" },
       { id: "hy3-free", label: "Hunyuan Hy3 (Free)", note: "295B MoE (21B active) · 256K ctx · 3 thinking modes · $0" },
       { id: "auto", label: "AIHubMix Router (auto)", note: "Platform auto-router · auto:balanced/quality_first/latency_critical · bills at resolved model" },
+      // r34: explicit LLM Router policies (advisory doc, verified pasted docs).
+      // The resolved model comes back in the body + x-aihubmix-router-* headers
+      // and is shown as a router receipt chip on the reply.
+      { id: "auto:quality_first", label: "Router · Quality first", note: "LLM Router picks the most capable model per request" },
+      { id: "auto:balanced", label: "Router · Balanced", note: "LLM Router weighs capability / cost / latency" },
+      { id: "auto:latency_critical", label: "Router · Latency critical", note: "LLM Router prefers the fastest responding model" },
       { id: "claude-sonnet-5", label: "Claude Sonnet 5", note: "Frontier workhorse · 1M ctx · $2/$10" },
       { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", note: "OpenAI fast flagship · 1.05M ctx · $0.20/$1.20" },
       { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", note: "Google current-gen · 1M ctx · thinking + tools · $1.50/$7.50" },
