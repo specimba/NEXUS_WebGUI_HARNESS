@@ -261,8 +261,26 @@ export interface RunLesson {
   at: number;
   /** Run that produced it (if any) — links to the recovery card. */
   runId?: string;
-  /** Classified failure kind, or "rework" when a review gate wrote it. */
-  kind: RunErrorKind | "rework";
+  /**
+   * Classified failure kind, "rework" when a review gate wrote it, or
+   * "dream" when the background consolidation pass distilled it (r33).
+   */
+  kind: RunErrorKind | "rework" | "dream";
+}
+
+/**
+ * r33 dreaming-lite (Letta-inspired): state of the background lesson
+ * consolidation pass — recorded so the editor can show WHEN the workflow
+ * last dreamed and what it learned, and so the scheduler rate-limits itself.
+ */
+export interface DreamState {
+  lastDreamAt: number;
+  /** How many runs the last dream looked at. */
+  runsConsidered: number;
+  /** Lessons actually added by the last dream (0 = nothing new learned). */
+  added: number;
+  /** One-line summary of the consolidation (editor note). */
+  note?: string;
 }
 
 /**
@@ -372,6 +390,12 @@ export interface Workflow {
    * visible + deletable in the workflow editor.
    */
   lessons?: RunLesson[];
+  /**
+   * r33 dreaming-lite: last background consolidation pass (Letta doctrine —
+   * idle time distills run history into durable lessons). Set after the first
+   * dream; drives the "due for a dream" heuristic + editor note.
+   */
+  dream?: DreamState;
 }
 
 /** Interval-based schedule for a workflow. Missed runs (app closed) are skipped. */

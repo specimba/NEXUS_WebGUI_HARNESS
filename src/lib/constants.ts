@@ -432,3 +432,15 @@ export const SUITE_GAP_MS = 1_500;
 export const MAX_MESSAGES_HARD = 120;
 /** Attachment payloads are stripped from messages beyond the latest N. */
 export const ATTACHMENT_KEEP_RECENT = 12;
+
+// ─── Dreaming-lite (r33, Letta doctrine: idle time consolidates lessons) ─────
+/** Runs since the last dream before a consolidation pass becomes due. */
+export const DREAM_MIN_RUNS = 4;
+/** Minimum gap between dream passes — rate-limits background LLM use. */
+export const DREAM_COOLDOWN_MS = 60 * 60_000;
+/** Delay after a run settles before the dream check fires (let the UI rest). */
+export const DREAM_DELAY_MS = 45_000;
+/** Max distilled lessons one dream may add (the run-written ones stay senior). */
+export const DREAM_MAX_ADD = 2;
+/** Max chars per distilled lesson (dreams are hints, even shorter than run lessons). */
+export const DREAM_LESSON_MAX_CHARS = 220;

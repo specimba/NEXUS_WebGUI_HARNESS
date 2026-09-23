@@ -24,6 +24,7 @@ import {
   useWorkflowsStore,
 } from "@/lib/stores";
 import { REWORK_LIMIT, LESSON_MAX_CHARS, MAX_LESSONS } from "@/lib/constants";
+import { scheduleDream } from "@/lib/dream";
 import type {
   Agent,
   LlmCallTrace,
@@ -425,6 +426,9 @@ export async function executeWorkflowRun(
       }
     }
     onSettled?.(runId, status);
+    // r33 dreaming-lite: real activity just landed — re-arm the idle
+    // consolidation check (fire-time re-verifies due-ness + running guards).
+    scheduleDream(wf.id, { silent: source === "suite" });
   };
 
   /** Build the full RunErrorInfo for a failed step and finish the run. */

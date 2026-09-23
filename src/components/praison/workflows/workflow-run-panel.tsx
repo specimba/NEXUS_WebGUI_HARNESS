@@ -73,6 +73,7 @@ import { cn } from "@/lib/utils";
 import { AgentAvatar, DepthChip } from "@/components/praison/atoms";
 import { MarkdownRenderer } from "@/components/praison/markdown";
 import { WorkflowCompareDialog } from "@/components/praison/workflows/workflow-compare-dialog";
+import { RunReplayTimeline } from "@/components/praison/workflows/run-replay-timeline";
 import type {
   RunErrorKind,
   ToolCallInfo,
@@ -407,6 +408,9 @@ export function WorkflowRunPanel({
   const [compareRunId, setCompareRunId] = React.useState<string | null>(null);
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [, scheduleTick] = React.useReducer((n: number) => n + 1, 0);
+  // r33 run replay: null = live view; number = scrub/time-lapse playhead (last visible step).
+  const [replayIdx, setReplayIdx] = React.useState<number | null>(null);
+  const [replayPlaying, setReplayPlaying] = React.useState(false);
   const abortRef = React.useRef<AbortController | null>(null);
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -425,8 +429,23 @@ export function WorkflowRunPanel({
     setRunning(false);
     setViewingRunId(initialRunId ?? null);
     setHistoryOpen(false);
+    setReplayIdx(null);
+    setReplayPlaying(false);
     abortRef.current = null;
   }, [open, workflow, initialRunId]);
+
+  // Replay state dies when the viewed run changes or goes live again —
+  // replaying a stale run while a new one streams would be a lie.
+  React.useEffect(() => {
+    setReplayIdx(null);
+    setReplayPlaying(false);
+  }, [viewingRunId]);
+  React.useEffect(() => {
+    if (running) {
+      setReplayIdx(null);
+      setReplayPlaying(false);
+    }
+  }, [running]);
 
   // Auto-scroll the output area to the bottom while a run streams
   const outputLen =
@@ -454,6 +473,21 @@ export function WorkflowRunPanel({
     const t = setInterval(scheduleTick, 5_000);
     return () => clearInterval(t);
   }, [open, scheduleEnabled, scheduleTick]);
+
+  // r33 replay: finished runs get the timeline; the playhead filters the cards
+  const replayable =
+    !!viewedRun && viewedRun.status !== "running" && viewedRun.steps.length > 0;
+  const visibleSteps =
+    viewedRun && replayable && replayIdx != null
+      ? viewedRun.steps.slice(0, replayIdx + 1)
+      : (viewedRun?.steps ?? []);
+
+  // Time-lapse autoplay follows the playhead card
+  React.useEffect(() => {
+    if (!replayPlaying || replayIdx == null) return;
+    const el = document.getElementById(`run-step-card-${replayIdx}`);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [replayPlaying, replayIdx]);
 
   async function runWorkflow() {
     const wf = workflow;
@@ -826,6 +860,16 @@ export function WorkflowRunPanel({
                   {viewedRun.task}
                 </p>
               ) : null}
+              {/* r33 scrubable replay timeline (Devin/LangGraph inspiration) */}
+              {replayable && viewedRun ? (
+                <RunReplayTimeline
+                  run={viewedRun}
+                  playhead={replayIdx}
+                  onScrub={(idx) => setReplayIdx(idx)}
+                  playing={replayPlaying}
+                  onPlayingChange={setReplayPlaying}
+                />
+              ) : null}
               {/* Non-silent failure fallback: options + information, never just a dead end */}
               {!running && (viewedRun.status === "error" || viewedRun.status === "stopped") && liveWorkflow ? (
                 <RunRecoveryCard
@@ -837,11 +881,12 @@ export function WorkflowRunPanel({
                   onRestart={restartRun}
                 />
               ) : null}
-              {viewedRun.steps.map((step, i) => {
+              {visibleSteps.map((step, i) => {
                 const agent = agents.find((a) => a.id === step.agentId);
                 return (
                   <Card
                     key={`${viewedRun.id}-${step.stepId}-${i}`}
+                    id={`run-step-card-${i}`}
                     className={cn(
                       "gap-2 border-l-4 p-4",
                       STEP_BORDER[step.status],

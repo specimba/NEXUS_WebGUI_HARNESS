@@ -160,7 +160,7 @@ export function parseReviewVerdict(text: string): "pass" | "rework" {
   return /\brework\b/i.test(text) ? "rework" : "pass";
 }
 
-const LESSON_KIND_LABEL: Record<RunErrorKind | "rework", string> = {
+const LESSON_KIND_LABEL: Record<RunErrorKind | "rework" | "dream", string> = {
   network: "network",
   auth: "auth",
   "rate-limit": "rate limit",
@@ -169,6 +169,7 @@ const LESSON_KIND_LABEL: Record<RunErrorKind | "rework", string> = {
   region: "region block",
   unknown: "unknown",
   rework: "review rework",
+  dream: "dream",
 };
 
 /**

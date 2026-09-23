@@ -7,6 +7,7 @@ import {
   ChevronUp,
   GripVertical,
   Loader2,
+  MoonStar,
   Plus,
   Sparkles,
   Trash2,
@@ -45,6 +46,8 @@ import {
 import type { PipelineDepth, RunLesson, StepKind, Workflow, WorkflowStep } from "@/lib/types";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
+import { DREAM_MIN_RUNS, DREAM_COOLDOWN_MS } from "@/lib/constants";
+import { dreamDue, runDream } from "@/lib/dream";
 import { cn } from "@/lib/utils";
 
 // ─── Create / edit a workflow: name, description and ordered steps ──────────
@@ -97,6 +100,8 @@ export function WorkflowEditorDialog({
   const [planOpen, setPlanOpen] = React.useState(false);
   const [planTask, setPlanTask] = React.useState("");
   const [planning, setPlanning] = React.useState(false);
+  // r33 dreaming-lite: manual consolidation pass from the lessons card.
+  const [dreaming, setDreaming] = React.useState(false);
 
   // Drag-to-reorder state (HTML5 DnD — dragstart is only allowed from the grip handle)
   const [dragIndex, setDragIndex] = React.useState<number | null>(null);
@@ -679,66 +684,145 @@ export function WorkflowEditorDialog({
         </div>
 
         {/* r31 harness rank-3: Reflexion lessons — visible, deletable, never
-            a hidden model-written doc (UX verdict from the expert panel). */}
-        {workflow && (workflow.lessons?.length ?? 0) > 0 ? (
+            a hidden model-written doc (UX verdict from the expert panel).
+            r33 dreaming-lite: manual "Dream now" consolidation + last-dream note. */}
+        {workflow &&
+        ((workflow.lessons?.length ?? 0) > 0 ||
+          !!workflow.dream ||
+          workflow.runs.length >= DREAM_MIN_RUNS) ? (
           <div className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
                 <h4 className="text-xs font-semibold text-sky-600 dark:text-sky-400">
-                  Lessons from failed runs ({workflow.lessons!.length})
+                  Lessons from runs ({workflow.lessons?.length ?? 0})
                 </h4>
                 <p className="text-[11px] text-muted-foreground">
                   Written automatically when a run fails or a review gate sends work back — injected into the
-                  next run's context so the pipeline learns. Max {workflow.lessons!.length}/5 kept.
+                  next run's context so the pipeline learns. Max {workflow.lessons?.length ?? 0}/5 kept.
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-7 shrink-0 text-muted-foreground hover:text-red-500"
-                onClick={() => updateWf(workflow.id, { lessons: [] })}
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Clear all
-              </Button>
-            </div>
-            <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
-              {workflow.lessons!.map((l: RunLesson, i: number) => (
-                <li
-                  key={`${l.at}-${i}`}
-                  className="flex items-start justify-between gap-2 rounded-md border bg-background/70 px-2 py-1.5"
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1.5 px-2 text-muted-foreground hover:text-violet-400"
+                  disabled={
+                    dreaming ||
+                    (!!workflow.dream &&
+                      Date.now() - workflow.dream.lastDreamAt < DREAM_COOLDOWN_MS)
+                  }
+                  title={
+                    workflow.dream &&
+                    Date.now() - workflow.dream.lastDreamAt < DREAM_COOLDOWN_MS
+                      ? "Rate-limited — the last dream was less than an hour ago (dreams also run automatically after runs settle)"
+                      : "Consolidate recent run history into fresh lessons with the built-in engine"
+                  }
+                  onClick={async () => {
+                    setDreaming(true);
+                    try {
+                      const out = await runDream(workflow.id);
+                      if (!out) {
+                        toast.error("Dream skipped", { description: "Workflow not found." });
+                      } else if (!out.ok) {
+                        toast.warning("Dream skipped", {
+                          description:
+                            out.reason === "running"
+                              ? "A run is streaming right now — try after it settles."
+                              : out.reason === "no-runs"
+                                ? `Needs at least ${DREAM_MIN_RUNS} runs since the last dream.`
+                                : "The built-in engine failed to answer — try again later.",
+                        });
+                      } else if (out.added === 0) {
+                        toast("Dream complete — nothing new", {
+                          icon: "🌙",
+                          description: out.note,
+                        });
+                      } else {
+                        toast.success("Dreamed new lessons", {
+                          icon: "🌙",
+                          description: `${out.note} — they join the next run's context.`,
+                        });
+                      }
+                    } finally {
+                      setDreaming(false);
+                    }
+                  }}
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={cn(
-                          "rounded-full border px-1.5 py-px text-[10px] font-semibold",
-                          l.kind === "rework"
-                            ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
-                            : "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
-                        )}
-                      >
-                        {l.kind}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">{fmtRel(l.at)}</span>
-                    </div>
-                    <p className="mt-0.5 text-xs leading-snug text-foreground/90">{l.text}</p>
-                  </div>
+                  {dreaming ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <MoonStar className="h-3.5 w-3.5" />
+                  )}
+                  Dream now
+                </Button>
+                {(workflow.lessons?.length ?? 0) > 0 ? (
                   <Button
                     type="button"
-                    size="icon"
+                    size="sm"
                     variant="ghost"
-                    className="h-6 w-6 shrink-0 text-muted-foreground hover:text-red-500"
-                    aria-label="Delete lesson"
-                    onClick={() =>
-                      updateWf(workflow.id, { lessons: workflow.lessons!.filter((_, j) => j !== i) })
-                    }
+                    className="h-7 shrink-0 text-muted-foreground hover:text-red-500"
+                    onClick={() => updateWf(workflow.id, { lessons: [] })}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3.5 w-3.5" /> Clear all
                   </Button>
-                </li>
-              ))}
-            </ul>
+                ) : null}
+              </div>
+            </div>
+            {workflow.dream ? (
+              <p className="mt-1.5 rounded-md border bg-background/60 px-2 py-1 text-[11px] text-muted-foreground">
+                <MoonStar className="mr-1 inline h-3 w-3 text-violet-400" aria-hidden />
+                Last dream {fmtRel(workflow.dream.lastDreamAt)} · {workflow.dream.note}
+                {!dreamDue(workflow) ? " · next dream due after more runs settle" : ""}
+              </p>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                <MoonStar className="mr-1 inline h-3 w-3 text-violet-400" aria-hidden />
+                Dreams also fire automatically after runs settle (≥{DREAM_MIN_RUNS} runs, then at most
+                once an hour) — Letta-style idle consolidation via the built-in engine.
+              </p>
+            )}
+            {(workflow.lessons?.length ?? 0) > 0 ? (
+              <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                {workflow.lessons!.map((l: RunLesson, i: number) => (
+                  <li
+                    key={`${l.at}-${i}`}
+                    className="flex items-start justify-between gap-2 rounded-md border bg-background/70 px-2 py-1.5"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "rounded-full border px-1.5 py-px text-[10px] font-semibold",
+                            l.kind === "rework"
+                              ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                              : l.kind === "dream"
+                                ? "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                                : "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+                          )}
+                        >
+                          {l.kind}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{fmtRel(l.at)}</span>
+                      </div>
+                      <p className="mt-0.5 text-xs leading-snug text-foreground/90">{l.text}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0 text-muted-foreground hover:text-red-500"
+                      aria-label="Delete lesson"
+                      onClick={() =>
+                        updateWf(workflow.id, { lessons: workflow.lessons!.filter((_, j) => j !== i) })
+                      }
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ) : null}
 
