@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Check, Loader2, SendHorizontal, Square, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +10,13 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AgentAvatar, ModelBadge } from "@/components/praison/atoms";
 import { MarkdownRenderer } from "@/components/praison/markdown";
@@ -17,6 +25,8 @@ import { fmtMs, uid } from "@/lib/helpers";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { mcpRunParams } from "@/lib/mcp";
 import { resolveLlm } from "@/lib/llm-config";
+import { buildRelayWire } from "@/lib/relay";
+import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
 import { useSettingsStore } from "@/lib/stores";
 import type { Agent, ToolCallInfo, ToolId } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -77,6 +87,12 @@ export function TestAgentDialog({
   const [input, setInput] = React.useState("");
   const [running, setRunning] = React.useState(false);
   const [statusText, setStatusText] = React.useState("");
+  // r39 conversation-side A/B: the playground gets its own harness selection
+  // (seeded from the global setting) so you can probe how an agent behaves
+  // under Fast vs Deep Research WITHOUT moving the global default.
+  const [harnessId, setHarnessId] = React.useState<string>(
+    useSettingsStore.getState().settings.activeHarness ?? "balanced"
+  );
 
   const abortRef = React.useRef<AbortController | null>(null);
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
@@ -155,6 +171,15 @@ export function TestAgentDialog({
 
     try {
       const llm = resolveLlm(settings, agent.model);
+      // r39: harness knobs ride the playground exactly like chat + pipelines —
+      // relay bias, tool budget and stall resilience are the same three dials.
+      const harness = harnessById(harnessId);
+      const relayHops = settings.relayEnabled === false || llm.provider === "auto"
+        ? []
+        : buildRelayWire(settings, { providerId: llm.providerId, model: llm.model ?? "" }, {
+            taskFit: harness.knobs.taskFit,
+            freeFirst: harness.knobs.freeFirst,
+          });
       const result = await runAgentChat(
         {
           provider: llm.provider,
@@ -162,12 +187,14 @@ export function TestAgentDialog({
           baseUrl: llm.baseUrl,
           model: llm.model,
           temperature: agent.temperature,
-          maxIterations: agent.maxIterations,
+          maxIterations: agent.maxIterations + harness.knobs.maxIterationsBonus,
+          ...(harness.knobs.stallResumes !== 2 ? { stallResumes: harness.knobs.stallResumes } : {}),
           system: agent.instructions || undefined,
           messages: history,
           tools: agent.tools,
           // r38 MCP: agent test dialog honors MCP tools too.
           ...mcpRunParams(settings),
+          ...(relayHops.length > 0 ? { relay: relayHops } : {}),
           signal: controller.signal,
         },
         {
@@ -241,6 +268,35 @@ export function TestAgentDialog({
             </div>
             <DialogDescription className="text-xs">Test playground</DialogDescription>
           </div>
+          {/* r39 conversation-side A/B: harness picker local to the playground. */}
+          <Select
+            value={harnessId}
+            onValueChange={(id) => {
+              const preset = harnessById(id);
+              setHarnessId(preset.id);
+              toast(`${preset.glyph} ${preset.name} harness in playground`, {
+                description: `${preset.tagline} — affects this dialog only, not the global default.`,
+              });
+            }}
+            aria-label="Playground harness"
+          >
+            <SelectTrigger
+              className="h-8 w-[150px] shrink-0 gap-1.5 text-xs sm:w-[168px]"
+              title={`Harness: ${harnessById(harnessId).name} — ${harnessById(harnessId).tagline}`}
+            >
+              <span aria-hidden className="text-sm">{harnessById(harnessId).glyph}</span>
+              <span className="truncate">{harnessById(harnessId).name}</span>
+            </SelectTrigger>
+            <SelectContent>
+              {HARNESS_PRESETS.map((p) => (
+                <SelectItem key={p.id} value={p.id} className="text-xs">
+                  <span aria-hidden className="mr-1.5">{p.glyph}</span>
+                  {p.name}
+                  <span className="ml-1.5 text-[10px] text-muted-foreground">{p.tagline}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Messages */}
@@ -349,7 +405,11 @@ export function TestAgentDialog({
             )}
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Runs with your current provider from Settings — messages are not saved.
+            Runs with your current provider from Settings — messages are not saved. Harness{" "}
+            <span className="font-medium text-foreground/80">
+              {harnessById(harnessId).glyph} {harnessById(harnessId).name}
+            </span>{" "}
+            retunes relay order, tool budget and stall retries here only.
           </p>
         </div>
       </DialogContent>

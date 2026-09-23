@@ -530,9 +530,18 @@ interface SuitesState {
   /**
    * r37 scheduled bake-offs: arm/disarm a suite's cadence. Interval is
    * clamped to SUITE_SCHEDULE_MIN_MS (quota discipline), repeats to
-   * 1..SUITE_REPEATS_MAX; the first slot re-arms from "now".
+   * 1..SUITE_REPEATS_MAX; the first slot re-arms from "now". r39: opts into
+   * auto-adopting scheduled verdicts as workflow harness defaults.
    */
-  setSchedule: (id: string, schedule?: { intervalMs: number; repeats: number }) => void;
+  setSchedule: (
+    id: string,
+    schedule?: { intervalMs: number; repeats: number; autoAdopt?: boolean }
+  ) => void;
+  /**
+   * r39: flip ONLY the auto-adopt preference — the armed clock (nextRunAt /
+   * failStreak) is never touched, so toggling can't surprise-fire a round.
+   */
+  setScheduleAutoAdopt: (id: string, autoAdopt: boolean) => void;
 }
 
 export const useSuitesStore = create<SuitesState>()(
@@ -611,10 +620,23 @@ export const useSuitesStore = create<SuitesState>()(
                         enabled: true,
                         intervalMs: Math.max(SUITE_SCHEDULE_MIN_MS, schedule.intervalMs),
                         repeats: Math.min(Math.max(1, Math.round(schedule.repeats || 1)), SUITE_REPEATS_MAX),
+                        autoAdopt: schedule.autoAdopt === true,
                         failStreak: 0,
                         nextRunAt: Date.now() + Math.max(SUITE_SCHEDULE_MIN_MS, schedule.intervalMs),
                       }
                     : undefined,
+                  updatedAt: Date.now(),
+                }
+              : x
+          ),
+        })),
+      setScheduleAutoAdopt: (id, autoAdopt) =>
+        set((s) => ({
+          suites: s.suites.map((x) =>
+            x.id === id
+              ? {
+                  ...x,
+                  schedule: x.schedule ? { ...x.schedule, autoAdopt } : undefined,
                   updatedAt: Date.now(),
                 }
               : x

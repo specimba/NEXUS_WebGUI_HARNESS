@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useSuitesStore, useUiStore, useWorkflowsStore } from "@/lib/stores";
 import { downloadText, fmtIntervalShort, fmtRel, slugify, suiteResultToMarkdown } from "@/lib/helpers";
 import { isSuiteRunning, runSuite, stopSuite, suiteDiff, type SuiteProgress } from "@/lib/suite-runner";
@@ -42,10 +43,15 @@ const SUITE_CADENCES: { value: string; label: string; ms: number }[] = [
  */
 function SuiteScheduleRow({ suite, disabled }: { suite: Suite; disabled?: boolean }) {
   const setSchedule = useSuitesStore((s) => s.setSchedule);
+  const setScheduleAutoAdopt = useSuitesStore((s) => s.setScheduleAutoAdopt);
   const schedule = suite.schedule;
   const armed = schedule?.enabled === true;
   const breakerPaused = armed === false && (schedule?.failStreak ?? 0) >= SUITE_SCHEDULE_FAIL_BREAKER;
   const [repeats, setRepeats] = React.useState(String(schedule?.repeats ?? 1));
+  // r39: schedule state can change behind React's back (scheduler re-arms every
+  // round) — the Switch reads the prop directly, so only the toast is local.
+  const autoAdopt = schedule?.autoAdopt === true;
+  const adoption = suite.lastAdoption;
 
   return (
     <div
@@ -115,6 +121,38 @@ function SuiteScheduleRow({ suite, disabled }: { suite: Suite; disabled?: boolea
           ))}
         </SelectContent>
       </Select>
+      {/* r39 auto-adopt: scheduled verdicts become workflow harness defaults. */}
+      <label
+        className={cn(
+          "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
+          armed
+            ? autoAdopt
+              ? "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-300"
+              : "border-border bg-muted/30 text-muted-foreground"
+            : "cursor-not-allowed border-dashed border-border/60 text-muted-foreground/60 opacity-60"
+        )}
+        title={
+          armed
+            ? "After each scheduled round, apply each case's winning harness as that workflow's default — the bake-off maintains itself. Manual runs never auto-adopt."
+            : "Arm the schedule first — auto-adoption only applies to scheduled rounds."
+        }
+      >
+        <Switch
+          checked={autoAdopt}
+          disabled={!armed}
+          onCheckedChange={(v) => {
+            setScheduleAutoAdopt(suite.id, v);
+            toast(v ? "Auto-adopt armed" : "Auto-adopt off", {
+              icon: v ? "⚖️" : "✋",
+              description: v
+                ? `Scheduled ${suite.name} rounds will now apply winning harnesses to their workflows automatically (armed clock untouched).`
+                : `Scheduled ${suite.name} rounds will record verdicts only — you adopt manually.`,
+            });
+          }}
+          aria-label="Auto-adopt scheduled bake-off winners"
+        />
+        Auto-adopt
+      </label>
       <span className="min-w-0 flex-1 text-[11px] leading-tight text-muted-foreground">
         {armed ? (
           <>
@@ -125,6 +163,15 @@ function SuiteScheduleRow({ suite, disabled }: { suite: Suite; disabled?: boolea
             {schedule!.lastRunAt ? <span className="ml-1.5">· last {fmtRel(schedule!.lastRunAt)}</span> : null}
             {schedule!.failStreak ? <span className="ml-1.5 text-amber-600 dark:text-amber-400">· {schedule!.failStreak} all-fail round{schedule!.failStreak === 1 ? "" : "s"}</span> : null}
             <span className="block">fires only while the app is open · 3 all-fail rounds auto-pause</span>
+            {autoAdopt ? (
+              <span className="block text-violet-600 dark:text-violet-300">
+                {adoption
+                  ? adoption.entries.length > 0
+                    ? `last round applied: ${adoption.entries.map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`).join(", ")} · ${fmtRel(adoption.at)}`
+                    : `last round verified winners already in place · ${fmtRel(adoption.at)}`
+                  : "winners of the next round apply automatically"}
+              </span>
+            ) : null}
           </>
         ) : breakerPaused ? (
           <span className="font-medium text-amber-600 dark:text-amber-400">

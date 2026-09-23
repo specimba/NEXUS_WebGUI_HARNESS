@@ -52,7 +52,7 @@ import {
 } from "@/lib/helpers";
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import { UI_THEMES, uiThemeById } from "@/lib/constants";
-import { providerReady, resolveLlm } from "@/lib/llm-config";
+import { providerReady, resolveLlm, resolveExplicitLlm } from "@/lib/llm-config";
 import { FREE_PROVIDERS, loadLiveCatalog } from "@/lib/providers";
 import { ModelPicker, type PickerOption } from "@/components/praison/model-picker";
 import type { Agent, MessageAttachment } from "@/lib/types";
@@ -571,20 +571,30 @@ export function Composer({
   // ─── r27 per-chat model pin — pick ANY model from your KEYED providers ────
   const settings = useSettingsStore((s) => s.settings);
   const activeConvId = useConversationsStore((s) => s.activeId);
+  const modelOverride = useConversationsStore(
+    (s) => s.conversations.find((c) => c.id === s.activeId)?.modelOverride ?? ""
+  );
+  const setModelOverride = useConversationsStore((s) => s.setModelOverride);
   // r38 MCP: which MCP tools will ride this turn — honest visibility in the
   // composer, since MCP defs are browser-direct-only (server engine never
   // sees them) and the model is the only place they were visible before.
+  // r39: the badge also tells the TRUTH about the current lane — the built-in
+  // auto engine cannot execute MCP tools, so under it the badge turns amber
+  // and says so before you send, instead of the model dead-ending with
+  // "I don't have access".
   const mcpOffer = React.useMemo(() => {
     const servers = (settings.mcpServers ?? []).filter((s) => s.enabled);
     const per = servers
       .map((s) => ({ name: s.name, tools: (s.tools ?? []).filter((t) => t.enabled).length }))
       .filter((p) => p.tools > 0);
-    return { servers: per.length, tools: per.reduce((n, p) => n + p.tools, 0), per };
-  }, [settings.mcpServers]);
-  const modelOverride = useConversationsStore(
-    (s) => s.conversations.find((c) => c.id === s.activeId)?.modelOverride ?? ""
-  );
-  const setModelOverride = useConversationsStore((s) => s.setModelOverride);
+    const lane = resolveExplicitLlm(settings, modelOverride || undefined, agent?.model).provider;
+    return {
+      servers: per.length,
+      tools: per.reduce((n, p) => n + p.tools, 0),
+      per,
+      laneCanMcp: lane === "custom",
+    };
+  }, [settings, modelOverride, agent?.model]);
 
   const modelOptions = React.useMemo<PickerOption[]>(() => {
     const opts: PickerOption[] = [
@@ -1075,13 +1085,25 @@ export function Composer({
               ))}
               {mcpOffer.tools > 0 && (
                 <span
-                  title={`MCP servers riding this turn (browser-direct lanes): ${mcpOffer.per
-                    .map((p) => `${p.name} · ${p.tools} tool${p.tools === 1 ? "" : "s"}`)
-                    .join(", ")}. Manage them in Settings → MCP.`}
-                  className="inline-flex h-5 items-center gap-1 rounded-md border border-violet-500/40 bg-violet-500/10 px-1.5 text-[10px] font-medium text-violet-600 dark:text-violet-300"
+                  title={
+                    mcpOffer.laneCanMcp
+                      ? `MCP servers riding this turn (browser-direct lanes): ${mcpOffer.per
+                          .map((p) => `${p.name} · ${p.tools} tool${p.tools === 1 ? "" : "s"}`)
+                          .join(", ")}. Manage them in Settings → MCP.`
+                      : `The built-in engine cannot execute MCP tools (their registry lives in YOUR browser — BYOK). Pin a keyed provider or model to arm these ${mcpOffer.tools} tools: ${mcpOffer.per
+                          .map((p) => `${p.name} · ${p.tools}`)
+                          .join(", ")}.`
+                  }
+                  className={cn(
+                    "inline-flex h-5 items-center gap-1 rounded-md border px-1.5 text-[10px] font-medium",
+                    mcpOffer.laneCanMcp
+                      ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-300"
+                      : "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  )}
                 >
                   <Waypoints className="h-3 w-3" aria-hidden />
                   MCP · {mcpOffer.tools}
+                  {mcpOffer.laneCanMcp ? "" : " · needs keyed lane"}
                 </span>
               )}
               <span className="text-[11px] text-muted-foreground">

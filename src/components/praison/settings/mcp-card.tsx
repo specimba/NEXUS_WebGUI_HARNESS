@@ -47,11 +47,17 @@ import {
   McpError,
 } from "@/lib/mcp";
 import {
+  getMcpToolHealth,
+  resetMcpToolHealth,
+  MCP_HEALTH_WINDOW,
+  type McpToolHealth,
+} from "@/lib/mcp-health";
+import {
   MAX_MCP_SERVERS,
   MAX_MCP_TOOLS_PER_SERVER,
   MAX_MCP_TOOL_DEFS,
 } from "@/lib/constants";
-import { fmtRel, uid } from "@/lib/helpers";
+import { fmtRel, fmtMs, uid } from "@/lib/helpers";
 import type { McpServer } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +74,50 @@ const MCP_PRESETS: { name: string; url: string; blurb: string }[] = [
     blurb: "Up-to-date library docs for any package · stateless ✓",
   },
 ];
+
+/**
+ * r39 tool-health chip: a per-tool outcome ledger (local-only) rendered as an
+ * honest traffic light — emerald when calls land, amber streak ≥2, red ≥4,
+ * nothing before the first executed call. `hint` marks the model-facing
+ * steering state (the description the model sees now carries the flaky note).
+ */
+function ToolHealthChip({ health, defName }: { health?: McpToolHealth; defName: string }) {
+  if (!health || health.calls === 0) return null;
+  const okPct = Math.round((health.oks / health.calls) * 100);
+  const streak = health.failStreak;
+  const down = streak >= 4;
+  const flaky = streak >= 2;
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+        down
+          ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+          : flaky
+            ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+            : "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+      )}
+      title={
+        `${health.calls} call${health.calls === 1 ? "" : "s"} · ${health.oks} ok / ${health.fails} failed (${okPct}%) · mean ${fmtMs(health.meanMs)} over the last ${MCP_HEALTH_WINDOW}` +
+        (health.lastError ? ` · last error: ${health.lastError.slice(0, 140)}` : "") +
+        (flaky ? " · the model's tool description now carries a flaky hint" : "") +
+        ` · def ${defName}`
+      }
+    >
+      <span
+        className={cn(
+          "h-1.5 w-1.5 rounded-full",
+          down ? "bg-red-500" : flaky ? "bg-amber-500" : "bg-emerald-500",
+          !down && !flaky && "soft-pulse"
+        )}
+        aria-hidden
+      />
+      {flaky
+        ? `${streak} fail${streak === 1 ? "" : "s"} in a row`
+        : `${okPct}% ok · ~${fmtMs(health.meanMs)}`}
+    </span>
+  );
+}
 
 /** Parse "Key: value" lines into auth headers (first colon splits). */
 function parseHeaderLines(text: string): { headers: Record<string, string>; errors: string[] } {
@@ -118,6 +168,14 @@ export function McpCard() {
   const [addOpen, setAddOpen] = React.useState(false);
   const [expanded, setExpanded] = React.useState<string | null>(null);
   const [discovering, setDiscovering] = React.useState<string | null>(null);
+  // r39: the health ledger writes from chat/pipeline turns outside React — a
+  // gentle 5s tick (only while a server panel is open) keeps chips honest.
+  const [healthTick, setHealthTick] = React.useState(0);
+  React.useEffect(() => {
+    if (!expanded) return;
+    const t = setInterval(() => setHealthTick((n) => n + 1), 5_000);
+    return () => clearInterval(t);
+  }, [expanded]);
 
   const patchServer = React.useCallback(
     (id: string, patch: Partial<McpServer>) => {
@@ -500,9 +558,46 @@ export function McpCard() {
                     )}
 
                     <div className="space-y-1">
-                      <p className="text-[11px] font-medium">
-                        Tools — toggle what may ride chat + pipeline runs
-                        {toolCount >= MAX_MCP_TOOLS_PER_SERVER && ` (catalog capped at ${MAX_MCP_TOOLS_PER_SERVER})`}
+                      <p className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-medium">
+                        <span>
+                          Tools — toggle what may ride chat + pipeline runs
+                          {toolCount >= MAX_MCP_TOOLS_PER_SERVER && ` (catalog capped at ${MAX_MCP_TOOLS_PER_SERVER})`}
+                        </span>
+                        {/* r39 health ledger footer: honest scope + one-click reset. */}
+                        {(() => {
+                          void healthTick; // re-read on tick
+                          const slug = slugifyMcpName(server.name);
+                          const tracked = (server.tools ?? [])
+                            .map((t) => getMcpToolHealth(`mcp__${slug}__${t.name}`))
+                            .filter((h): h is McpToolHealth => !!h && h.calls > 0);
+                          const totalCalls = tracked.reduce((a, h) => a + h.calls, 0);
+                          if (tracked.length === 0) return null;
+                          return (
+                            <span className="flex items-center gap-1.5 text-[10px] font-normal text-muted-foreground">
+                              <span
+                                title="Executed-call outcomes recorded locally while tools ran in chat or pipelines"
+                              >
+                                health: {tracked.length} tracked · {totalCalls} call{totalCalls === 1 ? "" : "s"} · local-only
+                              </span>
+                              <button
+                                type="button"
+                                className="rounded px-1 text-[10px] underline-offset-2 hover:text-foreground hover:underline"
+                                onClick={() => {
+                                  for (const t of server.tools ?? []) {
+                                    resetMcpToolHealth(`mcp__${slug}__${t.name}`);
+                                  }
+                                  setHealthTick((n) => n + 1);
+                                  toast("Tool health cleared", {
+                                    icon: "🧹",
+                                    description: `Ledger rows for ${server.name} wiped — flaky hints leave the next tool descriptions too.`,
+                                  });
+                                }}
+                              >
+                                reset
+                              </button>
+                            </span>
+                          );
+                        })()}
                       </p>
                       {(server.tools ?? []).length === 0 && (
                         <p className="rounded-md border border-dashed px-2 py-2 text-[11px] text-muted-foreground">
@@ -511,6 +606,8 @@ export function McpCard() {
                       )}
                       {(server.tools ?? []).map((tool) => {
                         const defName = `mcp__${slugifyMcpName(server.name)}__${tool.name}`;
+                        void healthTick; // chips re-render on the liveness tick
+                        const health = getMcpToolHealth(defName);
                         return (
                           <div
                             key={tool.name}
@@ -529,6 +626,9 @@ export function McpCard() {
                               <p className="truncate font-mono text-[10px] text-muted-foreground/70">
                                 {defName}
                               </p>
+                              <div className="mt-1">
+                                <ToolHealthChip health={health} defName={defName} />
+                              </div>
                             </div>
                             <Switch
                               checked={tool.enabled}

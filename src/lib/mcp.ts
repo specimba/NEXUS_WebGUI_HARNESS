@@ -26,6 +26,7 @@ import {
 } from "./constants";
 import type { McpServer, McpToolInfo, Settings } from "./types";
 import type { ToolDef, ToolResult } from "./tools-defs";
+import { mcpHealthHint, recordMcpToolOutcome } from "./mcp-health";
 
 // ─── Naming ──────────────────────────────────────────────────────────────────
 
@@ -151,7 +152,10 @@ export function buildMcpToolPlan(servers: McpServer[]): McpDefPlan {
         continue;
       }
       const defName = mcpToolDefName(slug, tool.name);
-      const fullDesc = `[MCP · ${server.name}] ${tool.description ?? tool.name}`;
+      // r39 health steering: after repeated failures the model-facing
+      // description carries a short honest hint (relay-ledger analog).
+      const hint = mcpHealthHint(defName);
+      const fullDesc = `[MCP · ${server.name}] ${tool.description ?? tool.name}${hint}`;
       defs.push({
         type: "function",
         function: {
@@ -494,5 +498,9 @@ export async function executeMcpDefCall(
       ms: 0,
     };
   }
-  return mcpCallTool(server, parsed.toolName, argsJson, signal);
+  // r39 health ledger: every executed call (ok or fail) feeds the local
+  // ledger — routing errors above don't count (they are not the tool's fault).
+  const result = await mcpCallTool(server, parsed.toolName, argsJson, signal);
+  recordMcpToolOutcome(defName, result.ok, result.ms ?? 0, result.ok ? undefined : result.content);
+  return result;
 }

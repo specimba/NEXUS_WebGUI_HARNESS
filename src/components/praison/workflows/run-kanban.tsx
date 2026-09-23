@@ -20,6 +20,7 @@ import {
   useWorkflowsStore,
 } from "@/lib/stores";
 import { fmtIn, fmtIntervalShort, fmtMs, fmtRel } from "@/lib/helpers";
+import { harnessById } from "@/lib/harness";
 import type { Workflow, WorkflowRun } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -214,6 +215,17 @@ function RunCard({
           >
             <FlaskConical className="h-2.5 w-2.5" aria-hidden />
             suite
+          </span>
+        ) : null}
+        {/* r39 (closes the r36 deferral): every post-r36 run records which
+            harness drove it — show the glyph right on the board card. */}
+        {run.harness ? (
+          <span
+            title={`Executed under the ${harnessById(run.harness).name} harness`}
+            className="inline-flex items-center gap-0.5 rounded-full border border-border bg-muted/40 px-1.5 py-px font-semibold text-foreground/80"
+          >
+            <span aria-hidden>{harnessById(run.harness).glyph}</span>
+            {harnessById(run.harness).name}
           </span>
         ) : null}
         {reworks > 0 ? (

@@ -706,6 +706,16 @@ export interface Suite {
    * after repeated all-fail rounds to protect quota.
    */
   schedule?: SuiteSchedule;
+  /** r39: what the scheduled auto-adoption last changed (honest audit, may be empty). */
+  lastAdoption?: SuiteAdoption;
+}
+
+/**
+ * r39: what a scheduled bake-off's auto-adoption actually changed (audit trail).
+ */
+export interface SuiteAdoption {
+  at: number;
+  entries: { workflowId: string; workflowName: string; from?: string; to: string }[];
 }
 
 /** r37: interval-based bake-off schedule for a suite (app-open runners). */
@@ -715,6 +725,12 @@ export interface SuiteSchedule {
   intervalMs: number;
   /** Repeats per case for scheduled runs (1..SUITE_REPEATS_MAX). */
   repeats: number;
+  /**
+   * r39 auto-adoption: when a SCHEDULED round crowns a case winner, apply it
+   * as the case workflow's default harness without asking. Opt-in — manual
+   * board runs never auto-adopt (you clicked run, you keep control).
+   */
+  autoAdopt?: boolean;
   /**
    * Consecutive scheduled rounds with an overall done-rate of 0 (reset on any
    * completed case). ≥3 → the breaker auto-pauses the schedule (enabled=false).

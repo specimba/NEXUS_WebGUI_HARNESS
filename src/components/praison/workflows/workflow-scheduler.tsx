@@ -7,6 +7,8 @@ import { executeWorkflowRun, isWorkflowRunning } from "@/lib/workflow-runner";
 import { isSuiteRunning, runSuite } from "@/lib/suite-runner";
 import { SUITE_REPEATS_MAX, SUITE_SCHEDULE_FAIL_BREAKER, SUITE_SCHEDULE_MIN_MS } from "@/lib/constants";
 import { fmtIntervalShort } from "@/lib/helpers";
+import { harnessById } from "@/lib/harness";
+import type { SuiteAdoption } from "@/lib/types";
 
 // ─── In-app workflow scheduler ───────────────────────────────────────────────
 // Ticks every 10s and fires any enabled workflow schedule whose nextRunAt is
@@ -146,6 +148,46 @@ export function SuiteScheduler() {
               useSuitesStore.getState().update(suite.id, {
                 schedule: { ...sched, failStreak: streak > 0 ? streak : 0 },
               });
+            }
+
+            // ── r39 auto-adoption (opt-in) ────────────────────────────────
+            // The nightly bake-off applies its own verdict: a scheduled
+            // round's case winners become the workflows' default harnesses
+            // without asking. Manual board runs never adopt — you clicked
+            // run, you keep control. Every applied change (and the honest
+            // no-op when nothing changed) lands in suite.lastAdoption.
+            if (sched.autoAdopt && result.status === "complete") {
+              const winnerByWorkflow = new Map<string, string>();
+              for (const r of result.results) {
+                if (r.runs === "skipped" || !r.winner) continue;
+                winnerByWorkflow.set(r.workflowId, r.winner);
+              }
+              const wfStore = useWorkflowsStore.getState();
+              const entries: SuiteAdoption["entries"] = [];
+              for (const [workflowId, harness] of winnerByWorkflow) {
+                const wf = wfStore.workflows.find((w) => w.id === workflowId);
+                if (!wf) continue; // deleted behind the case — nothing to adopt onto
+                if (wf.harness === harness) continue; // already defaulting to the winner
+                wfStore.update(workflowId, { harness });
+                entries.push({
+                  workflowId,
+                  workflowName: wf.name,
+                  ...(wf.harness ? { from: wf.harness } : {}),
+                  to: harness,
+                });
+              }
+              useSuitesStore.getState().update(suite.id, {
+                lastAdoption: { at: Date.now(), entries },
+              });
+              if (entries.length > 0) {
+                toast.success("Bake-off verdicts applied automatically", {
+                  icon: "⚖️",
+                  description: entries
+                    .map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`)
+                    .join(" · "),
+                  duration: 10_000,
+                });
+              }
             }
           });
         }
