@@ -499,24 +499,47 @@ export function suiteResultToMarkdown(suite: Suite, result: SuiteResult): string
       continue;
     }
     lines.push("", `Done-rate **${Math.round(r.doneRate * 100)}%** across ${r.runs.length} run(s):`, "");
+    const agentName = (id: string) => r.agents?.find((a) => a.id === id)?.name ?? id;
     for (const run of r.runs) {
       lines.push(
         `- \`${SUITE_STATUS_LABEL[run.status]}\` · steps ${run.stepsDone}/${run.stepsTotal} · ${fmtMs(run.ms)} · ` +
           `${run.toolCallsOk} tool ok${run.degraded ? ` · ${run.degraded} auto-digest` : ""}${
             run.reworked ? ` · ${run.reworked} reworked` : ""
-          }${run.harness ? ` · harness: **${run.harness}**` : ""}`
+          }${
+            run.agentId
+              ? ` · agent: **${agentName(run.agentId)}**`
+              : run.harness
+                ? ` · harness: **${run.harness}**`
+                : ""
+          }`
       );
     }
-    // r36 A/B lab: per-harness verdict table when the case rotated presets.
+    // r36 A/B lab: per-lane verdict table when the case rotated presets.
+    // r44: agent-vs-agent cases label the lanes honestly (agent names).
     if (r.byHarness && r.byHarness.length > 1) {
-      lines.push("", "| Harness | Done rate | Runs | Mean latency | Reworks |", "|---|---|---|---|---|");
+      const isAgentCase = r.mode === "agents";
+      lines.push(
+        "",
+        isAgentCase
+          ? "| Agent | Done rate | Runs | Mean latency |"
+          : "| Harness | Done rate | Runs | Mean latency | Reworks |",
+        "|---|---|---|---|---|"
+      );
       for (const h of r.byHarness) {
         lines.push(
-          `| ${h.harness} | ${Math.round(h.doneRate * 100)}% | ${h.runs} | ${fmtMs(h.meanMs)} | ${h.reworks} |`
+          isAgentCase
+            ? `| ${agentName(h.harness)} | ${Math.round(h.doneRate * 100)}% | ${h.runs} | ${fmtMs(h.meanMs)} |`
+            : `| ${h.harness} | ${Math.round(h.doneRate * 100)}% | ${h.runs} | ${fmtMs(h.meanMs)} | ${h.reworks} |`
         );
       }
       if (r.winner) {
-        lines.push("", `**Winner: ${r.winner}** (highest done-rate; ties broken by latency).`);
+        const winnerLabel = isAgentCase ? agentName(r.winner) : r.winner;
+        lines.push(
+          "",
+          `**Winner: ${winnerLabel}** (highest done-rate; ties broken by latency).${
+            isAgentCase ? " Agent verdicts are evidence only — nothing is auto-adopted." : ""
+          }`
+        );
       }
     }
   }
