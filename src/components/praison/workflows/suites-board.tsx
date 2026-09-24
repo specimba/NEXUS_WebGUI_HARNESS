@@ -19,11 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useAgentsStore, useSuitesStore, useUiStore, useWorkflowsStore } from "@/lib/stores";
+import { useAgentsStore, useSettingsStore, useSuitesStore, useUiStore, useWorkflowsStore } from "@/lib/stores";
 import { downloadText, fmtIntervalShort, fmtRel, slugify, suiteResultToMarkdown } from "@/lib/helpers";
 import { isSuiteRunning, runSuite, stopSuite, suiteDiff, type SuiteProgress } from "@/lib/suite-runner";
 import { SUITE_REPEATS_MAX, SUITE_HARNESSES_MAX, SUITE_SCHEDULE_MIN_MS, SUITE_SCHEDULE_FAIL_BREAKER } from "@/lib/constants";
 import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
+import { activeProviderId } from "@/lib/llm-config";
+import { agentLaneSummary, loadCapsIndex, type CapsIndex } from "@/lib/tracker-caps-index";
 import { cn } from "@/lib/utils";
 import type { Suite, SuiteCaseResult, SuiteCaseRun, SuiteResult } from "@/lib/types";
 
@@ -293,11 +295,20 @@ function AgentPicker({
   disabled?: boolean;
 }) {
   const agents = useAgentsStore((s) => s.agents);
+  // r47: lane capability hints on the bake-off chips — a tool-bearing agent
+  // picked onto a lane whose catalog does not declare tool calling is the
+  // exact failure this annotation makes visible before quota is spent.
+  // Runtime-faithful lane: bare agent model rides the ACTIVE provider.
+  const settings = useSettingsStore((s) => s.settings);
+  const activePid = activeProviderId(settings);
+  const capsIndex = React.useState<CapsIndex>(() => loadCapsIndex())[0];
   return (
     <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Agent lanes for this case">
       {agents.map((a) => {
         const active = value.includes(a.id);
         const order = value.indexOf(a.id) + 1;
+        const sum = agentLaneSummary(capsIndex, a, activePid);
+        const noTools = sum.hasTools && sum.lacksTools;
         return (
           <button
             key={a.id}
@@ -305,7 +316,13 @@ function AgentPicker({
             role="checkbox"
             aria-checked={active}
             disabled={disabled}
-            title={`${a.name} — one single-turn task per agent, own model + tools`}
+            title={`${a.name} — one single-turn task per agent, own model + tools${
+              sum.caps?.tools
+                ? " · lane declares tool calling"
+                : noTools
+                  ? " · ⚠ catalog does not declare tool calling"
+                  : ""
+            }`}
             onClick={() => {
               if (active) {
                 onChange(value.filter((x) => x !== a.id));
@@ -321,11 +338,25 @@ function AgentPicker({
               "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all disabled:opacity-50",
               active
                 ? "border-sky-500/50 bg-sky-500/15 text-sky-600 dark:text-sky-300 shadow-[0_0_0_2px_oklch(0.623_0.214_259.815/0.10)]"
-                : "border-border bg-muted/30 text-muted-foreground hover:border-sky-500/40 hover:text-foreground"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-sky-500/40 hover:text-foreground",
+              noTools && "border-amber-500/50 text-amber-600 dark:text-amber-400"
             )}
           >
             <span aria-hidden>{a.emoji || "🤖"}</span>
             {a.name}
+            {sum.caps?.tools ? (
+              <span
+                aria-label="capability: tools"
+                className="inline-flex h-3.5 shrink-0 items-center rounded bg-sky-500/15 px-0.5 text-[8px] font-bold text-sky-600 dark:text-sky-400"
+              >
+                🔧
+              </span>
+            ) : null}
+            {noTools ? (
+              <span aria-hidden className="shrink-0 text-[9px] font-bold">
+                ⚠
+              </span>
+            ) : null}
             {active ? (
               <span className="ml-0.5 rounded-full bg-sky-500/25 px-1 text-[9px] font-bold tabular-nums">
                 {order}

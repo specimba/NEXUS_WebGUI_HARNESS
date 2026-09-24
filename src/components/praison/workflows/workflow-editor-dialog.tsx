@@ -40,11 +40,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AUTO_PLAN_SYSTEM } from "@/lib/constants";
 import { extractJsonArray, fmtRel, uid } from "@/lib/helpers";
+import { activeProviderId } from "@/lib/llm-config";
 import {
   useAgentsStore,
   useSettingsStore,
   useWorkflowsStore,
 } from "@/lib/stores";
+import {
+  agentLaneSummary,
+  loadCapsIndex,
+  type CapsIndex,
+} from "@/lib/tracker-caps-index";
 import type { PipelineDepth, PromptVariant, ReasoningEffort, RunLesson, StepKind, Workflow, WorkflowStep } from "@/lib/types";
 import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
@@ -118,6 +124,35 @@ export function WorkflowEditorDialog({
   const [planning, setPlanning] = React.useState(false);
   // r33 dreaming-lite: manual consolidation pass from the lessons card.
   const [dreaming, setDreaming] = React.useState(false);
+
+  // r47: capability awareness at the STEP level — the tracker mirror (read
+  // once on mount) says which agent lanes declare tool calling, so a step
+  // whose agent carries tools gets warned BEFORE the run fails, not after.
+  // Lane keys are runtime-faithful: a bare agent model rides the ACTIVE
+  // provider (resolveLlm semantics), so the active provider id joins the lookup.
+  const providerSettings = useSettingsStore((s) => s.settings);
+  const activePid = activeProviderId(providerSettings);
+  const capsIndex = React.useState<CapsIndex>(() => loadCapsIndex())[0];
+  const laneSummaries = React.useMemo(
+    () => new Map(agents.map((a) => [a.id, agentLaneSummary(capsIndex, a, activePid)])),
+    [agents, capsIndex, activePid]
+  );
+  // Header readiness counters over the agents actually USED by steps —
+  // emerald = lane declares tools, amber = caps say no tools, muted = unknown
+  // (no catalog data — rendered as silence, per doctrine).
+  const laneStats = React.useMemo(() => {
+    let ready = 0;
+    let notReady = 0;
+    let unknown = 0;
+    for (const s of steps) {
+      const sum = laneSummaries.get(s.agentId);
+      if (!sum) continue;
+      if (sum.caps === null) unknown++;
+      else if (sum.caps.tools) ready++;
+      else notReady++;
+    }
+    return { ready, notReady, unknown, used: ready + notReady + unknown };
+  }, [steps, laneSummaries]);
 
   // Drag-to-reorder state (HTML5 DnD — dragstart is only allowed from the grip handle)
   const [dragIndex, setDragIndex] = React.useState<number | null>(null);
@@ -373,7 +408,17 @@ export function WorkflowEditorDialog({
       setSteps(mapped);
       setPlanOpen(false);
       setPlanTask("");
-      toast.success(`Generated ${mapped.length} steps`);
+      // r47: the plan is honest about capability too — count planned steps
+      // whose agent carries tools on a lane that does not declare tool calling.
+      const warned = mapped.filter((s) => {
+        const a = available.find((x) => x.id === s.agentId);
+        return a ? agentLaneSummary(capsIndex, a, activePid).warning !== null : false;
+      });
+      toast.success(
+        warned.length > 0
+          ? `Generated ${mapped.length} steps — ⚠ ${warned.length} on tool-less lane${warned.length === 1 ? "" : "s"}`
+          : `Generated ${mapped.length} steps`
+      );
     } catch (err) {
       if (!isAbortError(err)) {
         toast.error("Couldn't generate a plan, add steps manually");
@@ -563,6 +608,44 @@ export function WorkflowEditorDialog({
               </span>
             </div>
 
+            {/* r47 tool-readiness strip — capability census over assigned agents.
+                Unknown lanes stay silent (no catalog data → no glyphs, no guilt). */}
+            {laneStats.used > 0 ? (
+              <div
+                className="flex flex-wrap items-center gap-1.5"
+                role="status"
+                aria-label="Tool-calling readiness of the assigned agent lanes"
+              >
+                {laneStats.ready > 0 ? (
+                  <span
+                    title="Assigned agents whose catalog data declares tool calling — safe for tool-bearing steps"
+                    className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
+                  >
+                    🔧 {laneStats.ready} tool-ready
+                  </span>
+                ) : null}
+                {laneStats.notReady > 0 ? (
+                  <span
+                    title="Assigned agents whose catalog data does NOT declare tool calling — their tools may fail"
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400"
+                  >
+                    ⚠ {laneStats.notReady} no tools
+                  </span>
+                ) : null}
+                {laneStats.unknown > 0 ? (
+                  <span
+                    title="Assigned agents on lanes the catalogs carry no capability data for — no claim either way"
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                  >
+                    · {laneStats.unknown} unknown
+                  </span>
+                ) : null}
+                <span className="text-[10px] text-muted-foreground/70">
+                  lane capability{laneStats.used === 1 ? "" : "ies"} from tracker catalogs
+                </span>
+              </div>
+            ) : null}
+
             {/* Depth summary — what the runner will actually execute */}
             <p className="text-[11px] text-muted-foreground" aria-live="polite">
               <span className="font-medium text-violet-500 dark:text-violet-400">
@@ -582,6 +665,10 @@ export function WorkflowEditorDialog({
 
             {steps.map((step, i) => {
               const agent = agents.find((a) => a.id === step.agentId);
+              // r47: step-level honesty — the assigned agent carries tools but
+              // its lane's catalog does not declare tool calling.
+              const stepWarning = agent ? (laneSummaries.get(agent.id)?.warning ?? null) : null;
+              const laneInfo = agent ? laneSummaries.get(agent.id) : undefined;
               const isDragging = dragIndex === i;
               const isDropTarget = overIndex === i && dragIndex !== null && !isDragging;
               return (
@@ -616,6 +703,7 @@ export function WorkflowEditorDialog({
                   onDragEnd={clearDrag}
                   className={cn(
                     "space-y-2 rounded-lg border p-3 transition-all",
+                    stepWarning && "border-amber-500/50 bg-amber-500/[0.04]",
                     isDragging && "opacity-50 ring-2 ring-violet-500/40",
                     isDropTarget &&
                       "border-violet-500/60 bg-violet-500/5 ring-1 ring-violet-500/30"
@@ -652,14 +740,40 @@ export function WorkflowEditorDialog({
                         <SelectValue placeholder="Select agent" />
                       </SelectTrigger>
                       <SelectContent>
-                        {agents.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            <span className="flex items-center gap-2">
-                              <span aria-hidden>{a.emoji}</span>
-                              {a.name}
-                            </span>
-                          </SelectItem>
-                        ))}
+                        {agents.map((a) => {
+                          // r47: capability chips on agent rows — 🔧 when the
+                          // lane's catalog declares tools, amber "· no tools"
+                          // when this agent's tools would sit on a tool-less
+                          // lane. Unknown lanes stay silent.
+                          const sum = laneSummaries.get(a.id);
+                          const noTools = sum?.hasTools === true && sum?.lacksTools === true;
+                          return (
+                            <SelectItem key={a.id} value={a.id}>
+                              <span className="flex items-center gap-2">
+                                <span aria-hidden>{a.emoji}</span>
+                                {a.name}
+                                {sum?.caps?.tools ? (
+                                  <span
+                                    title="tools — Declares tool/function calling — drives agents and pipelines"
+                                    aria-label="capability: tools"
+                                    className="inline-flex h-3.5 shrink-0 items-center rounded bg-sky-500/15 px-0.5 text-[8px] font-bold text-sky-600 dark:text-sky-400"
+                                  >
+                                    🔧
+                                  </span>
+                                ) : null}
+                                {noTools ? (
+                                  <span
+                                    title="Catalog does not declare tool calling — this agent's tools may fail"
+                                    aria-label="lane does not declare tool calling"
+                                    className="shrink-0 text-[9px] font-semibold text-amber-600 dark:text-amber-400"
+                                  >
+                                    · no tools
+                                  </span>
+                                ) : null}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <div className="flex shrink-0 items-center">
@@ -708,6 +822,23 @@ export function WorkflowEditorDialog({
                     }
                     aria-label={`Label for step ${i + 1}`}
                   />
+
+                  {/* r47: say it BEFORE the run fails — the assigned agent
+                      carries tools but its lane's catalog does not declare
+                      tool calling. Amber banner + amber card border above. */}
+                  {stepWarning ? (
+                    <p
+                      role="status"
+                      className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] leading-snug text-amber-600 dark:text-amber-400"
+                    >
+                      ⚠ {stepWarning}
+                      {laneInfo ? (
+                        <span className="ml-1 text-amber-600/70 dark:text-amber-400/70">
+                          {" "}Lane: {laneInfo.laneLabel}.
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
 
                   {/* Step kind: generate vs review gate (quality gate with rework) */}
                   <div className="flex flex-wrap items-center gap-2">
