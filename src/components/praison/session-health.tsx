@@ -1,8 +1,8 @@
 "use client";
 
-// ─── Session health: gentle break nudges during long agent activity ─────────
+// ─── Session health: OPT-IN break nudges (r49, default OFF) ─────────
 // Inspired by rcaelers/workrave — micro-break reminders for marathon agent
-// sessions. Tracks cumulative "busy" time (chat streams + workflow runs) per
+// sessions. Users decide when to rest; the platform never nags unless asked. Tracks cumulative "busy" time (chat streams + workflow runs) per
 // calendar day in localStorage; a dismissible pill appears at the threshold.
 
 import * as React from "react";
@@ -15,7 +15,7 @@ import {
   SESSION_HEALTH_KEY,
   SESSION_HEALTH_TICK_MS,
 } from "@/lib/constants";
-import { useUiStore } from "@/lib/stores";
+import { useSettingsStore, useUiStore } from "@/lib/stores";
 
 interface SessionHealthData {
   /** YYYY-MM-DD the counter belongs to (resets daily). */
@@ -56,7 +56,15 @@ export function SessionHealth() {
   const [activeMin, setActiveMin] = React.useState(0);
   const snoozeUntilRef = React.useRef(0);
 
+  // r49: hard OFF unless explicitly opted in (Settings → Break reminders).
+  const breakNag = useSettingsStore((s) => s.settings.breakNag === true);
+
   React.useEffect(() => {
+    if (!breakNag) {
+      setVisible(false);
+      setActiveMin(0);
+      return;
+    }
     const tick = () => {
       const data = readData();
       const today = todayKey();
@@ -79,7 +87,7 @@ export function SessionHealth() {
     tick();
     const t = setInterval(tick, SESSION_HEALTH_TICK_MS);
     return () => clearInterval(t);
-  }, []);
+  }, [breakNag]);
 
   const dismiss = React.useCallback(() => {
     setVisible(false);

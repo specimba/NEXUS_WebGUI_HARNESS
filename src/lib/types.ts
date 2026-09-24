@@ -1,6 +1,6 @@
 // ─── PraisonAI Web · Shared Types ────────────────────────────────────────────
 
-export type View = "chat" | "agents" | "workflows" | "settings" | "radar";
+export type View = "chat" | "agents" | "workflows" | "settings" | "radar" | "router";
 
 /** Accent theme variants (remap the violet/fuchsia accent scale via CSS vars). */
 export type UiThemeId = "nexus" | "matrix" | "fallout" | "cyber";
@@ -638,6 +638,18 @@ export interface Settings {
    *  tool budget, stall resilience, lessons and dreams in one pick.
    *  Missing ⇒ "balanced". */
   activeHarness?: string;
+  /**
+   * r49 — per-provider routing weights the human applied from Router-view
+   * watchdog findings (providerId → −2…+2 sort boost). Missing = doctrine
+   * order untouched. Purely local, part of the supervised control loop.
+   */
+  relayWeights?: Record<string, number>;
+  /**
+   * r49 — opt-in break reminder during long agent sessions (session-health).
+   * DEFAULT OFF: users decide when to rest; the platform never nags about
+   * session length unless this is explicitly enabled.
+   */
+  breakNag?: boolean;
   /**
    * r36 Skills gallery (PraisonAI SKILL.md doctrine) — parsed skill documents
    * injected into agent context when enabled. Instructions-only; scripts never

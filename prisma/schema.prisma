@@ -79,3 +79,32 @@ model TrackerMeta {
   modelCount Int       @default(0)
   payload    String?   // last sync summary JSON
 }
+
+// ─── r49: Relay failover event log (the routing state machine's memory) ──────
+// Every hop attempt the rotator makes — ok, capacity-cooled, hard-demoted —
+// lands here, keyed by the request id that threaded through all attempts.
+// No secrets: hop keys and clipped error prose only, never API keys.
+
+model RelayEvent {
+  id         String   @id @default(cuid())
+  requestId  String // correlation id — one request maps to every attempt it made
+  hopKey     String // "providerId::modelId"
+  providerId String
+  modelId    String
+  ok         Boolean
+  /// "rate-limit" | "network" | "timeout" | "credits" | "auth" | "region" | "model" | "unknown"
+  kind       String?
+  /// "primary" | "relay" | "probe"
+  attempt    String   @default("relay")
+  /// What the rotator did: "served" | "rotated" | "cooled" | "demoted" | "exhausted" | "probe-revived" | "probe-extended"
+  action     String?
+  latencyMs  Int?
+  error      String? // clipped human prose — no keys, no full bodies
+  transport  String?  // "server" | "browser"
+  createdAt  DateTime @default(now())
+
+  @@index([requestId])
+  @@index([providerId, createdAt])
+  @@index([createdAt])
+  @@index([hopKey, createdAt])
+}

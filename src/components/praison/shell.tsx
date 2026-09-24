@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  Activity,
   Bot,
   ExternalLink,
   KeyRound,
@@ -35,6 +36,7 @@ import { APP_VERSION, GITHUB_URL, AIHUBMIX_INTRO_FLAG, VYCE_INTRO_FLAG } from "@
 import { fmtRel } from "@/lib/helpers";
 import type { View } from "@/lib/types";
 import { toast } from "sonner";
+import { startRelayProber } from "@/lib/relay-prober";
 import { cn } from "@/lib/utils";
 
 // ─── r37: automation pulse (shared helpers) ──────────────────────────────────
@@ -129,6 +131,7 @@ const NAV_ITEMS: { view: View; label: string; icon: React.ElementType; hint: str
   { view: "agents", label: "Agents", icon: Bot, hint: "Create & manage AI agents" },
   { view: "workflows", label: "Workflows", icon: WorkflowIcon, hint: "Multi-agent pipelines" },
   { view: "radar", label: "Radar", icon: RadarIcon, hint: "GitHub stars, HF trending & arXiv papers" },
+  { view: "router", label: "Router", icon: Activity, hint: "Failover health, events & watchdog" },
   { view: "settings", label: "Settings", icon: Settings2, hint: "Provider, profile & data" },
 ];
 
@@ -206,6 +209,11 @@ function NewChatButton({ onDone }: { onDone?: () => void }) {
 
 // ─── Sidebar (desktop) ───────────────────────────────────────────────────────
 export function AppSidebar() {
+  // r49: the probe loop is app-lifetime — cooled lanes get re-admitted even
+  // when the Router view is closed (idempotent start, idle-only probing).
+  React.useEffect(() => {
+    startRelayProber();
+  }, []);
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
       <div className="px-4 pb-3 pt-4">
@@ -277,6 +285,7 @@ const VIEW_TITLES: Record<View, { title: string; subtitle: string }> = {
   agents: { title: "Agents", subtitle: "Build your AI workforce" },
   workflows: { title: "Workflows", subtitle: "Orchestrate agent pipelines" },
   radar: { title: "Trend Radar", subtitle: "GitHub stars · HF trending · arXiv papers" },
+  router: { title: "Router", subtitle: "Failover health · event log · watchdog" },
   settings: { title: "Settings", subtitle: "Configure providers & preferences" },
 };
 

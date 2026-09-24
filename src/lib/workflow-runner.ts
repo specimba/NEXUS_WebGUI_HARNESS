@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveExplicitLlm, resolveLlm } from "@/lib/llm-config";
 import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
-import { buildRelayChain, buildRelayWire, providerRecentlyHardFailed, recordRelayHopResult, type RelayTaskFit } from "@/lib/relay";
+import { buildRelayChain, buildRelayWire, providerInCooldown, type RelayTaskFit } from "@/lib/relay";
+import { recordFromStatusLine } from "@/lib/relay-events";
 import { composeTaskFit, harnessById } from "@/lib/harness";
 import {
   buildConversationalContext,
@@ -627,7 +628,7 @@ export async function executeWorkflowRun(
     // making the r25 comment above finally true for the primary itself.
     let attemptLlm = llm;
     let steppedOver = false;
-    if (settings.settings.relayEnabled !== false && providerRecentlyHardFailed(llm.providerId)) {
+    if (settings.settings.relayEnabled !== false && providerInCooldown(llm.providerId)) {
       const candidate = buildRelayChain(settings.settings, {
         taskFit,
         freeFirst: harness.knobs.freeFirst,
@@ -689,15 +690,10 @@ export async function executeWorkflowRun(
           },
           {
             onStatus: (m) => {
-              if (/Model relay:/i.test(m)) {
-                relayNotes.push(m);
-                // Feed the rotator's health memory: [hop:x] = x failed,
-                // [hopok:x] = x answered after a rotation.
-                const failHop = /\[hop:([^\]]+)\]/.exec(m);
-                if (failHop) recordRelayHopResult(failHop[1], false, m.replace(/\s*\[hop:[^\]]+\]\s*$/, ""));
-                const okHop = /\[hopok:([^\]]+)\]/.exec(m);
-                if (okHop) recordRelayHopResult(okHop[1], true);
-              }
+              // r49: the shared recorder feeds health memory + the failover
+              // event log ([req:…] correlation ids) and returns clean prose.
+              const clean = recordFromStatusLine(m, "browser");
+              if (clean !== null && /Model relay:/i.test(m)) relayNotes.push(clean);
             },
             onIteration: (n) => {
               // Record at each loop boundary: iteration 1 carries the assembled
@@ -799,7 +795,14 @@ export async function executeWorkflowRun(
           // re-dial the same provider. Swap the primary to the chain's top
           // healthy lane from a DIFFERENT provider (health-sorted, so the
           // already-failed provider's hops sink on their own too).
-          if (kind === "credits" && settings.settings.relayEnabled !== false) {
+          // r49: capacity errors (429) step over the same way — re-dialing a
+          // lane that JUST answered 429 is the exact dead-end the failover
+          // state machine forbids. The funnel's cooldown already sank the
+          // throttled provider's hops in the rebuilt chain.
+          if (
+            (kind === "credits" || kind === "rate-limit") &&
+            settings.settings.relayEnabled !== false
+          ) {
             const candidate = buildRelayChain(settings.settings, {
               taskFit,
               freeFirst: harness.knobs.freeFirst,
@@ -822,7 +825,10 @@ export async function executeWorkflowRun(
               steppedOver = true;
               toast.info(`"${runStep.label}" is switching providers`, {
                 icon: "🔁",
-                description: `${llm.label} is out of credits — the retry lands on ${candidate.label}.`,
+                description:
+                  kind === "credits"
+                    ? `${llm.label} is out of credits — the retry lands on ${candidate.label}.`
+                    : `${llm.label} is at capacity — the retry lands on ${candidate.label}.`,
               });
             }
           }

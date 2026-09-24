@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  Activity,
   Bot,
   Cog,
   Gpu,
@@ -46,6 +47,7 @@ const NAV: { view: View; label: string; icon: React.ElementType; shortcut: strin
   { view: "agents", label: "Agents", icon: Bot, shortcut: "⌘2" },
   { view: "workflows", label: "Workflows", icon: WorkflowIcon, shortcut: "⌘3" },
   { view: "radar", label: "Radar", icon: RadarIcon, shortcut: "⌘5" },
+  { view: "router", label: "Router", icon: Activity, shortcut: "⌘6" },
   { view: "settings", label: "Settings", icon: Cog, shortcut: "⌘4" },
 ];
 

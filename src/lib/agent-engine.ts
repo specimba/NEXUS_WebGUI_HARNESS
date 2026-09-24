@@ -342,7 +342,12 @@ export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
     // fact (the lane's account is empty; top up or let the relay step over).
     return "credits";
   }
-  if (/\b429\b|rate.?limit|quota|too many requests/i.test(msg)) {
+  if (/\b429\b|rate.?limit|quota|too many requests|capacity is limited/i.test(msg)) {
+    // r49: OrcaRouter's free-capacity 429 says "Free model capacity is limited
+    // right now. Retry shortly, or add credits…" — no "429"/"rate limit" token
+    // anywhere, so it used to fall through to "unknown": no rate-limit
+    // step-over, generic recovery card. The provider's own wording is now
+    // first-class RATE_LIMITED vocabulary (the state machine's input).
     return "rate-limit";
   }
   if (/\b(401|403)\b|unauthorized|invalid.{0,12}(api )?key|invalid.?key|forbidden|permission denied/i.test(msg)) {
@@ -424,8 +429,10 @@ export async function runRelayedCustom(
       }
       // A backup hop answered after the primary died — tell the client's
       // health memory so this hop gets promoted next time.
+      // r49: [req:…] rides along so the failover event log correlates every
+      // attempt of one request end-to-end (the receipt carries the same id).
       if (hop.key) {
-        send({ type: "status", message: `Model relay: ${hop.label ?? hop.model} answered ✓ [hopok:${hop.key}]` });
+        send({ type: "status", message: `Model relay: ${hop.label ?? hop.model} answered ✓ [hopok:${hop.key}][req:${requestId}]` });
       }
       // r27 ROUTE RECEIPT (arXiv:2605.01710): a compact runtime record of the
       // serving path that produced this answer — requested vs resolved model,
@@ -485,18 +492,29 @@ export async function runRelayedCustom(
         if (hop.key) {
           send({
             type: "status",
-            message: `Model relay: ${hop.label ?? hop.model} died mid-stream (${shortError(err)}) — recorded, no rotation [hop:${hop.key}]`,
+            message: `Model relay: ${hop.label ?? hop.model} died mid-stream (${shortError(err)}) — recorded, no rotation [hop:${hop.key}][req:${requestId}]`,
           });
         }
         throw err;
       }
-      if (i === hops.length - 1) throw err;
+      if (i === hops.length - 1) {
+        // r49: even the chain's death is information — the last hop's failure
+        // must reach health memory + the event log (action "exhausted").
+        if (hop.key) {
+          send({
+            type: "status",
+            message: `Model relay: chain exhausted — ${hop.label ?? hop.model} was the last lane to fail (${shortError(err)}) [hop:${hop.key}][req:${requestId}][exhausted]`,
+          });
+        }
+        throw err;
+      }
       const next = hops[i + 1];
       // [hop:…] marker is consumed by the client's relay health memory — it
-      // demotes recently-failed hops in future chains (Genius-rotator memory).
+      // cools/demotes recently-failed hops in future chains (Genius-rotator
+      // memory). [req:…] is the end-to-end correlation id for the event log.
       send({
         type: "status",
-        message: `Model relay: ${hop.label ?? hop.model} failed (${shortError(err)}) — rotating to ${next.label ?? next.model}…${hop.key ? ` [hop:${hop.key}]` : ""}`,
+        message: `Model relay: ${hop.label ?? hop.model} failed (${shortError(err)}) — rotating to ${next.label ?? next.model}…${hop.key ? ` [hop:${hop.key}]` : ""}[req:${requestId}]`,
       });
     }
   }

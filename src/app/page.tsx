@@ -12,6 +12,7 @@ import { AgentsView } from "@/components/praison/agents/agents-view";
 import { WorkflowsView } from "@/components/praison/workflows/workflows-view";
 import { WorkflowScheduler, SuiteScheduler } from "@/components/praison/workflows/workflow-scheduler";
 import { RadarView } from "@/components/praison/radar/radar-view";
+import { RouterView } from "@/components/praison/router/router-view";
 import { ModelTicker } from "@/components/praison/tracker/model-ticker";
 import { SessionHealth } from "@/components/praison/session-health";
 import { SettingsView } from "@/components/praison/settings/settings-view";
@@ -107,6 +108,7 @@ export default function Page() {
               {view === "agents" && <AgentsView />}
               {view === "workflows" && <WorkflowsView />}
               {view === "radar" && <RadarView />}
+              {view === "router" && <RouterView />}
               {view === "settings" && <SettingsView />}
             </motion.div>
           </AnimatePresence>

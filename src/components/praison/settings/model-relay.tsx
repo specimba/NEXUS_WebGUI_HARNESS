@@ -11,6 +11,7 @@ import {
   ArrowUp,
   CircleCheck,
   CircleAlert,
+  Clock3,
   Info,
   RotateCcw,
   ShieldCheck,
@@ -32,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { resolveLlm } from "@/lib/llm-config";
 import {
   buildRelayChain,
+  isCapacityCooled,
   relayHealthSnapshot,
   resetRelayHealth,
   TIER_LABEL,
@@ -118,8 +120,11 @@ export function ModelRelayCard() {
           chain until a model responds. Same doctrine as a local model relay:
           tier first, then quality, then the built-in engine as the last resort.
           The chain also adapts per task: research steps (search tools) try
-          fast models first, writing/review steps try flagships first — and
-          hops that failed recently are demoted automatically.
+          fast models first, writing/review steps try flagships first. r49
+          failover v2: capacity hits (429) put the lane into a jittered
+          2–30 min cooldown and the chain rotates past it deterministically;
+          a 1-token background probe re-admits recovered lanes — cooldown is
+          never removal.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -244,14 +249,16 @@ function HopRow({
   onMove: (dir: -1 | 1) => void;
 }) {
   const isAuto = hop.providerId === "auto";
-  const cooling = !!health?.lastFailAt && Date.now() - health.lastFailAt < 5 * 60_000;
+  const hardDemoted = !!health?.lastFailAt && Date.now() - health.lastFailAt < 5 * 60_000 && !health?.soft;
+  const capacityCooling = isCapacityCooled(health);
+  const cooling = hardDemoted || capacityCooling;
   return (
     <div
       role="listitem"
       className={cn(
         "flex items-center gap-2 rounded-lg border px-2.5 py-2",
         isAuto ? "border-dashed border-border/70" : "border-border",
-        cooling && "border-amber-500/40 bg-amber-500/5"
+        capacityCooling ? "border-amber-500/40 bg-amber-500/5" : cooling && "border-rose-500/30 bg-rose-500/5"
       )}
     >
       <span className="w-5 shrink-0 text-center font-mono text-[10px] text-muted-foreground">
@@ -269,10 +276,15 @@ function HopRow({
           <Badge variant="outline" className="font-mono text-[10px] font-normal">
             Elo {hop.elo.toFixed(2)}
           </Badge>
-          {cooling ? (
+          {capacityCooling ? (
             <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-[10px] font-normal text-amber-300">
+              <Clock3 className="mr-0.5 h-2.5 w-2.5" aria-hidden />
+              capacity cooldown — {Math.max(1, Math.ceil(((health?.cooldownUntil ?? 0) - Date.now()) / 60_000))}m left
+            </Badge>
+          ) : hardDemoted ? (
+            <Badge variant="outline" className="border-rose-500/40 bg-rose-500/10 text-[10px] font-normal text-rose-300">
               <CircleAlert className="mr-0.5 h-2.5 w-2.5" aria-hidden />
-              demoted — failed recently
+              demoted — hard failure
             </Badge>
           ) : health && health.ok > 0 ? (
             <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-[10px] font-normal text-emerald-400">

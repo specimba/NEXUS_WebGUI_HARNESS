@@ -32,6 +32,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -576,6 +577,27 @@ export function SettingsView() {
                 <p className="text-xs text-muted-foreground">
                   Applies instantly to any reply currently being read aloud.
                 </p>
+              </div>
+
+              {/* r49: break reminders are OPT-IN — default OFF (the nag was removed). */}
+              <div className="flex items-start justify-between gap-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+                <div className="min-w-0">
+                  <Label className="text-xs" htmlFor="break-nag-toggle">
+                    Break reminders
+                  </Label>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    Opt-in gentle nudge after long stretches of agent activity. Off by
+                    default — you decide when to rest; the platform never interrupts
+                    based on session length.
+                  </p>
+                </div>
+                <Switch
+                  id="break-nag-toggle"
+                  aria-label="Toggle break reminders"
+                  checked={settings.breakNag === true}
+                  onCheckedChange={(v) => update({ breakNag: v })}
+                  className="mt-0.5 shrink-0"
+                />
               </div>
             </CardContent>
           </Card>

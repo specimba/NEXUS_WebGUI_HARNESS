@@ -33,7 +33,8 @@ import { MessageItem } from "@/components/praison/chat/message-item";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { harnessById, HARNESS_PRESETS } from "@/lib/harness";
 import { resolveExplicitLlm, resolveLlm } from "@/lib/llm-config";
-import { buildRelayWire, recordRelayHopResult } from "@/lib/relay";
+import { buildRelayWire } from "@/lib/relay";
+import { recordFromStatusLine } from "@/lib/relay-events";
 import {
   DEFAULT_TTS_VOICE,
   MAX_CONTEXT_MESSAGES,
@@ -342,15 +343,11 @@ export function ChatView() {
               });
             },
             onStatus: (m) => {
-              // Relay rotation trace: feed the rotator's health memory and
-              // surface a clean status line (marker stripped).
-              if (/Model relay:/i.test(m)) {
-                const failHop = /\[hop:([^\]]+)\]/.exec(m);
-                if (failHop) recordRelayHopResult(failHop[1], false, m.replace(/\s*\[hop:[^\]]+\]\s*$/, ""));
-                const okHop = /\[hopok:([^\]]+)\]/.exec(m);
-                if (okHop) recordRelayHopResult(okHop[1], true);
-                setStatusLine(m.replace(/\s*\[hop(?:ok)?:[^\]]+\]\s*$/, ""));
-              }
+              // Relay rotation trace: feed the rotator's health memory + the
+              // r49 failover event log, surface a clean status line (markers
+              // stripped by the shared recorder).
+              const clean = recordFromStatusLine(m, "browser");
+              if (clean !== null) setStatusLine(clean);
             },
           }
         );

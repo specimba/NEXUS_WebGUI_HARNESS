@@ -22,6 +22,7 @@
 import { providerBaseUrl, providerById } from "./providers";
 import { loadLiveCatalog } from "./providers";
 import type { Settings } from "./types";
+import LEADERBOARD from "@/config/leaderboard.json";
 
 export interface RelayHop {
   /** Stable key "providerId::model" — used for ordering + de-duplication. */
@@ -252,8 +253,58 @@ const AUTO_HOP: RelayHop = {
   note: "Zero-config fallback — never dead-ends",
 };
 
-/** Hard cap on backup hops per request (worst-case latency guard). */
-export const MAX_RELAY_HOPS = 5;
+/**
+ * r49: hard cap on backup hops per request (worst-case latency guard).
+ * Raised 5 → 8 with the failover-v2 doctrine: a user-visible rate-limit error
+ * is a bug unless the chain actually reached a live lane — with per-provider
+ * dedup + capacity cooldowns the 8 hops land on DISTINCT, healthy providers
+ * instead of burning the budget on siblings of a throttled gateway.
+ */
+export const MAX_RELAY_HOPS = 8;
+
+// ─── r49 Capacity cooldown (failover state machine, STATE 3) ─────────────────
+// Doctrine change: a soft 429/capacity failure used to NEVER demote a hop —
+// the throttled provider kept the chain's head and every new request burned
+// its engine retries there first (the "2nd-priority provider dies while idle
+// alternatives wait" report). Now a capacity error puts the hop into a
+// JITTERED, ESCALATING cooldown and the chain deterministically rotates past
+// it. Cooldown ≠ removal: the probe loop (relay-prober.ts) re-admits recovered
+// lanes; nothing is ever permanently banned.
+
+export const CAPACITY_COOLDOWN_BASE_MS = 2 * 60_000;
+export const CAPACITY_COOLDOWN_MAX_MS = 30 * 60_000;
+/** ±20% jitter — prevents thundering-herd re-entry at daily credit resets. */
+export const CAPACITY_COOLDOWN_JITTER = 0.2;
+
+/**
+ * Cooldown duration for the nth consecutive capacity failure.
+ * base · 2^(n-1), capped at MAX, ±jitter (jitter ∈ [0,1]; 0 in tests →
+ * deterministic midpoint-free base value · (1 + jitter/2) — callers pass a
+ * seeded rand for production shuffle).
+ */
+export function capacityCooldownMs(consecutiveFails: number, rand: number): number {
+  const n = Math.max(1, Math.floor(consecutiveFails));
+  const raw = Math.min(CAPACITY_COOLDOWN_BASE_MS * 2 ** (n - 1), CAPACITY_COOLDOWN_MAX_MS);
+  const r = Math.min(1, Math.max(0, rand));
+  const jitter = 1 + CAPACITY_COOLDOWN_JITTER * (r * 2 - 1); // ±20%
+  return Math.round(raw * jitter);
+}
+
+/**
+ * r49 classification: does this failure text describe a CAPACITY/quota event
+ * (429, rate limit, quota, capacity) — the state machine's RATE_LIMITED state?
+ * Kept local (not imported from agent-engine) so the client bundle never
+ * pulls the engine module: the relay builds chains browser-side.
+ */
+export function isCapacityError(error?: string): boolean {
+  if (!error) return false;
+  return /\b429\b|rate.?limit|quota|too many requests|capacity is limited/i.test(error);
+}
+
+/** Cooldown state for one hop, derived from its health entry (pure). */
+export function capacityCooledUntil(entry: RelayHealthEntry | undefined, now: number): number {
+  return entry?.cooldownUntil && entry.cooldownUntil > now ? entry.cooldownUntil : 0;
+}
 
 function hopKey(providerId: string, model: string): string {
   return `${providerId}::${model}`;
@@ -271,18 +322,31 @@ export interface RelayHealthEntry {
   lastOkAt?: number;
   lastFailAt?: number;
   lastError?: string;
-  /** Soft failures (429s, capacity) are recorded but NEVER demote a hop. */
+  /**
+   * r25 (superseded r49 for capacity): soft failures no longer just note
+   * themselves — they start a capacity cooldown. The flag survives to mark
+   * that the last failure was capacity-flavored (probe loop uses it to pick
+   * cheap re-admission checks and the UI renders a cooling badge, not a
+   * corpse badge).
+   */
   soft?: boolean;
+  /** r49: epoch ms — while set and in the future, the chain rotates past this hop. */
+  cooldownUntil?: number;
+  /** r49: consecutive capacity failures — drives the escalating backoff. */
+  cooldownCount?: number;
 }
 
 /**
  * Hard vs soft failures (r25, LiteLLM allowed_fails_policy doctrine):
  * network death / 5xx / deadlines demote a lane; 429s and other 4xx are
  * capacity noise and must not sink a healthy provider.
+ * r49: "capacity is limited" (OrcaRouter's free-tier 429 wording — no "429"
+ * or "rate limit" token in the message) is SOFT capacity, entering the
+ * jittered cooldown instead of the 5-min hard demotion.
  */
 export function isHardRelayFailure(error?: string): boolean {
   if (!error) return true;
-  return !/\b429\b|rate.?limit|quota|too many requests|\b4(?:0[13578]|1[02-9])\b/i.test(error);
+  return !/\b429\b|rate.?limit|quota|too many requests|capacity is limited|\b4(?:0[13578]|1[02-9])\b/i.test(error);
 }
 
 type RelayHealth = Record<string, RelayHealthEntry>;
@@ -317,11 +381,31 @@ export function recordRelayHopResult(key: string, ok: boolean, error?: string): 
     e.lastOkAt = Date.now();
     e.lastError = undefined;
     e.soft = false;
+    // r49: success = STATE 2 — recovery bonus. Any capacity cooldown ends.
+    e.cooldownUntil = undefined;
+    e.cooldownCount = 0;
   } else {
     e.fail += 1;
     e.lastFailAt = Date.now();
     e.soft = !isHardRelayFailure(error);
     if (error) e.lastError = error.slice(0, 160);
+    // r49 STATE 3 (RATE_LIMITED): capacity/quota failure → jittered escalating
+    // cooldown. The hop is NOT deleted and NOT hard-demoted (its quality is
+    // fine — it's out of free quota); the chain rotates past it until the
+    // probe loop or the clock re-admits it.
+    if (e.soft && isCapacityError(error)) {
+      const count = (e.cooldownCount ?? 0) + 1;
+      e.cooldownCount = count;
+      e.cooldownUntil = Date.now() + capacityCooldownMs(count, Math.random());
+    } else {
+      // Non-capacity failures don't extend a capacity cooldown retroactively,
+      // but a HARD failure (network death, 402) invalidates any cooling grace
+      // the lane had — it's not merely throttled, it's broken.
+      if (!e.soft) {
+        e.cooldownUntil = undefined;
+        e.cooldownCount = 0;
+      }
+    }
     // r43 credits are ACCOUNT-wide (HTTP 402 — the whole provider console is
     // empty, not just this model): stamp every hop of the same provider as a
     // hard failure so the rotator skips the entire provider for the cooldown.
@@ -374,11 +458,70 @@ export function resetRelayHealth(): void {
   }
 }
 
+/**
+ * r49: record a PROBE outcome (background health check for a cooled lane).
+ * Pass  → exit cooldown, baseline restored (STATE: probe recovery).
+ * Fail  → cooldown doubles (from the current remaining window, capped at MAX)
+ *         so a still-throttled lane isn't re-probed every minute forever.
+ */
+export function recordProbeResult(key: string, ok: boolean, error?: string, latencyMs?: number): void {
+  if (!key || key === "auto::builtin") return;
+  const h = loadHealth();
+  const e = h[key] ?? { ok: 0, fail: 0 };
+  if (ok) {
+    e.ok += 1;
+    e.lastOkAt = Date.now();
+    e.lastError = undefined;
+    e.soft = false;
+    e.cooldownUntil = undefined;
+    e.cooldownCount = 0;
+  } else {
+    e.fail += 1;
+    const now = Date.now();
+    const remaining = Math.max(0, (e.cooldownUntil ?? now) - now);
+    const count = Math.max(1, e.cooldownCount ?? 1);
+    e.cooldownCount = count + 1;
+    const extend = Math.min(
+      Math.max(remaining * 2, CAPACITY_COOLDOWN_BASE_MS * 2),
+      CAPACITY_COOLDOWN_MAX_MS
+    );
+    e.cooldownUntil = now + extend;
+    e.soft = true;
+    if (error) e.lastError = error.slice(0, 160);
+    e.lastFailAt = now;
+  }
+  h[key] = e;
+  saveHealth(h);
+}
+
 /** True when the hop failed inside the cooldown window. */
 function recentlyFailed(entry: RelayHealthEntry | undefined): boolean {
-  // Soft failures (429/capacity) never demote — only hard deaths do (r25).
+  // Soft failures (429/capacity) never HARD-demote — only hard deaths do
+  // (r25). Capacity failures cool down via cooldownUntil instead.
   if (!entry?.lastFailAt || entry.soft) return false;
   return Date.now() - entry.lastFailAt < HEALTH_COOLDOWN_MS;
+}
+
+/**
+ * r49: true when the hop is in its capacity cooldown right now (chain rotates
+ * past it; the probe loop works on re-admission).
+ */
+export function isCapacityCooled(entry: RelayHealthEntry | undefined): boolean {
+  return !!entry?.cooldownUntil && entry.cooldownUntil > Date.now();
+}
+
+/**
+ * r49: true when ANY hop of this provider is cooling (capacity) or recently
+ * hard-failed. Used to skip a cooled PRIMARY — rotating the head of the chain
+ * to a lane we already know is throttled is exactly the bug this round kills.
+ */
+export function providerInCooldown(providerId: string): boolean {
+  if (!providerId || providerId === "auto") return false;
+  const h = loadHealth();
+  const prefix = `${providerId}::`;
+  return Object.entries(h).some(
+    ([k, v]) => k.startsWith(prefix) && (recentlyFailed(v) || isCapacityCooled(v))
+  );
 }
 
 /**
@@ -421,6 +564,65 @@ function taskBoost(hop: RelayHop, fit: RelayTaskFit): number {
   return 0;
 }
 
+// ─── r49 Leaderboard blend (Problem 2 — no frozen rankings) ────────────────
+// src/config/leaderboard.json is a DATED, human-reviewed snapshot from
+// arena.ai/leaderboard/code/webdev + artificialanalysis.ai/agents/coding-agents
+// (scripts/fetch-leaderboard.ts --apply writes it; changelog inside). The
+// chain blends its scores 50/50 with the doctrine catalog's Elo so daily
+// leaderboard movement reorders lanes WITHOUT code edits. Missing file keys
+// leave the doctrine Elo untouched — unknown ≠ worse.
+
+interface LeaderboardFile {
+  version?: number;
+  updatedAt?: string;
+  sources?: string[];
+  scores?: Record<string, number>;
+  changelog?: { date: string; note: string }[];
+}
+
+const LEADERBOARD_SCORES: Record<string, number> =
+  (LEADERBOARD as LeaderboardFile)?.scores ?? {};
+
+export function leaderboardMeta(): { updatedAt?: string; sources?: string[]; changelog: { date: string; note: string }[]; count: number } {
+  const lb = LEADERBOARD as LeaderboardFile;
+  return {
+    ...(lb.updatedAt ? { updatedAt: lb.updatedAt } : {}),
+    ...(lb.sources ? { sources: lb.sources } : {}),
+    changelog: lb.changelog ?? [],
+    count: Object.keys(LEADERBOARD_SCORES).length,
+  };
+}
+
+/**
+ * Blend doctrine Elo with the latest reviewed leaderboard snapshot (50/50).
+ * Match by full hop key first ("vyce::deepseek-v4.1"), then bare model id —
+ * cross-provider hits (e.g. "z-ai/glm-5.3") still count, providers differ.
+ */
+function leaderboardElo(hop: RelayHop): number | null {
+  const byKey = LEADERBOARD_SCORES[hop.key];
+  if (typeof byKey === "number" && byKey >= 0 && byKey <= 1) return byKey;
+  const byModel = LEADERBOARD_SCORES[hop.model];
+  if (typeof byModel === "number" && byModel >= 0 && byModel <= 1) return byModel;
+  return null;
+}
+
+function effectiveElo(hop: RelayHop): number {
+  const lb = leaderboardElo(hop);
+  if (lb === null) return hop.elo;
+  return Math.min(1, Math.max(0, 0.5 * hop.elo + 0.5 * lb));
+}
+
+/**
+ * r49 watchdog weights (Settings.relayWeights): providerId → −2…+2 boost the
+ * human applied from a watchdog finding. Applied as a small sort factor AFTER
+ * health/cooling — a human demotion can bury a flapping provider but never
+ * resurrect a cooled one.
+ */
+function weightBoost(settings: Settings, providerId: string): number {
+  const w = settings.relayWeights?.[providerId];
+  return typeof w === "number" && w >= -2 && w <= 2 ? w : 0;
+}
+
 /**
  * Build the ordered fallback chain for the current vault.
  * Order: user's saved relayOrder first (by index), remaining entries in
@@ -429,6 +631,11 @@ function taskBoost(hop: RelayHop, fit: RelayTaskFit): number {
  * only contains hops that can actually answer. Live-catalog models for keyed
  * providers are appended (tier 2) so freshly-refreshed rosters join the chain
  * even before the doctrine catalog learns about them.
+ *
+ * r49 failover-v2: capacity-cooled hops are EXCLUDED while ≥ MIN_HEALTHY_HOPS
+ * healthy alternatives exist (don't burn the hop budget on throttled lanes);
+ * otherwise they ride at the back — cooldown ≠ removal, a cooled lane can
+ * still serve when everything else is dead.
  */
 export function buildRelayChain(
   settings: Settings,
@@ -486,8 +693,9 @@ export function buildRelayChain(
   }
 
   // Generation-Era doctrine: health first (don't queue recently-dead hops),
-  // then — under the free-frontier harness — free lanes, then tier, then Elo,
-  // then task fit, stable within equal rank.
+  // then — under the free-frontier harness — free lanes, then tier, then Elo
+  // (r49: leaderboard-blended), then task fit, then watchdog weights, stable
+  // within equal rank.
   // r43 decision-tier fix: for fit === "decision" the task boost sorts BEFORE
   // tier — the r27 doctrine says System-One jobs use ONLY fast lanes (a slow
   // genius pass defeats the decision tier), but the old tier-first comparator
@@ -496,18 +704,22 @@ export function buildRelayChain(
   const health = loadHealth();
   const freeBonus = (h: RelayHop) => (freeFirst && isFreeLane(h.model) ? 1 : 0);
   const boost = (h: RelayHop) => taskBoost(h, fit);
+  const cooled = (h: RelayHop) => (recentlyFailed(health[h.key]) || isCapacityCooled(health[h.key]) ? 1 : 0);
+  const wBoost = (h: RelayHop) => weightBoost(settings, h.providerId);
   hops.sort((a, b) => {
-    const hp = recentlyFailed(health[a.key]) ? 1 : 0;
-    const hb = recentlyFailed(health[b.key]) ? 1 : 0;
+    const hp = cooled(a);
+    const hb = cooled(b);
     if (hp !== hb) return hp - hb;
     if (fit === "decision") {
       const db = boost(b) - boost(a);
       if (db !== 0) return db;
     }
+    const wb = wBoost(b) - wBoost(a);
+    if (wb !== 0) return wb;
     const fb = freeBonus(b) - freeBonus(a);
     if (fb !== 0) return fb;
     if (a.tier !== b.tier) return a.tier - b.tier;
-    if (b.elo !== a.elo) return b.elo - a.elo;
+    if (effectiveElo(b) !== effectiveElo(a)) return effectiveElo(b) - effectiveElo(a);
     const tb = boost(b);
     const ta = boost(a);
     if (tb !== ta) return tb - ta;
@@ -525,8 +737,8 @@ export function buildRelayChain(
       return i === -1 ? order.length + hops.findIndex((h) => h.key === k) : i;
     };
     hops.sort((a, b) => {
-      const da = recentlyFailed(health[a.key]) ? 1 : 0;
-      const db = recentlyFailed(health[b.key]) ? 1 : 0;
+      const da = cooled(a);
+      const db = cooled(b);
       if (da !== db) return da - db;
       const fb = freeBonus(b) - freeBonus(a);
       if (fb !== 0) return fb;
@@ -534,9 +746,16 @@ export function buildRelayChain(
     });
   }
 
+  // r49: capacity-cooled hops drop out entirely while enough healthy hops
+  // remain (the probe loop re-admits them); with few alternatives they stay —
+  // a cooled lane beats no lane.
+  const MIN_HEALTHY_HOPS = 4;
+  const healthy = hops.filter((h) => cooled(h) === 0);
+  const chain = healthy.length >= MIN_HEALTHY_HOPS ? healthy : hops;
+
   // The built-in engine is the unconditional last resort.
-  hops.push(AUTO_HOP);
-  return hops;
+  chain.push(AUTO_HOP);
+  return chain;
 }
 
 /**

@@ -4,13 +4,13 @@ import * as React from "react";
 import { useConversationsStore, useUiStore } from "./stores";
 import type { View } from "./types";
 
-const VIEW_ORDER: View[] = ["chat", "agents", "workflows", "settings", "radar"];
+const VIEW_ORDER: View[] = ["chat", "agents", "workflows", "settings", "radar", "router"];
 
 /**
  * Global keyboard shortcuts:
  * - Cmd/Ctrl + Shift + N → new chat (and jump to Chat)
  * - Cmd/Ctrl + Shift + F → global search across all chats
- * - Cmd/Ctrl + 1…5       → switch Chat / Agents / Workflows / Settings / Radar
+ * - Cmd/Ctrl + 1…6       → switch Chat / Agents / Workflows / Settings / Radar / Router
  */
 export function useKeyboardShortcuts(): void {
   React.useEffect(() => {
