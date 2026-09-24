@@ -10,10 +10,14 @@ import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
 import { useSettingsStore } from "@/lib/stores";
 import {
+  CAP_META,
+  capsOf,
+  declaresNoTools,
   fmtAge,
   fmtCtx,
   fmtPrice,
   providerMeta,
+  type ModelCaps,
   type TrackedModelRow,
   type TrackerData,
   type TrackerSourceHealth,
@@ -24,7 +28,7 @@ import {
 // badges, per-source health, manual sync (carries the Vyce vault key per-
 // request — BYOK), and the HuggingFace early-signal feed.
 
-type Filter = "all" | "new" | "free";
+type Filter = "all" | "new" | "free" | "tools";
 
 export function ModelRadarTab() {
   const [data, setData] = React.useState<TrackerData | null>(null);
@@ -73,9 +77,12 @@ export function ModelRadarTab() {
   }, [vyceKey, load]);
 
   const tracked = data?.tracked ?? [];
-  const filtered = tracked.filter((m) => (filter === "new" ? m.isNew : filter === "free" ? m.free : true));
+  const filtered = tracked.filter((m) =>
+    filter === "new" ? m.isNew : filter === "free" ? m.free : filter === "tools" ? capsOf(m)?.tools === true : true
+  );
   const newCount = tracked.filter((m) => m.isNew).length;
   const freeCount = tracked.filter((m) => m.free).length;
+  const toolsCount = tracked.filter((m) => capsOf(m)?.tools === true).length;
   const sources: TrackerSourceHealth[] = data?.sources ?? [];
 
   return (
@@ -108,6 +115,7 @@ export function ModelRadarTab() {
                 ["all", `All · ${tracked.length}`],
                 ["new", `New · ${newCount}`],
                 ["free", `Free · ${freeCount}`],
+                ["tools", `🔧 Tools · ${toolsCount}`],
               ] as [Filter, string][]
             ).map(([id, label]) => (
               <button
@@ -129,6 +137,19 @@ export function ModelRadarTab() {
               {data?.status.lastSyncAt ? `last sync ${fmtAge(data.status.lastSyncAt)}` : "never synced"}
             </span>
           </div>
+          {/* r45 capability legend — glyphs mean catalog-declared support only */}
+          <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10.5px] text-muted-foreground">
+            <span className="font-medium uppercase tracking-wide opacity-80">caps:</span>
+            {CAP_META.map((c) => (
+              <span key={c.key} className="inline-flex items-center gap-1" title={c.hint}>
+                <span aria-hidden className={cn("rounded px-1 text-[9.5px] font-semibold", c.cls)}>
+                  {c.glyph}
+                </span>
+                {c.label}
+              </span>
+            ))}
+            <span className="opacity-70">— declared by OpenRouter/Kilo catalogs; sources without data show no glyphs (unknown ≠ no)</span>
+          </p>
           {/* Source health */}
           <div className="flex flex-wrap gap-1.5">
             {sources.map((s) => (
@@ -167,48 +188,15 @@ export function ModelRadarTab() {
             <p className="py-6 text-center text-[12.5px] text-muted-foreground">
               {filter === "new"
                 ? "No brand-new lanes in the current 48h window — the watcher will flag them the moment they appear."
-                : "Nothing tracked yet — hit “Sync now” to take the first snapshot."}
+                : filter === "tools"
+                  ? "No tool-calling lanes captured yet — sync once; OpenRouter/Kilo rows carry capability data."
+                  : "Nothing tracked yet — hit “Sync now” to take the first snapshot."}
             </p>
           ) : (
             <div className="max-h-[52vh] overflow-y-auto pr-1">
               <ul className="divide-y rounded-md border">
                 {filtered.slice(0, 120).map((m) => (
-                  <li key={m.id} className="flex items-center gap-2 px-3 py-2 transition-colors hover:bg-accent/40">
-                    <span aria-hidden className="w-5 text-center text-sm">
-                      {providerMeta(m.providerId).glyph}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="truncate font-mono text-[12.5px] font-medium">{m.modelId}</span>
-                        {m.isNew && (
-                          <Badge variant="secondary" className="h-4 rounded bg-emerald-500/15 px-1 text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400">
-                            new
-                          </Badge>
-                        )}
-                        {m.free && (
-                          <Badge variant="secondary" className="h-4 rounded bg-amber-500/15 px-1 text-[9px] font-bold uppercase text-amber-600 dark:text-amber-400">
-                            free
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="truncate text-[10.5px] text-muted-foreground">
-                        {providerMeta(m.providerId).label} ·{" "}
-                        {[fmtCtx(m.contextWindow), fmtPrice(m)].filter(Boolean).join(" · ") || "pricing n/a"} · first seen{" "}
-                        {fmtAge(m.firstSeenAt)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 shrink-0 text-[11px]"
-                      onClick={async () => {
-                        const ok = await copyText(m.modelId);
-                        if (ok) toast(`Copied ${m.modelId}`, { icon: "📋" });
-                      }}
-                    >
-                      Copy id
-                    </Button>
-                  </li>
+                  <RadarLaneRow key={m.id} row={m} />
                 ))}
               </ul>
             </div>
@@ -247,5 +235,67 @@ export function ModelRadarTab() {
         </Card>
       )}
     </div>
+  );
+}
+
+/** One radar lane: source glyph + id + NEW/FREE + capability badges + copy. */
+function RadarLaneRow({ row }: { row: TrackedModelRow }) {
+  const caps = capsOf(row);
+  return (
+    <li className="flex items-center gap-2 px-3 py-2 transition-colors hover:bg-accent/40">
+      <span aria-hidden className="w-5 text-center text-sm">
+        {providerMeta(row.providerId).glyph}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="truncate font-mono text-[12.5px] font-medium">{row.modelId}</span>
+          {row.isNew && (
+            <Badge variant="secondary" className="h-4 rounded bg-emerald-500/15 px-1 text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400">
+              new
+            </Badge>
+          )}
+          {row.free && (
+            <Badge variant="secondary" className="h-4 rounded bg-amber-500/15 px-1 text-[9px] font-bold uppercase text-amber-600 dark:text-amber-400">
+              free
+            </Badge>
+          )}
+          {caps &&
+            CAP_META.filter((c) => caps[c.key]).map((c) => (
+              <span
+                key={c.key}
+                title={`${c.label} — ${c.hint}`}
+                aria-label={`capability: ${c.label}`}
+                className={cn("inline-flex h-4 items-center rounded px-1 text-[9px] font-bold", c.cls)}
+              >
+                {c.glyph}
+              </span>
+            ))}
+        </div>
+        <p className="truncate text-[10.5px] text-muted-foreground">
+          {providerMeta(row.providerId).label} ·{" "}
+          {[fmtCtx(row.contextWindow), fmtPrice(row)].filter(Boolean).join(" · ") || "pricing n/a"} · first seen{" "}
+          {fmtAge(row.firstSeenAt)}
+          {declaresNoTools(row) && (
+            <span
+              className="ml-1 text-amber-600 dark:text-amber-400"
+              title="Catalog does not declare tool calling — solo chat only; agent/pipeline steps that pass tools may fail"
+            >
+              · no tools
+            </span>
+          )}
+        </p>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 shrink-0 text-[11px]"
+        onClick={async () => {
+          const ok = await copyText(row.modelId);
+          if (ok) toast(`Copied ${row.modelId}`, { icon: "📋" });
+        }}
+      >
+        Copy id
+      </Button>
+    </li>
   );
 }

@@ -11,6 +11,9 @@ import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import {
+  CAP_META,
+  capsOf,
+  declaresNoTools,
   fmtAge,
   fmtCtx,
   fmtPrice,
@@ -196,9 +199,15 @@ export function ModelTicker() {
     setModelOverride(activeId, m.id);
     setView("chat");
     setOpen(false);
+    // r45 pin honesty: a lane whose catalog data does NOT declare tool calling
+    // is a real constraint for agents/pipelines — say so at the moment of pin.
+    const noTools = declaresNoTools(m);
     toast(`This chat now runs on ${m.modelId}`, {
-      description: `${providerMeta(m.providerId).label} — pinned from the model tracker.`,
-      icon: "📌",
+      description: noTools
+        ? `${providerMeta(m.providerId).label} — pinned from the tracker. ⚠ Catalog does not declare tool calling: agents and tool-using steps may fail.`
+        : `${providerMeta(m.providerId).label} — pinned from the model tracker.`,
+      icon: noTools ? "⚠️" : "📌",
+      duration: noTools ? 9_000 : undefined,
     });
   }
 
@@ -307,6 +316,7 @@ export function ModelTicker() {
 
 function TickerRow({ row, onPin }: { row: TrackedModelRow; onPin: () => void }) {
   const pm = providerMeta(row.providerId);
+  const caps = capsOf(row);
   const bits = [fmtCtx(row.contextWindow), fmtPrice(row), row.free ? "free" : null].filter(Boolean) as string[];
   return (
     <li className="flex items-center gap-2 px-3 py-2 transition-colors hover:bg-accent/40">
@@ -326,6 +336,17 @@ function TickerRow({ row, onPin }: { row: TrackedModelRow; onPin: () => void }) 
               free
             </Badge>
           )}
+          {caps &&
+            CAP_META.filter((c) => caps[c.key]).map((c) => (
+              <span
+                key={c.key}
+                title={`${c.label} — ${c.hint}`}
+                aria-label={`capability: ${c.label}`}
+                className={cn("inline-flex h-4 items-center rounded px-1 text-[9px] font-bold", c.cls)}
+              >
+                {c.glyph}
+              </span>
+            ))}
         </div>
         <p className="truncate text-[10.5px] text-muted-foreground">
           {pm.label} · {bits.length ? bits.join(" · ") : "pricing n/a"} · first seen {fmtAge(row.firstSeenAt)}

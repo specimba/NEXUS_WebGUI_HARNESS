@@ -15,6 +15,39 @@
 const NON_TEXT_RE =
   /embed|whisper|\btts\b|guard|rerank|moderation|sdxl|imagen|imagine|diffusion|vision-?(?:enc|only)|voice|transcribe/i;
 
+// ── r45: capability extraction (pure, unit-tested) ───────────────────────────
+// OpenRouter + Kilo publish `supported_parameters` and `architecture`. We map
+// them to four honest flags; anything else (no field, odd shape) stays
+// undefined → the row simply shows no caps instead of a guessed "no".
+
+/** Minimal shape we need — both catalogs plus test fixtures fit this. */
+export interface CapsShape {
+  supported_parameters?: unknown;
+  architecture?: { input_modalities?: unknown } | null;
+}
+
+export interface ExtractedCaps {
+  tools: boolean;
+  structured: boolean;
+  reasoning: boolean;
+  vision: boolean;
+}
+
+export function extractCaps(model: CapsShape): ExtractedCaps | null {
+  const params = model.supported_parameters;
+  const mods = model.architecture?.input_modalities;
+  const hasParams = Array.isArray(params) && params.length > 0;
+  const hasMods = Array.isArray(mods) && mods.length > 0;
+  if (!hasParams && !hasMods) return null; // catalog publishes nothing → unknown
+  const p = hasParams ? (params as unknown[]).filter((x): x is string => typeof x === "string") : [];
+  return {
+    tools: p.includes("tools"),
+    structured: p.includes("structured_outputs") || p.includes("response_format"),
+    reasoning: p.includes("reasoning") || p.includes("include_reasoning"),
+    vision: hasMods && (mods as unknown[]).includes("image"),
+  };
+}
+
 export interface TrackerRow {
   key: string; // "providerId::modelId" — matches the relay hopKey convention
   providerId: string;
@@ -53,6 +86,8 @@ interface OrModel {
   created?: number;
   context_length?: number;
   pricing?: { prompt?: string; completion?: string };
+  supported_parameters?: unknown;
+  architecture?: { input_modalities?: unknown } | null;
 }
 
 async function fetchOpenRouter(): Promise<TrackerRow[]> {
@@ -75,7 +110,7 @@ async function fetchOpenRouter(): Promise<TrackerRow[]> {
       priceOut,
       // Free lane: either the :free suffix or an exact-zero both-sides price.
       free: m.id.endsWith(":free") || (priceIn === 0 && priceOut === 0),
-      meta: { created: m.created ?? null, name: m.name ?? null },
+      meta: { created: m.created ?? null, name: m.name ?? null, caps: extractCaps(m) },
     });
   }
   if (out.length === 0) throw new Error("empty catalog");
@@ -252,6 +287,8 @@ interface KiloModel {
   context_length?: number;
   pricing?: { prompt?: string; completion?: string };
   isFree?: boolean;
+  supported_parameters?: unknown;
+  architecture?: { input_modalities?: unknown } | null;
 }
 
 async function fetchKilo(): Promise<TrackerRow[]> {
@@ -278,7 +315,7 @@ async function fetchKilo(): Promise<TrackerRow[]> {
         m.id.endsWith(":free") ||
         m.id === "kilo-auto/free" ||
         (priceIn === 0 && priceOut === 0),
-      meta: { created: m.created ?? null, name: m.name ?? null, isFree: m.isFree ?? null },
+      meta: { created: m.created ?? null, name: m.name ?? null, isFree: m.isFree ?? null, caps: extractCaps(m) },
     });
   }
   if (out.length === 0) throw new Error("empty catalog");
