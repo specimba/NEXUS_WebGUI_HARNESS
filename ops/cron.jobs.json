@@ -110,18 +110,18 @@
   ],
   "state": {
     "note": "Snapshot of the last verified platform state — refresh via bootEnsure each session; do not mistake this for live truth.",
-    "lastObservedAt": "2026-09-24T16:21:00+08:00",
+    "lastObservedAt": "2026-09-24T17:05:00+08:00",
     "live": [
       {
-        "platformJobId": "409322",
-        "tierEquivalent": "T2-class review loop (hourly)",
-        "name": "PraisonAI web dev review — hourly loop (agentTurn)",
-        "expr": "0 21 * * * ?",
-        "kind": "agentTurn",
+        "platformJobId": "410782",
+        "tierEquivalent": "T2-class review loop (15 min, webDevReview)",
+        "name": "PraisonAI web dev review — 15m loop (webDevReview)",
+        "expr": "0 0/15 * * * ?",
+        "kind": "webDevReview",
         "priority": 5,
         "status": "ENABLED",
-        "evidence": "12 consecutive fires 04:21->15:21 (+08), each delivered a recorded dev round (r36-r48).",
-        "lastVerified": "2026-09-24T12:21:00+08:00"
+        "evidence": "Created 2026-09-24 ~17:05 (+08) per the standing 15-min webDevReview mandate; payload carries a light-patrol clause to respect the budget lesson below.",
+        "lastVerified": "2026-09-24T17:05:00+08:00"
       }
     ],
     "deletedDisabled": [
@@ -130,9 +130,10 @@
       "408899",
       "409274",
       "409307",
-      "409319"
+      "409319",
+      "409322"
     ],
-    "lesson": "Platform cron lifetime is session-scoped and exec-limit-gated: after any session gap, assume zero and run bootEnsure; prefer kind=agentTurn for recurring heavy payloads; 15-min heavy cadences are what burned the account budget originally.",
-    "lastObserved": "job 409322 hourly :21, ENABLED, 13 consecutive fires 04:21->16:21 (r36-r49 delivered)"
+    "lesson": "Platform cron lifetime is session-scoped and exec-limit-gated: after any session gap, assume zero and run bootEnsure; prefer kind=agentTurn for recurring heavy payloads; 15-min heavy cadences are what burned the account budget originally. 409322 (hourly agentTurn) was retired 2026-09-24 and replaced by 410782 (15-min webDevReview) — the mandate requires webDevReview kind; the payload's light-patrol clause is the budget guard. One loop at a time: parallel sessions merging each other's WIP caused the r49 double-commit.",
+    "lastObserved": "job 410782 15-min webDevReview (0,15,30,45), ENABLED; 409322 hourly agentTurn retired after 13 consecutive fires 04:21->16:21 (r36-r49 delivered)"
   }
 }
