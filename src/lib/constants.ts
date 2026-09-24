@@ -461,6 +461,16 @@ export const MCP_DESC_MAX_CHARS = 400;
 /** Proxy response cap (bytes of text passed back through /api/mcp). */
 export const MCP_PROXY_RESPONSE_CAP = 512 * 1024;
 
+// ─── r40 MRTR input gates (Multi Round-Trip Requests, MCP 2026-07-28 spec) ───
+/** Human-gate hygiene: max input requests honored from one InputRequiredResult. */
+export const MCP_INPUT_MAX_REQUESTS = 6;
+/** Auto-decline deadline: an unattended gate must never hang a run forever. */
+export const MCP_INPUT_TIMEOUT_MS = 180_000;
+/** Human rounds per tool call (input_required → answered → input_required again = honest stop). */
+export const MCP_INPUT_MAX_ROUNDS = 1;
+/** Per-answer char cap (answers ride the retried request body — keep them lean). */
+export const MCP_INPUT_RESPONSE_MAX_CHARS = 2_000;
+
 // ─── Skills (r36, PraisonAI SKILL.md doctrine — instructions-only) ───────────
 /** Skills kept in the gallery (localStorage discipline: old ones must drop). */
 export const SKILLS_MAX = 12;

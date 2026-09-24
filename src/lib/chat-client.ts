@@ -58,6 +58,12 @@ export interface RunAgentParams {
    * MCP defs (registry is browser-local by design).
    */
   mcpServers?: McpServer[];
+  /**
+   * r40 MRTR: when true, an MCP tool answering `input_required` opens the
+   * human gate (approval dialog). Default false — headless lanes (pipelines,
+   * bake-offs, heartbeat) decline honestly instead of blocking on a dialog.
+   */
+  mcpInteractive?: boolean;
 }
 
 export interface ToolCallEvent {
@@ -240,7 +246,7 @@ async function runBrowserDirect(
       mcpPlan && mcpPlan.offered.length > 0
         ? (name, argsJson, signal) =>
             parseMcpToolDefName(name)
-              ? executeMcpDefCall(params.mcpServers ?? [], name, argsJson, signal)
+              ? executeMcpDefCall(params.mcpServers ?? [], name, argsJson, signal, params.mcpInteractive === true)
               : httpToolExecutor(name, argsJson, signal)
         : httpToolExecutor,
   };

@@ -443,6 +443,13 @@ export interface WorkflowRun {
    * Powers the harness chip on run rows; absent = pre-r36 run.
    */
   harness?: string;
+  /**
+   * r40 tool-def audit receipt: exactly which tools were offered to this run
+   * (built-in ids + mcp__server__tool def names) and how many MCP tools the
+   * per-run cap dropped. Run rows become honest about the model's tool surface.
+   */
+  toolsOffered?: string[];
+  mcpToolsDropped?: number;
 }
 
 export interface Workflow {
@@ -517,6 +524,30 @@ export interface McpToolInfo {
   inputSchema?: Record<string, unknown>;
   /** Per-tool switch (default true on discovery). */
   enabled: boolean;
+}
+
+/**
+ * r40 MRTR (Multi Round-Trip Requests, MCP 2026-07-28 spec): one piece of
+ * input the server demands before it can finish a tools/call. Parsed
+ * defensively — the spec fixes the RESULT shape (`InputRequiredResult` with
+ * `resultType: "input_required"` + `inputRequests[]`) but request field names
+ * vary; we keep the raw object for honest display and echo.
+ */
+export interface McpInputRequest {
+  /** Server-minted request id when present (echoed back in inputResponses). */
+  id?: string;
+  /** Declared request kind when present (e.g. "text" / "confirm"). */
+  type?: string;
+  /** Best-effort human prompt extracted from common field shapes. */
+  message?: string;
+  /** The untouched request object — displayed and echoed verbatim. */
+  raw: Record<string, unknown>;
+}
+
+/** r40: the user's answer to one McpInputRequest (sent as `inputResponses`). */
+export interface McpInputResponse {
+  id?: string;
+  value?: string;
 }
 
 /** A user-registered MCP server (Streamable-HTTP POST endpoint). */
@@ -715,7 +746,16 @@ export interface Suite {
  */
 export interface SuiteAdoption {
   at: number;
-  entries: { workflowId: string; workflowName: string; from?: string; to: string }[];
+  entries: {
+    workflowId: string;
+    workflowName: string;
+    from?: string;
+    to: string;
+    /** r40 sticky guard: verdict was NOT applied this round (held for agreement). */
+    held?: boolean;
+    /** Why this entry was held / skipped — honest audit even when nothing moved. */
+    reason?: string;
+  }[];
 }
 
 /** r37: interval-based bake-off schedule for a suite (app-open runners). */
@@ -736,6 +776,13 @@ export interface SuiteSchedule {
    * completed case). ≥3 → the breaker auto-pauses the schedule (enabled=false).
    */
   failStreak?: number;
+  /**
+   * r40 sticky-adoption guard: each case workflow's winner from the PREVIOUS
+   * scheduled round. A round's verdict only auto-applies when it AGREES with
+   * the previous round's (2 consecutive agreeing rounds) — a single flipped
+   * verdict is noise and is held, so one bad round can't flip a pipeline.
+   */
+  lastWinners?: Record<string, string>;
   lastRunAt?: number;
   nextRunAt?: number;
 }

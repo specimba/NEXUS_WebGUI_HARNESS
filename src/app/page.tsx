@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AppSidebar, MobileNav, Splash, TopBar } from "@/components/praison/shell";
 import { CommandPalette } from "@/components/praison/command-palette";
 import { GlobalSearchDialog } from "@/components/praison/global-search-dialog";
+import { McpInputDialog } from "@/components/praison/mcp-input-dialog";
 import { ChatView } from "@/components/praison/chat/chat-view";
 import { HeartbeatEngine } from "@/components/praison/chat/chat-heartbeat";
 import { AgentsView } from "@/components/praison/agents/agents-view";
@@ -114,6 +115,7 @@ export default function Page() {
       <MobileNav />
       <CommandPalette />
       <GlobalSearchDialog />
+      <McpInputDialog />
       <WorkflowScheduler />
       <SuiteScheduler />
       <HeartbeatEngine />

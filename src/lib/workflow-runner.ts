@@ -26,7 +26,7 @@ import {
 } from "@/lib/stores";
 import { REWORK_LIMIT, LESSON_MAX_CHARS, MAX_LESSONS } from "@/lib/constants";
 import { buildSkillsBlock } from "@/lib/skills";
-import { mcpRunParams } from "@/lib/mcp";
+import { mcpRunParams, mcpOfferedTools } from "@/lib/mcp";
 import { scheduleDream } from "@/lib/dream";
 import {
   pickVariantForRun,
@@ -41,6 +41,7 @@ import type {
   RunErrorInfo,
   RunErrorKind,
   RunLesson,
+  Settings,
   ToolCallInfo,
   ToolId,
   Workflow,
@@ -50,6 +51,25 @@ import type {
 
 /** Workflows with a run currently streaming — guards concurrent triggers. */
 const activeRuns = new Set<string>();
+
+/**
+ * r40 tool-def audit receipt: exactly what the model was offered — the run's
+ * built-in tool ids (step union) + every MCP def name (offer order), plus how
+ * many MCP tools the per-run cap dropped. Empty pick when there is nothing to
+ * record (pre-MCP runs without tools stay clean).
+ */
+function toolReceipt(
+  steps: Pick<WorkflowRunStep, "tools">[],
+  settings: Settings
+): Pick<WorkflowRun, "toolsOffered" | "mcpToolsDropped"> {
+  const builtIns = Array.from(new Set(steps.flatMap((s) => s.tools ?? [])));
+  const mcp = mcpOfferedTools(settings);
+  if (builtIns.length === 0 && mcp.names.length === 0) return {};
+  return {
+    toolsOffered: [...builtIns, ...mcp.names],
+    ...(mcp.dropped > 0 ? { mcpToolsDropped: mcp.dropped } : {}),
+  };
+}
 
 export function isWorkflowRunning(workflowId: string): boolean {
   return activeRuns.has(workflowId);
@@ -344,6 +364,7 @@ export async function executeWorkflowRun(
       schemaVersion: 2,
       branchOf: { runId: source.id, fromStepIndex: startIndex },
       harness: options.harnessOverride ?? wf.harness ?? settings.settings.activeHarness,
+      ...toolReceipt(steps, settings.settings),
     });
   } else {
     if (options.task.trim() === "") return null;
@@ -368,6 +389,8 @@ export async function executeWorkflowRun(
         : {}),
       // r36: record the harness that actually drives this run (override wins).
       harness: options.harnessOverride ?? wf.harness ?? settings.settings.activeHarness,
+      // r40: tool-def audit receipt — what the model was offered, honestly.
+      ...toolReceipt(steps, settings.settings),
     });
   }
 

@@ -164,13 +164,36 @@ function SuiteScheduleRow({ suite, disabled }: { suite: Suite; disabled?: boolea
             {schedule!.failStreak ? <span className="ml-1.5 text-amber-600 dark:text-amber-400">· {schedule!.failStreak} all-fail round{schedule!.failStreak === 1 ? "" : "s"}</span> : null}
             <span className="block">fires only while the app is open · 3 all-fail rounds auto-pause</span>
             {autoAdopt ? (
-              <span className="block text-violet-600 dark:text-violet-300">
-                {adoption
-                  ? adoption.entries.length > 0
-                    ? `last round applied: ${adoption.entries.map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`).join(", ")} · ${fmtRel(adoption.at)}`
-                    : `last round verified winners already in place · ${fmtRel(adoption.at)}`
-                  : "winners of the next round apply automatically"}
-              </span>
+              adoption && adoption.entries.some((e) => e.held) ? (
+                <span
+                  className="block text-amber-600 dark:text-amber-400"
+                  title={adoption.entries
+                    .filter((e) => e.held)
+                    .map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}: ${e.reason ?? "held"}`)
+                    .join("\n")}
+                >
+                  held (unstable verdict — adoption needs 2 agreeing rounds):{" "}
+                  {adoption.entries
+                    .filter((e) => e.held)
+                    .map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`)
+                    .join(", ")}
+                  {adoption.entries.some((e) => !e.held)
+                    ? ` · applied: ${adoption.entries
+                        .filter((e) => !e.held)
+                        .map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`)
+                        .join(", ")}`
+                    : ""}{" "}
+                  · {fmtRel(adoption.at)}
+                </span>
+              ) : (
+                <span className="block text-violet-600 dark:text-violet-300">
+                  {adoption
+                    ? adoption.entries.length > 0
+                      ? `last round applied: ${adoption.entries.map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`).join(", ")} · ${fmtRel(adoption.at)}`
+                      : `last round verified winners already in place · ${fmtRel(adoption.at)}`
+                    : "winners of the next round apply automatically · a verdict needs 2 agreeing rounds to land"}
+                </span>
+              )
             ) : null}
           </>
         ) : breakerPaused ? (

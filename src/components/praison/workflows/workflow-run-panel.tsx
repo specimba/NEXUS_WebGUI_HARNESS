@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Square,
   Undo2,
+  Wrench,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -735,6 +736,22 @@ export function WorkflowRunPanel({
                 className="inline-flex shrink-0 items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-300"
               >
                 {harnessById(viewedRun.harness).glyph} {harnessById(viewedRun.harness).name}
+              </span>
+            ) : null}
+            {viewedRun?.toolsOffered && viewedRun.toolsOffered.length > 0 ? (
+              <span
+                title={`Tool-def audit receipt — offered to the model:\n${viewedRun.toolsOffered.join("\n")}${
+                  viewedRun.mcpToolsDropped
+                    ? `\n+${viewedRun.mcpToolsDropped} MCP tool(s) dropped by the per-run cap (MAX_MCP_TOOL_DEFS)`
+                    : ""
+                }`}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-600 dark:text-sky-400"
+              >
+                <Wrench className="h-3 w-3" aria-hidden />
+                tools {viewedRun.toolsOffered.length}
+                {viewedRun.mcpToolsDropped ? (
+                  <span className="tabular-nums opacity-80">·{viewedRun.mcpToolsDropped} capped</span>
+                ) : null}
               </span>
             ) : null}
             {scheduleEnabled && (

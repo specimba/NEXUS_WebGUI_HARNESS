@@ -289,6 +289,8 @@ export function ChatView() {
             tools: selectedAgent.tools,
             // r38 MCP: enabled MCP-server tools join this chat turn.
             ...mcpRunParams(settings),
+            // r40 MRTR: a chat turn is interactive — input_required opens the gate.
+            mcpInteractive: true,
             messages: history,
             ...(relayHops.length > 0 ? { relay: relayHops } : {}),
             images: images && images.length > 0 ? images : undefined,

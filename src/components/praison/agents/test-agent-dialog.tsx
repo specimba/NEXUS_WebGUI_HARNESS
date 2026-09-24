@@ -194,6 +194,8 @@ export function TestAgentDialog({
           tools: agent.tools,
           // r38 MCP: agent test dialog honors MCP tools too.
           ...mcpRunParams(settings),
+          // r40 MRTR: the playground is interactive — input_required opens the gate.
+          mcpInteractive: true,
           ...(relayHops.length > 0 ? { relay: relayHops } : {}),
           signal: controller.signal,
         },

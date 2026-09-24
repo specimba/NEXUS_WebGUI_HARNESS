@@ -20,13 +20,15 @@ import {
   MCP_CALL_TIMEOUT_MS,
   MCP_DESC_MAX_CHARS,
   MCP_DISCOVER_TIMEOUT_MS,
+  MCP_INPUT_MAX_ROUNDS,
   MCP_PROTOCOL_LADDER,
   MCP_SCHEMA_MAX_CHARS,
   MCP_SCHEMA_MAX_PROPS,
 } from "./constants";
-import type { McpServer, McpToolInfo, Settings } from "./types";
+import type { McpInputRequest, McpInputResponse, McpServer, McpToolInfo, Settings } from "./types";
 import type { ToolDef, ToolResult } from "./tools-defs";
 import { mcpHealthHint, recordMcpToolOutcome } from "./mcp-health";
+import { gateMcpInput, parseMcpInputRequests, summarizeInputRequests } from "./mcp-input";
 
 // ─── Naming ──────────────────────────────────────────────────────────────────
 
@@ -410,13 +412,24 @@ export async function mcpDiscoverTools(server: McpServer, signal?: AbortSignal):
  * text verbatim, resources as "uri → text" lines, images as an honest
  * placeholder (binary is deliberately not inlined into context, mirroring the
  * image_generate doctrine). isError is honored as ok:false.
+ *
+ * r40 MRTR: when `inputResponses` is provided (the human answered an
+ * input_required round), the ORIGINAL request is retried with them attached.
+ * A result carrying `resultType: "input_required"` is returned with its
+ * `inputRequests` parsed — the CALLER decides how to gate (dialog vs decline).
  */
+export interface McpCallOutcome extends ToolResult {
+  /** Present when the server returned InputRequiredResult (call NOT complete). */
+  inputRequests?: McpInputRequest[];
+}
+
 export async function mcpCallTool(
   server: McpServer,
   toolName: string,
   argsJson: string,
-  signal?: AbortSignal
-): Promise<ToolResult> {
+  signal?: AbortSignal,
+  inputResponses?: McpInputResponse[]
+): Promise<McpCallOutcome> {
   const started = Date.now();
   let args: unknown = {};
   const raw = (argsJson ?? "").trim();
@@ -435,13 +448,40 @@ export async function mcpCallTool(
   try {
     const parsed = await jsonRpcPost(
       server,
-      { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: toolName, arguments: args } },
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: {
+          name: toolName,
+          arguments: args,
+          ...(inputResponses ? { inputResponses } : {}),
+        },
+      },
       version,
       MCP_CALL_TIMEOUT_MS,
       signal
     );
     throwIfRpcError(parsed, `MCP tool "${toolName}" failed`);
-    const result = (parsed.result ?? {}) as { content?: unknown; isError?: unknown; structuredContent?: unknown };
+    const result = (parsed.result ?? {}) as {
+      content?: unknown;
+      isError?: unknown;
+      structuredContent?: unknown;
+      resultType?: unknown;
+      inputRequests?: unknown;
+    };
+    // r40 MRTR envelope: every result carries resultType ("complete" |
+    // "input_required"); absent = pre-MRTR server ("complete" semantics).
+    const resultType = typeof result.resultType === "string" ? result.resultType : "complete";
+    if (resultType === "input_required") {
+      const requests = parseMcpInputRequests(result.inputRequests);
+      return {
+        ok: false,
+        ms: Date.now() - started,
+        content: `MCP tool "${toolName}" needs human input before it can continue (${requests.length} request${requests.length === 1 ? "" : "s"}).`,
+        inputRequests: requests,
+      };
+    }
     const blocks = Array.isArray(result.content) ? result.content : [];
     const parts: string[] = [];
     for (const block of blocks) {
@@ -475,12 +515,23 @@ export async function mcpCallTool(
   }
 }
 
-/** Route an executed mcp__ def name to its server and call it. */
+/**
+ * Route an executed mcp__ def name to its server and call it.
+ *
+ * r40 MRTR: when the server answers `input_required`, INTERACTIVE lanes
+ * (chat, playground) pause on the human gate — answers retry the original
+ * request with `inputResponses` — while HEADLESS lanes (pipelines, bake-offs,
+ * heartbeat) decline honestly so the model can adapt without a dialog.
+ * One human round per call (MCP_INPUT_MAX_ROUNDS); a second input_required
+ * after answers stops the loop with an honest message. The health ledger only
+ * records COMPLETED outcomes — a declined gate is not the tool's fault.
+ */
 export async function executeMcpDefCall(
   servers: McpServer[],
   defName: string,
   argsJson: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  interactive = false
 ): Promise<ToolResult> {
   const parsed = parseMcpToolDefName(defName);
   if (!parsed) {
@@ -498,9 +549,77 @@ export async function executeMcpDefCall(
       ms: 0,
     };
   }
-  // r39 health ledger: every executed call (ok or fail) feeds the local
-  // ledger — routing errors above don't count (they are not the tool's fault).
-  const result = await mcpCallTool(server, parsed.toolName, argsJson, signal);
-  recordMcpToolOutcome(defName, result.ok, result.ms ?? 0, result.ok ? undefined : result.content);
-  return result;
+
+  let outcome = await mcpCallTool(server, parsed.toolName, argsJson, signal);
+  let rounds = 0;
+  while (outcome.inputRequests && rounds < MCP_INPUT_MAX_ROUNDS) {
+    rounds += 1;
+    const requests = outcome.inputRequests;
+    const resolution = await gateMcpInput({
+      interactive,
+      defName,
+      serverName: server.name,
+      toolName: parsed.toolName,
+      requests,
+      signal,
+    });
+    if (resolution?.action === "answered" && resolution.responses) {
+      const retry = await mcpCallTool(server, parsed.toolName, argsJson, signal, resolution.responses);
+      if (!retry.inputRequests) {
+        // Human round completed the call — tell the model a human stepped in.
+        outcome = {
+          ...retry,
+          content: `(the requested inputs were provided by the user)\n\n${retry.content}`,
+        };
+        continue; // loop re-checks: still no inputRequests → exits
+      }
+      outcome = {
+        ok: false,
+        ms: (outcome.ms ?? 0) + retry.ms,
+        content:
+          `MCP tool "${parsed.toolName}" answered the first input round, but the server requested MORE input afterward — ` +
+          `stopped after ${MCP_INPUT_MAX_ROUNDS} human round to avoid a loop. Pending requests: ${summarizeInputRequests(retry.inputRequests)}`,
+      };
+    } else {
+      // Headless lane, user decline, deadline, or abort — all honest declines.
+      const why =
+        resolution?.action === "declined"
+          ? resolution.reason ?? "declined"
+          : "human input is unavailable in this run (autonomous lane)";
+      outcome = {
+        ok: false,
+        ms: outcome.ms,
+        content:
+          `MCP tool "${parsed.toolName}" required human input and it was NOT provided (${why}). ` +
+          `It asked: ${summarizeInputRequests(requests)}. Proceed without this data, use another tool, or tell the user to run this interactively.`,
+      };
+    }
+  }
+  if (outcome.inputRequests) {
+    // Defensive: while-loop exhausted without resolving (should not happen
+    // with MCP_INPUT_MAX_ROUNDS = 1, but never leak the marker type).
+    outcome = {
+      ok: false,
+      ms: outcome.ms,
+      content: `MCP tool "${parsed.toolName}" is still waiting for human input after ${rounds} round(s) — stopped honestly.`,
+    };
+  }
+
+  // r39 health ledger: only COMPLETED outcomes count — a declined input gate
+  // is not the tool failing, and must not poison the flaky hint.
+  recordMcpToolOutcome(defName, outcome.ok, outcome.ms ?? 0, outcome.ok ? undefined : outcome.content);
+  return { ok: outcome.ok, content: outcome.content, ms: outcome.ms };
+}
+
+/**
+ * r40 audit receipt helper: the MCP tool surface one run will see (def names
+ * in offer order + how many the per-run cap dropped). Used by the pipeline
+ * runner to stamp run rows; recomputes the (tiny) plan rather than threading
+ * it through every caller.
+ */
+export function mcpOfferedTools(settings: Settings): { names: string[]; dropped: number } {
+  const servers = (settings.mcpServers ?? []).filter((s) => s.enabled);
+  if (servers.length === 0) return { names: [], dropped: 0 };
+  const plan = buildMcpToolPlan(servers);
+  return { names: plan.offered.map((o) => o.defName), dropped: plan.dropped };
 }

@@ -8,6 +8,7 @@ import { isSuiteRunning, runSuite } from "@/lib/suite-runner";
 import { SUITE_REPEATS_MAX, SUITE_SCHEDULE_FAIL_BREAKER, SUITE_SCHEDULE_MIN_MS } from "@/lib/constants";
 import { fmtIntervalShort } from "@/lib/helpers";
 import { harnessById } from "@/lib/harness";
+import { decideAdoption, mergeLastWinners } from "@/lib/suite-adoption";
 import type { SuiteAdoption } from "@/lib/types";
 
 // ─── In-app workflow scheduler ───────────────────────────────────────────────
@@ -156,6 +157,12 @@ export function SuiteScheduler() {
             // without asking. Manual board runs never adopt — you clicked
             // run, you keep control. Every applied change (and the honest
             // no-op when nothing changed) lands in suite.lastAdoption.
+            //
+            // ── r40 sticky guard ─────────────────────────────────────────
+            // A verdict only applies when it AGREES with the previous
+            // scheduled round's winner (2 consecutive agreeing rounds); a
+            // single flipped verdict is held + audited, so one noisy round
+            // can never flip a pipeline's harness.
             if (sched.autoAdopt && result.status === "complete") {
               const winnerByWorkflow = new Map<string, string>();
               for (const r of result.results) {
@@ -167,6 +174,18 @@ export function SuiteScheduler() {
               for (const [workflowId, harness] of winnerByWorkflow) {
                 const wf = wfStore.workflows.find((w) => w.id === workflowId);
                 if (!wf) continue; // deleted behind the case — nothing to adopt onto
+                const decision = decideAdoption(sched.lastWinners?.[workflowId], harness);
+                if (!decision.apply) {
+                  entries.push({
+                    workflowId,
+                    workflowName: wf.name,
+                    ...(wf.harness ? { from: wf.harness } : {}),
+                    to: harness,
+                    held: true,
+                    reason: decision.reason,
+                  });
+                  continue;
+                }
                 if (wf.harness === harness) continue; // already defaulting to the winner
                 wfStore.update(workflowId, { harness });
                 entries.push({
@@ -178,13 +197,27 @@ export function SuiteScheduler() {
               }
               useSuitesStore.getState().update(suite.id, {
                 lastAdoption: { at: Date.now(), entries },
+                schedule: {
+                  ...sched,
+                  // Sticky memory for the next round's agreement check.
+                  lastWinners: mergeLastWinners(sched.lastWinners, Object.fromEntries(winnerByWorkflow)),
+                },
               });
-              if (entries.length > 0) {
+              const applied = entries.filter((e) => !e.held);
+              const held = entries.filter((e) => e.held);
+              if (applied.length > 0) {
                 toast.success("Bake-off verdicts applied automatically", {
                   icon: "⚖️",
-                  description: entries
-                    .map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`)
-                    .join(" · "),
+                  description: [
+                    ...applied.map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`),
+                    ...(held.length > 0 ? [`${held.length} verdict${held.length === 1 ? "" : "s"} held (unstable)`] : []),
+                  ].join(" · "),
+                  duration: 10_000,
+                });
+              } else if (held.length > 0) {
+                toast.warning("Verdicts held by the sticky guard", {
+                  icon: "🧷",
+                  description: `${held.map((e) => `“${e.workflowName}”`).join(", ")} flipped vs last round — adoption waits for 2 agreeing rounds.`,
                   duration: 10_000,
                 });
               }
