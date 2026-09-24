@@ -6,7 +6,8 @@
 // the auto engine so the app NEVER dead-ends for the user.
 
 import { AUTO_MODEL } from "./constants";
-import { providerById, providerBaseUrl } from "./providers";
+import { FREE_PROVIDERS, providerById, providerBaseUrl } from "./providers";
+import type { LaneDisclosureHints } from "./tracker-caps-index";
 import type { Settings } from "./types";
 
 export interface ResolvedLlm {
@@ -89,6 +90,27 @@ export function providerReady(settings: Settings, providerId: string): boolean {
   if (!reg) return false;
   if (reg.noKey) return true;
   return !!settings.providerKeys?.[providerId]?.key?.trim();
+}
+
+/**
+ * r48: runtime hints for laneDisclosure/agentLaneSummary — which registry
+ * providers are key-ready and whether a legacy custom endpoint is configured.
+ * One builder so every consumer mirrors resolveLlm's dead-end avoidance with
+ * the same inputs. Pure — no store access.
+ */
+export function laneHints(settings: Settings): LaneDisclosureHints {
+  const ready: Record<string, boolean> = {};
+  for (const p of FREE_PROVIDERS) ready[p.id] = providerReady(settings, p.id);
+  const rawBase = settings.baseUrl?.trim() ?? "";
+  let customHost: string | null = null;
+  if (rawBase) {
+    try {
+      customHost = new URL(rawBase).host;
+    } catch {
+      customHost = rawBase;
+    }
+  }
+  return { activePid: activeProviderId(settings), ready, customHost };
 }
 
 /**

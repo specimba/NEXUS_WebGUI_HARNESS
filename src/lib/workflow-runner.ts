@@ -4,7 +4,7 @@
 
 import { toast } from "sonner";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
-import { resolveLlm } from "@/lib/llm-config";
+import { resolveExplicitLlm, resolveLlm } from "@/lib/llm-config";
 import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
 import { buildRelayChain, buildRelayWire, providerRecentlyHardFailed, recordRelayHopResult, type RelayTaskFit } from "@/lib/relay";
 import { composeTaskFit, harnessById } from "@/lib/harness";
@@ -593,7 +593,11 @@ export async function executeWorkflowRun(
     // Harness rank-② second slice: per-iteration trace from the engine's
     // existing `iteration` events — honest about what the runner can see.
     const llmTrace: LlmCallTrace[] = [];
-    const llm = resolveLlm(settings.settings, agent.model);
+    // r48: agents are resolved like composer overrides — a '::'-carrying
+    // model is an absolute lane (resolveExplicitLlm) instead of being sent
+    // verbatim to the active provider; bare ids ride the active provider
+    // exactly as before.
+    const llm = resolveExplicitLlm(settings.settings, agent.model);
     // Synthetic deep-research passes carry a merged tool set (base tools +
     // web_search + arxiv_search) materialized on the run step itself.
     const effectiveTools: ToolId[] = runStep.tools ?? agent.tools ?? [];

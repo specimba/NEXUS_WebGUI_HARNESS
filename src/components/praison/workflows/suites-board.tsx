@@ -24,7 +24,7 @@ import { downloadText, fmtIntervalShort, fmtRel, slugify, suiteResultToMarkdown 
 import { isSuiteRunning, runSuite, stopSuite, suiteDiff, type SuiteProgress } from "@/lib/suite-runner";
 import { SUITE_REPEATS_MAX, SUITE_HARNESSES_MAX, SUITE_SCHEDULE_MIN_MS, SUITE_SCHEDULE_FAIL_BREAKER } from "@/lib/constants";
 import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
-import { activeProviderId } from "@/lib/llm-config";
+import { activeProviderId, laneHints } from "@/lib/llm-config";
 import { agentLaneSummary, loadCapsIndex, type CapsIndex } from "@/lib/tracker-caps-index";
 import { cn } from "@/lib/utils";
 import type { Suite, SuiteCaseResult, SuiteCaseRun, SuiteResult } from "@/lib/types";
@@ -299,15 +299,18 @@ function AgentPicker({
   // picked onto a lane whose catalog does not declare tool calling is the
   // exact failure this annotation makes visible before quota is spent.
   // Runtime-faithful lane: bare agent model rides the ACTIVE provider.
+  // r48 key-awareness: dormant lanes (no key / no profile) stay silent —
+  // they ride Auto, so a no-tools warning there would be a false alarm.
   const settings = useSettingsStore((s) => s.settings);
   const activePid = activeProviderId(settings);
   const capsIndex = React.useState<CapsIndex>(() => loadCapsIndex())[0];
+  const hints = React.useMemo(() => laneHints(settings), [settings]);
   return (
     <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Agent lanes for this case">
       {agents.map((a) => {
         const active = value.includes(a.id);
         const order = value.indexOf(a.id) + 1;
-        const sum = agentLaneSummary(capsIndex, a, activePid);
+        const sum = agentLaneSummary(capsIndex, a, activePid, hints);
         const noTools = sum.hasTools && sum.lacksTools;
         return (
           <button

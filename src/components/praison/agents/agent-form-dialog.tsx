@@ -16,11 +16,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { ModelPicker, type PickerOption } from "@/components/praison/model-picker";
+import { ModelPicker, CapsGlyphs, type PickerOption } from "@/components/praison/model-picker";
 import { AUTO_MODEL, TOOL_IDS, TOOL_META } from "@/lib/constants";
-import { FREE_PROVIDERS, loadLiveCatalog, providerModelOptions } from "@/lib/providers";
-import { agentLaneKey, agentLaneSummary, capsForModel, loadCapsIndex, type CapsIndex } from "@/lib/tracker-caps-index";
-import { activeProviderId } from "@/lib/llm-config";
+import { FREE_PROVIDERS, loadLiveCatalog, providerById, providerModelOptions } from "@/lib/providers";
+import { agentLaneKey, laneDisclosure, capsForModel, loadCapsIndex, type CapsIndex } from "@/lib/tracker-caps-index";
+import { activeProviderId, laneHints } from "@/lib/llm-config";
 import type { Agent, AgentColor, ToolId } from "@/lib/types";
 import { uid } from "@/lib/helpers";
 import { useAgentsStore, useSettingsStore } from "@/lib/stores";
@@ -71,6 +71,27 @@ export function AgentFormDialog({
   // will ACTUALLY run (bare id × active provider — resolveLlm semantics).
   const capsIndex = React.useState<CapsIndex>(() => loadCapsIndex())[0];
   const activePid = activeProviderId(providerSettings);
+
+  // r48: which held catalogs publish each bare model id — positive evidence
+  // for the lane-disclosure line's mismatch note (an id in no catalog stays
+  // silent). Static curated rosters + persisted live catalogs, same inputs
+  // the option list below is built from.
+  const publishers = React.useMemo(() => {
+    const live = loadLiveCatalog();
+    const map: Record<string, string[]> = {};
+    for (const p of FREE_PROVIDERS) {
+      for (const o of providerModelOptions(p, live)) {
+        (map[o.id] ??= []).push(p.id);
+      }
+    }
+    return map;
+  }, []);
+
+  // r48 runtime hints — the disclosure line must mirror resolveLlm exactly:
+  // a keyless active provider means the model is DORMANT (rides Auto), and a
+  // configured legacy custom endpoint runs bare ids on that endpoint.
+  const hints = React.useMemo(() => laneHints(providerSettings), [providerSettings]);
+
   const modelOptions = React.useMemo<PickerOption[]>(() => {
     const live = loadLiveCatalog();
     const out: PickerOption[] = [
@@ -266,6 +287,20 @@ export function AgentFormDialog({
           {/* Model — searchable, grouped by provider, status-badged, caps-glyphed */}
           <div className="space-y-1.5">
             <Label htmlFor="agent-model">Model</Label>
+            {/* r48 group honesty: the groups below are CATALOGS — what each
+                provider publishes. The lane that actually runs is disclosed
+                reactively beneath the picker. */}
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Groups list each provider&apos;s catalog. A bare model id runs on your{" "}
+              <span className="font-medium text-foreground">
+                {activePid === "auto"
+                  ? "built-in engine"
+                  : activePid === "custom"
+                    ? `custom endpoint (${hints.customHost ?? "unconfigured"})`
+                    : `${providerById(activePid)?.name ?? activePid} — active`}
+              </span>
+              , not necessarily the group you picked it from.
+            </p>
             <ModelPicker
               value={model}
               options={modelOptions}
@@ -276,23 +311,74 @@ export function AgentFormDialog({
               emptyTitle="No model matches"
               emptyHint="Try a different search — every registry provider's catalog is listed above."
             />
-            {/* r46 capability honesty, r47 runtime-faithful: warn only when
-                the lane IN EFFECT (bare id × active provider — built-in lane
-                when the profile is on auto) positively lacks tool calling
-                while tools are attached. Dormant/unknown lanes stay silent. */}
+            {/* r48 lane disclosure — the runtime truth, every state honest:
+                builtin / dormant (why) / provider (which lane + caps). Unknown
+                caps stay silent; mismatch evidence is positive-only. */}
+            {(() => {
+              const d = laneDisclosure(capsIndex, model, hints, publishers);
+              if (d.state === "builtin") {
+                return (
+                  <p className="rounded-md border bg-muted/40 px-2 py-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                    ◌ Built-in lane — the platform engine answers; provider catalogs apply once a keyed provider is active.
+                  </p>
+                );
+              }
+              if (d.state === "dormant") {
+                const why =
+                  d.dormantReason === "no-profile"
+                    ? "the built-in profile is active"
+                    : d.dormantReason === "no-endpoint"
+                      ? "no custom endpoint is configured"
+                      : "its provider has no key saved";
+                return (
+                  <p className="rounded-md border bg-muted/40 px-2 py-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                    ◌ Dormant — {why}, so{" "}
+                    <span className="font-mono">{d.modelId}</span> rides Auto until that changes.
+                  </p>
+                );
+              }
+              const pid = d.providerId as string;
+              const pName =
+                pid === "custom"
+                  ? `custom endpoint (${hints.customHost ?? "custom"})`
+                  : providerById(pid)?.name ?? pid;
+              return (
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-1.5 text-[11.5px] leading-relaxed text-sky-700 dark:text-sky-400">
+                  <span>
+                    → Runs on <span className="font-medium">{pName}</span> · lane{" "}
+                    <span className="font-mono">{d.lane}</span>
+                  </span>
+                  <CapsGlyphs caps={d.caps} />
+                  {d.otherPublishers.length > 0 ? (
+                    <span className="basis-full text-amber-700 dark:text-amber-400">
+                      ⚠ id published by{" "}
+                      {d.otherPublishers.map((p) => providerById(p)?.name ?? p).join(", ")}
+                      {" "}— not in {pName}&apos;s synced catalog; verify it serves this id
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })()}
+            {/* r46 capability honesty, r48 runtime-faithful: warn only when a
+                provider lane IN EFFECT positively lacks tool calling while
+                tools are attached. Dormant lanes ride Auto → silence (the
+                disclosure line above already says why). Form-scoped wording:
+                the shared summary says "this step's" (workflow context) — here
+                it is the agent itself that runs the lane. */}
             {tools.length > 0 &&
               (() => {
-                const warning = agentLaneSummary(
-                  capsIndex,
-                  { name: name.trim() || "This agent", model, tools },
-                  activePid
-                ).warning;
-                return warning ? (
+                const d = laneDisclosure(capsIndex, model, hints, publishers);
+                const laneLabel = d.lane.split("::").slice(1).join("::") || d.lane;
+                const warns =
+                  d.state === "provider" && d.caps !== null && !d.caps.tools;
+                return warns ? (
                   <p
                     role="status"
                     className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11.5px] leading-relaxed text-amber-700 dark:text-amber-400"
                   >
-                    ⚠ {warning}
+                    ⚠ {name.trim() || "This agent"}&apos;s lane ({laneLabel}) does not
+                    declare tool calling — this agent&apos;s tools may fail on this
+                    lane.
                   </p>
                 ) : null;
               })()}

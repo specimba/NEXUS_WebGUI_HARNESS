@@ -11,7 +11,7 @@
 import { executeWorkflowRun, type ExecuteRunOptions } from "@/lib/workflow-runner";
 import { useAgentsStore, useSettingsStore, useSuitesStore, useWorkflowsStore } from "@/lib/stores";
 import { runAgentChat } from "@/lib/chat-client";
-import { resolveLlm } from "@/lib/llm-config";
+import { resolveExplicitLlm } from "@/lib/llm-config";
 import { mcpRunParams } from "@/lib/mcp";
 import { SUITE_GAP_MS, SUITE_HARNESSES_MAX } from "@/lib/constants";
 import { uid } from "@/lib/helpers";
@@ -109,7 +109,8 @@ async function runAgentTurn(
   const agent = useAgentsStore.getState().agents.find((a) => a.id === agentId);
   if (!agent) return { ok: false, ms: 0, toolCallsOk: 0, replyChars: 0, error: "agent not found" };
   const settings = useSettingsStore.getState().settings;
-  const llm = resolveLlm(settings, agent.model);
+  // r48: same absolute-lane semantics as the workflow runner.
+  const llm = resolveExplicitLlm(settings, agent.model);
   let reply = "";
   let toolCallsOk = 0;
   let error: string | undefined;

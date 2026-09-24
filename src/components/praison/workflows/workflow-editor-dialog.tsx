@@ -40,7 +40,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AUTO_PLAN_SYSTEM } from "@/lib/constants";
 import { extractJsonArray, fmtRel, uid } from "@/lib/helpers";
-import { activeProviderId } from "@/lib/llm-config";
+import { activeProviderId, laneHints } from "@/lib/llm-config";
 import {
   useAgentsStore,
   useSettingsStore,
@@ -130,12 +130,15 @@ export function WorkflowEditorDialog({
   // whose agent carries tools gets warned BEFORE the run fails, not after.
   // Lane keys are runtime-faithful: a bare agent model rides the ACTIVE
   // provider (resolveLlm semantics), so the active provider id joins the lookup.
+  // r48 key-awareness: laneHints mirrors the resolver's fallbacks, so a
+  // keyless/dormant lane goes SILENT instead of false-alarming (it rides Auto).
   const providerSettings = useSettingsStore((s) => s.settings);
   const activePid = activeProviderId(providerSettings);
   const capsIndex = React.useState<CapsIndex>(() => loadCapsIndex())[0];
+  const hints = React.useMemo(() => laneHints(providerSettings), [providerSettings]);
   const laneSummaries = React.useMemo(
-    () => new Map(agents.map((a) => [a.id, agentLaneSummary(capsIndex, a, activePid)])),
-    [agents, capsIndex, activePid]
+    () => new Map(agents.map((a) => [a.id, agentLaneSummary(capsIndex, a, activePid, hints)])),
+    [agents, capsIndex, activePid, hints]
   );
   // Header readiness counters over the agents actually USED by steps —
   // emerald = lane declares tools, amber = caps say no tools, muted = unknown
@@ -412,7 +415,7 @@ export function WorkflowEditorDialog({
       // whose agent carries tools on a lane that does not declare tool calling.
       const warned = mapped.filter((s) => {
         const a = available.find((x) => x.id === s.agentId);
-        return a ? agentLaneSummary(capsIndex, a, activePid).warning !== null : false;
+        return a ? agentLaneSummary(capsIndex, a, activePid, hints).warning !== null : false;
       });
       toast.success(
         warned.length > 0

@@ -4,7 +4,7 @@
  */
 import { extractCaps } from "../src/lib/tracker-sources";
 import { capsOf, declaresNoTools, CAP_META } from "../src/lib/tracker-types";
-import { parseCapsIndex, capsForModel, laneLacksTools, toolWarningFor, agentLaneSummary, agentLaneKey } from "../src/lib/tracker-caps-index";
+import { parseCapsIndex, capsForModel, laneLacksTools, toolWarningFor, agentLaneSummary, agentLaneKey, laneDisclosure } from "../src/lib/tracker-caps-index";
 
 let pass = 0;
 let fail = 0;
@@ -238,6 +238,85 @@ console.log("\nr47 agentLaneSummary × activePid (runtime-faithful):");
   check("same model while profile is auto → silence (dormant lane)", onAuto.warning === null && onAuto.caps === null);
   const noToolsAgent = { name: "Planner", model: "google/lyria-3-clip-preview", tools: [] };
   check("bare no-tool model + kilo + NO tools → no warning", agentLaneSummary(sumIdx, noToolsAgent, "kilo").warning === null);
+}
+
+// ─── r48: laneDisclosure — the runtime-faithful "what will actually run" ────
+console.log("\nr48 laneDisclosure (runtime-faithful states):");
+const emptyIdx: Record<string, never> = {};
+const READY = { kilo: true, openrouter: true, vyce: false };
+const HINTS = { activePid: "kilo", ready: READY, customHost: null };
+{
+  // Built-in model choice
+  const d = laneDisclosure(sumIdx, "auto", HINTS);
+  check("model 'auto' → builtin state", d.state === "builtin" && d.lane === "auto" && d.dormantReason === null);
+  const g = laneDisclosure(sumIdx, 42, HINTS);
+  check("garbage model → builtin, never throws", g.state === "builtin" && g.lane === "auto");
+}
+{
+  // Bare id × auto profile → dormant (no-profile)
+  const d = laneDisclosure(sumIdx, "google/lyria-3-clip-preview", { activePid: "auto", ready: READY, customHost: null });
+  check("bare id × auto profile → dormant/no-profile", d.state === "dormant" && d.dormantReason === "no-profile" && d.lane === "auto");
+  check("…dormant carries NO caps (silence, not a claim)", d.caps === null);
+  // Bare id × keyless active provider → dormant (no-key)
+  const k = laneDisclosure(sumIdx, "google/lyria-3-clip-preview", { activePid: "vyce", ready: READY, customHost: null });
+  check("bare id × keyless provider → dormant/no-key", k.state === "dormant" && k.dormantReason === "no-key" && k.lane === "auto");
+}
+{
+  // Bare id × ready provider → provider lane with caps + mismatch evidence
+  const d = laneDisclosure(
+    sumIdx,
+    "google/lyria-3-clip-preview",
+    { activePid: "openrouter", ready: READY, customHost: null },
+    { "google/lyria-3-clip-preview": ["kilo", "openrouter", "kilo"] }
+  );
+  check("bare id × openrouter ready → provider lane", d.state === "provider" && d.lane === "openrouter::google/lyria-3-clip-preview");
+  check("…mirror has no openrouter row for this id → caps null (unknown = silence)", d.caps === null);
+  check("…mismatch evidence excludes runner + dedupes", d.otherPublishers.length === 1 && d.otherPublishers[0] === "kilo");
+  // Same model on the provider that publishes it → no mismatch note
+  const e = laneDisclosure(
+    sumIdx,
+    "google/lyria-3-clip-preview",
+    { activePid: "kilo", ready: READY, customHost: null },
+    { "google/lyria-3-clip-preview": ["kilo"] }
+  );
+  check("id published by the running provider → no mismatch evidence", e.state === "provider" && e.otherPublishers.length === 0);
+  // Id in no held catalog → silent (no evidence invented)
+  const s = laneDisclosure(sumIdx, "totally-unknown-model", { activePid: "kilo", ready: READY, customHost: null });
+  check("id absent from every catalog → provider lane, silent evidence", s.state === "provider" && s.otherPublishers.length === 0 && s.caps === null);
+}
+{
+  // Bare id × legacy custom endpoint
+  const c = laneDisclosure(sumIdx, "my-model", { activePid: "custom", ready: READY, customHost: "api.example.com" });
+  check("bare id × configured custom endpoint → custom lane", c.state === "provider" && c.lane === "custom::my-model" && c.providerId === "custom");
+  const u = laneDisclosure(sumIdx, "my-model", { activePid: "custom", ready: READY, customHost: null });
+  check("bare id × custom endpoint unconfigured → dormant/no-endpoint", u.state === "dormant" && u.dormantReason === "no-endpoint");
+}
+{
+  // Absolute lanes (composer-override convention)
+  const d = laneDisclosure(sumIdx, "kilo::google/lyria-3-clip-preview", { activePid: "vyce", ready: READY, customHost: null });
+  check("absolute lane, runner keyless but lane's provider ready → runs absolutely", d.state === "provider" && d.lane === "kilo::google/lyria-3-clip-preview" && d.providerId === "kilo");
+  check("…modelId splits on ::, keeps nested ids", d.modelId === "google/lyria-3-clip-preview");
+  const n = laneDisclosure(sumIdx, "nosuch::x/y", { activePid: "kilo", ready: READY, customHost: null });
+  check("absolute lane, unknown provider → dormant/no-key (resolver fallback)", n.state === "dormant" && n.dormantReason === "no-key");
+  const k = laneDisclosure(sumIdx, "vyce::deepseek-v4.1", { activePid: "kilo", ready: READY, customHost: null });
+  check("absolute lane, keyless provider → dormant/no-key", k.state === "dormant" && k.dormantReason === "no-key" && k.lane === "auto");
+  const b = laneDisclosure(sumIdx, "auto::builtin", { activePid: "kilo", ready: READY, customHost: null });
+  check("auto::builtin → builtin state", b.state === "builtin");
+  const c = laneDisclosure(sumIdx, "custom::my-model", { activePid: "kilo", ready: READY, customHost: "api.example.com" });
+  check("absolute custom lane configured → provider", c.state === "provider" && c.lane === "custom::my-model");
+}
+
+console.log("\nr48 agentLaneSummary × hints (key-aware silence):");
+{
+  const toolAgent = { name: "Scout", model: "google/lyria-3-clip-preview", tools: ["web_search"] };
+  const dormant = agentLaneSummary(sumIdx, toolAgent, "auto", { activePid: "auto", ready: READY, customHost: null });
+  check("dormant lane + tools → silence (no false alarm)", dormant.warning === null && dormant.lane === "auto" && dormant.lacksTools === false);
+  const keyless = agentLaneSummary(sumIdx, toolAgent, "vyce", { activePid: "vyce", ready: READY, customHost: null });
+  check("keyless active provider + tools → silence (rides Auto)", keyless.warning === null && keyless.lane === "auto");
+  const live = agentLaneSummary(sumIdx, toolAgent, "kilo", { activePid: "kilo", ready: READY, customHost: null });
+  check("ready no-tool lane + tools → warning fires", live.warning !== null && live.lane === "kilo::google/lyria-3-clip-preview");
+  const noHint = agentLaneSummary(sumIdx, toolAgent, "vyce");
+  check("hints omitted → r47 behavior preserved (caps-level truth)", noHint.caps === null && noHint.warning === null);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -45,6 +45,38 @@ export interface PickerOption {
   keywords?: string[];
 }
 
+/**
+ * r48: reusable capability glyph chips — one rendering, every consumer.
+ * Renders nothing for null (unknown lane = silence, per doctrine).
+ */
+export function CapsGlyphs({
+  caps,
+  className,
+}: {
+  caps: ModelCaps | null | undefined;
+  className?: string;
+}) {
+  if (!caps) return null;
+  return (
+    <>
+      {CAP_META.filter((c) => caps[c.key]).map((c) => (
+        <span
+          key={c.key}
+          title={`${c.label} — ${c.hint}`}
+          aria-label={`capability: ${c.label}`}
+          className={cn(
+            "inline-flex h-3.5 shrink-0 items-center rounded px-0.5 text-[8px] font-bold",
+            c.cls,
+            className
+          )}
+        >
+          {c.glyph}
+        </span>
+      ))}
+    </>
+  );
+}
+
 export interface ModelPickerProps {
   value: string;
   options: PickerOption[];
@@ -196,17 +228,7 @@ export function ModelPicker({
                                 {o.badge}
                               </Badge>
                             ) : null}
-                            {o.caps &&
-                              CAP_META.filter((c) => o.caps![c.key]).map((c) => (
-                                <span
-                                  key={c.key}
-                                  title={`${c.label} — ${c.hint}`}
-                                  aria-label={`capability: ${c.label}`}
-                                  className={cn("inline-flex h-3.5 shrink-0 items-center rounded px-0.5 text-[8px] font-bold", c.cls)}
-                                >
-                                  {c.glyph}
-                                </span>
-                              ))}
+                            <CapsGlyphs caps={o.caps} />
                           </span>
                           {o.note ? (
                             <span className="block truncate font-mono text-[10px] text-muted-foreground">
