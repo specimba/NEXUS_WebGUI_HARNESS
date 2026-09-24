@@ -33,6 +33,7 @@ import {
   TOOL_IDS,
 } from "./constants";
 import { uid } from "./helpers";
+import { sanitizeSuiteSchedule } from "./suite-schedule";
 
 // ─── Debounced localStorage (avoid writing on every streamed token) ─────────
 function debouncedStorage(delay = 500): StateStorage {
@@ -831,10 +832,50 @@ export function ensureSeeded(): void {
         : {}),
       runs: w.runs.map((r) =>
         r.status === "running"
-          ? { ...r, status: "stopped" as const, finishedAt: r.finishedAt ?? Date.now() }
+          ? {
+              ...r,
+              status: "stopped" as const,
+              finishedAt: r.finishedAt ?? Date.now(),
+              // r42 honesty: an interrupted run should SAY it was interrupted —
+              // a bare "stopped" row with no reason reads as a user abort.
+              error: r.error ?? {
+                stepIndex: Math.max(0, r.steps.findIndex((st) => st.status === "running")),
+                stepId: r.steps.find((st) => st.status === "running")?.stepId ?? "",
+                stepLabel: r.steps.find((st) => st.status === "running")?.label ?? "",
+                agentName: r.steps.find((st) => st.status === "running")?.agentName ?? "",
+                message:
+                  "Interrupted — the app was closed or reloaded mid-run. Resume from the last completed step, or branch a fresh run.",
+                kind: "unknown" as const,
+                hint: "Resume picks up from completed steps; branching copies them into a fresh run.",
+                toolCallsOk: 0,
+                stepsDone: r.steps.filter((st) => st.status === "done").length,
+                llmLabel: "unknown",
+                attempts: 0,
+              },
+            }
           : r
       ),
     })),
+  }));
+
+  // Suite-schedule hygiene (r42): the same boot-resilience doctrine as the
+  // workflow quarantine above, pointed at bake-off schedules. A corrupted
+  // number (NaN intervalMs / nextRunAt from a truncated write or hand-edited
+  // export) used to silently kill an armed schedule — Math.max(floor, NaN)
+  // is NaN and a NaN nextRunAt never comes due. Repairs apply in place;
+  // garbage beyond repair disarms with a console flag (never blocks boot).
+  useSuitesStore.setState((s) => ({
+    suites: s.suites.map((suite) => {
+      if (!suite.schedule) return suite;
+      const report = sanitizeSuiteSchedule(suite.schedule);
+      if (!report) return suite;
+      if (report.changed) {
+        for (const note of report.notes) {
+          console.warn(`[boot] suite "${suite.name}" schedule: ${note}`);
+        }
+      }
+      return report.changed ? { ...suite, schedule: report.schedule } : suite;
+    }),
   }));
 
   const settings = useSettingsStore.getState().settings;

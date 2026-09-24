@@ -9,6 +9,7 @@ import { SUITE_REPEATS_MAX, SUITE_SCHEDULE_FAIL_BREAKER, SUITE_SCHEDULE_MIN_MS }
 import { fmtIntervalShort } from "@/lib/helpers";
 import { harnessById } from "@/lib/harness";
 import { decideAdoption, mergeLastWinners } from "@/lib/suite-adoption";
+import { sanitizeSuiteSchedule } from "@/lib/suite-schedule";
 import type { SuiteAdoption } from "@/lib/types";
 
 // ─── In-app workflow scheduler ───────────────────────────────────────────────
@@ -108,12 +109,34 @@ export function SuiteScheduler() {
         );
 
         for (const suite of due) {
-          const schedule = suite.schedule;
-          if (!schedule) continue;
+          const raw = suite.schedule;
+          if (!raw) continue;
+          // r42 fire-time hygiene: repair corrupt numbers BEFORE the arithmetic —
+          // Math.max(floor, NaN) is NaN and a NaN nextRunAt never comes due, so
+          // a corrupted schedule used to look armed while silently never firing.
+          const report = sanitizeSuiteSchedule(raw);
+          if (!report) continue;
+          const schedule = report.schedule;
+          if (report.quarantined) {
+            // Garbage beyond repair (fail-closed disarm) — persist the disarm,
+            // flag it honestly, and spend nothing. Mirrors the r31 workflow
+            // quarantine doctrine.
+            store.update(suite.id, { schedule });
+            console.warn(
+              `[suite-scheduler] quarantined malformed schedule on "${suite.name}" — ${report.notes.join("; ")}`
+            );
+            toast.warning("Scheduled bake-off quarantined", {
+              icon: "🛡️",
+              description: `${suite.name}: corrupt schedule repaired + disarmed. Review it on the Suites board, then re-arm.`,
+              duration: 12_000,
+            });
+            continue;
+          }
           const interval = Math.max(SUITE_SCHEDULE_MIN_MS, schedule.intervalMs);
           const repeats = Math.min(Math.max(1, schedule.repeats || 1), SUITE_REPEATS_MAX);
 
           // Re-arm FIRST — a slow bake-off can never double-fire on the next tick.
+          // The sanitized schedule persists too (repairs + re-arm in one write).
           store.update(suite.id, {
             schedule: { ...schedule, lastRunAt: now, nextRunAt: now + interval, repeats },
           });

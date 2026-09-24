@@ -566,6 +566,14 @@ export interface McpServer {
    * (honest tradeoff, surfaced in the UI).
    */
   useProxy?: boolean;
+  /**
+   * r42 per-server MRTR kill switch: when a tool on this server answers
+   * `input_required`, may an interactive lane (chat / playground) open the
+   * human-gate dialog? Missing/true = allowed (r40 behavior); false = the
+   * tool gets an honest "input unavailable" decline naming this switch.
+   * Headless lanes never open gates regardless of this flag.
+   */
+  allowInputGates?: boolean;
   /** Protocol version that answered in the last discovery (ladder top first). */
   protocolVersion?: string;
   /** Cached catalog from the last successful discovery. */

@@ -28,7 +28,7 @@ import {
 import type { McpInputRequest, McpInputResponse, McpServer, McpToolInfo, Settings } from "./types";
 import type { ToolDef, ToolResult } from "./tools-defs";
 import { mcpHealthHint, recordMcpToolOutcome } from "./mcp-health";
-import { gateMcpInput, parseMcpInputRequests, summarizeInputRequests } from "./mcp-input";
+import { gateMcpInput, parseMcpInputRequests, resolveGateMode, summarizeInputRequests } from "./mcp-input";
 
 // ─── Naming ──────────────────────────────────────────────────────────────────
 
@@ -551,18 +551,23 @@ export async function executeMcpDefCall(
   }
 
   let outcome = await mcpCallTool(server, parsed.toolName, argsJson, signal);
+  // r42 per-server gate preference: interactive lane + server allows → the
+  // dialog may open; anything else declines honestly (reason names the switch).
+  const gateMode = resolveGateMode(interactive, server.allowInputGates);
   let rounds = 0;
   while (outcome.inputRequests && rounds < MCP_INPUT_MAX_ROUNDS) {
     rounds += 1;
     const requests = outcome.inputRequests;
-    const resolution = await gateMcpInput({
-      interactive,
-      defName,
-      serverName: server.name,
-      toolName: parsed.toolName,
-      requests,
-      signal,
-    });
+    const resolution = gateMode.open
+      ? await gateMcpInput({
+          interactive: true,
+          defName,
+          serverName: server.name,
+          toolName: parsed.toolName,
+          requests,
+          signal,
+        })
+      : null;
     if (resolution?.action === "answered" && resolution.responses) {
       const retry = await mcpCallTool(server, parsed.toolName, argsJson, signal, resolution.responses);
       if (!retry.inputRequests) {
@@ -581,11 +586,12 @@ export async function executeMcpDefCall(
           `stopped after ${MCP_INPUT_MAX_ROUNDS} human round to avoid a loop. Pending requests: ${summarizeInputRequests(retry.inputRequests)}`,
       };
     } else {
-      // Headless lane, user decline, deadline, or abort — all honest declines.
+      // Closed lane (headless / per-server switch), user decline, deadline,
+      // or abort — all honest declines with the truest reason available.
       const why =
         resolution?.action === "declined"
           ? resolution.reason ?? "declined"
-          : "human input is unavailable in this run (autonomous lane)";
+          : gateMode.declineReason ?? "human input is unavailable in this run (autonomous lane)";
       outcome = {
         ok: false,
         ms: outcome.ms,

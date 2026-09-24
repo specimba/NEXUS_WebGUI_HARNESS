@@ -126,5 +126,21 @@ const merged = mergeLastWinners({ w1: "balanced" }, { w1: "fast", w2: "worker" }
 check("merge updates old + adds new cases", merged.w1 === "fast" && merged.w2 === "worker");
 check("merge from undefined is safe", Object.keys(mergeLastWinners(undefined, { w: "fast" })).length === 1);
 
+// ── E. r42 resolveGateMode — per-server MRTR kill switch ────────────────────
+console.log("E. resolveGateMode (per-server input gates)");
+import { resolveGateMode } from "../src/lib/mcp-input";
+{
+  const headless = resolveGateMode(false, undefined);
+  check("headless lane → closed with autonomous-lane reason", headless.open === false && /autonomous lane/.test(headless.declineReason ?? ""));
+  const headlessOff = resolveGateMode(false, false);
+  check("headless + server-off → same closed mode", headlessOff.open === false && /autonomous lane/.test(headlessOff.declineReason ?? ""));
+  const interactiveDefault = resolveGateMode(true, undefined);
+  check("interactive + missing flag → open (r40 behavior)", interactiveDefault.open === true && interactiveDefault.declineReason === undefined);
+  const interactiveTrue = resolveGateMode(true, true);
+  check("interactive + explicit true → open", interactiveTrue.open === true);
+  const serverOff = resolveGateMode(true, false);
+  check("interactive + server-off → closed naming Settings → MCP", serverOff.open === false && /Settings → MCP/.test(serverOff.declineReason ?? ""));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

@@ -120,6 +120,32 @@ export const useMcpGateStore = create<McpGateState>((set, get) => ({
 
 // ─── The gate function (the ONLY surface mcp.ts talks to) ────────────────────
 
+/**
+ * r42 lane resolution: should this input_required round open the dialog, and
+ * if not, WHY does the model get declined? Pure + testable — the two kill
+ * switches are the lane itself (headless runs never pause on humans) and the
+ * per-server preference (allowInputGates === false → honest decline that
+ * names Settings → MCP so the user can find the switch).
+ */
+export interface GateMode {
+  open: boolean;
+  /** Present when open=false — the honest reason fed to the model. */
+  declineReason?: string;
+}
+
+export function resolveGateMode(interactive: boolean, allowInputGates: boolean | undefined): GateMode {
+  if (!interactive) {
+    return { open: false, declineReason: "human input is unavailable in this run (autonomous lane)" };
+  }
+  if (allowInputGates === false) {
+    return {
+      open: false,
+      declineReason: "human-input gates are disabled for this server — re-enable them in Settings → MCP",
+    };
+  }
+  return { open: true };
+}
+
 export interface McpGateArgs {
   /** Interactive lanes open the dialog; headless lanes decline immediately. */
   interactive: boolean;

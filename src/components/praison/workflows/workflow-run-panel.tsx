@@ -70,6 +70,7 @@ import {
 import { executeWorkflowRun, runErrorKindLabel } from "@/lib/workflow-runner";
 import { SCHEDULE_INTERVALS } from "@/lib/constants";
 import { harnessById } from "@/lib/harness";
+import { getMcpToolHealth, MCP_HEALTH_FLAKY_STREAK } from "@/lib/mcp-health";
 import type { Workflow, WorkflowRunStep } from "@/lib/types";
 import { TOOL_META } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -200,6 +201,23 @@ function RunRecoveryCard({
   const firstPending = run.steps.findIndex((s) => s.status !== "done");
   const hasOutput = run.steps.some((s) => s.output.trim().length > 0);
   const stopped = run.status === "stopped";
+  // r42 styling honesty: an interruption (app closed / reload mid-run, stamped
+  // by boot reconcile) is not a system failure — it gets an amber "paused"
+  // treatment, while real failures keep the red alarm.
+  const interrupted = stopped && !!err && err.message.startsWith("Interrupted");
+  const tone = interrupted
+    ? {
+        card: "border-l-4 border-l-amber-500 border-amber-500/30 bg-amber-500/[0.03]",
+        icon: "bg-amber-500/10",
+        iconText: "text-amber-400",
+        title: "Run interrupted — app closed mid-run",
+      }
+    : {
+        card: "border-l-4 border-l-red-500 border-red-500/30 bg-red-500/[0.03]",
+        icon: "bg-red-500/10",
+        iconText: "text-red-400",
+        title: stopped ? "Run stopped — resume anytime" : "Run failed — pick a recovery option",
+      };
 
   if (dismissed) return null;
 
@@ -228,18 +246,21 @@ function RunRecoveryCard({
   return (
     <Card
       role="alert"
-      className="gap-3 border-l-4 border-l-red-500 border-red-500/30 bg-red-500/[0.03] p-4"
+      className={cn("gap-3 p-4", tone.card)}
     >
       <div className="flex items-start gap-3">
         <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/10"
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+            tone.icon
+          )}
           aria-hidden
         >
-          <LifeBuoy className="h-4 w-4 animate-pulse text-red-400" />
+          <LifeBuoy className={cn("h-4 w-4 animate-pulse", tone.iconText)} />
         </span>
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-semibold leading-tight">
-            {stopped ? "Run stopped — resume anytime" : "Run failed — pick a recovery option"}
+            {tone.title}
           </p>
           {err ? (
             <p className="text-xs leading-relaxed text-muted-foreground">
@@ -430,6 +451,32 @@ export function WorkflowRunPanel({
     ? liveWorkflow?.runs.find((r) => r.id === viewingRunId)
     : undefined;
   const schedule = liveWorkflow?.schedule;
+
+  // r42: MCP health stats beside the tool-def audit receipt — the offered
+  // surface becomes honest about how its MCP tools have actually performed
+  // (lifetime ledger, localStorage-only). A flaky streak re-tints the chip.
+  const mcpHealthStats = React.useMemo(() => {
+    const offered = viewedRun?.toolsOffered ?? [];
+    const mcpDefs = offered.filter((d) => d.startsWith("mcp__"));
+    if (mcpDefs.length === 0) return null;
+    const rows = mcpDefs.map((defName) => ({ defName, health: getMcpToolHealth(defName) }));
+    const known = rows.filter((r) => r.health && r.health.calls > 0);
+    const calls = known.reduce((n, r) => n + r.health!.calls, 0);
+    const oks = known.reduce((n, r) => n + r.health!.oks, 0);
+    const meanMs =
+      calls > 0
+        ? Math.round(known.reduce((n, r) => n + r.health!.meanMs * r.health!.calls, 0) / calls)
+        : 0;
+    return {
+      mcpCount: mcpDefs.length,
+      tracked: known.length,
+      calls,
+      oks,
+      meanMs,
+      flakyCount: known.filter((r) => r.health!.failStreak >= MCP_HEALTH_FLAKY_STREAK).length,
+      rows: known,
+    };
+  }, [viewedRun?.id, viewedRun?.toolsOffered]);
 
   // Reset the panel state whenever it opens for a workflow
   React.useEffect(() => {
@@ -740,17 +787,46 @@ export function WorkflowRunPanel({
             ) : null}
             {viewedRun?.toolsOffered && viewedRun.toolsOffered.length > 0 ? (
               <span
-                title={`Tool-def audit receipt — offered to the model:\n${viewedRun.toolsOffered.join("\n")}${
-                  viewedRun.mcpToolsDropped
-                    ? `\n+${viewedRun.mcpToolsDropped} MCP tool(s) dropped by the per-run cap (MAX_MCP_TOOL_DEFS)`
-                    : ""
-                }`}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-600 dark:text-sky-400"
+                title={
+                  `Tool-def audit receipt — offered to the model:\n${viewedRun.toolsOffered.join("\n")}${
+                    viewedRun.mcpToolsDropped
+                      ? `\n+${viewedRun.mcpToolsDropped} MCP tool(s) dropped by the per-run cap (MAX_MCP_TOOL_DEFS)`
+                      : ""
+                  }` +
+                  (mcpHealthStats && mcpHealthStats.tracked > 0
+                    ? `\n\nMCP health (lifetime ledger):\n${mcpHealthStats.rows
+                        .map(
+                          ({ defName, health }) =>
+                            `${defName} — ${health!.calls} call${health!.calls === 1 ? "" : "s"} · ${
+                              health!.calls > 0 ? Math.round((health!.oks / health!.calls) * 100) : 0
+                            }% ok · ~${health!.meanMs}ms${health!.failStreak > 0 ? ` · fail streak ${health!.failStreak}` : ""}`
+                        )
+                        .join("\n")}${
+                        mcpHealthStats.flakyCount > 0
+                          ? `\n⚠ ${mcpHealthStats.flakyCount} tool(s) on a failing streak — the model sees a flaky hint too`
+                          : ""
+                      }`
+                    : mcpHealthStats
+                      ? `\n\nMCP tools: ${mcpHealthStats.mcpCount} offered · none executed yet (no ledger rows)`
+                      : "")
+                }
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                  mcpHealthStats && mcpHealthStats.flakyCount > 0
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                )}
               >
                 <Wrench className="h-3 w-3" aria-hidden />
                 tools {viewedRun.toolsOffered.length}
                 {viewedRun.mcpToolsDropped ? (
                   <span className="tabular-nums opacity-80">·{viewedRun.mcpToolsDropped} capped</span>
+                ) : null}
+                {mcpHealthStats && mcpHealthStats.tracked > 0 ? (
+                  <span className="tabular-nums opacity-80">
+                    · mcp {mcpHealthStats.oks}/{mcpHealthStats.calls} ok
+                    {mcpHealthStats.flakyCount > 0 ? ` · ${mcpHealthStats.flakyCount} flaky` : ""}
+                  </span>
                 ) : null}
               </span>
             ) : null}

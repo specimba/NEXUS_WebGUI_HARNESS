@@ -519,6 +519,15 @@ export function McpCard() {
                         {server.protocolVersion}
                       </Badge>
                     )}
+                    {server.allowInputGates === false && (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-500/40 bg-amber-500/5 font-normal text-[11px] text-amber-700 dark:text-amber-400"
+                        title="Human-input gates (MRTR) are disabled for this server — tools that ask questions get an honest decline instead of opening a dialog"
+                      >
+                        gates off
+                      </Badge>
+                    )}
                     {server.discoveredAt && !server.lastError && (
                       <Badge
                         variant="outline"
@@ -579,6 +588,30 @@ export function McpCard() {
                         Route via app proxy
                       </label>
                     </div>
+                    {/* r42 per-server MRTR kill switch: default ON (r40 behavior). */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        Human-input gates:{" "}
+                        <span className="font-medium">
+                          {server.allowInputGates === false
+                            ? "declined for this server"
+                            : "dialog may open when a tool asks"}
+                        </span>
+                      </p>
+                      <label className="flex cursor-pointer items-center gap-1.5 text-[11px]">
+                        <Switch
+                          checked={server.allowInputGates !== false}
+                          onCheckedChange={(v) => patchServer(server.id, { allowInputGates: v })}
+                          aria-label="Allow human-input gates for this server"
+                        />
+                        Allow input gates
+                      </label>
+                    </div>
+                    <p className="rounded-md border border-dashed px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
+                      {server.allowInputGates === false
+                        ? "When a tool on this server answers input_required, it gets an honest “human input unavailable” result instead of pausing your run — the model adapts or asks you directly. Turn on if you want to answer such tools in chat."
+                        : "When a tool on this server asks a question mid-run (MRTR input_required), an approval dialog opens here and your answer is retried with the original request. Turn off if this server's questions are noise — headless lanes never open dialogs either way."}
+                    </p>
                     <p className="rounded-md border border-dashed px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
                       {server.useProxy
                         ? "Fallback for CORS-starved servers: the SSRF-guarded /api/mcp relay POSTs for you. Auth headers ride through the app server (never logged, never persisted) — keep browser-direct on unless the server blocks CORS."
