@@ -62,7 +62,7 @@ import type { McpServer } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** Live-verified stateless presets (curl-checked 2026-09-24, CORS-open). */
-const MCP_PRESETS: { name: string; url: string; blurb: string }[] = [
+const MCP_PRESETS: { name: string; url: string; blurb: string; setup?: string }[] = [
   {
     name: "DeepWiki",
     url: "https://mcp.deepwiki.com/mcp",
@@ -72,6 +72,17 @@ const MCP_PRESETS: { name: string; url: string; blurb: string }[] = [
     name: "Context7",
     url: "https://mcp.context7.com/mcp",
     blurb: "Up-to-date library docs for any package · stateless ✓",
+  },
+  {
+    // r41: Bright Data's REMOTE MCP (mcp.brightdata.com) — token in the URL
+    // query (BYOK: the token goes browser→Bright Data directly; CORS probe
+    // 2026-09-24 returned access-control-allow-origin: * + POST allowed).
+    name: "Bright Data",
+    url: "https://mcp.brightdata.com/mcp?token=YOUR_BRIGHTDATA_TOKEN",
+    blurb:
+      "Web unlocker — search_engine, scrape_as_markdown, extract, scrape_batch · remote MCP · stateless ✓ · 1 credit/request free tier",
+    setup:
+      "Paste your Bright Data API token over YOUR_BRIGHTDATA_TOKEN in the endpoint's ?token= query param. Get it at brightdata.com/cp/mcp — free tier costs 1 credit per request.",
   },
 ];
 
@@ -209,6 +220,14 @@ export function McpCard() {
       });
       return;
     }
+    // r41: catch a leftover credential placeholder (Bright Data preset) before
+    // it becomes a server that can only fail discovery.
+    if (/YOUR_[A-Z_]+(TOKEN|KEY)/.test(url)) {
+      toast.error("The endpoint still carries a placeholder credential", {
+        description: "Replace YOUR_…_TOKEN with your real token (Bright Data: brightdata.com/cp/mcp) before registering.",
+      });
+      return;
+    }
     const { headers, errors } = parseHeaderLines(headersText);
     if (errors.length > 0) {
       toast.warning(`${errors.length} header line(s) ignored`, {
@@ -330,6 +349,21 @@ export function McpCard() {
                 type="button"
                 disabled={already || servers.length >= MAX_MCP_SERVERS}
                 onClick={() => {
+                  // r41: presets whose URL carries a credential PLACEHOLDER
+                  // (Bright Data's ?token=) prefill the add form instead of
+                  // registering a dead endpoint — the user pastes their real
+                  // token first, so discovery works on the very first try.
+                  if (p.setup) {
+                    setName(p.name);
+                    setEndpoint(p.url);
+                    setAddOpen(true);
+                    toast.info(`${p.name} — one step left`, {
+                      description: p.setup,
+                      duration: 12_000,
+                      icon: "🔑",
+                    });
+                    return;
+                  }
                   const row: McpServer = {
                     id: uid("mcp"),
                     name: p.name,
@@ -349,7 +383,7 @@ export function McpCard() {
                     ? "border-dashed text-muted-foreground opacity-60"
                     : "hover:border-violet-500/50 hover:bg-violet-500/5"
                 )}
-                title={p.blurb}
+                title={p.setup ? `${p.setup}` : p.blurb}
               >
                 <Globe className="mt-0.5 size-3.5 text-violet-500" aria-hidden />
                 <span className="min-w-0">
@@ -358,6 +392,11 @@ export function McpCard() {
                     {already && " · added"}
                   </span>
                   <span className="block text-[11px] leading-snug text-muted-foreground">{p.blurb}</span>
+                  {p.setup && !already && (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/5 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                      paste token on click
+                    </span>
+                  )}
                 </span>
               </button>
             );

@@ -2,8 +2,15 @@
 
 import type { McpServer, RouteReceipt, ToolCallInfo, ToolId } from "./types";
 import { runRelayedCustom, type EngineBody, type RelayWireHop } from "./agent-engine";
-import { buildToolDefs, httpToolExecutor, type EngineToolIO } from "./tools-defs";
+import {
+  buildToolDefs,
+  httpToolExecutor,
+  setToolKeySecrets,
+  currentToolKeySecrets,
+  type EngineToolIO,
+} from "./tools-defs";
 import { buildMcpToolPlan, executeMcpDefCall, parseMcpToolDefName } from "./mcp";
+import { useSettingsStore } from "./stores";
 
 // ─── Client agent runner ─────────────────────────────────────────────────────
 // TWO transports, tried in order (r23):
@@ -121,6 +128,10 @@ export async function runAgentChat(
   params: RunAgentParams,
   h: AgentHandlers = {}
 ): Promise<AgentRunResult> {
+  // r41 BYOK tool keys: sync the module seam from the settings store at every
+  // run start so keyed tools (deep_scrape) can hand their key to the executor
+  // — where it is attached ONLY to that tool's own execution request.
+  setToolKeySecrets({ hyperbrowserKey: useSettingsStore.getState().settings.hyperbrowserKey ?? "" });
   const canDirect =
     !params.forceServer && params.provider === "custom" && !!params.baseUrl?.trim();
 
@@ -297,6 +308,12 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
         system: params.system,
         messages: params.messages,
         tools: params.tools ?? [],
+        // r41 BYOK tool key: rides to the server engine ONLY when this run's
+        // tool list actually includes the keyed tool — explicit consent via
+        // the per-agent tool toggle, never a wholesale key upload.
+        ...(params.tools?.includes("deep_scrape") && currentToolKeySecrets().hyperbrowserKey
+          ? { hyperbrowserKey: currentToolKeySecrets().hyperbrowserKey }
+          : {}),
         ...(typeof params.stallResumes === "number" ? { stallResumes: params.stallResumes } : {}),
         ...(params.reasoningEffort ? { reasoningEffort: params.reasoningEffort } : {}),
         ...(params.relay && params.relay.length > 0 ? { relay: params.relay } : {}),

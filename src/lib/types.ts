@@ -18,7 +18,8 @@ export type ToolId =
   | "market_rates"
   | "uuid_hash"
   | "image_generate"
-  | "tts_speak";
+  | "tts_speak"
+  | "deep_scrape";
 
 export type AgentColor = "violet" | "emerald" | "amber" | "rose" | "cyan" | "fuchsia";
 
@@ -595,6 +596,11 @@ export interface Settings {
   providerKeys?: Record<string, ProviderKeyEntry>;
   /** Which LLM source is active when provider = "custom": a registry id or "custom" (legacy endpoint). */
   activeProviderId?: string;
+  /**
+   * r41-c — last successful provider-vault import (ISO timestamp). Audit trail
+   * for the Settings → Your Data card; set only by the vault-import path.
+   */
+  vaultImportedAt?: string;
   /** Model Relay — automatic fallback rotation when the active model fails. Default true. */
   relayEnabled?: boolean;
   /** Saved hop ordering (keys "providerId::model"); missing = recommended Generation-Era order. */
@@ -605,6 +611,12 @@ export interface Settings {
    * the decision ladder falls back to a fast-model JSON judge via the vault.
    */
   typesafeKey?: string;
+  /**
+   * r41 Hyperbrowser API key (BYOK tool key) — powers the deep_scrape tool
+   * (headless cloud browser). Stays in the browser's localStorage and rides a
+   * tool-execution request ONLY when deep_scrape actually runs. Missing = "".
+   */
+  hyperbrowserKey?: string;
   /** r34 harness selection (see lib/harness.ts) — retunes relay ordering,
    *  tool budget, stall resilience, lessons and dreams in one pick.
    *  Missing ⇒ "balanced". */

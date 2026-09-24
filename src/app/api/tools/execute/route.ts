@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { executeTool } from "@/lib/server/tools";
+import { executeTool, type ToolExecContext } from "@/lib/server/tools";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +26,8 @@ const KNOWN = new Set([
   "uuid_hash",
   "image_generate",
   "tts_speak",
+  // r41 BYOK keyed tool — the key rides ONLY its own execution body (below)
+  "deep_scrape",
 ]);
 
 // r26.1 SECURITY: CSRF gate — REBUILT to survive gateway/iframe deployments.
@@ -54,9 +56,9 @@ export async function POST(req: NextRequest) {
   if (!csrfOk(req)) {
     return NextResponse.json({ error: "Cross-origin tool execution is not allowed" }, { status: 403 });
   }
-  let body: { name?: string; args?: string };
+  let body: { name?: string; args?: string; keys?: { hyperbrowserKey?: string } };
   try {
-    body = (await req.json()) as { name?: string; args?: string };
+    body = (await req.json()) as { name?: string; args?: string; keys?: { hyperbrowserKey?: string } };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -65,9 +67,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Unknown tool "${name}"` }, { status: 400 });
   }
   const args = typeof body.args === "string" ? body.args : "{}";
+  // r41 BYOK tool keys: accepted ONLY for the keyed tool's own execution, used
+  // for that one upstream call, never logged or persisted. Shape-validated.
+  const ctx: ToolExecContext = {};
+  if (name === "deep_scrape" && typeof body.keys?.hyperbrowserKey === "string" && body.keys.hyperbrowserKey.trim()) {
+    ctx.hyperbrowserKey = body.keys.hyperbrowserKey.trim();
+  }
   // r25: client disconnects cancel in-flight tool work where the underlying
   // implementation can honor a signal.
-  const result = await executeTool(name, args, req.signal);
+  const result = await executeTool(name, args, req.signal, ctx);
   return NextResponse.json(result);
 }
 

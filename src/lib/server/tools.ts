@@ -13,6 +13,15 @@ import { guardPublicUrl } from "./url-guard";
 export { buildToolDefs };
 export type { ToolDef, ToolResult };
 
+/**
+ * r41 BYOK tool-execution context — user secrets that individual tools need
+ * server-side. Only populated when the calling route received the key for
+ * EXACTLY this execution (the browser attaches it per-tool, never wholesale).
+ */
+export interface ToolExecContext {
+  hyperbrowserKey?: string;
+}
+
 // Lazy SDK singleton
 let zaiPromise: Promise<Awaited<ReturnType<typeof ZAI.create>>> | null = null;
 async function getZai() {
@@ -23,7 +32,8 @@ async function getZai() {
 export async function executeTool(
   name: string,
   argsJson: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  ctx?: ToolExecContext
 ): Promise<ToolResult> {
   const started = Date.now();
   let args: Record<string, unknown> = {};
@@ -74,6 +84,9 @@ export async function executeTool(
         break;
       case "tts_speak":
         content = await doTtsSpeak(args);
+        break;
+      case "deep_scrape":
+        content = await doDeepScrape(args, signal, ctx);
         break;
       default:
         return { ok: false, content: `Unknown tool: ${name}`, ms: 0 };
@@ -943,6 +956,189 @@ async function doTtsSpeak(args: Record<string, unknown>): Promise<string> {
     `Speech generated: ${text.length} char${text.length === 1 ? "" : "s"}${raw.length > MAX_CHARS ? " (clipped from " + raw.length + ")" : ""} → ~${seconds}s of 24 kHz audio via voice "${voice}". ` +
     `Audio is not attached to this chat (storage pressure) — tell the user to use the speaker button on any reply for read-aloud playback.`
   );
+}
+
+// ─── deep_scrape (r41) ──────────────────────────────────────────────────
+// Hyperbrowser headless cloud browser: JS rendering + bot defeat for pages
+// plain fetch cannot read. BYOK: the user's key rides THIS execution only
+// (see ToolKeySecrets in tools-defs.ts) and is never persisted server-side.
+//
+// Wire contract (curl-probed live 2026-09-24 — both generations answer 401
+// NOT AUTHENTICATED without a key, so both exist):
+//   1. legacy/verified:  POST /api/scrape        {url, formats:["markdown"]}
+//   2. current docs:     POST /api/web/fetch     {url, outputs:{formats:[...]}}
+// Both start an async job → poll GET …/{jobId} every 1.5s until the terminal
+// status; the scrape result carries {data:{markdown|html, metadata}}.
+
+const HB_BASE = "https://api.hyperbrowser.ai";
+const HB_START_TIMEOUT_MS = 10_000;
+const HB_POLL_INTERVAL_MS = 1_500;
+const HB_TOTAL_BUDGET_MS = 25_000;
+const HB_DONE_STATUSES = new Set(["completed", "done", "success"]);
+const HB_FAIL_STATUSES = new Set(["failed", "error", "killed", "canceled", "cancelled"]);
+
+interface HbJobView {
+  jobId?: string;
+  status?: string;
+  error?: string | null;
+  data?: unknown;
+}
+
+function hbExtractContent(data: unknown, format: "markdown" | "html"): string | null {
+  if (data == null || typeof data !== "object") return null;
+  const d = data as Record<string, unknown>;
+  const direct = typeof d[format] === "string" ? (d[format] as string) : null;
+  if (direct && direct.trim()) return direct;
+  // Legacy scrape shape can nest the payload under `result` / `scrapeOptions.result`.
+  for (const nested of [d.result, d.scrapeResult]) {
+    if (nested && typeof nested === "object") {
+      const inner = (nested as Record<string, unknown>)[format];
+      if (typeof inner === "string" && inner.trim()) return inner;
+    }
+  }
+  return null;
+}
+
+async function doDeepScrape(
+  args: Record<string, unknown>,
+  signal?: AbortSignal,
+  ctx?: ToolExecContext
+): Promise<string> {
+  const url = str(args, "url").trim();
+  if (!/^https?:\/\/\S+$/i.test(url)) {
+    throw new Error('A full http(s) URL is required (e.g. "https://example.com")');
+  }
+  const key = (ctx?.hyperbrowserKey ?? "").trim();
+  if (!key) {
+    throw new Error(
+      "A Hyperbrowser API key is not set. Add a Hyperbrowser API key in Settings → Tools — get one at app.hyperbrowser.ai (BYOK: it stays in your browser and is only used when deep_scrape executes)."
+    );
+  }
+  const format: "markdown" | "html" = args.formats === "html" ? "html" : "markdown";
+  const headers = { "Content-Type": "application/json", "x-api-key": key };
+  const deadline = Date.now() + HB_TOTAL_BUDGET_MS;
+
+  // Start the scrape job — legacy endpoint first, current docs endpoint as the
+  // fallback ladder (both probed live; auth errors are terminal, 404/405 falls
+  // through to the next generation).
+  const startBodies: Record<string, unknown>[] = [
+    { url, formats: [format] },
+    { url, outputs: { formats: [format] } },
+  ];
+  const startPaths = ["/api/scrape", "/api/web/fetch"];
+  let jobId = "";
+  let jobPath = startPaths[0];
+  let lastStartError = "request never completed";
+  for (let i = 0; i < startPaths.length; i++) {
+    if (Date.now() > deadline) break;
+    let res: Response;
+    try {
+      res = await fetch(`${HB_BASE}${startPaths[i]}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(startBodies[i]),
+        signal:
+          typeof AbortSignal.any === "function"
+            ? AbortSignal.any([AbortSignal.timeout(HB_START_TIMEOUT_MS), ...(signal ? [signal] : [])])
+            : signal ?? AbortSignal.timeout(HB_START_TIMEOUT_MS),
+      });
+    } catch (err) {
+      if (signal?.aborted) throw new Error("deep_scrape aborted");
+      lastStartError = err instanceof Error ? err.message : String(err);
+      continue;
+    }
+    const bodyText = await res.text().catch(() => "");
+    let parsed: HbJobView | null = null;
+    try {
+      parsed = JSON.parse(bodyText) as HbJobView;
+    } catch {
+      /* non-JSON error body */
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(
+        `Hyperbrowser rejected the API key (HTTP ${res.status}${parsed?.error ? ` — ${parsed.error}` : ""}). Check the key in Settings → Tools.`
+      );
+    }
+    if ((res.status === 404 || res.status === 405) && i < startPaths.length - 1) {
+      lastStartError = `HTTP ${res.status} on ${startPaths[i]}`;
+      continue; // endpoint generation retired — try the next one
+    }
+    if (!res.ok) {
+      throw new Error(
+        `Hyperbrowser scrape failed to start (HTTP ${res.status}${parsed?.error ? ` — ${parsed.error}` : bodyText.slice(0, 160) ? ` — ${bodyText.slice(0, 160)}` : ""}).`
+      );
+    }
+    if (!parsed) {
+      throw new Error("Hyperbrowser returned a non-JSON response when starting the scrape job.");
+    }
+    // Some generations resolve synchronously — honor an immediate payload.
+    const immediate = hbExtractContent(parsed.data, format);
+    if (immediate) return formatDeepScrapeOutput(url, format, immediate, parsed.data);
+    if (typeof parsed.jobId === "string" && parsed.jobId) {
+      jobId = parsed.jobId;
+      jobPath = startPaths[i];
+      break;
+    }
+    lastStartError = "response carried neither a jobId nor scrape data";
+  }
+  if (!jobId) {
+    throw new Error(
+      `Hyperbrowser scrape could not start a job (total budget ${Math.round(HB_TOTAL_BUDGET_MS / 1000)}s): ${lastStartError}.`
+    );
+  }
+
+  // Poll the job — 1.5s cadence until the ~25s total budget (fits inside the
+  // browser executor's 30s tool-call cap so a slow page degrades honestly
+  // instead of tripping the generic timeout).
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, HB_POLL_INTERVAL_MS));
+    if (Date.now() >= deadline) break;
+    let res: Response;
+    try {
+      res = await fetch(`${HB_BASE}${jobPath}/${jobId}`, {
+        headers: { "x-api-key": key },
+        signal:
+          typeof AbortSignal.any === "function"
+            ? AbortSignal.any([AbortSignal.timeout(8_000), ...(signal ? [signal] : [])])
+            : signal ?? AbortSignal.timeout(8_000),
+      });
+    } catch (err) {
+      if (signal?.aborted) throw new Error("deep_scrape aborted");
+      continue; // a dropped poll is retried on the next tick
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`Hyperbrowser rejected the API key while polling (HTTP ${res.status}). Check the key in Settings → Tools.`);
+    }
+    if (!res.ok) continue;
+    const job = (await res.json().catch(() => null)) as HbJobView | null;
+    if (!job) continue;
+    const status = String(job.status ?? "").toLowerCase();
+    if (HB_FAIL_STATUSES.has(status)) {
+      throw new Error(
+        `Hyperbrowser scrape job ${status}${job.error ? `: ${String(job.error).slice(0, 200)}` : " (the page may block scraping — try read_url instead)."}`
+      );
+    }
+    if (HB_DONE_STATUSES.has(status)) {
+      const content = hbExtractContent(job.data, format);
+      if (content) return formatDeepScrapeOutput(url, format, content, job.data);
+      throw new Error(`Hyperbrowser job finished but returned no ${format} content (status "${status}").`);
+    }
+    // still running — next tick
+  }
+  throw new Error(
+    `Hyperbrowser scrape timed out after ~${Math.round(HB_TOTAL_BUDGET_MS / 1000)}s (the job may still finish server-side). Try again, or fall back to read_url.`
+  );
+}
+
+function formatDeepScrapeOutput(url: string, format: string, content: string, data: unknown): string {
+  const title =
+    data && typeof data === "object"
+      ? (data as Record<string, unknown>).metadata && typeof (data as Record<string, unknown>).metadata === "object"
+        ? String(((data as Record<string, unknown>).metadata as Record<string, unknown>).title ?? "")
+        : ""
+      : "";
+  const head = `Content of ${url} (Hyperbrowser headless browser, ${format})${title ? ` — “${title}”` : ""}:`;
+  return `${head}\n\n${content.trim()}`;
 }
 
 function clip(s: string, n: number): string {

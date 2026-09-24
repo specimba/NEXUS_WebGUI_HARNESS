@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import ZAI from "z-ai-web-dev-sdk";
-import { executeTool } from "@/lib/server/tools";
+import { executeTool, type ToolExecContext } from "@/lib/server/tools";
 import {
   buildToolDefs,
   fenceToolOutputForModel,
   newTurnSafetyAudit,
   validateToolCall,
   type EngineToolIO,
+  type ToolExecutor,
   type TurnSafetyAudit,
 } from "@/lib/tools-defs";
 import { guardPublicUrl } from "@/lib/server/url-guard";
@@ -102,7 +103,16 @@ export async function POST(req: NextRequest) {
       send({ type: "start" });
       try {
         body.images = sanitizeImages(body.images);
-        const toolIO: EngineToolIO = { defs: buildToolDefs((body.tools ?? []).filter(Boolean)), execute: executeTool };
+        // r41 BYOK tool key: rides the /api/chat body ONLY when the run's tool
+        // list includes a keyed tool (chat-client attaches it conditionally);
+        // it reaches executeTool as a per-run context and is never persisted.
+        const toolCtx: ToolExecContext = {
+          ...(typeof body.hyperbrowserKey === "string" && body.hyperbrowserKey.trim()
+            ? { hyperbrowserKey: body.hyperbrowserKey.trim() }
+            : {}),
+        };
+        const execWithCtx: ToolExecutor = (name, argsJson, sig) => executeTool(name, argsJson, sig, toolCtx);
+        const toolIO: EngineToolIO = { defs: buildToolDefs((body.tools ?? []).filter(Boolean)), execute: execWithCtx };
         // v0.2 receipt (r26-3): one audit per turn, fed by whichever engine ran
         // (relay or auto) via the shared toolIO reference.
         const audit = newTurnSafetyAudit();
@@ -206,6 +216,12 @@ async function runAutoEngine(
   const toolIds = (body.tools ?? []).filter(Boolean);
   const toolDefs = buildToolDefs(toolIds);
   const maxIterations = clampIter(body.maxIterations);
+  // r41: keyed tools executing inside the auto engine get the BYOK context.
+  const toolCtx: ToolExecContext = {
+    ...(typeof body.hyperbrowserKey === "string" && body.hyperbrowserKey.trim()
+      ? { hyperbrowserKey: body.hyperbrowserKey.trim() }
+      : {}),
+  };
   const collected: ToolCallInfo[] = [];
   let graceUsed = false; // r29: one final-pass leak execution
 
@@ -267,7 +283,7 @@ async function runAutoEngine(
       const validation = validateToolCall(toolDefs, call.name, JSON.stringify(call.args));
       if (!validation.ok && audit) audit.rejectedCalls += 1;
       const result = validation.ok
-        ? await executeTool(call.name, validation.args ?? "{}")
+        ? await executeTool(call.name, validation.args ?? "{}", undefined, toolCtx)
         : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
       collected.push({
         id: call.id,
@@ -306,7 +322,7 @@ async function runAutoEngine(
         const validation = validateToolCall(toolDefs, call.name, JSON.stringify(call.args));
         if (!validation.ok && audit) audit.rejectedCalls += 1;
         const result = validation.ok
-          ? await executeTool(call.name, validation.args ?? "{}")
+          ? await executeTool(call.name, validation.args ?? "{}", undefined, toolCtx)
           : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
         collected.push({
           id: call.id,

@@ -61,9 +61,16 @@ import {
   useWorkflowsStore,
 } from "@/lib/stores";
 import type { Conversation, Framework } from "@/lib/types";
+import {
+  describeMergeResult,
+  looksLikeFullExport,
+  looksLikeProviderVault,
+  mergeProviderKeys,
+} from "@/lib/vault-merge";
 import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
 import { SkillsCard } from "@/components/praison/settings/skills-card";
 import { McpCard } from "@/components/praison/settings/mcp-card";
+import { ToolKeysCard } from "@/components/praison/settings/tool-keys-card";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEYS = [
@@ -85,6 +92,7 @@ const SETTINGS_SECTIONS = [
   { id: "harness", label: "Harness" },
   { id: "skills", label: "Skills" },
   { id: "mcp", label: "MCP" },
+  { id: "tools", label: "Tools" },
   { id: "behavior", label: "Behavior" },
   { id: "automation", label: "Automation" },
   { id: "profile", label: "Profile" },
@@ -171,6 +179,13 @@ export function SettingsView() {
     }
   }
 
+  /**
+   * r41-c: export JUST the provider vault lives in the provider gallery's
+   * "Vault" button (same handler shape, provider-centric home). The Data card
+   * keeps the kind-aware IMPORT + audit trail; vault-merge.ts is the shared
+   * doctrine both doors use.
+   */
+
   function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-importing the same file
@@ -185,19 +200,55 @@ export function SettingsView() {
         toast.error("Import failed — the file is not valid JSON.");
         return;
       }
+
+      // ── r41-c branch 1: a provider VAULT (advisory-pack shape) ──────────
+      // Lives-merges keys into the running store — fill-empty semantics,
+      // never overwrites a locally-set key (BYOK paranoia), no reload.
+      if (looksLikeProviderVault(parsed)) {
+        const vault = parsed as {
+          providerKeys?: unknown;
+          activeProviderId?: unknown;
+          defaultModel?: unknown;
+        };
+        const result = mergeProviderKeys(settings.providerKeys, vault.providerKeys);
+        const patch: Record<string, unknown> = {
+          providerKeys: result.merged,
+          vaultImportedAt: new Date().toISOString(),
+        };
+        // Adopt the vault's active-provider hints ONLY when this profile has
+        // none — a vault import must never silently re-point an armed profile.
+        const localActive = (settings.activeProviderId ?? "").trim();
+        if (!localActive && typeof vault.activeProviderId === "string" && vault.activeProviderId.trim()) {
+          patch.activeProviderId = vault.activeProviderId.trim();
+          if (typeof vault.defaultModel === "string" && vault.defaultModel.trim()) {
+            patch.defaultModel = vault.defaultModel.trim();
+          }
+        }
+        update(patch);
+        const desc = describeMergeResult(result);
+        if (result.conflicts.length > 0) {
+          toast.warning("Vault merged with conflicts", { description: desc });
+        } else {
+          toast.success("Vault imported — keys armed", { description: desc });
+        }
+        return;
+      }
+
+      // ── branch 2: a FULL app export (agents/conversations/workflows) ────
       const bundle = (parsed ?? {}) as Record<string, unknown>;
-      const valid =
-        Array.isArray(bundle.agents) &&
-        Array.isArray(bundle.conversations) &&
-        Array.isArray(bundle.workflows);
+      const valid = looksLikeFullExport(bundle);
       if (!valid) {
-        toast.error("Invalid export file", {
+        toast.error("Invalid import file", {
           description:
-            "Expected a PraisonAI export containing agents, conversations and workflows arrays.",
+            "Expected a PraisonAI export (agents, conversations, workflows) or a provider vault (kind: praison-provider-vault).",
         });
         return;
       }
       const conversations = bundle.conversations as Conversation[];
+      // r41-c: providerKeys now MERGE per-key (fill-empty) instead of the old
+      // shallow spread that wholesale-overwrote the local vault.
+      const bundleSettings = (bundle.settings ?? {}) as Record<string, unknown>;
+      const keyMerge = mergeProviderKeys(settings.providerKeys, bundleSettings.providerKeys);
       try {
         localStorage.setItem(
           "praison-agents",
@@ -218,7 +269,12 @@ export function SettingsView() {
           "praison-settings",
           JSON.stringify({
             state: {
-              settings: { ...DEFAULT_SETTINGS, ...(bundle.settings ?? {}), seeded: true },
+              settings: {
+                ...DEFAULT_SETTINGS,
+                ...bundleSettings,
+                seeded: true,
+                providerKeys: keyMerge.merged,
+              },
             },
             version: 0,
           })
@@ -234,7 +290,8 @@ export function SettingsView() {
         toast.error("Import failed — could not write to localStorage.");
         return;
       }
-      toast.success("Data imported — reloading…");
+      const desc = describeMergeResult(keyMerge);
+      toast.success(`Data imported — reloading… (${desc})`);
       location.reload();
     };
     reader.onerror = () => toast.error("Import failed — could not read the selected file.");
@@ -394,6 +451,11 @@ export function SettingsView() {
           {/* ── MCP servers (r38, stateless-first client) ────────────── */}
           <div id="mcp" className="scroll-mt-14">
             <McpCard />
+          </div>
+
+          {/* ── Tool keys (r41, BYOK keys for built-in tools) ─────────── */}
+          <div id="tools" className="scroll-mt-14">
+            <ToolKeysCard />
           </div>
 
           {/* ── Behavior ─────────────────────────────────────────────── */}
@@ -711,7 +773,7 @@ export function SettingsView() {
                 ))}
               </div>
 
-              {/* Export / Import */}
+              {/* Export / Import — r41-c: kind-aware import + vault audit */}
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={handleExport}>
                   <Download className="h-4 w-4" aria-hidden />
@@ -735,6 +797,28 @@ export function SettingsView() {
                   aria-hidden
                   onChange={handleImportFile}
                 />
+              </div>
+              <div className="rounded-lg border border-violet-500/20 bg-violet-500/[0.04] px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                <p>
+                  <span className="font-medium text-foreground">Import accepts two shapes</span> —
+                  a full app export (agents, chats, workflows, suites) or a{" "}
+                  <span className="font-medium text-violet-300">provider vault</span> file (
+                  <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
+                    kind: praison-provider-vault
+                  </code>
+                  ). Vault keys merge with fill-empty semantics: empty local slots are armed, keys
+                  you already set are <span className="font-medium text-foreground">never overwritten</span>{" "}
+                  — differing keys stay local and get reported, so no surprise re-points.
+                </p>
+                {settings.vaultImportedAt ? (
+                  <p className="mt-1.5 flex items-center gap-1.5">
+                    <span
+                      className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 shadow-[0_0_6px_rgba(167,139,250,0.8)]"
+                      aria-hidden
+                    />
+                    Vault last imported {fmtRel(new Date(settings.vaultImportedAt).getTime())}
+                  </p>
+                ) : null}
               </div>
 
               {/* Danger zone */}

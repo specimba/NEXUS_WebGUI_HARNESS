@@ -40,6 +40,11 @@ import { browserRefreshModels } from "@/lib/provider-refresh";
 import { truncate, downloadJson } from "@/lib/helpers";
 import { useSettingsStore, useUiStore } from "@/lib/stores";
 import type { ProviderKeyEntry, Settings } from "@/lib/types";
+import {
+  describeMergeResult,
+  looksLikeProviderVault,
+  mergeProviderKeys,
+} from "@/lib/vault-merge";
 import { cn } from "@/lib/utils";
 
 type TestResult = { ok: true; ms: number } | { ok: false; error: string };
@@ -757,24 +762,50 @@ export function ProviderGallery() {
         toast.error("Vault import failed — not valid JSON.");
         return;
       }
-      const bundle = (parsed ?? {}) as Record<string, unknown>;
-      const keys = bundle.providerKeys;
-      if (!keys || typeof keys !== "object" || Array.isArray(keys)) {
+      // r41-c: both vault doors now share vault-merge.ts doctrine — fill-empty,
+      // NEVER overwrite a locally-set key, conflicts reported honestly.
+      // (The pre-r41-c version spread incoming OVER local, silently replacing
+      // keys — exactly the wholesale-overwrite anti-pattern r41-b flagged.)
+      if (!looksLikeProviderVault(parsed)) {
         toast.error("Invalid vault file", {
           description: 'Expected a PraisonAI provider-vault export with a "providerKeys" object.',
         });
         return;
       }
-      const incoming = keys as Settings["providerKeys"];
-      const merged = { ...(settings.providerKeys ?? {}), ...incoming };
-      const n = Object.values(incoming ?? {}).filter((k) => k?.key).length;
-      update({ providerKeys: merged });
-      if (typeof bundle.activeProviderId === "string" && merged[bundle.activeProviderId]?.key) {
-        update({ providerKeys: merged, activeProviderId: bundle.activeProviderId });
+      const vault = parsed as {
+        providerKeys?: unknown;
+        activeProviderId?: unknown;
+        defaultModel?: unknown;
+      };
+      const result = mergeProviderKeys(settings.providerKeys, vault.providerKeys);
+      const patch: Partial<Settings> = {
+        providerKeys: result.merged,
+        vaultImportedAt: new Date().toISOString(),
+      };
+      // Adopt the vault's active-provider hints ONLY when this profile has none —
+      // a restore must never silently re-point an armed profile.
+      const localActive = (settings.activeProviderId ?? "").trim();
+      if (
+        !localActive &&
+        typeof vault.activeProviderId === "string" &&
+        vault.activeProviderId.trim()
+      ) {
+        patch.activeProviderId = vault.activeProviderId.trim();
+        if (typeof vault.defaultModel === "string" && vault.defaultModel.trim()) {
+          patch.defaultModel = vault.defaultModel.trim();
+        }
       }
-      toast.success(`Vault restored — ${n} provider key${n === 1 ? "" : "s"} merged`, {
-        description: "Existing entries were kept; matching providers were overwritten.",
-      });
+      update(patch);
+      const desc = describeMergeResult(result);
+      if (result.conflicts.length > 0) {
+        toast.warning("Vault merged with conflicts", { description: desc });
+      } else if (result.added.length > 0) {
+        toast.success(`Vault restored — ${result.added.length} provider key${result.added.length === 1 ? "" : "s"} armed`, { description: desc });
+      } else if (result.same.length > 0) {
+        toast.success(`Vault verified — ${result.same.length} provider key${result.same.length === 1 ? "" : "s"} already set`, { description: desc });
+      } else {
+        toast.info("Vault checked — nothing to change", { description: desc });
+      }
     };
     reader.onerror = () => toast.error("Vault import failed — could not read the file.");
     reader.readAsText(file);

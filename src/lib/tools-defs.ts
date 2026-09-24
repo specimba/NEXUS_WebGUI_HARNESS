@@ -231,6 +231,26 @@ export function buildToolDefs(tools: ToolId[]): ToolDef[] {
         },
       },
     },
+    deep_scrape: {
+      type: "function",
+      function: {
+        name: "deep_scrape",
+        description:
+          "Scrape a webpage with a headless cloud browser (JS rendering, bot-defeated) and return clean markdown. Use for JS-heavy or bot-protected pages that plain fetch cannot read (SPAs, login walls, Cloudflare-guarded sites). Slower than read_url (~5-25s) and needs the user's Hyperbrowser key.",
+        parameters: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "Full URL including https://" },
+            formats: {
+              type: "string",
+              enum: ["markdown", "html"],
+              description: "Output format (default markdown)",
+            },
+          },
+          required: ["url"],
+        },
+      },
+    },
   };
   return tools.map((t) => defs[t]).filter(Boolean);
 }
@@ -404,6 +424,30 @@ export function newTurnSafetyAudit(): TurnSafetyAudit {
 /** Hard budget for one browser→server tool call (r25). */
 const TOOL_CALL_TIMEOUT_MS = 30_000;
 
+// ─── BYOK tool keys (r41) ──────────────────────────────────────────────────
+// Some tools need a USER key server-side (deep_scrape → Hyperbrowser). The
+// doctrine: keys live in the browser (localStorage settings) and ride a tool
+// execution request ONLY when that exact keyed tool actually runs — never
+// otherwise, never persisted server-side. This module is isomorphic (the
+// server executor imports it), so the client hands the keys over through a
+// tiny seam instead of a store import: chat-client calls setToolKeySecrets()
+// at run start; httpToolExecutor attaches them to deep_scrape calls only.
+export interface ToolKeySecrets {
+  hyperbrowserKey?: string;
+}
+
+let toolKeySecrets: ToolKeySecrets = {};
+
+export function setToolKeySecrets(keys: ToolKeySecrets): void {
+  toolKeySecrets = {
+    hyperbrowserKey: typeof keys.hyperbrowserKey === "string" ? keys.hyperbrowserKey : undefined,
+  };
+}
+
+export function currentToolKeySecrets(): ToolKeySecrets {
+  return toolKeySecrets;
+}
+
 /**
  * Compose the caller's signal with the tool deadline. AbortSignal.any when
  * available, otherwise manual forwarding with a dispose() so per-call
@@ -449,7 +493,15 @@ export const httpToolExecutor: ToolExecutor = async (name, argsJson, signal) => 
       // (they'd need a CORS preflight we never grant). Keep in sync with the
       // csrfOk() gate in /api/tools/execute.
       headers: { "Content-Type": "application/json", "x-praison-csrf": "1" },
-      body: JSON.stringify({ name, args: argsJson }),
+      // r41 BYOK tool keys: attached ONLY for the keyed tool's own execution
+      // (deep_scrape today) — the key never rides any other tool call.
+      body: JSON.stringify({
+        name,
+        args: argsJson,
+        ...(name === "deep_scrape" && toolKeySecrets.hyperbrowserKey
+          ? { keys: { hyperbrowserKey: toolKeySecrets.hyperbrowserKey } }
+          : {}),
+      }),
       ...(composed ? { signal: composed.signal } : {}),
     });
     const data = (await res.json().catch(() => null)) as ToolResult | { error?: string } | null;

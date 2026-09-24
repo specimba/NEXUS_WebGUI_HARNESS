@@ -84,6 +84,9 @@ export const TOOL_IDS: ToolId[] = [
   "uuid_hash",
   "image_generate",
   "tts_speak",
+  // r41: BYOK keyed tool (Hyperbrowser headless cloud browser) — default OFF
+  // like every tool; agents opt in via their per-agent tool toggles.
+  "deep_scrape",
 ];
 
 export const TOOL_META: Record<ToolId, { label: string; description: string; emoji: string }> = {
@@ -151,6 +154,11 @@ export const TOOL_META: Record<ToolId, { label: string; description: string; emo
     label: "TTS",
     description: "Convert short text to speech with the built-in voices (status line)",
     emoji: "🔊",
+  },
+  deep_scrape: {
+    label: "Deep Scrape",
+    description: "Headless cloud browser scrape (JS rendering, bot-defeated) — needs a Hyperbrowser key in Settings → Tools",
+    emoji: "🕸️",
   },
 };
 

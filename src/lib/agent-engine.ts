@@ -74,6 +74,14 @@ export interface EngineBody {
    * every receipt of ONE request carries the same request_id.
    */
   requestId?: string;
+  /**
+   * r41 BYOK tool key (Hyperbrowser) for keyed tools executed INSIDE the
+   * server engine (the auto lane's executeTool calls). Never forwarded to any
+   * LLM provider — outbound provider requests pick fields explicitly; this
+   * field only feeds the ToolExecContext. Rides the wire ONLY when the run's
+   * tool list actually includes a keyed tool (client attaches it conditionally).
+   */
+  hyperbrowserKey?: string;
 }
 
 export type EngineSend = (evt: Record<string, unknown>) => void;
