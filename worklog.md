@@ -1418,3 +1418,25 @@ Stage Summary:
 - ADVISORY-B's closing recommendation is now fulfilled with project-specific doctrine: every rule cites the round that proves it (stall-resume r32, receipts r27/r34, boot-ensure r33-r34, bake-off adoption r39 + sticky guard r40, MRTR r40).
 - Verification highlights: vault file needs a dedicated import path before its 17 keys can arm a profile; export import overwrites providerKeys wholesale (no per-key merge, no bundle version check) — lead's r41 import-validation item should cover both.
 - Next: r41-a browser capability pack (Bright Data MCP preset + Hyperbrowser REST tool, BYOK); lead's vault/export import validation; deploy remaining cron tiers from ops/cron.jobs.json when platform budget allows.
+
+---
+Task ID: r41 (closing)
+Agent: lead (Z.ai Code orchestrator)
+Task: Round close — team deliverables integration, live QA, commit/push, handoff.
+
+Work Log:
+- r41-a (browser capability pack, full-stack-developer agent — hit context deadline AFTER completing the work, tree verified coherent line-by-line by lead):
+  · deep_scrape tool end-to-end: tools-defs.ts def (url + markdown/html), server/tools.ts executor (POST /api/scrape → /api/web/fetch ladder, jobId polling 1.5s cadence, 25s budget < the 30s tool cap, sync-payload fast path, honest 401/timeout/failure errors), BYOK key doctrine: settings.hyperbrowserKey → module seam (setToolKeySecrets) → attached ONLY to deep_scrape's own execution body (httpToolExecutor + /api/chat conditional attach) → ToolExecContext, never persisted server-side.
+  · Tool Keys settings card (new nav section "Tools"): Hyperbrowser key input, "not set / key set · N chars" badge, honest copy incl. the server-transit disclosure.
+  · Bright Data MCP preset (mcp-card): third verified preset, remote-stateless, ?token=URL auth; placeholder guard blocks registering YOUR_…_TOKEN; preset click prefills the add form + 12s toast instructions instead of registering a dead endpoint.
+  · Provider-vault import (vault-merge.ts, pure + unit-tested): kind-discriminated import (vault vs full export), fill-empty merge — arms empty slots, keeps identical, NEVER overwrites differing local keys (conflicts reported), top-ups model/accountId hints; Settings import + provider-gallery Restore both wired; vault EXPORT added (praisonai-export shape) + vaultImportedAt audit stamp; fixes the r41-b finding (shallow spread wholesale-overwrote the local vault).
+- r41-b (advisory artifacts, general-purpose agent): docs/OPERATING_DOCTRINE.md (132L, every rule cites its proving round), docs/ROUND_HANDOFF_TEMPLATE.md (84L, filled with real r40 facts), ops/cron.jobs.json (T0 :07/:37 30min · T1 :23 hourly · T2 :41 */6h · T3 02:17 daily, Europe/Istanbul, exec-limit evidence + 6-step boot-ensure + lock discipline), docs/research/advisory-pack-r41.md (all 14 pack files inventoried + hermes incident). Verification report: old importer rejected vaults + shallow-merged keys → both fixed this round.
+- Lead verification: tsc clean · lint exit 0 · test-vault-merge.ts 21/21 · console 0 errors · desktop + 390px NO OVERFLOW · dev.log clean.
+- GOLD TESTS (live): (1) imported the REAL 17-key advisory vault in the browser — all keys armed correctly incl. opencode + kilo, "17 already set" (fill-empty held, zero overwrites); (2) deep_scrape without key → honest ok:false guidance naming Settings → Tools + app.hyperbrowser.ai; (3) Bright Data endpoint reachable (probe 401 invalid-token; CORS-fallback covered by the r38 /api/mcp proxy).
+- COMMIT 69922cf15 pushed to origin (NEXUS_WebGUI_HARNESS). hermes-agent fix pushed separately (0420879).
+- Mandated platform cron: 15-min webDevReview job created per system doctrine (single hybrid heartbeat; ops/cron.jobs.json remains the canonical four-tier spec for when budget sustains it).
+
+Stage Summary:
+- Shipped: the advisory pack is now WORKING CODE + REPO ARTIFACTS — headless-browser scraping capability (Hyperbrowser BYOK), Bright Data web-unlocker as a one-click stateless MCP preset, provider vaults that actually import (fill-empty, conflict-honest), an operating doctrine + handoff template + canonical cron spec living in the repo, and the user's mail-spam incident root-fixed.
+- Open risks: Hyperbrowser scrape response shapes verified only to the 401 boundary (no real key in QA vault) — first real key run should be watched once; Bright Data browser-direct CORS unproven with a valid token (proxy fallback exists); OSV-Scanner failures in hermes-agent left as legitimate signal.
+- Next round priorities (r42): agent-vs-agent bake-offs (suite cases over the playground), MCP tool health stats beside run-row tool receipts, scheduled-suite re-arm resilience if the tab dies mid-round, per-server "allow input gates" switch, Radar-source mining from researchPOD/fancyLINKS guides + supportsToolCalling flags from the reference JS catalog into the tracker, real-key deep_scrape watch.
