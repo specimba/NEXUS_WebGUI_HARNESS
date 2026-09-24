@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useSuitesStore, useUiStore, useWorkflowsStore } from "@/lib/stores";
+import { useAgentsStore, useSuitesStore, useUiStore, useWorkflowsStore } from "@/lib/stores";
 import { downloadText, fmtIntervalShort, fmtRel, slugify, suiteResultToMarkdown } from "@/lib/helpers";
 import { isSuiteRunning, runSuite, stopSuite, suiteDiff, type SuiteProgress } from "@/lib/suite-runner";
 import { SUITE_REPEATS_MAX, SUITE_HARNESSES_MAX, SUITE_SCHEDULE_MIN_MS, SUITE_SCHEDULE_FAIL_BREAKER } from "@/lib/constants";
@@ -282,32 +282,92 @@ function HarnessPicker({
   );
 }
 
+/** r44 agent-vs-agent lab: agent lane chips (sky tone — distinct from harness violet). */
+function AgentPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  const agents = useAgentsStore((s) => s.agents);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Agent lanes for this case">
+      {agents.map((a) => {
+        const active = value.includes(a.id);
+        const order = value.indexOf(a.id) + 1;
+        return (
+          <button
+            key={a.id}
+            type="button"
+            role="checkbox"
+            aria-checked={active}
+            disabled={disabled}
+            title={`${a.name} — one single-turn task per agent, own model + tools`}
+            onClick={() => {
+              if (active) {
+                onChange(value.filter((x) => x !== a.id));
+              } else if (value.length >= SUITE_HARNESSES_MAX) {
+                toast.warning(`A case compares at most ${SUITE_HARNESSES_MAX} agents`, {
+                  description: "Unpick one first — every extra lane multiplies real quota spend.",
+                });
+              } else {
+                onChange([...value, a.id]);
+              }
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all disabled:opacity-50",
+              active
+                ? "border-sky-500/50 bg-sky-500/15 text-sky-600 dark:text-sky-300 shadow-[0_0_0_2px_oklch(0.623_0.214_259.815/0.10)]"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-sky-500/40 hover:text-foreground"
+            )}
+          >
+            <span aria-hidden>{a.emoji || "🤖"}</span>
+            {a.name}
+            {active ? (
+              <span className="ml-0.5 rounded-full bg-sky-500/25 px-1 text-[9px] font-bold tabular-nums">
+                {order}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** r36 A/B lab: per-harness done-rate bars + the crowned winner. */
 function AbBars({ result }: { result: SuiteCaseResult }) {
   // r38 winner adoption: a bake-off verdict is evidence — one click makes the
   // winning harness the workflow's default (editor selection stays editable).
   const workflow = useWorkflowsStore((s) => s.workflows.find((w) => w.id === result.workflowId));
   const updateWorkflow = useWorkflowsStore((s) => s.update);
-  const adoptable = !!result.winner && !!workflow && workflow.harness !== result.winner;
+  const isAgentCase = result.mode === "agents";
+  const agentName = (id: string) => result.agents?.find((a) => a.id === id)?.name ?? id;
+  const adoptable = !isAgentCase && !!result.winner && !!workflow && workflow.harness !== result.winner;
   const byHarness = result.byHarness ?? [];
   if (byHarness.length < 2) return null;
   return (
     <div className="mt-2 space-y-1.5 rounded-lg border border-violet-500/25 bg-violet-500/[0.04] p-2.5">
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">
-          Harness A/B
+          {isAgentCase ? "Agent A/B" : "Harness A/B"}
         </p>
         {result.winner ? (
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
             <Crown className="h-3 w-3" aria-hidden />
-            {harnessById(result.winner).glyph} {harnessById(result.winner).name} wins
+            {isAgentCase
+              ? `${agentName(result.winner)} wins`
+              : `${harnessById(result.winner).glyph} ${harnessById(result.winner).name} wins`}
           </span>
         ) : (
           <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
             no lane finished
           </span>
         )}
-        {result.winner && (
+        {result.winner && !isAgentCase && (
           <button
             type="button"
             disabled={!adoptable}
@@ -341,16 +401,26 @@ function AbBars({ result }: { result: SuiteCaseResult }) {
               : `✓ adopted on ${result.workflowName}`}
           </button>
         )}
+        {result.winner && isAgentCase ? (
+          <span
+            className="rounded-full border border-dashed px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+            title="Agent verdicts are evidence only — there is no harness default to adopt onto"
+          >
+            evidence only
+          </span>
+        ) : null}
       </div>
       <ul className="space-y-1">
         {byHarness.map((h) => {
-          const preset = harnessById(h.harness);
+          const laneAgent = isAgentCase ? agentName(h.harness) : undefined;
+          const preset = isAgentCase ? undefined : harnessById(h.harness);
+          const laneLabel = laneAgent ?? `${preset!.glyph} ${preset!.name}`;
           const pct = Math.round(h.doneRate * 100);
           const isWinner = result.winner === h.harness;
           return (
             <li key={h.harness} className="flex items-center gap-2 text-[11px]">
-              <span className="w-28 shrink-0 truncate font-medium" title={preset.name}>
-                {preset.glyph} {preset.name}
+              <span className="w-28 shrink-0 truncate font-medium" title={laneLabel}>
+                {laneLabel}
               </span>
               <span
                 className="h-2 min-w-1 flex-1 overflow-hidden rounded-full bg-muted/60"
@@ -358,12 +428,16 @@ function AbBars({ result }: { result: SuiteCaseResult }) {
                 aria-valuenow={pct}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label={`${preset.name} done rate ${pct}%`}
+                aria-label={`${laneLabel} done rate ${pct}%`}
               >
                 <span
                   className={cn(
                     "block h-full rounded-full transition-all duration-700",
-                    HARNESS_BAR_COLORS[h.harness] ?? "bg-muted-foreground/50",
+                    isAgentCase
+                      ? isWinner
+                        ? "bg-sky-500"
+                        : "bg-sky-500/40"
+                      : HARNESS_BAR_COLORS[h.harness] ?? "bg-muted-foreground/50",
                     isWinner && "shadow-[0_0_6px_oklch(0.7_0.15_160/0.6)]"
                   )}
                   style={{ width: `${Math.max(pct, 3)}%` }}
@@ -451,19 +525,32 @@ function CaseRow({
       {notRun ? (
         <p className="mt-2 text-xs italic text-muted-foreground">not run yet — run the suite to collect metrics</p>
       ) : c.runs === "skipped" ? (
-        <p className="mt-2 text-xs italic text-muted-foreground">skipped — workflow missing</p>
+        <p className="mt-2 text-xs italic text-muted-foreground">
+          {c.mode === "agents" ? "skipped — agents missing" : "skipped — workflow missing"}
+        </p>
       ) : c.runs.length === 0 ? (
         <p className="mt-2 text-xs italic text-muted-foreground">could not start (pipeline busy?)</p>
       ) : (
         <ul className="mt-2 space-y-1">
           {c.runs.map((r) => {
-            const rh = r.harness ? harnessById(r.harness) : undefined;
+            const rh = r.harness && c.mode !== "agents" ? harnessById(r.harness) : undefined;
+            const agentLane = r.agentId
+              ? c.agents?.find((a) => a.id === r.agentId)?.name ?? r.agentId
+              : undefined;
             return (
               <li key={r.runId} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[r.status])} aria-hidden />
                   <span className="font-medium text-foreground">{r.status}</span>
                 </span>
+                {agentLane ? (
+                  <span
+                    className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 text-[10px] font-semibold text-sky-600 dark:text-sky-300"
+                    title="Agent lane in the agent-vs-agent bake-off"
+                  >
+                    🤖 {agentLane}
+                  </span>
+                ) : null}
                 {rh ? (
                   <span
                     className="rounded-full border border-violet-500/30 bg-violet-500/10 px-1.5 text-[10px] font-semibold text-violet-600 dark:text-violet-300"
@@ -485,7 +572,7 @@ function CaseRow({
         </ul>
       )}
       {c.runs !== "skipped" && c.runs.length > 0 ? <AbBars result={c} /> : null}
-      {onSetRotation ? (
+      {onSetRotation && c.mode !== "agents" ? (
         <div className="mt-2 border-t border-dashed pt-2">
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Harness rotation{" "}
@@ -510,6 +597,7 @@ export function SuitesBoard() {
   const removeCase = useSuitesStore((s) => s.removeCase);
   const setCaseHarnesses = useSuitesStore((s) => s.setCaseHarnesses);
   const workflows = useWorkflowsStore((s) => s.workflows);
+  const agents = useAgentsStore((s) => s.agents);
   const setBoardOpen = useUiStore((s) => s.setWorkflowBoardOpen);
 
   const [runningId, setRunningId] = React.useState<string | null>(null);
@@ -518,6 +606,9 @@ export function SuitesBoard() {
   const [addWfId, setAddWfId] = React.useState("");
   const [addTask, setAddTask] = React.useState("");
   const [addHarnesses, setAddHarnesses] = React.useState<string[]>([]);
+  // r44 agent-vs-agent: form mode + agent lanes.
+  const [addMode, setAddMode] = React.useState<"workflow" | "agents">("workflow");
+  const [addAgents, setAddAgents] = React.useState<string[]>([]);
 
   // A suite may finish while this component unmounts — poll the running flag
   // so the Stop button state stays truthful.
@@ -574,6 +665,28 @@ export function SuitesBoard() {
   };
 
   const handleAddCase = (suiteId: string) => {
+    // r44 agent-vs-agent branch: ≥2 agents + a task → an agent bake-off case.
+    if (addMode === "agents") {
+      if (addAgents.length < 2 || addTask.trim() === "") {
+        toast.warning("Pick at least 2 agents and a task", {
+          description: "An agent bake-off runs the SAME single-turn task through EACH agent.",
+        });
+        return;
+      }
+      addCase(suiteId, {
+        id: `case_${Date.now().toString(36)}`,
+        workflowId: "",
+        task: addTask.trim().slice(0, 500),
+        agentIds: addAgents.slice(0, SUITE_HARNESSES_MAX),
+      });
+      setAddTask("");
+      setAddAgents([]);
+      toast.success(
+        `Agent bake-off added — ${Math.min(addAgents.length, SUITE_HARNESSES_MAX)} agent lanes`,
+        { description: "Same task, each agent answers solo — the board crowns the most reliable." }
+      );
+      return;
+    }
     if (!addWfId || addTask.trim() === "") {
       toast.error("Pick a pipeline and write the fixed task text first.");
       return;
@@ -658,7 +771,10 @@ export function SuitesBoard() {
                     size="sm"
                     className="h-8 bg-violet-600 text-white hover:bg-violet-700"
                     onClick={() => void handleRun(suite.id)}
-                    disabled={workflows.length === 0}
+                    disabled={
+                      workflows.length === 0 &&
+                      !suite.cases.some((c) => (c.agentIds ?? []).length >= 2)
+                    }
                   >
                     <Play className="h-3.5 w-3.5" /> Run suite
                   </Button>
@@ -739,11 +855,23 @@ export function SuitesBoard() {
                     c={{
                       caseId: c.id,
                       workflowId: c.workflowId,
-                      workflowName: workflows.find((w) => w.id === c.workflowId)?.name ?? "(missing workflow)",
+                      workflowName:
+                        (c.agentIds?.length ?? 0) >= 2
+                          ? "(agent bake-off)"
+                          : workflows.find((w) => w.id === c.workflowId)?.name ?? "(missing workflow)",
                       task: c.task,
                       expect: c.expect,
                       runs: "skipped",
                       doneRate: 0,
+                      ...((c.agentIds?.length ?? 0) >= 2
+                        ? {
+                            mode: "agents" as const,
+                            agents: c.agentIds!
+                              .map((id) => agents.find((a) => a.id === id))
+                              .filter((a): a is NonNullable<typeof a> => !!a)
+                              .map((a) => ({ id: a.id, name: a.name })),
+                          }
+                        : {}),
                     }}
                     rotation={c.harnesses}
                     onSetRotation={
@@ -761,24 +889,65 @@ export function SuitesBoard() {
             {!isRunning ? (
               <div className="space-y-2 rounded-lg border border-dashed p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="shrink-0 sm:w-56">
-                    <Select value={addWfId} onValueChange={setAddWfId}>
-                      <SelectTrigger className="h-8 text-xs" aria-label="Pipeline for the new case">
-                        <SelectValue placeholder="Pick pipeline…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {workflows.map((w) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {/* r44: case kind — classic pipeline replay or agent-vs-agent. */}
+                  <div
+                    className="flex shrink-0 items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5"
+                    role="radiogroup"
+                    aria-label="Case kind"
+                  >
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={addMode === "workflow"}
+                      onClick={() => setAddMode("workflow")}
+                      className={cn(
+                        "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                        addMode === "workflow"
+                          ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Pipeline
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={addMode === "agents"}
+                      onClick={() => setAddMode("agents")}
+                      className={cn(
+                        "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                        addMode === "agents"
+                          ? "bg-sky-500/15 text-sky-600 dark:text-sky-300"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Agents A/B
+                    </button>
                   </div>
+                  {addMode === "workflow" ? (
+                    <div className="shrink-0 sm:w-56">
+                      <Select value={addWfId} onValueChange={setAddWfId}>
+                        <SelectTrigger className="h-8 text-xs" aria-label="Pipeline for the new case">
+                          <SelectValue placeholder="Pick pipeline…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {workflows.map((w) => (
+                            <SelectItem key={w.id} value={w.id}>
+                              {w.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
                   <Input
                     value={addTask}
                     onChange={(e) => setAddTask(e.target.value)}
-                    placeholder="Fixed task text for the new case…"
+                    placeholder={
+                      addMode === "agents"
+                        ? "Same single-turn task for every agent…"
+                        : "Fixed task text for the new case…"
+                    }
                     className="h-8 flex-1 text-xs"
                     maxLength={500}
                   />
@@ -786,17 +955,31 @@ export function SuitesBoard() {
                     <Plus className="h-3.5 w-3.5" /> Add case
                   </Button>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Harness rotation
-                  </span>
-                  <HarnessPicker value={addHarnesses} onChange={setAddHarnesses} />
-                  {addHarnesses.length > 1 ? (
-                    <span className="text-[10px] italic text-violet-600 dark:text-violet-300">
-                      the same task runs under EACH lane — board crowns the winner
+                {addMode === "workflow" ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Harness rotation
                     </span>
-                  ) : null}
-                </div>
+                    <HarnessPicker value={addHarnesses} onChange={setAddHarnesses} />
+                    {addHarnesses.length > 1 ? (
+                      <span className="text-[10px] italic text-violet-600 dark:text-violet-300">
+                        the same task runs under EACH lane — board crowns the winner
+                      </span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Agent lanes
+                    </span>
+                    <AgentPicker value={addAgents} onChange={setAddAgents} />
+                    {addAgents.length > 1 ? (
+                      <span className="text-[10px] italic text-sky-600 dark:text-sky-300">
+                        the same single-turn task runs through EACH agent solo — board crowns the most reliable
+                      </span>
+                    ) : null}
+                  </div>
+                )}
               </div>
             ) : null}
           </Card>

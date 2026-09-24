@@ -189,6 +189,9 @@ export function SuiteScheduler() {
             if (sched.autoAdopt && result.status === "complete") {
               const winnerByWorkflow = new Map<string, string>();
               for (const r of result.results) {
+                // r44: agent-vs-agent cases crown AGENTS, not harnesses —
+                // there is no workflow default to adopt onto. Skipped honestly.
+                if (r.mode === "agents") continue;
                 if (r.runs === "skipped" || !r.winner) continue;
                 winnerByWorkflow.set(r.workflowId, r.winner);
               }

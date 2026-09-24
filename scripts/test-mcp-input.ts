@@ -128,7 +128,7 @@ check("merge from undefined is safe", Object.keys(mergeLastWinners(undefined, { 
 
 // ── E. r42 resolveGateMode — per-server MRTR kill switch ────────────────────
 console.log("E. resolveGateMode (per-server input gates)");
-import { resolveGateMode } from "../src/lib/mcp-input";
+import { isConfirmRequest, resolveGateMode } from "../src/lib/mcp-input";
 {
   const headless = resolveGateMode(false, undefined);
   check("headless lane → closed with autonomous-lane reason", headless.open === false && /autonomous lane/.test(headless.declineReason ?? ""));
@@ -140,6 +140,19 @@ import { resolveGateMode } from "../src/lib/mcp-input";
   check("interactive + explicit true → open", interactiveTrue.open === true);
   const serverOff = resolveGateMode(true, false);
   check("interactive + server-off → closed naming Settings → MCP", serverOff.open === false && /Settings → MCP/.test(serverOff.declineReason ?? ""));
+}
+
+// ── F. r44 isConfirmRequest — type-aware gates ──────────────────────────────
+console.log("F. isConfirmRequest (confirm-style gates)");
+{
+  const t = (raw: Record<string, unknown>) => isConfirmRequest(parseMcpInputRequests([raw])[0]);
+  check("type 'confirm' → confirm", t({ id: "1", type: "confirm", message: "Deploy to staging?" }) === true);
+  check("type 'boolean' → confirm", t({ id: "2", type: "boolean", message: "Proceed?" }) === true);
+  check("message 'Approve the release?' → confirm", t({ id: "3", message: "Approve the release?" }) === true);
+  check("message 'Proceed with deletion?' → confirm", t({ id: "4", message: "Proceed with deletion?" }) === true);
+  check("free-text question stays text", t({ id: "5", type: "string", message: "What region should I deploy to?" }) === false);
+  check("no type, ordinary message → text", t({ id: "6", message: "Enter the ticket id" }) === false);
+  check("garbage request → text (conservative)", t({}) === false);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

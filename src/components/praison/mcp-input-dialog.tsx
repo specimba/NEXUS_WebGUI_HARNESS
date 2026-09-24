@@ -8,7 +8,7 @@
 // deadline honest — an unattended dialog can never hang a run forever.
 
 import * as React from "react";
-import { Hand, ShieldQuestion, X } from "lucide-react";
+import { Check, Hand, ShieldQuestion, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useMcpGateStore } from "@/lib/mcp-input";
+import { isConfirmRequest, useMcpGateStore } from "@/lib/mcp-input";
 import { cn } from "@/lib/utils";
 
 /** One live countdown tick per second while a gate is open. */
@@ -90,7 +90,10 @@ export function McpInputDialog() {
           </DialogHeader>
 
           <div className="max-h-[46vh] space-y-3 overflow-y-auto pr-1">
-            {pending.requests.map((req, i) => (
+            {pending.requests.map((req, i) => {
+              // r44 type-aware gates: confirmations answer with two buttons.
+              const confirm = isConfirmRequest(req);
+              return (
               <div key={req.id ?? i} className="rounded-lg border border-violet-500/25 bg-violet-500/5 p-2.5">
                 <label className="mb-1.5 flex items-start gap-1.5 text-xs font-medium leading-snug" htmlFor={`mcp-input-${i}`}>
                   <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-[10px] font-bold text-violet-600 dark:text-violet-300" aria-hidden>
@@ -106,23 +109,71 @@ export function McpInputDialog() {
                     </span>
                   ) : null}
                 </label>
-                <textarea
-                  id={`mcp-input-${i}`}
-                  value={values[i] ?? ""}
-                  onChange={(e) =>
-                    setValues((v) => {
-                      const next = [...v];
-                      next[i] = e.target.value;
-                      return next;
-                    })
-                  }
-                  rows={2}
-                  autoFocus={i === 0}
-                  placeholder="Type your answer…"
-                  className="w-full resize-y rounded-md border border-border bg-background px-2.5 py-1.5 text-xs shadow-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus-visible:border-violet-500/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
-                />
+                {confirm ? (
+                  <div className="flex items-center gap-2" role="radiogroup" aria-label={`Answer request ${i + 1}`}>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={(values[i] ?? "") === "yes"}
+                      onClick={() =>
+                        setValues((v) => {
+                          const next = [...v];
+                          next[i] = "yes";
+                          return next;
+                        })
+                      }
+                      className={cn(
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                        (values[i] ?? "") === "yes"
+                          ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          : "border-border bg-background text-muted-foreground hover:border-emerald-500/40 hover:text-foreground"
+                      )}
+                    >
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={(values[i] ?? "") === "no"}
+                      onClick={() =>
+                        setValues((v) => {
+                          const next = [...v];
+                          next[i] = "no";
+                          return next;
+                        })
+                      }
+                      className={cn(
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                        (values[i] ?? "") === "no"
+                          ? "border-red-500/60 bg-red-500/15 text-red-600 dark:text-red-400"
+                          : "border-border bg-background text-muted-foreground hover:border-red-500/40 hover:text-foreground"
+                      )}
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                      Deny
+                    </button>
+                  </div>
+                ) : (
+                  <textarea
+                    id={`mcp-input-${i}`}
+                    value={values[i] ?? ""}
+                    onChange={(e) =>
+                      setValues((v) => {
+                        const next = [...v];
+                        next[i] = e.target.value;
+                        return next;
+                      })
+                    }
+                    rows={2}
+                    autoFocus={i === 0}
+                    placeholder="Type your answer…"
+                    className="w-full resize-y rounded-md border border-border bg-background px-2.5 py-1.5 text-xs shadow-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus-visible:border-violet-500/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+                  />
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Honest countdown: the gate auto-declines so a run can never hang. */}
@@ -161,7 +212,7 @@ export function McpInputDialog() {
               )}
             >
               <Hand className="h-3.5 w-3.5" aria-hidden />
-              Provide answers
+              {pending.requests.every((req) => isConfirmRequest(req)) ? "Send decision" : "Provide answers"}
             </Button>
           </div>
         </DialogContent>

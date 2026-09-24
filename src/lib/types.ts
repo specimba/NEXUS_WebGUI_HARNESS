@@ -695,6 +695,14 @@ export interface SuiteCase {
    * single pass under the workflow's own harness inheritance.
    */
   harnesses?: string[];
+  /**
+   * r44 agent-vs-agent lab: when set (≥2 valid ids), the case pits AGENTS —
+   * not harnesses — against each other on the same single-turn task. No
+   * workflow is involved: each agent gets the task as one chat turn (own
+   * model, tools, instructions) and the board crowns the most reliable
+   * agent. Mutually exclusive with the harness rotation.
+   */
+  agentIds?: string[];
 }
 
 /** Metrics collected from one executed suite run (aggregates only — no outputs). */
@@ -709,6 +717,8 @@ export interface SuiteCaseRun {
   toolCallsOk: number;
   /** r36 A/B lab: which harness preset drove this run (missing = inherited). */
   harness?: string;
+  /** r44 agent lane: which agent drove this run (agent-vs-agent cases). */
+  agentId?: string;
 }
 
 /** r36 A/B lab: per-harness aggregate for one case. */
@@ -735,6 +745,14 @@ export interface SuiteCaseResult {
   byHarness?: SuiteHarnessAggregate[];
   /** r36 A/B lab: best harness id — highest doneRate, ties broken by latency. */
   winner?: string;
+  /**
+   * r44: "agents" = agent-vs-agent case (workflowId is "", byHarness keys
+   * are agent ids, winner is an agent id, `agents` carries the roster for
+   * honest rendering). Missing = classic workflow case.
+   */
+  mode?: "workflow" | "agents";
+  /** r44: the agents that competed (id + name snapshot at run time). */
+  agents?: { id: string; name: string }[];
 }
 
 export interface SuiteResult {

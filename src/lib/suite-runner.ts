@@ -9,7 +9,10 @@
 // crowns an empirical winner — "which harness actually finishes this job?"
 
 import { executeWorkflowRun, type ExecuteRunOptions } from "@/lib/workflow-runner";
-import { useSuitesStore, useWorkflowsStore } from "@/lib/stores";
+import { useAgentsStore, useSettingsStore, useSuitesStore, useWorkflowsStore } from "@/lib/stores";
+import { runAgentChat } from "@/lib/chat-client";
+import { resolveLlm } from "@/lib/llm-config";
+import { mcpRunParams } from "@/lib/mcp";
 import { SUITE_GAP_MS, SUITE_HARNESSES_MAX } from "@/lib/constants";
 import { uid } from "@/lib/helpers";
 import { HARNESS_PRESETS, harnessById, isHarnessId } from "@/lib/harness";
@@ -67,7 +70,8 @@ function onceRun(opts: Omit<ExecuteRunOptions, "onSettled">): Promise<string | n
 function aggregateByHarness(runs: SuiteCaseRun[]) {
   const groups = new Map<string, SuiteCaseRun[]>();
   for (const r of runs) {
-    const key = r.harness ?? "inherit";
+    // r44: agent-vs-agent cases key their lanes by agentId.
+    const key = r.agentId ?? r.harness ?? "inherit";
     const bucket = groups.get(key);
     if (bucket) bucket.push(r);
     else groups.set(key, [r]);
@@ -87,6 +91,66 @@ function aggregateByHarness(runs: SuiteCaseRun[]) {
   )[0];
   const winner = best && best.doneRate > 0 ? best.harness : undefined;
   return { byHarness, winner };
+}
+
+/**
+ * r44 agent-vs-agent lane: run ONE task through ONE agent as a single chat
+ * turn (the agent's own model, tools and instructions; headless — MCP input
+ * gates decline, same doctrine as pipeline runs). Metrics only — the reply
+ * text is discarded (localStorage discipline), so the verdict is honest
+ * without storing outputs.
+ */
+async function runAgentTurn(
+  agentId: string,
+  task: string,
+  signal: AbortSignal
+): Promise<{ ok: boolean; ms: number; toolCallsOk: number; replyChars: number; error?: string }> {
+  const started = Date.now();
+  const agent = useAgentsStore.getState().agents.find((a) => a.id === agentId);
+  if (!agent) return { ok: false, ms: 0, toolCallsOk: 0, replyChars: 0, error: "agent not found" };
+  const settings = useSettingsStore.getState().settings;
+  const llm = resolveLlm(settings, agent.model);
+  let reply = "";
+  let toolCallsOk = 0;
+  let error: string | undefined;
+  try {
+    await runAgentChat(
+      {
+        provider: llm.provider,
+        apiKey: llm.apiKey,
+        baseUrl: llm.baseUrl,
+        model: llm.model,
+        providerId: llm.providerId,
+        temperature: agent.temperature,
+        maxIterations: agent.maxIterations,
+        tools: agent.tools ?? [],
+        // r38 MCP: enabled MCP tools join; headless lane — gates decline.
+        ...mcpRunParams(settings),
+        system: agent.instructions,
+        messages: [{ role: "user", content: task }],
+        signal,
+      },
+      {
+        onToken: (t) => {
+          reply += t;
+        },
+        onToolResult: (res) => {
+          if (res.ok === true) toolCallsOk += 1;
+        },
+      }
+    );
+  } catch (err) {
+    if (signal.aborted) throw err;
+    // runAgentChat throws on the SSE error event — the lane dies honestly.
+    error = err instanceof Error ? err.message : String(err);
+  }
+  return {
+    ok: !error && reply.trim().length > 0,
+    ms: Date.now() - started,
+    toolCallsOk,
+    replyChars: reply.length,
+    ...(error ? { error } : {}),
+  };
 }
 
 /**
@@ -117,6 +181,70 @@ export async function runSuite(
   try {
     for (let ci = 0; ci < suite.cases.length; ci++) {
       const c = suite.cases[ci];
+
+      // ── r44 agent-vs-agent lane ────────────────────────────────────────
+      // Cases with ≥2 valid agentIds pit AGENTS against each other on the
+      // same single-turn task. No workflow, no run rows — metrics land
+      // straight in the suite result (reply text is never stored).
+      const agentLane = (c.agentIds ?? [])
+        .map((id) => useAgentsStore.getState().agents.find((a) => a.id === id))
+        .filter((a): a is NonNullable<typeof a> => !!a)
+        .slice(0, SUITE_HARNESSES_MAX);
+      if (agentLane.length >= 2) {
+        onProgress?.({
+          caseIndex: ci,
+          caseTotal: suite.cases.length,
+          workflowName: "Agent bake-off",
+          repeat: 0,
+          repeats,
+        });
+        const runs: SuiteCaseRun[] = [];
+        outerAgents: for (const agent of agentLane) {
+          for (let r = 0; r < repeats; r++) {
+            if (controller.signal.aborted) break outerAgents;
+            onProgress?.({
+              caseIndex: ci,
+              caseTotal: suite.cases.length,
+              workflowName: "Agent bake-off",
+              repeat: r + 1,
+              repeats,
+            });
+            const turn = await runAgentTurn(agent.id, c.task, controller.signal);
+            runs.push({
+              runId: uid("agentrun"),
+              status: turn.ok ? "done" : "error",
+              stepsDone: turn.ok ? 1 : 0,
+              stepsTotal: 1,
+              ms: turn.ms,
+              degraded: 0,
+              reworked: 0,
+              toolCallsOk: turn.toolCallsOk,
+              agentId: agent.id,
+            });
+            if (r < repeats - 1 && !controller.signal.aborted) await sleep(SUITE_GAP_MS);
+          }
+          if (agent !== agentLane[agentLane.length - 1] && !controller.signal.aborted) {
+            await sleep(SUITE_GAP_MS);
+          }
+        }
+        const agentResult: SuiteCaseResult = {
+          caseId: c.id,
+          workflowId: "",
+          workflowName: "(agent bake-off)",
+          task: c.task,
+          expect: c.expect,
+          runs,
+          doneRate: runs.length > 0 ? runs.filter((x) => x.status === "done").length / runs.length : 0,
+          mode: "agents",
+          agents: agentLane.map((a) => ({ id: a.id, name: a.name })),
+        };
+        const agg = aggregateByHarness(runs);
+        agentResult.byHarness = agg.byHarness;
+        agentResult.winner = agg.winner;
+        result.results.push(agentResult);
+        continue;
+      }
+
       const wf = useWorkflowsStore
         .getState()
         .workflows.find((w) => w.id === c.workflowId);

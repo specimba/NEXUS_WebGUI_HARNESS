@@ -73,6 +73,21 @@ export function buildInputResponses(
   }));
 }
 
+/**
+ * r44 type-aware gates: a request that is clearly a CONFIRMATION (type
+ * "confirm"/"approve"/boolean-ish, or a message that opens with an
+ * approve-verb) deserves two buttons instead of a free-text field — faster
+ * to answer honestly, and the wire value stays a clean "yes"/"no".
+ * Conservative on purpose: unknown shapes keep the text field.
+ */
+export function isConfirmRequest(req: McpInputRequest): boolean {
+  if (req.type && /\b(confirm|approve|approval|boolean|bool|yesno|yes-no|yes\/no)\b/i.test(req.type)) {
+    return true;
+  }
+  const msg = req.message ?? "";
+  return /^\s*(approve|approve\?|confirm|allow|proceed|do it|go ahead)\b/i.test(msg);
+}
+
 // ─── The gate store (drives the global dialog) ───────────────────────────────
 
 export interface McpGatePending {
