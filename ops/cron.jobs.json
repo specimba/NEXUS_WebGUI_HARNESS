@@ -7,8 +7,18 @@
   "platformConstraints": {
     "cadenceRestricted": true,
     "minimumObserved": "15 min (fixed_rate 900s registers; NOT sustainable for heavy jobs)",
-    "sustainableTiers": ["30m", "1h", "6h", "12h"],
-    "busyMarksToAvoid": [":00", ":15", ":30", ":45"],
+    "sustainableTiers": [
+      "30m",
+      "1h",
+      "6h",
+      "12h"
+    ],
+    "busyMarksToAvoid": [
+      ":00",
+      ":15",
+      ":30",
+      ":45"
+    ],
     "staggeringRule": "Every job fires off the busy marks; minutes are unique per job so heavy windows never collide.",
     "execLimitEvidence": [
       "r32: job 408717 created fixed_rate 900s kind webDevReview — first 15-min loop, visible in dashboard.",
@@ -40,7 +50,11 @@
       "id": "t0-heartbeat",
       "tier": "T0",
       "purpose": "Short read-only health check: server 200, cron presence confirmed, missing jobs recreated per bootEnsure. No commits, no heavy QA.",
-      "schedule": { "expr": "0 7/30 * * * ?", "human": "every 30 min at :07 and :37", "timezone": "Europe/Istanbul" },
+      "schedule": {
+        "expr": "0 7/30 * * * ?",
+        "human": "every 30 min at :07 and :37",
+        "timezone": "Europe/Istanbul"
+      },
       "kind": "agentTurn",
       "priority": 5,
       "payload": "One-shot lightweight prompt: probe http://localhost:3000 (expect 200), run `cron list`, compare against ops/cron.jobs.json, recreate/report, then stop. No code changes.",
@@ -51,7 +65,11 @@
       "id": "t1-watchtower",
       "tier": "T1",
       "purpose": "Light validation loop: bunx tsc --noEmit + bun run lint fast pass, dev-server health, tracker sync sanity; sync metadata notes. Small fixes only.",
-      "schedule": { "expr": "0 23 * * * ?", "human": "hourly at :23", "timezone": "Europe/Istanbul" },
+      "schedule": {
+        "expr": "0 23 * * * ?",
+        "human": "hourly at :23",
+        "timezone": "Europe/Istanbul"
+      },
       "kind": "agentTurn",
       "priority": 5,
       "payload": "The mandatory English review prompt, watchtower scope: status assessment + QA sweep first, fix only what is small and verified.",
@@ -62,7 +80,11 @@
       "id": "t2-review",
       "tier": "T2",
       "purpose": "Review round: browser QA (agent-browser), small verified fixes, commit/push to origin, worklog update.",
-      "schedule": { "expr": "0 41 */6 * * ?", "human": "every 6 hours at :41 (00:41/06:41/12:41/18:41)", "timezone": "Europe/Istanbul" },
+      "schedule": {
+        "expr": "0 41 */6 * * ?",
+        "human": "every 6 hours at :41 (00:41/06:41/12:41/18:41)",
+        "timezone": "Europe/Istanbul"
+      },
       "kind": "webDevReview",
       "kindFallback": "agentTurn (use if webDevReview registers disabled — carry the identical mandatory English prompt verbatim; proven path of job 409322)",
       "priority": 5,
@@ -74,7 +96,11 @@
       "id": "t3-deep-round",
       "tier": "T3",
       "purpose": "Deep round: one larger roadmap slice with subtask breakdown, broader verification (code/flow/system/durability), remote-verification of pushes, post-run confirmation + handoff.",
-      "schedule": { "expr": "0 17 2 * * ?", "human": "daily at 02:17", "timezone": "Europe/Istanbul" },
+      "schedule": {
+        "expr": "0 17 2 * * ?",
+        "human": "daily at 02:17",
+        "timezone": "Europe/Istanbul"
+      },
       "kind": "agentTurn",
       "priority": 10,
       "payload": "Pick the top item from the latest 'next candidates' list (worklog tail); follow OPERATING_DOCTRINE round budgeting (L, ~90 min) and end with a ROUND_HANDOFF_TEMPLATE handoff.",
@@ -84,7 +110,7 @@
   ],
   "state": {
     "note": "Snapshot of the last verified platform state — refresh via bootEnsure each session; do not mistake this for live truth.",
-    "lastObservedAt": "2026-09-24 09:21 +08",
+    "lastObservedAt": "2026-09-24T10:21:00+08:00",
     "live": [
       {
         "platformJobId": "409322",
@@ -97,7 +123,15 @@
         "evidence": "6 consecutive fires 04:21->09:21 (+08), each delivered a recorded dev round (r36-r41)."
       }
     ],
-    "deletedDisabled": ["408717", "408812", "408899", "409274", "409307", "409319"],
-    "lesson": "Platform cron lifetime is session-scoped and exec-limit-gated: after any session gap, assume zero and run bootEnsure; prefer kind=agentTurn for recurring heavy payloads; 15-min heavy cadences are what burned the account budget originally."
+    "deletedDisabled": [
+      "408717",
+      "408812",
+      "408899",
+      "409274",
+      "409307",
+      "409319"
+    ],
+    "lesson": "Platform cron lifetime is session-scoped and exec-limit-gated: after any session gap, assume zero and run bootEnsure; prefer kind=agentTurn for recurring heavy payloads; 15-min heavy cadences are what burned the account budget originally.",
+    "lastObserved": "job 409322 hourly :21, ENABLED, 7 consecutive fires 04:21->10:21 (r36-r42 delivered)"
   }
 }
