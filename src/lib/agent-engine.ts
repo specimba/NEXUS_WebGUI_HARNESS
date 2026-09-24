@@ -323,6 +323,7 @@ export type UpstreamErrorKind =
   | "timeout"
   | "model"
   | "region"
+  | "credits"
   | "unknown";
 
 export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
@@ -335,6 +336,11 @@ export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
   }
   if (/blocked this network|region\/?IP block|datacenter|server-region|\b451\b/i.test(msg)) {
     return "region";
+  }
+  if (/out of credits|\b402\b|insufficient (?:credits?|funds|balance)|credit.{0,16}(?:exhausted|balance)/i.test(msg)) {
+    // r43: 402 is its own kind — "Unknown" hid the single most actionable
+    // fact (the lane's account is empty; top up or let the relay step over).
+    return "credits";
   }
   if (/\b429\b|rate.?limit|quota|too many requests/i.test(msg)) {
     return "rate-limit";
@@ -472,7 +478,18 @@ export async function runRelayedCustom(
       // Mid-stream death: the client already rendered partial output from this
       // hop — rotating now would stitch two models into one answer. Surface it
       // honestly; the step-level self-heal (if any) recovers cleanly.
-      if (clientSawTokens) throw err;
+      // r43: even without rotation the hop's death MUST reach the client's
+      // health memory — the [hop:…] marker is what demotes the corpse, and
+      // without it every scheduled retry re-dialed the same dead primary first.
+      if (clientSawTokens) {
+        if (hop.key) {
+          send({
+            type: "status",
+            message: `Model relay: ${hop.label ?? hop.model} died mid-stream (${shortError(err)}) — recorded, no rotation [hop:${hop.key}]`,
+          });
+        }
+        throw err;
+      }
       if (i === hops.length - 1) throw err;
       const next = hops[i + 1];
       // [hop:…] marker is consumed by the client's relay health memory — it
@@ -491,7 +508,7 @@ function receiptReason(err: unknown): "rate_limit" | "provider_error" | "capacit
   const kind = classifyUpstreamError(err);
   if (kind === "rate-limit") return "rate_limit";
   if (kind === "region") return "policy";
-  if (kind === "auth" || kind === "timeout" || kind === "network" || kind === "model") return "provider_error";
+  if (kind === "auth" || kind === "timeout" || kind === "network" || kind === "model" || kind === "credits") return "provider_error";
   return "unknown";
 }
 

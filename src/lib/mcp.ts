@@ -204,6 +204,12 @@ interface JsonRpcResponse {
   error?: { code?: number; message?: string; data?: unknown };
 }
 
+/** One POST's outcome: the parsed body + any `mcp-session-id` the server issued. */
+interface JsonRpcExchange {
+  parsed: JsonRpcResponse;
+  sessionId?: string;
+}
+
 /** Parse a JSON-RPC response from either application/json or a single-shot SSE data frame. */
 export function parseMcpResponseBody(text: string, contentType: string): JsonRpcResponse {
   const trimmed = text.trim();
@@ -243,11 +249,12 @@ const PROXY_BLOCKED_HEADERS = new Set([
   "accept-encoding",
 ]);
 
-function buildHeaders(server: McpServer, protocolVersion: string): Record<string, string> {
+function buildHeaders(server: McpServer, protocolVersion: string, sessionId?: string): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json, text/event-stream",
     "MCP-Protocol-Version": protocolVersion,
+    ...(sessionId ? { "mcp-session-id": sessionId } : {}),
   };
   for (const [k, v] of Object.entries(server.headers ?? {})) {
     const name = k.trim();
@@ -259,14 +266,15 @@ function buildHeaders(server: McpServer, protocolVersion: string): Record<string
   return headers;
 }
 
-/** One stateless JSON-RPC POST. Resolves the parsed response or throws McpError. */
+/** One JSON-RPC POST. Resolves the parsed response + any session id the server issued. */
 async function jsonRpcPost(
   server: McpServer,
   payload: Record<string, unknown>,
   protocolVersion: string,
   timeoutMs: number,
-  signal?: AbortSignal
-): Promise<JsonRpcResponse> {
+  signal?: AbortSignal,
+  sessionId?: string
+): Promise<JsonRpcExchange> {
   const body = JSON.stringify(payload);
   const via = server.useProxy ? "proxy" : "browser";
   let res: Response;
@@ -275,13 +283,17 @@ async function jsonRpcPost(
       res = await fetch("/api/mcp", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-praison-csrf": "1" },
-        body: JSON.stringify({ url: server.url, headers: buildHeaders(server, protocolVersion), payload }),
+        body: JSON.stringify({
+          url: server.url,
+          headers: buildHeaders(server, protocolVersion, sessionId),
+          payload,
+        }),
         signal: composeDeadline(timeoutMs, signal),
       });
     } else {
       res = await fetch(server.url, {
         method: "POST",
-        headers: buildHeaders(server, protocolVersion),
+        headers: buildHeaders(server, protocolVersion, sessionId),
         body,
         signal: composeDeadline(timeoutMs, signal),
       });
@@ -318,7 +330,11 @@ async function jsonRpcPost(
     throw new McpError(message);
   }
   const parsed = parseMcpResponseBody(text, res.headers.get("content-type") ?? "");
-  return parsed;
+  // r43: capture the session id streamable-HTTP servers issue on initialize —
+  // read header access browser-direct depends on Access-Control-Expose-Headers;
+  // the proxy passthrough always forwards it.
+  const answeredSessionId = res.headers.get("mcp-session-id") ?? undefined;
+  return { parsed, ...(answeredSessionId ? { sessionId: answeredSessionId } : {}) };
 }
 
 /** Compose a hard deadline with the caller's abort signal. */
@@ -333,13 +349,91 @@ function composeDeadline(timeoutMs: number, signal?: AbortSignal): AbortSignal {
 function throwIfRpcError(parsed: JsonRpcResponse, context: string): void {
   if (!parsed.error) return;
   const msg = parsed.error.message ?? "Unknown JSON-RPC error";
-  if (/session/i.test(msg) && /required|missing/i.test(msg)) {
-    throw new McpError(
-      `${context}: ${msg} — this server requires sessionful transport, which the stateless doctrine does not implement.`,
-      "sessionful-transport"
-    );
-  }
   throw new McpError(`${context}: ${msg}`);
+}
+
+// ─── Session handshake (r43) ───────────────────────────────────────────────────
+// The r38 doctrine was “NO sessions” — and Bright Data answered every
+// tools/list with “Bad Request: No valid session ID provided”: streamable-HTTP
+// servers built on the official SDK hand out a `mcp-session-id` on initialize
+// and reject everything that doesn't carry it. The doctrine upgrade is
+// IN-REQUEST sessions: handshake before the first call, cache the id in
+// memory only (tab lifetime — nothing persists, BYOK discipline intact),
+// re-handshake once when a server calls a session stale. Truly stateless
+// servers are unaffected (initialize is a normal request to them too).
+
+const MCP_CLIENT_INFO = { name: "PraisonAI Web", version: "1.0.0" };
+/** Cache TTL — under typical server session TTLs; stale ids self-heal anyway. */
+const MCP_SESSION_TTL_MS = 25 * 60_000;
+
+interface McpSessionState {
+  id: string;
+  protocolVersion: string;
+  at: number;
+}
+
+const mcpSessions = new Map<string, McpSessionState>();
+
+/** Any server complaint about a session → one fresh handshake + retry. */
+function isMcpSessionError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : "";
+  return /session/i.test(msg) && !/stateless/i.test(msg);
+}
+
+/**
+ * initialize → notifications/initialized → session state (when the server
+ * issues one). The notification is fire-and-forget (202, body ignored) —
+ * some SDK servers require it before they accept tools/list.
+ */
+async function mcpHandshake(
+  server: McpServer,
+  version: string,
+  signal?: AbortSignal
+): Promise<McpSessionState | undefined> {
+  const init = await jsonRpcPost(
+    server,
+    {
+      jsonrpc: "2.0",
+      id: 0,
+      method: "initialize",
+      params: { protocolVersion: version, capabilities: {}, clientInfo: MCP_CLIENT_INFO },
+    },
+    version,
+    MCP_DISCOVER_TIMEOUT_MS,
+    signal
+  );
+  throwIfRpcError(init.parsed, "MCP initialize failed");
+  const answered = (init.parsed.result as { protocolVersion?: string } | undefined)?.protocolVersion;
+  try {
+    await jsonRpcPost(
+      server,
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      version,
+      Math.min(8_000, MCP_DISCOVER_TIMEOUT_MS),
+      signal,
+      init.sessionId
+    );
+  } catch {
+    // 202-empty / SSE-without-data / anything — the notification is a courtesy.
+  }
+  return init.sessionId
+    ? { id: init.sessionId, protocolVersion: answered ?? version, at: Date.now() }
+    : undefined;
+}
+
+/** Cached session id (handshaking when absent/stale). force = re-handshake now. */
+async function ensureMcpSession(
+  server: McpServer,
+  version: string,
+  signal?: AbortSignal,
+  force = false
+): Promise<string | undefined> {
+  const cached = mcpSessions.get(server.id);
+  if (!force && cached && Date.now() - cached.at < MCP_SESSION_TTL_MS) return cached.id;
+  const fresh = await mcpHandshake(server, version, signal);
+  if (fresh) mcpSessions.set(server.id, fresh);
+  else mcpSessions.delete(server.id);
+  return fresh?.id;
 }
 
 // ─── Discovery ───────────────────────────────────────────────────────────────
@@ -351,9 +445,10 @@ export interface McpDiscovery {
 }
 
 /**
- * Stateless tools/list. Walks the protocol-version ladder top-down (the spec
- * latest first), caching the version that answered. A server demanding
- * sessions fails with an honest, actionable error.
+ * tools/list over the protocol-version ladder (spec-latest first). r43: each
+ * rung handshakes FIRST (initialize → session id) so streamable-HTTP servers
+ * built on the official SDK accept the request; a stale-session rejection
+ * gets ONE fresh-handshake retry before the next rung.
  */
 export async function mcpDiscoverTools(server: McpServer, signal?: AbortSignal): Promise<McpDiscovery> {
   const versions = server.protocolVersion
@@ -362,13 +457,34 @@ export async function mcpDiscoverTools(server: McpServer, signal?: AbortSignal):
   let lastError: unknown = null;
   for (const version of versions) {
     try {
-      const parsed = await jsonRpcPost(
-        server,
-        { jsonrpc: "2.0", id: 1, method: "tools/list" },
-        version,
-        MCP_DISCOVER_TIMEOUT_MS,
-        signal
-      );
+      let sessionId = await ensureMcpSession(server, version, signal);
+      let parsed: JsonRpcResponse;
+      try {
+        parsed = (
+          await jsonRpcPost(
+            server,
+            { jsonrpc: "2.0", id: 1, method: "tools/list" },
+            version,
+            MCP_DISCOVER_TIMEOUT_MS,
+            signal,
+            sessionId
+          )
+        ).parsed;
+      } catch (err) {
+        if (!isMcpSessionError(err)) throw err;
+        // Server called our session invalid/stale — one fresh handshake + retry.
+        sessionId = await ensureMcpSession(server, version, signal, true);
+        parsed = (
+          await jsonRpcPost(
+            server,
+            { jsonrpc: "2.0", id: 1, method: "tools/list" },
+            version,
+            MCP_DISCOVER_TIMEOUT_MS,
+            signal,
+            sessionId
+          )
+        ).parsed;
+      }
       throwIfRpcError(parsed, "Discovery failed");
       const result = (parsed.result ?? {}) as { tools?: unknown };
       const rawTools = Array.isArray(result.tools) ? result.tools : [];
@@ -388,15 +504,15 @@ export async function mcpDiscoverTools(server: McpServer, signal?: AbortSignal):
       }
       return {
         tools,
-        protocolVersion: version,
+        protocolVersion: mcpSessions.get(server.id)?.protocolVersion ?? version,
         via: server.useProxy ? "proxy" : "browser",
       };
     } catch (err) {
       lastError = err;
-      // Session-demands and CORS hints are terminal — retrying other protocol
-      // versions cannot help.
+      // CORS hints and timeouts are terminal — retrying other protocol
+      // versions cannot help. Session rejections were already retried once
+      // with a fresh handshake above; past that, the next rung may still work.
       const hint = err instanceof McpError ? err.hint : undefined;
-      if (hint === "sessionful-transport") throw err;
       const msg = err instanceof Error ? err.message : "";
       if (hint === "cors" || /timed out/i.test(msg)) throw err;
       // "Unsupported protocol version" → try the next rung.
@@ -444,24 +560,60 @@ export async function mcpCallTool(
       };
     }
   }
-  const version = server.protocolVersion ?? MCP_PROTOCOL_LADDER[1]; // pragmatic default
+  const version =
+    mcpSessions.get(server.id)?.protocolVersion ?? server.protocolVersion ?? MCP_PROTOCOL_LADDER[1];
   try {
-    const parsed = await jsonRpcPost(
-      server,
-      {
-        jsonrpc: "2.0",
-        id: 2,
-        method: "tools/call",
-        params: {
-          name: toolName,
-          arguments: args,
-          ...(inputResponses ? { inputResponses } : {}),
-        },
-      },
-      version,
-      MCP_CALL_TIMEOUT_MS,
-      signal
-    );
+    let sessionId: string | undefined;
+    try {
+      sessionId = await ensureMcpSession(server, version, signal);
+    } catch {
+      // Handshake itself failed — try the call bare (stateless servers work).
+    }
+    let parsed: JsonRpcResponse;
+    try {
+      parsed = (
+        await jsonRpcPost(
+          server,
+          {
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: {
+              name: toolName,
+              arguments: args,
+              ...(inputResponses ? { inputResponses } : {}),
+            },
+          },
+          version,
+          MCP_CALL_TIMEOUT_MS,
+          signal,
+          sessionId
+        )
+      ).parsed;
+    } catch (err) {
+      if (!isMcpSessionError(err)) throw err;
+      // Stale/unknown session — one fresh handshake + retry.
+      sessionId = await ensureMcpSession(server, version, signal, true);
+      parsed = (
+        await jsonRpcPost(
+          server,
+          {
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: {
+              name: toolName,
+              arguments: args,
+              ...(inputResponses ? { inputResponses } : {}),
+            },
+          },
+          version,
+          MCP_CALL_TIMEOUT_MS,
+          signal,
+          sessionId
+        )
+      ).parsed;
+    }
     throwIfRpcError(parsed, `MCP tool "${toolName}" failed`);
     const result = (parsed.result ?? {}) as {
       content?: unknown;

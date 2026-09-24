@@ -16,7 +16,7 @@
 // provider they chose; nothing is logged anywhere else. Jev may reject browser
 // CORS — the ladder simply falls through to ②, never breaks the harness.
 
-import { buildRelayChain } from "./relay";
+import { buildRelayChain, isFreeLane } from "./relay";
 import type { Settings } from "./types";
 
 const JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
@@ -123,6 +123,12 @@ async function fastJudge(
   const chain = buildRelayChain(settings, { taskFit: "decision" }).filter(
     (h) => !!h.baseUrl // skip the built-in auto hop — it has no OpenAI-compatible surface here
   );
+  // r43: a FREE Jev-generation lane (opencode's jev-*-free) is the decision
+  // tier's native talent — when the vault has one, it LEADS the judge chain
+  // even ahead of other fast lanes (taskBoost already favors it; this pins it
+  // to slot ① explicitly so the ranked chain can't bury it under Elo).
+  const jevIdx = chain.findIndex((h) => /\bjev/i.test(h.model) && isFreeLane(h.model));
+  if (jevIdx > 0) chain.unshift(...chain.splice(jevIdx, 1));
   const asked = state.slice(0, 8_000);
   const prompt =
     `${question.prompt}\n\nAnswer with ONLY a raw JSON object (no markdown fences):\n` +

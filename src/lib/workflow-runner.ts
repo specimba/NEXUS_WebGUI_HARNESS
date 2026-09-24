@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveLlm } from "@/lib/llm-config";
 import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
-import { buildRelayWire, recordRelayHopResult, type RelayTaskFit } from "@/lib/relay";
+import { buildRelayChain, buildRelayWire, providerRecentlyHardFailed, recordRelayHopResult, type RelayTaskFit } from "@/lib/relay";
 import { composeTaskFit, harnessById } from "@/lib/harness";
 import {
   buildConversationalContext,
@@ -139,6 +139,11 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
     label: "Model",
     hint: "The model id no longer exists on this provider (renamed or decommissioned). Open Settings → the provider card → “Refresh models” to pull the current roster, pick a live model, then retry. The relay already skipped past it.",
   },
+  credits: {
+    label: "Out of credits",
+    hint:
+      "This lane's provider account has no credits left (HTTP 402). The relay now skips the whole provider for 5 minutes and the automatic retry lands on another lane — or top up at the provider's console and retry the failed step.",
+  },
   unknown: {
     label: "Unknown",
     hint: "The provider returned an error we couldn't classify. Copy the diagnostics below for details — retrying the failed step is still safe.",
@@ -146,6 +151,10 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
 };
 
 const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
+  // r43 BEFORE everything: a 402 body can embed other status words (request
+  // ids contain "402"-like digit runs are boundary-safe, but "quota" may
+  // co-appear with credit-gate text) — credits is the truest kind.
+  { kind: "credits", re: /\b402\b|out of credits|insufficient (?:credits?|funds|balance)|credit.{0,16}(?:exhausted|balance)/i },
   { kind: "rate-limit", re: /\b429\b|rate.?limit|quota|too many requests/i },
   {
     // BEFORE auth: a 403 with block-page signatures is a location block, not
@@ -163,7 +172,7 @@ const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
 ];
 
 /** Failure kinds the runner heals by itself (one automatic step retry). */
-const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout", "rate-limit"];
+const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout", "rate-limit", "credits"];
 
 /** Classify an engine error message → kind + copy used by the recovery card. */
 export function classifyRunError(message: string): {
@@ -605,6 +614,34 @@ export async function executeWorkflowRun(
     // chain instead of dying — the exact 7am-scheduled-run failure mode.
     let relayNotes: string[] = [];
     const MAX_STEP_ATTEMPTS = 2; // 1 real attempt + 1 automatic self-heal retry
+    // r43 step-over: the primary lane is resolved ONCE (the agent's pin / the
+    // active provider) — but the relay's health memory may already know it is
+    // DEAD (402 credits are account-wide; the previous run recorded it). The
+    // step then STARTS on the chain's top healthy lane from another provider
+    // instead of burning a doomed call every step. And when attempt 1 dies
+    // with a fresh hard error, the self-heal retry swaps the primary too —
+    // making the r25 comment above finally true for the primary itself.
+    let attemptLlm = llm;
+    let steppedOver = false;
+    if (settings.settings.relayEnabled !== false && providerRecentlyHardFailed(llm.providerId)) {
+      const candidate = buildRelayChain(settings.settings, {
+        taskFit,
+        freeFirst: harness.knobs.freeFirst,
+      }).find(
+        (h) => h.providerId !== llm.providerId && h.providerId !== "auto" && h.baseUrl && h.apiKey
+      );
+      if (candidate) {
+        attemptLlm = {
+          provider: "custom",
+          apiKey: candidate.apiKey,
+          baseUrl: candidate.baseUrl,
+          model: candidate.model,
+          label: candidate.label,
+          providerId: candidate.providerId,
+        };
+        steppedOver = true;
+      }
+    }
 
     for (let attempt = 1; attempt <= MAX_STEP_ATTEMPTS; attempt++) {
       // Rebuild the relay wire PER ATTEMPT (r25): attempt 1's failures were
@@ -614,7 +651,7 @@ export async function executeWorkflowRun(
       // hop" fix.
       const relayHops = buildRelayWire(
         settings.settings,
-        { providerId: llm.providerId, model: llm.model },
+        { providerId: attemptLlm.providerId, model: attemptLlm.model },
         { taskFit, freeFirst: harness.knobs.freeFirst }
       );
       try {
@@ -622,13 +659,18 @@ export async function executeWorkflowRun(
         localToolCalls = [];
         relayNotes = [];
         llmTrace.length = 0;
+        if (steppedOver) {
+          relayNotes.push(
+            `Model relay: primary ${llm.label} recently failed hard — starting on ${attemptLlm.label}`
+          );
+        }
         const res = await runAgentChat(
           {
-            provider: llm.provider,
-            apiKey: llm.apiKey,
-            baseUrl: llm.baseUrl,
-            model: llm.model,
-            providerId: llm.providerId,
+            provider: attemptLlm.provider,
+            apiKey: attemptLlm.apiKey,
+            baseUrl: attemptLlm.baseUrl,
+            model: attemptLlm.model,
+            providerId: attemptLlm.providerId,
             temperature: agent.temperature,
             maxIterations: agent.maxIterations + harness.knobs.maxIterationsBonus,
             ...(harness.knobs.stallResumes !== 2 ? { stallResumes: harness.knobs.stallResumes } : {}),
@@ -749,6 +791,37 @@ export async function executeWorkflowRun(
         const kind =
           ((err as { kind?: RunErrorKind }).kind ?? classifyRunError(message).kind);
         if (attempt < MAX_STEP_ATTEMPTS && SELF_HEAL_KINDS.includes(kind) && !signal.aborted) {
+          // r43 credits step-over: 402 is account-wide — attempt 2 must not
+          // re-dial the same provider. Swap the primary to the chain's top
+          // healthy lane from a DIFFERENT provider (health-sorted, so the
+          // already-failed provider's hops sink on their own too).
+          if (kind === "credits" && settings.settings.relayEnabled !== false) {
+            const candidate = buildRelayChain(settings.settings, {
+              taskFit,
+              freeFirst: harness.knobs.freeFirst,
+            }).find(
+              (h) =>
+                h.providerId !== llm.providerId &&
+                h.providerId !== "auto" &&
+                h.baseUrl &&
+                h.apiKey
+            );
+            if (candidate) {
+              attemptLlm = {
+                provider: "custom",
+                apiKey: candidate.apiKey,
+                baseUrl: candidate.baseUrl,
+                model: candidate.model,
+                label: candidate.label,
+                providerId: candidate.providerId,
+              };
+              steppedOver = true;
+              toast.info(`"${runStep.label}" is switching providers`, {
+                icon: "🔁",
+                description: `${llm.label} is out of credits — the retry lands on ${candidate.label}.`,
+              });
+            }
+          }
           toast.info(`"${runStep.label}" hit a ${kind} hiccup — retrying once automatically…`, {
             icon: "🛟",
             description: "The engine dropped the call mid-step. Tool results already gathered are re-run safely.",

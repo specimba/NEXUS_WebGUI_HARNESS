@@ -86,8 +86,15 @@ export async function POST(req: NextRequest) {
   if (text.length > MCP_PROXY_RESPONSE_CAP) {
     text = text.slice(0, MCP_PROXY_RESPONSE_CAP);
   }
-  return new NextResponse(text, {
-    status: upstream.status,
-    headers: { "Content-Type": contentType, "Cache-Control": "no-store" },
-  });
+  // r43 session passthrough: streamable-HTTP servers issue `mcp-session-id` on
+  // initialize — the browser client needs it back to stamp follow-up requests.
+  const responseHeaders: Record<string, string> = {
+    "Content-Type": contentType,
+    "Cache-Control": "no-store",
+  };
+  const sessionId = upstream.headers.get("mcp-session-id");
+  if (sessionId) responseHeaders["mcp-session-id"] = sessionId;
+  const protocol = upstream.headers.get("mcp-protocol-version");
+  if (protocol) responseHeaders["mcp-protocol-version"] = protocol;
+  return new NextResponse(text, { status: upstream.status, headers: responseHeaders });
 }

@@ -309,7 +309,16 @@ export interface WorkflowRunStep {
 }
 
 /** Classified cause of a failed run — drives the recovery card's copy. */
-export type RunErrorKind = "network" | "auth" | "rate-limit" | "timeout" | "model" | "region" | "unknown";
+export type RunErrorKind =
+  | "network"
+  | "auth"
+  | "rate-limit"
+  | "timeout"
+  | "model"
+  | "region"
+  /** r43: the provider account is out of credits (HTTP 402) — actionable: top up or let the relay step over. */
+  | "credits"
+  | "unknown";
 
 /**
  * Reflexion lesson (harness rank-③): a ≤300-char verbal lesson written back

@@ -211,6 +211,9 @@ const ARENA_CATALOG: Record<
       { id: "gpt-6-astra", tier: 1, elo: 0.972, note: "OpenAI flagship" },
       { id: "gemini-3.8-flash", tier: 1, elo: 0.965, note: "Google current-gen" },
       { id: "grok-4.7", tier: 1, elo: 0.955, note: "xAI frontier" },
+      // r43: the Jev GENERATION model lives free on opencode — the decision
+      // tier's native talent (System-One ② leads with it when present).
+      { id: "jev-1.13-free", tier: 2, elo: 0.9, note: "FREE · Jev generation — decision-tier native" },
       { id: "nemotron-3-ultra-free", tier: 2, elo: 0.9, note: "FREE · 550B MoE frontier reasoning" },
       { id: "mimo-v2.6-flash-free", tier: 2, elo: 0.9, note: "FREE · Xiaomi omni · 1M ctx" },
       { id: "deepseek-v4-flash-free", tier: 2, elo: 0.89, note: "FREE · fast reasoning" },
@@ -319,17 +322,35 @@ export function recordRelayHopResult(key: string, ok: boolean, error?: string): 
     e.lastFailAt = Date.now();
     e.soft = !isHardRelayFailure(error);
     if (error) e.lastError = error.slice(0, 160);
-    // OrcaRouter rate limits are WORKSPACE-wide (all keys share one bucket —
-    // docs.orcarouter.ai/operations/rate-limits): one lane's 429 means every
-    // orca lane is throttled, so stamp them all.
-    if (e.soft && key.startsWith("orcarouter::") && error && /\b429\b|rate.?limit/i.test(error)) {
+    // r43 credits are ACCOUNT-wide (HTTP 402 — the whole provider console is
+    // empty, not just this model): stamp every hop of the same provider as a
+    // hard failure so the rotator skips the entire provider for the cooldown.
+    if (!e.soft && error && /\b402\b|out of credits/i.test(error)) {
+      const pid = `${key.split("::")[0]}::`;
       for (const k of Object.keys(h)) {
-        if (k.startsWith("orcarouter::") && k !== key) {
+        if (k.startsWith(pid) && k !== key) {
           h[k] = {
             ...(h[k] ?? { ok: 0, fail: 0 }),
             lastFailAt: Date.now(),
-            soft: true,
-            lastError: "workspace-wide rate limit",
+            lastError: "account out of credits",
+          };
+        }
+      }
+    }
+    // OrcaRouter rate limits are WORKSPACE-wide (all keys share one bucket —
+    // docs.orcarouter.ai/operations/rate-limits): one lane's 429 means every
+    // orca lane is throttled, so stamp them all. r43: a soft 429 must NEVER
+    // un-deaden a fresh HARD 402 stamp — the account is still out of credits
+    // even while throttled — so hard-failed siblings keep their hard state.
+    if (e.soft && key.startsWith("orcarouter::") && error && /\b429\b|rate.?limit/i.test(error)) {
+      for (const k of Object.keys(h)) {
+        if (k.startsWith("orcarouter::") && k !== key) {
+          const s = h[k] ?? { ok: 0, fail: 0 };
+          const hardRecent = !!s.lastFailAt && !s.soft && Date.now() - s.lastFailAt < HEALTH_COOLDOWN_MS;
+          h[k] = {
+            ...s,
+            lastFailAt: Date.now(),
+            ...(hardRecent ? {} : { soft: true, lastError: "workspace-wide rate limit" }),
           };
         }
       }
@@ -360,9 +381,21 @@ function recentlyFailed(entry: RelayHealthEntry | undefined): boolean {
   return Date.now() - entry.lastFailAt < HEALTH_COOLDOWN_MS;
 }
 
+/**
+ * r43: True when ANY hop of this provider hard-failed inside the cooldown
+ * window (402 credits, network death…). Callers use it to skip a dead
+ * PRIMARY — the chain's health sort only protects the backup hops.
+ */
+export function providerRecentlyHardFailed(providerId: string): boolean {
+  if (!providerId || providerId === "auto") return false;
+  const h = loadHealth();
+  const prefix = `${providerId}::`;
+  return Object.entries(h).some(([k, v]) => k.startsWith(prefix) && recentlyFailed(v));
+}
+
 // ─── Task fit heuristics ──────────────────────────────────────────────────────
 
-const FAST_RE = /flash|mini|lite|fast|turbo|lightning|instant|small|20b|8b|bonsai|compound/i;
+const FAST_RE = /flash|mini|lite|fast|turbo|lightning|instant|small|20b|8b|bonsai|compound|\bjev/i;
 const FLAGSHIP_RE = /pro|ultra|flagship|v4\.1|large|frontier|sonnet|120b|550b|command-a|medium|kimi-k3|minimax-m3|glm-5\.3(?!-flash)|fusion/i;
 
 function taskBoost(hop: RelayHop, fit: RelayTaskFit): number {
@@ -455,18 +488,28 @@ export function buildRelayChain(
   // Generation-Era doctrine: health first (don't queue recently-dead hops),
   // then — under the free-frontier harness — free lanes, then tier, then Elo,
   // then task fit, stable within equal rank.
+  // r43 decision-tier fix: for fit === "decision" the task boost sorts BEFORE
+  // tier — the r27 doctrine says System-One jobs use ONLY fast lanes (a slow
+  // genius pass defeats the decision tier), but the old tier-first comparator
+  // let flagship tier-1 lanes lead every judge chain, burying taskBoost
+  // entirely. Other fits keep the tier-first order untouched.
   const health = loadHealth();
   const freeBonus = (h: RelayHop) => (freeFirst && isFreeLane(h.model) ? 1 : 0);
+  const boost = (h: RelayHop) => taskBoost(h, fit);
   hops.sort((a, b) => {
     const hp = recentlyFailed(health[a.key]) ? 1 : 0;
     const hb = recentlyFailed(health[b.key]) ? 1 : 0;
     if (hp !== hb) return hp - hb;
+    if (fit === "decision") {
+      const db = boost(b) - boost(a);
+      if (db !== 0) return db;
+    }
     const fb = freeBonus(b) - freeBonus(a);
     if (fb !== 0) return fb;
     if (a.tier !== b.tier) return a.tier - b.tier;
     if (b.elo !== a.elo) return b.elo - a.elo;
-    const tb = taskBoost(b, fit);
-    const ta = taskBoost(a, fit);
+    const tb = boost(b);
+    const ta = boost(a);
     if (tb !== ta) return tb - ta;
     return 0;
   });

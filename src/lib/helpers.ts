@@ -176,6 +176,7 @@ const LESSON_KIND_LABEL: Record<RunErrorKind | "rework" | "dream", string> = {
   timeout: "timeout",
   model: "model",
   region: "region block",
+  credits: "out of credits",
   unknown: "unknown",
   rework: "review rework",
   dream: "dream",

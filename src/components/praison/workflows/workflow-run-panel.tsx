@@ -9,6 +9,7 @@ import {
   Clock,
   Copy,
   Download,
+  ExternalLink,
   GitCompareArrows,
   GitFork,
   KeyRound,
@@ -167,6 +168,7 @@ const ERROR_KIND_BADGE: Record<RunErrorKind, string> = {
   "rate-limit": "border-amber-500/40 bg-amber-500/10 text-amber-500",
   timeout: "border-amber-500/40 bg-amber-500/10 text-amber-500",
   model: "border-rose-500/40 bg-rose-500/10 text-rose-500",
+  credits: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   unknown: "border-border bg-muted text-muted-foreground",
 };
 
@@ -318,6 +320,19 @@ function RunRecoveryCard({
           <p className="rounded-lg border border-violet-500/25 bg-violet-500/5 p-2.5 text-xs leading-relaxed">
             {err.hint}
           </p>
+          {/* r43: credit-gate errors carry the provider's top-up URL — make it
+              a real affordance instead of copy-paste from a wall of mono text. */}
+          {err.kind === "credits" && /https?:\/\/[^\s)]+/i.exec(err.message) ? (
+            <a
+              href={/https?:\/\/[^\s)]+/i.exec(err.message)![0]}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400"
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              Open the provider's billing console
+            </a>
+          ) : null}
           {run.callLog && run.callLog.length > 0 ? (
             <div className="rounded-lg border bg-background/60 p-2.5">
               <button
