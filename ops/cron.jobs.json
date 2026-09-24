@@ -84,7 +84,7 @@
   ],
   "state": {
     "note": "Snapshot of the last verified platform state — refresh via bootEnsure each session; do not mistake this for live truth.",
-    "lastObservedAt": "2026-09-24 08:21 +08",
+    "lastObservedAt": "2026-09-24 09:21 +08",
     "live": [
       {
         "platformJobId": "409322",
@@ -94,7 +94,7 @@
         "kind": "agentTurn",
         "priority": 5,
         "status": "ENABLED",
-        "evidence": "5 consecutive fires 04:21->08:21 (+08), each delivered a recorded dev round (r36-r40)."
+        "evidence": "6 consecutive fires 04:21->09:21 (+08), each delivered a recorded dev round (r36-r41)."
       }
     ],
     "deletedDisabled": ["408717", "408812", "408899", "409274", "409307", "409319"],
