@@ -64,7 +64,9 @@ function saveCache(data: TrackerData): void {
   try {
     localStorage.setItem(
       TRACKER_CACHE_KEY,
-      JSON.stringify({ at: Date.now(), tracked: data.tracked.slice(0, 120), events: data.events.slice(0, 40), lastSyncAt: data.status.lastSyncAt })
+      // r46: mirror the full GET snapshot (160) — the caps index the pickers
+      // read comes from here, so every synced capability row must survive.
+      JSON.stringify({ at: Date.now(), tracked: data.tracked.slice(0, 160), events: data.events.slice(0, 40), lastSyncAt: data.status.lastSyncAt })
     );
   } catch {
     /* quota — cache is best-effort */

@@ -54,6 +54,7 @@ import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/store
 import { UI_THEMES, uiThemeById } from "@/lib/constants";
 import { providerReady, resolveLlm, resolveExplicitLlm } from "@/lib/llm-config";
 import { FREE_PROVIDERS, loadLiveCatalog } from "@/lib/providers";
+import { capsForModel, loadCapsIndex } from "@/lib/tracker-caps-index";
 import { ModelPicker, type PickerOption } from "@/components/praison/model-picker";
 import type { Agent, MessageAttachment } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -597,6 +598,10 @@ export function Composer({
   }, [settings, modelOverride, agent?.model]);
 
   const modelOptions = React.useMemo<PickerOption[]>(() => {
+    // r46: capability glyphs from the tracker mirror — exact "provider::model"
+    // keys; lanes the tracker never saw show nothing (unknown ≠ no).
+    const capsIndex = loadCapsIndex();
+    const caps = (id: string) => capsForModel(capsIndex, id);
     const opts: PickerOption[] = [
       {
         id: "default",
@@ -618,6 +623,7 @@ export function Composer({
           note: m.note ?? m.id,
           group: p.name,
           keywords: [m.id],
+          caps: caps(`${p.id}::${m.id}`),
         });
       }
       for (const m of (live[p.id] ?? []).slice(0, 20)) {
@@ -631,6 +637,7 @@ export function Composer({
           badge: "live",
           badgeTone: "emerald",
           keywords: [m.id],
+          caps: caps(`${p.id}::${m.id}`),
         });
       }
     }

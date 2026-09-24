@@ -15,12 +15,15 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { CAP_META, type ModelCaps } from "@/lib/tracker-types";
 
 // ─── ModelPicker — searchable, grouped, badged model selector ────────────────
 // Replaces plain Radix Selects for model choice: models stay findable when a
 // provider's list grows past a screenful (live catalogs), and every row can
 // carry a status badge (curated / live / free / no-key / stale). Empty state is
 // explicit — never a blank list.
+// r46: rows can also carry capability glyphs (from the tracker catalogs that
+// publish them) so a tool-calling lane is recognizable at pick-time.
 
 export type PickerBadgeTone = "violet" | "emerald" | "amber" | "muted";
 
@@ -36,6 +39,8 @@ export interface PickerOption {
   /** Status badge text (e.g. "live", "curated", "no key"). */
   badge?: string;
   badgeTone?: PickerBadgeTone;
+  /** Capability glyphs from the tracker catalogs (null/undefined = unknown → none rendered). */
+  caps?: ModelCaps | null;
   /** Extra search keywords beyond label + id. */
   keywords?: string[];
 }
@@ -191,6 +196,17 @@ export function ModelPicker({
                                 {o.badge}
                               </Badge>
                             ) : null}
+                            {o.caps &&
+                              CAP_META.filter((c) => o.caps![c.key]).map((c) => (
+                                <span
+                                  key={c.key}
+                                  title={`${c.label} — ${c.hint}`}
+                                  aria-label={`capability: ${c.label}`}
+                                  className={cn("inline-flex h-3.5 shrink-0 items-center rounded px-0.5 text-[8px] font-bold", c.cls)}
+                                >
+                                  {c.glyph}
+                                </span>
+                              ))}
                           </span>
                           {o.note ? (
                             <span className="block truncate font-mono text-[10px] text-muted-foreground">

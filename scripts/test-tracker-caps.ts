@@ -4,6 +4,7 @@
  */
 import { extractCaps } from "../src/lib/tracker-sources";
 import { capsOf, declaresNoTools, CAP_META } from "../src/lib/tracker-types";
+import { parseCapsIndex, capsForModel, laneLacksTools, toolWarningFor } from "../src/lib/tracker-caps-index";
 
 let pass = 0;
 let fail = 0;
@@ -105,6 +106,53 @@ console.log("CAP_META integrity:");
 check("four capabilities documented", CAP_META.length === 4);
 check("glyphs unique", new Set(CAP_META.map((c) => c.glyph)).size === 4);
 check("every entry has hint + class", CAP_META.every((c) => c.hint.length > 10 && c.cls.length > 0));
+
+console.log("caps index — picker lookups (r46):");
+const mirror = JSON.stringify({
+  at: Date.now(),
+  tracked: [
+    { id: "openrouter::deepseek/deepseek-chat-v3.1:free", meta: { caps: { tools: true, structured: true, reasoning: true, vision: false } } },
+    { id: "kilo::google/lyria-3-clip-preview", meta: { caps: { tools: false, structured: true, reasoning: false, vision: true } } },
+    { id: "orcarouter::some-model", meta: { created: 1 } }, // no caps → unknown
+    { id: "broken-row" }, // missing meta
+    { id: 42, meta: { caps: { tools: true } } }, // non-string id dropped
+  ],
+  events: [],
+});
+const idx = parseCapsIndex(mirror);
+check("rows with caps indexed", Object.keys(idx).length === 2);
+check("empty mirror → {}", Object.keys(parseCapsIndex(null)).length === 0);
+check("garbage JSON → {}", Object.keys(parseCapsIndex("not json{")).length === 0);
+check("caps absent from meta → not indexed", !("orcarouter::some-model" in idx));
+check("strict boolean survives indexing", idx["openrouter::deepseek/deepseek-chat-v3.1:free"]?.tools === true);
+
+check("exact-key lookup hits", capsForModel(idx, "openrouter::deepseek/deepseek-chat-v3.1:free")?.tools === true);
+check("miss → null (never guessed)", capsForModel(idx, "openrouter::never-seen") === null);
+check("pseudo-id 'default' → null", capsForModel(idx, "default") === null);
+check("pseudo-id 'auto::builtin' → null", capsForModel(idx, "auto::builtin") === null);
+check("empty key → null", capsForModel(idx, "") === null);
+
+check("laneLacksTools: tools=false lane → true", laneLacksTools(idx, "kilo::google/lyria-3-clip-preview"));
+check("laneLacksTools: tools=true lane → false", laneLacksTools(idx, "openrouter::deepseek/deepseek-chat-v3.1:free") === false);
+check("laneLacksTools: unknown lane → false (no false accusation)", laneLacksTools(idx, "orcarouter::some-model") === false);
+check("laneLacksTools: missing lane → false", laneLacksTools(idx, "aihubmix::nope") === false);
+
+check("toolWarningFor: no tools attached → null", toolWarningFor(idx, "kilo::google/lyria-3-clip-preview", false) === null);
+check(
+  "toolWarningFor: no-tool lane + tools → names the model",
+  toolWarningFor(idx, "kilo::google/lyria-3-clip-preview", true)?.includes("google/lyria-3-clip-preview") === true
+);
+check("toolWarningFor: tool lane + tools → null", toolWarningFor(idx, "openrouter::deepseek/deepseek-chat-v3.1:free", true) === null);
+check("toolWarningFor: unknown lane + tools → null", toolWarningFor(idx, "openrouter::unknown-lane", true) === null);
+check(
+  "toolWarningFor: nested provider id keeps full model suffix",
+  (() => {
+    const i2 = parseCapsIndex(
+      JSON.stringify({ tracked: [{ id: "orcarouter::a/b/c", meta: { caps: { tools: false } } }] })
+    );
+    return toolWarningFor(i2, "orcarouter::a/b/c", true)?.includes("a/b/c") === true;
+  })()
+);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

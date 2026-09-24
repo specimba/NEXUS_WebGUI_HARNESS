@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { ModelPicker, type PickerOption } from "@/components/praison/model-picker";
 import { AUTO_MODEL, TOOL_IDS, TOOL_META } from "@/lib/constants";
 import { FREE_PROVIDERS, loadLiveCatalog, providerModelOptions } from "@/lib/providers";
+import { capsForModel, laneLacksTools, loadCapsIndex, toolWarningFor, type CapsIndex } from "@/lib/tracker-caps-index";
 import type { Agent, AgentColor, ToolId } from "@/lib/types";
 import { uid } from "@/lib/helpers";
 import { useAgentsStore, useSettingsStore } from "@/lib/stores";
@@ -61,6 +62,9 @@ export function AgentFormDialog({
 
   // Every registry provider's catalog, grouped and ready-badged, merged with
   // the persisted live :free catalog — searchable via the ModelPicker.
+  // r46: rows also carry capability glyphs from the tracker mirror, so a
+  // tool-calling lane is recognizable at pick-time.
+  const capsIndex = React.useState<CapsIndex>(() => loadCapsIndex())[0];
   const modelOptions = React.useMemo<PickerOption[]>(() => {
     const live = loadLiveCatalog();
     const out: PickerOption[] = [
@@ -70,7 +74,7 @@ export function AgentFormDialog({
       const ready = p.noKey || !!providerSettings.providerKeys?.[p.id]?.key?.trim();
       const group = ready ? p.name : `${p.name} — no key yet`;
       for (const o of providerModelOptions(p, live)) {
-        out.push({ ...o, group, note: o.note ?? o.id });
+        out.push({ ...o, group, note: o.note ?? o.id, caps: capsForModel(capsIndex, o.id) });
       }
     }
     if (model && model !== AUTO_MODEL.id && !out.some((o) => o.id === model)) {
@@ -81,10 +85,11 @@ export function AgentFormDialog({
         badge: "saved",
         badgeTone: "amber",
         group: "Built-in",
+        caps: capsForModel(capsIndex, model),
       });
     }
     return out;
-  }, [model, providerSettings.providerKeys]);
+  }, [model, providerSettings.providerKeys, capsIndex]);
 
   // Re-seed local state each time the dialog opens (create vs edit).
   React.useEffect(() => {
@@ -252,7 +257,7 @@ export function AgentFormDialog({
             </p>
           </div>
 
-          {/* Model — searchable, grouped by provider, status-badged */}
+          {/* Model — searchable, grouped by provider, status-badged, caps-glyphed */}
           <div className="space-y-1.5">
             <Label htmlFor="agent-model">Model</Label>
             <ModelPicker
@@ -265,6 +270,17 @@ export function AgentFormDialog({
               emptyTitle="No model matches"
               emptyHint="Try a different search — every registry provider's catalog is listed above."
             />
+            {/* r46 capability honesty: the tracker's catalog data is positive
+                evidence — when it says this lane lacks tool calling and the
+                agent has tools attached, say so BEFORE the run fails. */}
+            {tools.length > 0 && laneLacksTools(capsIndex, model) && (
+              <p
+                role="status"
+                className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11.5px] leading-relaxed text-amber-700 dark:text-amber-400"
+              >
+                ⚠ {toolWarningFor(capsIndex, model, true)}
+              </p>
+            )}
           </div>
 
           {/* Sliders */}
