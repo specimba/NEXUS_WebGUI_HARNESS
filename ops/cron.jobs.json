@@ -110,7 +110,7 @@
   ],
   "state": {
     "note": "Snapshot of the last verified platform state — refresh via bootEnsure each session; do not mistake this for live truth.",
-    "lastObservedAt": "2026-09-24T12:21:00+08:00",
+    "lastObservedAt": "2026-09-24T13:21:00+08:00",
     "live": [
       {
         "platformJobId": "409322",
@@ -133,6 +133,6 @@
       "409319"
     ],
     "lesson": "Platform cron lifetime is session-scoped and exec-limit-gated: after any session gap, assume zero and run bootEnsure; prefer kind=agentTurn for recurring heavy payloads; 15-min heavy cadences are what burned the account budget originally.",
-    "lastObserved": "job 409322 hourly :21, ENABLED, 9 consecutive fires 04:21->12:21 (r36-r45 delivered)"
+    "lastObserved": "job 409322 hourly :21, ENABLED, 10 consecutive fires 04:21->13:21 (r36-r46 delivered)"
   }
 }
