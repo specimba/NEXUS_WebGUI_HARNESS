@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://dev.meta.ai",
+    "name": "Meta Model API - Meta AI",
+    "snippet": "OpenRouterSwap Muse Spark into your existing tools and workflows. Start building. Muse Code in your CLI. A coding agent for your most complex coding workstreams ... Read more",
+    "host_name": "dev.meta.ai",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "openconstruct/llama-mcp-server: MCP cerver to let claude",
+    "snippet": "Usage. Once configured, you can use these tools in Claude Desktop: chat - Main conversation tool . Read more",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://modelcontextprotocol.info",
+    "name": "Guide",
+    "snippet": "MCP ( Model Context Protocol ) is a protocol that enables Large Language Models (LLMs) like Claude to interact with external tools and data sources. With MCP , you ... Read more",
+    "host_name": "modelcontextprotocol.info",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://developer.meta.com",
+    "name": "Other Models | Model Cards and Prompt formats",
+    "snippet": "Meta Code Llama 70B has a different prompt template compared to 34B, 13B and 7B. It starts with a Source: system tag—which can have an empty body—and continues ... Read more",
+    "host_name": "developer.meta.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://k33g.hashnode.dev",
+    "name": "Understanding the Model Context Protocol (MCP)",
+    "snippet": "Jan 2, 2025 — ... MCP servers that compose other MCP servers - tools calling tools across protocol boundaries. ... model would sometimes call the wrong tool ... Read more",
+    "host_name": "k33g.hashnode.dev",
+    "rank": 4,
+    "date": "Jan 2, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.stainless.com",
+    "name": "MCP API Documentation: The Complete Guide",
+    "snippet": "Several tools can help with creating and managing MCP documentation: Model ... Dynamic tool loading based on context . Improved schema compression ... Read more",
+    "host_name": "www.stainless.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://agents-lib.com",
+    "name": "MCP Servers — Model Context Protocol Directory - agents-lib",
+    "snippet": "GitHub's official MCP server for connecting AI tools to GitHub - repos, issues, PRs, Actions, and security analysis. Version Control☆ 31,400 ·. Codebase ... Read more",
+    "host_name": "agents-lib.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://docs.openhands.dev",
+    "name": "Model Context Protocol",
+    "snippet": "Model Context Protocol ( MCP ) enables dynamic tool integration from external servers. Agents can discover and use MCP -provided tools automatically.",
+    "host_name": "docs.openhands.dev",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

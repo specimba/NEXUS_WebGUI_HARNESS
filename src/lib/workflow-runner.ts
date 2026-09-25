@@ -113,6 +113,14 @@ export interface ExecuteRunOptions {
   branch?: { fromRunId: string; fromStepIndex: number };
 }
 
+/**
+ * r51 anti-theatre: a final answer shorter than this reads as a ceremony
+ * round, not work — the run step gets a visible "thin output" chip. Chosen
+ * above pleasantries ("I'll continue the deep-research pass…" ≈ 60 chars)
+ * and below any real synthesis.
+ */
+export const THIN_OUTPUT_CHARS = 120;
+
 // ─── Failure classification (powers the non-silent recovery card) ───────────
 
 const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
@@ -145,6 +153,11 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
     hint:
       "This lane's provider account has no credits left (HTTP 402). The relay now skips the whole provider for 5 minutes and the automatic retry lands on another lane — or top up at the provider's console and retry the failed step.",
   },
+  context: {
+    label: "Prompt too long",
+    hint:
+      "The step's conversation grew past this lane's per-request prompt cap (a free-tier limiter — not the model's real context window). The engine now compacts old tool results automatically and retries the same lane; if it still fails, retry the step so the relay picks a roomier lane, or move this step to a bigger-context model.",
+  },
   unknown: {
     label: "Unknown",
     hint: "The provider returned an error we couldn't classify. Copy the diagnostics below for details — retrying the failed step is still safe.",
@@ -152,6 +165,11 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
 };
 
 const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
+  // r52 BEFORE everything: OrcaRouter's free-tier cap says "This prompt is
+  // longer than the free tier allows… Shorten it, or add credits" — the
+  // credits WORD appears but the fix is compaction, not a top-up, and the
+  // request-id digit runs must never read as HTTP codes.
+  { kind: "context", re: /prompt is longer|prompt too long|context.?length.?exceeded|free tier allows|too many (?:input )?tokens|request too large|payload too large/i },
   // r43 BEFORE everything: a 402 body can embed other status words (request
   // ids contain "402"-like digit runs are boundary-safe, but "quota" may
   // co-appear with credit-gate text) — credits is the truest kind.
@@ -173,7 +191,7 @@ const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
 ];
 
 /** Failure kinds the runner heals by itself (one automatic step retry). */
-const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout", "rate-limit", "credits"];
+const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout", "rate-limit", "credits", "context"];
 
 /** Classify an engine error message → kind + copy used by the recovery card. */
 export function classifyRunError(message: string): {
@@ -235,7 +253,7 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[]): WorkflowR
       label: s.label || "Untitled step",
       output: "",
       toolCalls: [],
-      status: "running" as const,
+      status: "pending" as const,
       kind: s.kind ?? "generate",
     };
   });
@@ -264,7 +282,7 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[]): WorkflowR
       label,
       output: "",
       toolCalls: [],
-      status: "running" as const,
+      status: "pending" as const,
       kind: "generate" as const,
       instruction: DEEP_RESEARCH_INSTRUCTION,
       ...(passTools ? { tools: passTools } : {}),
@@ -287,7 +305,7 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[]): WorkflowR
         label: "Verification & synthesis",
         output: "",
         toolCalls: [],
-        status: "running" as const,
+        status: "pending" as const,
         kind: "generate" as const,
         instruction: VERIFICATION_INSTRUCTION,
       },
@@ -338,7 +356,7 @@ export async function executeWorkflowRun(
     );
     steps = run.steps.map((s, i) =>
       i >= startIndex
-        ? { ...s, output: "", toolCalls: [], status: "running" as const, ms: undefined, verdict: undefined, reworked: undefined }
+        ? { ...s, output: "", toolCalls: [], status: "pending" as const, ms: undefined, verdict: undefined, reworked: undefined }
         : s
     );
     store.patchRun(wf.id, runId, {
@@ -358,7 +376,7 @@ export async function executeWorkflowRun(
     );
     steps = source.steps.map((s, i) =>
       i >= startIndex
-        ? { ...s, output: "", toolCalls: [], status: "running" as const, ms: undefined, verdict: undefined, reworked: undefined }
+        ? { ...s, output: "", toolCalls: [], status: "pending" as const, ms: undefined, verdict: undefined, reworked: undefined }
         : { ...s, status: "done" as const }
     );
     runId = uid("run");
@@ -740,18 +758,26 @@ export async function executeWorkflowRun(
             ? { note: [...(res.transport === "browser-direct" ? ["browser-direct — key stayed in your browser"] : []), ...relayNotes].join(" → ") }
             : {}),
         });
+        // r51 anti-theatre: a step that finished WITHOUT substance must not
+        // read as success. empty → degraded (no output at all); thin → a
+        // non-empty answer too short to be real work (< THIN_OUTPUT_CHARS).
+        // Both surface as visible chips; hollow hands-downstream honestly.
+        const content = res.content ?? "";
+        const empty = content.trim().length === 0;
+        const thin = !empty && content.trim().length < THIN_OUTPUT_CHARS;
         patchRunStep(runStep.stepId, {
-          output: res.content,
+          output: content,
           toolCalls: res.toolCalls.length > 0 ? res.toolCalls : localToolCalls,
           status: "done",
           ms: Date.now() - stepStart,
+          degraded: empty || /^_The model ended/.test(content) || undefined,
+          thin: thin || undefined,
           // r29: budget-sentinel answers are marked degraded — the UI shows an
           // "auto-digest" chip and downstream steps can tell material is thin.
-          degraded: /^_The model ended/.test(res.content) || undefined,
           // r31 harness rank-②: persist the per-iteration timeline (capped).
           ...(llmTrace.length > 0 ? { llmCalls: llmTrace.slice(-60) } : {}),
         });
-        return { content: res.content, ms: Date.now() - stepStart };
+        return { content, ms: Date.now() - stepStart };
       } catch (err) {
         if (isAbortError(err)) {
           pushCall({
@@ -917,6 +943,10 @@ export async function executeWorkflowRun(
         return runId;
       }
 
+      // r53 honest states: the step is NOW executing — everything not yet
+      // reached shows "Queued" instead of the old lying "Running…".
+      patchRunStep(step.stepId, { status: "running" });
+
       // ─── Review gate: audit the previous step, may force one rework pass ───
       if (kind === "review" && i > 0) {
         const reviewed = steps[i - 1];
@@ -948,6 +978,7 @@ export async function executeWorkflowRun(
                 label: step.label,
                 agentName: agentRow.name,
                 degraded: /^_The model ended/.test(content) || undefined,
+                hollow: content.trim() === "" || undefined,
                 output:
                   verdict === "pass"
                     ? content
@@ -1029,6 +1060,7 @@ export async function executeWorkflowRun(
               label: reviewed.label,
               agentName: genAgent.name,
               degraded: /^_The model ended/.test(gen.content) || undefined,
+              hollow: gen.content.trim() === "" || undefined,
               output: gen.content,
             });
             // Loop → the review gate runs again on the improved output
@@ -1099,7 +1131,7 @@ export async function executeWorkflowRun(
               icon: "✓",
               description: `${(gate.confidence * 100).toFixed(0)}% confident via ${gate.via === "jev" ? "Jev" : "fast judge"} — verification pass skipped`,
             });
-            prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(draft) || undefined, output: draft });
+            prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(draft) || undefined, hollow: draft.trim() === "" || undefined, output: draft });
             continue;
           }
           // FAIL / uncertain / no judge available → run the full verification pass.
@@ -1109,7 +1141,7 @@ export async function executeWorkflowRun(
         });
         // r35: a clean completion is a data point for the variant that ran.
         recordVariantOutcome(wf.id, step.stepId, variant?.id, "win");
-        prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(content) || undefined, output: content });
+        prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(content) || undefined, hollow: content.trim() === "" || undefined, output: content });
       } catch (err) {
         if (isAbortError(err)) {
           stopRemaining(i);

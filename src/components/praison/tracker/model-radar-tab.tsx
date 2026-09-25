@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
 import { useSettingsStore } from "@/lib/stores";
+import { ModelOddsCard } from "@/components/praison/tracker/model-odds-card";
 import {
   CAP_META,
   capsOf,
@@ -87,6 +88,9 @@ export function ModelRadarTab() {
 
   return (
     <div className="space-y-4">
+      {/* ── Model Odds — launch forecast (r51, fleet intel for the ranks doctrine) ── */}
+      <ModelOddsCard />
+
       {/* ── Watcher header ── */}
       <Card>
         <CardHeader className="pb-2">

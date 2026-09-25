@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://qwen.ai",
+    "name": "Qwen3-Coder: Agentic Coding in the World",
+    "snippet": "Jul 22, 2025 — Qwen Code is a research-purpose CLI tool adapted from Gemini CLI, with enhanced parser and tool support for Qwen-Coder models.",
+    "host_name": "qwen.ai",
+    "rank": 0,
+    "date": "Jul 22, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "QwenLM/Qwen-Agent: Agent framework and applications",
+    "snippet": "Qwen-Agent is a framework for developing LLM applications based on the instruction following, tool usage, planning, and memory capabilities of Qwen.",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://qwenlm.github.io",
+    "name": "MCP servers with Qwen Code",
+    "snippet": "Sep 8, 2026 — This document provides a guide to configuring and using Model Context Protocol (MCP) servers with Qwen Code.",
+    "host_name": "qwenlm.github.io",
+    "rank": 2,
+    "date": "Sep 8, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://chromewebstore.google.com/detail/qwen/ophdppnnmjanpfpekojldpibobgegljk",
+    "name": "Qwen - Chrome Web Store",
+    "snippet": "Enjoy Qwen AI for Qwen chat and seamless access to Qwen VL. Qwen chat delivers intelligent responses for real-time communication. Start chatting, coding, and ...",
+    "host_name": "chromewebstore.google.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.scrapingbee.com",
+    "name": "Your Guide to Qwen-Agent: Build Powerful AI",
+    "snippet": "May 5, 2026 — In this guide, we will walk through Qwen-Agent and how to use the qwen-agent framework to build AI agents with tools, RAG, Code Interpreter ... Read more",
+    "host_name": "www.scrapingbee.com",
+    "rank": 4,
+    "date": "May 5, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.alibabacloud.com",
+    "name": "Qwen",
+    "snippet": "You can use Qwen models (Qwen, Qwen-Audio, and Qwen-VL, etc.) to build a chat assistant that interacts with users intelligently and comprehensively and ... Read more",
+    "host_name": "www.alibabacloud.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://zitniklab.hms.harvard.edu",
+    "name": "Qwen Code - ToolUniverse Documentation",
+    "snippet": "Qwen Code is a coding agent CLI that can query and edit large codebases and automate workflows. Integrated with the Model Context Protocol (MCP), it can connect ... Read more",
+    "host_name": "zitniklab.hms.harvard.edu",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  }
+]

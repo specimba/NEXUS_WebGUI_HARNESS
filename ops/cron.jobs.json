@@ -110,7 +110,7 @@
   ],
   "state": {
     "note": "Snapshot of the last verified platform state — refresh via bootEnsure each session; do not mistake this for live truth.",
-    "lastObservedAt": "2026-09-24T17:05:00+08:00",
+    "lastObservedAt": "2026-09-25T10:45:00+03:00",
     "live": [
       {
         "platformJobId": "410782",
@@ -131,9 +131,26 @@
       "409274",
       "409307",
       "409319",
-      "409322"
+      "409322",
+      "410782 (VANISHED ~13+ fires)",
+      "411986 (VANISHED ~13+ fires)",
+      "413337 (VANISHED <1h)",
+      "413565 (VANISHED <1h)"
     ],
     "lesson": "Platform cron lifetime is session-scoped and exec-limit-gated: after any session gap, assume zero and run bootEnsure; prefer kind=agentTurn for recurring heavy payloads; 15-min heavy cadences are what burned the account budget originally. 409322 (hourly agentTurn) was retired 2026-09-24 and replaced by 410782 (15-min webDevReview) — the mandate requires webDevReview kind; the payload's light-patrol clause is the budget guard. One loop at a time: parallel sessions merging each other's WIP caused the r49 double-commit.",
-    "lastObserved": "job 410782 15-min webDevReview (0,15,30,45), ENABLED; 409322 hourly agentTurn retired after 13 consecutive fires 04:21->16:21 (r36-r49 delivered)"
+    "lastObserved": "job 413641 15-min webDevReview (02,17,32,47 — staggered off busy marks) recreated 2026-09-25 during r54 after cron list returned total 0 — FOURTH vanishing; 413337 and 413565 both died within ~1h of creation (faster than the ~13-fire pattern; the purge is not time-uniform). Mitigation stands: registry + recreate-on-detection each session.",
+    "recentJobs": [
+      {
+        "platformJobId": "413641",
+        "tierEquivalent": "T2-class review loop (15 min, webDevReview)",
+        "name": "PraisonAI webDevReview patrol",
+        "expr": "0 2/15 * * * ?",
+        "kind": "webDevReview",
+        "priority": 5,
+        "status": "ENABLED",
+        "evidence": "Recreated 2026-09-25 (r54) per bootEnsure after the 4th vanishing (413565 gone <1h); payload carries the identical mandatory prompt + light-patrol guard.",
+        "lastVerified": "2026-09-25T14:30:00+03:00"
+      }
+    ]
   }
 }

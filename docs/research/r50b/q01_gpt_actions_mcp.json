@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://quickchat.ai",
+    "name": "GPT Actions vs MCP: A Technical Comparison",
+    "snippet": "Mar 3, 2026 — A detailed technical comparison of OpenAI's GPT Actions and Anthropic's Model Context Protocol ( MCP ), covering architecture, protocol design ...",
+    "host_name": "quickchat.ai",
+    "rank": 0,
+    "date": "Mar 3, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://unmarkdown.com",
+    "name": "ChatGPT Plugins vs MCP: What Changed and Why It Matters",
+    "snippet": "Feb 25, 2026 — The full history of ChatGPT plugins vs MCP : why OpenAI shut down its plugin store in 2024, and how Model Context Protocol replaced them for ...",
+    "host_name": "unmarkdown.com",
+    "rank": 1,
+    "date": "Feb 25, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://hjarni.com",
+    "name": "MCP vs Custom GPTs",
+    "snippet": "MCP connects ChatGPT or Claude to live notes. MCP (Model Context Protocol ) is an open standard. ChatGPT supports MCP connectors, The key difference Custom GPT ...",
+    "host_name": "hjarni.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.dataslayer.ai",
+    "name": "Beyond Plugins: How the Model Context Protocol (MCP) Is",
+    "snippet": "Sep 16, 2025 — MCP gives ChatGPT real integrations with your tools. developers can create \" Actions \" directly within a specific GPT , offering a smoother, more ...",
+    "host_name": "www.dataslayer.ai",
+    "rank": 3,
+    "date": "Sep 16, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.usecarly.com",
+    "name": "ChatGPT MCP Servers: The Complete List (2026)",
+    "snippet": "Jul 19, 2026 — Does ChatGPT support MCP servers? Yes. OpenAI adopted the Model Context Protocol at DevDay in October 2025 , and ChatGPT connects to MCP ... Read more",
+    "host_name": "www.usecarly.com",
+    "rank": 4,
+    "date": "Jul 19, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.enree.co",
+    "name": "OpenAI Brings Full MCP Support to ChatGPT - Nerd @ Work",
+    "snippet": "Sep 15, 2025 — Model Context Protocol (MCP) support for ChatGPT in September 2025 , This “developer mode” beta gives paying users the ability to connect  ...",
+    "host_name": "blog.enree.co",
+    "rank": 5,
+    "date": "Sep 15, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://coworker.ai",
+    "name": "ChatGPT MCP: Setup, Plans, and Limits (2026)",
+    "snippet": "Jul 16, 2026 — ChatGPT MCP support lets you connect ChatGPT to outside tools and data through the Model Context Protocol, OpenAI adopted in March 2025.",
+    "host_name": "coworker.ai",
+    "rank": 6,
+    "date": "Jul 16, 2026",
+    "favicon": ""
+  }
+]

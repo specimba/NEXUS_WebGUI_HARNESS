@@ -22,16 +22,26 @@ const ls = {
 import {
   CAPACITY_COOLDOWN_BASE_MS,
   CAPACITY_COOLDOWN_MAX_MS,
+  MAX_RELAY_HOPS,
+  STRUCTURAL_COOLDOWN_BASE_MS,
+  STRUCTURAL_COOLDOWN_MAX_MS,
+  SWEEP_MIN_GAP_MS,
   buildRelayChain,
+  buildRelayWire,
   capacityCooldownMs,
+  interleaveByProvider,
   isCapacityCooled,
   isCapacityError,
   isHardRelayFailure,
+  isStructuralCreditsError,
+  laneReliabilityPenalty,
   providerInCooldown,
   recordProbeResult,
   recordRelayHopResult,
   relayHealthSnapshot,
   resetRelayHealth,
+  selectSweepCandidates,
+  structuralCooldownMs,
 } from "../src/lib/relay";
 import {
   classifyRelayKind,
@@ -121,6 +131,58 @@ check("probe fail doubles the remaining cooldown (capped)", (() => {
   const h = relayHealthSnapshot()["kilo::kilo-auto/free"];
   const remain = (h?.cooldownUntil ?? 0) - Date.now();
   return h?.cooldownCount === 2 && remain > 3 * 60_000 && remain <= CAPACITY_COOLDOWN_MAX_MS;
+})());
+
+console.log("structural credits — the ACCOUNT shape (r54):");
+check("402 detector", isStructuralCreditsError("Out of credits (HTTP 402): needs $0.02") === true && isStructuralCreditsError("Rate limit exceeded (HTTP 429)") === false);
+check("structural escalation: base 10 min → ×2 → capped 4 h", (() => {
+  return (
+    structuralCooldownMs(1, 0.5) === STRUCTURAL_COOLDOWN_BASE_MS &&
+    structuralCooldownMs(2, 0.5) === 2 * STRUCTURAL_COOLDOWN_BASE_MS &&
+    structuralCooldownMs(30, 0.5) === STRUCTURAL_COOLDOWN_MAX_MS &&
+    STRUCTURAL_COOLDOWN_MAX_MS > CAPACITY_COOLDOWN_MAX_MS
+  );
+})());
+check("402 puts the lane in a LONG cooldown (> capacity base)", (() => {
+  resetRelayHealth();
+  recordRelayHopResult("orcarouter::kimi/kimi-k3", false, "Out of credits (HTTP 402): You're out of credits — this request needs $0.02. Add credits t…");
+  const e = relayHealthSnapshot()["orcarouter::kimi/kimi-k3"];
+  const remain = (e?.cooldownUntil ?? 0) - Date.now();
+  return isCapacityCooled(e) === true && remain > CAPACITY_COOLDOWN_BASE_MS;
+})());
+check("sibling lanes cool with the account (provider-wide)", (() => {
+  recordRelayHopResult("orcarouter::z-ai/glm-5.3", true); // sibling exists with history
+  recordRelayHopResult("orcarouter::kimi/kimi-k3", false, "Out of credits (HTTP 402): needs $0.02");
+  const sib = relayHealthSnapshot()["orcarouter::z-ai/glm-5.3"];
+  return providerInCooldown("orcarouter") === true && isCapacityCooled(sib) === true && sib?.lastError === "account out of credits";
+})());
+check("repeat 402s escalate the structural window", (() => {
+  const before = relayHealthSnapshot()["orcarouter::kimi/kimi-k3"]?.cooldownUntil ?? 0;
+  recordRelayHopResult("orcarouter::kimi/kimi-k3", false, "Out of credits (HTTP 402): needs $0.02");
+  const after = relayHealthSnapshot()["orcarouter::kimi/kimi-k3"]?.cooldownUntil ?? 0;
+  return after > before;
+})());
+check("a failing probe never SHORTENS a structural cooldown", (() => {
+  resetRelayHealth();
+  recordRelayHopResult("orcarouter::kimi/kimi-k3", false, "Out of credits (HTTP 402): needs $0.02");
+  recordRelayHopResult("orcarouter::kimi/kimi-k3", false, "Out of credits (HTTP 402): needs $0.02");
+  recordRelayHopResult("orcarouter::kimi/kimi-k3", false, "Out of credits (HTTP 402): needs $0.02");
+  const before = relayHealthSnapshot()["orcarouter::kimi/kimi-k3"]?.cooldownUntil ?? 0;
+  recordProbeResult("orcarouter::kimi/kimi-k3", false, "still 402 during probe");
+  const after = relayHealthSnapshot()["orcarouter::kimi/kimi-k3"]?.cooldownUntil ?? 0;
+  return after >= before;
+})());
+check("a passing probe still re-admits a structurally-cooled lane", (() => {
+  recordProbeResult("orcarouter::kimi/kimi-k3", true);
+  const h = relayHealthSnapshot()["orcarouter::kimi/kimi-k3"];
+  return isCapacityCooled(h) === false && isCapacityCooled(relayHealthSnapshot()["orcarouter::z-ai/glm-5.3"]) === false;
+})());
+check("hard network death still invalidates cooling grace", (() => {
+  resetRelayHealth();
+  recordRelayHopResult("orcarouter::kimi/kimi-k3", false, "Out of credits (HTTP 402): needs $0.02");
+  recordRelayHopResult("orcarouter::kimi/kimi-k3", false, "fetch failed — connection dropped");
+  const e = relayHealthSnapshot()["orcarouter::kimi/kimi-k3"];
+  return isCapacityCooled(e) === false && e?.soft === false;
 })());
 
 console.log("chain integration (cooled lanes excluded while healthy alternatives exist):");
@@ -312,6 +374,151 @@ check("sparse providers (<6 attempts) never produce findings", (() => {
   const evts = rows(3, () => ({ ok: false, kind: "network" }));
   return buildWatchdogReport(evts, 7).findings.length === 0;
 })());
+
+console.log("r54 deep-dive detections:");
+check("structural-credits: 402-mass provider → critical with −1", (() => {
+  const evts = [...rows(1, () => ({ ok: true })), ...rows(6, () => ({ ok: false, kind: "credits" }))];
+  const r = buildWatchdogReport(evts, 7);
+  const f = r.findings.find((x) => x.pattern === "structural-credits");
+  return !!f && f.severity === "critical" && f.suggestedWeight === -1;
+})());
+check("stall-dominant: mid-stream timeout ratio → warn on the LANE", (() => {
+  const evts = [
+    ...rows(2, () => ({ ok: true })),
+    ...rows(5, () => ({ ok: false, kind: "timeout", hopKey: "vyce::deepseek-v4.1", providerId: "vyce", modelId: "deepseek-v4.1" })),
+  ];
+  const r = buildWatchdogReport(evts, 7);
+  const f = r.findings.find((x) => x.pattern === "stall-dominant");
+  return !!f && f.providerId === "vyce" && f.evidence.includes("vyce::deepseek-v4.1");
+})());
+check("stale-model: repeated model-not-found → warn", (() => {
+  const evts = [
+    ...rows(3, () => ({ ok: true })),
+    ...rows(2, () => ({ ok: false, kind: "model", hopKey: "groq::llama-3.3-70b-versatile", providerId: "groq", modelId: "llama-3.3-70b-versatile" })),
+  ];
+  const r = buildWatchdogReport(evts, 7);
+  const f = r.findings.find((x) => x.pattern === "stale-model");
+  return !!f && f.evidence.includes("groq::llama-3.3-70b-versatile");
+})());
+check("single-lane-vault: ≥90% of successes from one lane → warn", (() => {
+  const evts = [
+    ...rows(12, () => ({ ok: true, hopKey: "vyce::deepseek-v4-flash-lr", providerId: "vyce", modelId: "deepseek-v4-flash-lr" })),
+    ...rows(1, () => ({ ok: true, hopKey: "groq::openai/gpt-oss-120b", providerId: "groq", modelId: "openai/gpt-oss-120b" })),
+  ];
+  const r = buildWatchdogReport(evts, 7);
+  const f = r.findings.find((x) => x.pattern === "single-lane-vault");
+  return !!f && f.providerId === "vyce" && f.evidence.includes("13");
+})());
+check("no single-lane-vault while the fleet actually answers", (() => {
+  const evts = [
+    ...rows(6, () => ({ ok: true, hopKey: "vyce::a", providerId: "vyce" })),
+    ...rows(5, () => ({ ok: true, hopKey: "kilo::b", providerId: "kilo" })),
+  ];
+  return !buildWatchdogReport(evts, 7).findings.some((x) => x.pattern === "single-lane-vault");
+})());
+
+console.log("r54 lane reliability + roster sweep:");
+check("laneReliabilityPenalty boundaries", (() => {
+  const none = laneReliabilityPenalty(undefined) === 0;
+  const sparse = laneReliabilityPenalty({ ok: 1, fail: 4 }) === 0; // 5 obs — not enough
+  const mid = laneReliabilityPenalty({ ok: 3, fail: 3 }) === 1; // ratio 0.5
+  const bad = laneReliabilityPenalty({ ok: 17, fail: 30 }) === 2; // the real 7d shape
+  const good = laneReliabilityPenalty({ ok: 13, fail: 0 }) === 0;
+  return none && sparse && mid && bad && good;
+})());
+check("chronic stallers sink below reliable siblings in the chain", (() => {
+  resetRelayHealth();
+  const h = relayHealthSnapshot();
+  h["vyce::deepseek-v4.1"] = { ok: 17, fail: 30, lastOkAt: Date.now() };
+  ls.setItem("praison-relay-health", JSON.stringify(h));
+  const chain = buildRelayChain(settings);
+  const lr = chain.findIndex((x) => x.key === "vyce::deepseek-v4-flash-lr");
+  const apex = chain.findIndex((x) => x.key === "vyce::deepseek-v4.1");
+  resetRelayHealth();
+  return lr !== -1 && apex !== -1 && lr < apex;
+})());
+check("sweep selector: never-verified first, fresh lanes skipped, deterministic", (() => {
+  const now = Date.now();
+  const health: Record<string, { ok: number; fail: number; lastOkAt?: number; lastProbeAt?: number }> = {
+    "a::fresh": { ok: 5, fail: 0, lastOkAt: now - 60 * 60_000 },
+    "b::old-probe": { ok: 1, fail: 1, lastProbeAt: now - 7 * 60 * 60_000 },
+    "c::never": { ok: 0, fail: 0 },
+    "d::mid": { ok: 2, fail: 0, lastOkAt: now - 2 * 60 * 60_000 },
+  };
+  const picked = selectSweepCandidates(
+    ["a::fresh", "b::old-probe", "c::never", "d::mid"],
+    health,
+    now,
+    2
+  );
+  const tie = selectSweepCandidates(["z::a", "a::z"], {}, now, 5);
+  return (
+    JSON.stringify(picked) === JSON.stringify(["c::never", "b::old-probe"]) &&
+    JSON.stringify(tie) === JSON.stringify(["a::z", "z::a"]) &&
+    selectSweepCandidates(["a::fresh"], health, now, 2).length === 0 &&
+    SWEEP_MIN_GAP_MS === 6 * 60 * 60_000
+  );
+})());
+
+console.log("r51 fleet engagement (interleaveByProvider + wire diversity):");
+check("round-robin preserves per-provider order, rotates providers", (() => {
+  const mk = (id: string, m: string) => ({ key: `${id}::${m}`, providerId: id, model: m, label: m, tier: 2 as const, elo: 0.9 });
+  const out = interleaveByProvider([
+    mk("a", "a1"), mk("a", "a2"), mk("a", "a3"),
+    mk("b", "b1"),
+    mk("c", "c1"), mk("c", "c2"),
+  ]);
+  return (
+    out.map((h) => h.key).join(",") === "a::a1,b::b1,c::c1,a::a2,c::c2,a::a3" &&
+    JSON.stringify(out) === JSON.stringify(interleaveByProvider(out.map((o) => mk(o.providerId, o.model)))) // deterministic
+  );
+})());
+check("empty input → empty output", interleaveByProvider([]).length === 0);
+{
+  // Full-vault diversity: 8 keyed providers → the wire must span them all
+  // instead of letting one provider's high-Elo lanes eat every slot.
+  const fleet: Settings = {
+    seeded: true,
+    providerKeys: {
+      vyce: { key: "k1" },
+      aihubmix: { key: "k2" },
+      orcarouter: { key: "k3" },
+      "google-ai-studio": { key: "k4" },
+      groq: { key: "k5" },
+      openrouter: { key: "k6" },
+      opencode: { key: "k7" },
+      kilo: { key: "k8" },
+    },
+    relayWeights: {},
+  } as unknown as Settings;
+  resetRelayHealth();
+  const wire = buildRelayWire(fleet, { providerId: "vyce", model: "deepseek-v4.1" });
+  check("wire respects the hop cap", wire.length <= MAX_RELAY_HOPS);
+  check("built-in engine backstop ALWAYS rides last (was sliced off pre-r51)", wire[wire.length - 1]?.useAuto === true);
+  // RelayWireHop carries no ids by design (stateless wire) — derive the
+  // provider from the hop key "providerId::model".
+  const providerOf = (h: (typeof wire)[number]) => (h.key ?? "").split("::")[0];
+  const nonAuto = wire.filter((h) => !h.useAuto);
+  const distinct = new Set(nonAuto.map(providerOf));
+  check(`wire spans the keyed fleet (8 distinct providers across ${nonAuto.length} hops)`, distinct.size >= 8);
+  check("no single provider hogs the wire (>2 slots)", [...distinct.values()].every((p) => nonAuto.filter((h) => providerOf(h) === p).length <= 2));
+  check("primary lane excluded from the wire", !wire.some((h) => h.key === "vyce::deepseek-v4.1"));
+  check("wire is deterministic (same input, same wire)", JSON.stringify(wire) === JSON.stringify(buildRelayWire(fleet, { providerId: "vyce", model: "deepseek-v4.1" })));
+}
+check("saved relayOrder is an explicit doctrine — interleave skipped", (() => {
+  resetRelayHealth();
+  const ordered: Settings = {
+    seeded: true,
+    providerKeys: { vyce: { key: "v" }, opencode: { key: "o" }, orcarouter: { key: "r" } },
+    relayWeights: {},
+    relayOrder: ["opencode::claude-fable-5", "vyce::deepseek-v4.1"],
+  } as unknown as Settings;
+  const chain = buildRelayChain(ordered);
+  const first = chain.findIndex((h) => h.key === "opencode::claude-fable-5");
+  const second = chain.findIndex((h) => h.key === "vyce::deepseek-v4.1");
+  return first !== -1 && second !== -1 && first < second;
+})());
+resetRelayHealth();
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

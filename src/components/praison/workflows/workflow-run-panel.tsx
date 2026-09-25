@@ -6,6 +6,7 @@ import {
   Ban,
   Check,
   ChevronDown,
+  CircleSlash,
   Clock,
   Copy,
   Download,
@@ -89,6 +90,7 @@ import type {
 // ─── Pipeline run panel: task → live streaming step cards → run history ─────
 
 const STEP_BORDER: Record<WorkflowRunStep["status"], string> = {
+  pending: "border-l-border",
   running: "border-l-violet-500",
   done: "border-l-emerald-500",
   error: "border-l-red-500",
@@ -96,6 +98,14 @@ const STEP_BORDER: Record<WorkflowRunStep["status"], string> = {
 };
 
 function StatusIndicator({ status, ms }: { status: WorkflowRunStep["status"]; ms?: number }) {
+  if (status === "pending") {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+        <Clock className="h-3.5 w-3.5" aria-hidden />
+        Queued
+      </span>
+    );
+  }
   if (status === "running") {
     return (
       <span className="flex shrink-0 items-center gap-1 text-xs text-violet-400">
@@ -169,6 +179,7 @@ const ERROR_KIND_BADGE: Record<RunErrorKind, string> = {
   timeout: "border-amber-500/40 bg-amber-500/10 text-amber-500",
   model: "border-rose-500/40 bg-rose-500/10 text-rose-500",
   credits: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  context: "border-amber-500/40 bg-amber-500/10 text-amber-500",
   unknown: "border-border bg-muted text-muted-foreground",
 };
 
@@ -1125,6 +1136,33 @@ export function WorkflowRunPanel({
                           auto-digest
                         </span>
                       ) : null}
+                      {step.status === "done" && step.output.trim() === "" ? (
+                        <span
+                          title="Anti-theatre (r51): this step finished WITHOUT producing any output — it counts as done but contributed nothing. Downstream steps were warned."
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400"
+                        >
+                          <CircleSlash className="h-3 w-3" aria-hidden />
+                          empty output
+                        </span>
+                      ) : null}
+                      {step.thin && step.output.trim() !== "" ? (
+                        <span
+                          title="Anti-theatre (r51): suspiciously short final answer — likely a ceremony round, not real work. Branch from an earlier step or re-run with a sharper instruction."
+                          className="inline-flex shrink-0 items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400"
+                        >
+                          thin output · {step.output.trim().length} chars
+                        </span>
+                      ) : null}
+                      {step.status === "done" && step.output.trim() !== "" && !step.thin ? (
+                        <span
+                          title="Substance receipt: final output size (r51 — the timeline now shows product, not just motion)"
+                          className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-emerald-600 dark:text-emerald-400"
+                        >
+                          {step.output.trim().length >= 1000
+                            ? `${(step.output.trim().length / 1000).toFixed(1)}k chars`
+                            : `${step.output.trim().length} chars`}
+                        </span>
+                      ) : null}
                       {step.llmCalls && step.llmCalls.length > 0 ? (
                         <span
                           title={
@@ -1172,6 +1210,10 @@ export function WorkflowRunPanel({
                           <span className="typing-dot h-1.5 w-1.5 rounded-full bg-violet-400" />
                           <span className="typing-dot h-1.5 w-1.5 rounded-full bg-violet-400" />
                         </div>
+                      ) : step.status === "pending" ? (
+                        <p className="py-1.5 text-xs text-muted-foreground">
+                          Queued — earlier steps run first; this pipeline is strictly sequential.
+                        </p>
                       ) : null}
                     </div>
 

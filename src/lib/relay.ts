@@ -18,6 +18,18 @@
 //  • TASK FIT — research steps (search tools) prefer fast models first;
 //    quality steps (writing/review) prefer flagships first. The chain order
 //    adapts to the task instead of one static ranking.
+//
+// r54 provider-behavior doctrine (user: "need more smarter approaches with
+// providers limits and behaviors"): free-tier providers fail in SHAPES, not
+// at random. Three shapes now get tailored handling:
+//  • CAPACITY (429/free-tier throttling) — per-lane jittered cooldown, 2–30 min.
+//  • STRUCTURAL CREDITS (402) — the ACCOUNT is empty, not the lane: the whole
+//    provider cools with a slower escalation (10 min → 4 h) so a dead vault
+//    row stops being re-dialed every 5 minutes (orcarouter was re-dialed 19×
+//    in 7d for $0.02 requests it could never serve).
+//  • CHRONIC STALLS (mid-stream timeouts) — a lane that answers 17× but stalls
+//    30× must not outrank its 13-0 sibling just because its Elo is higher: a
+//    long-run reliability penalty sinks flaky lanes below reliable ones.
 
 import { providerBaseUrl, providerById } from "./providers";
 import { loadLiveCatalog } from "./providers";
@@ -254,13 +266,48 @@ const AUTO_HOP: RelayHop = {
 };
 
 /**
- * r49: hard cap on backup hops per request (worst-case latency guard).
- * Raised 5 → 8 with the failover-v2 doctrine: a user-visible rate-limit error
- * is a bug unless the chain actually reached a live lane — with per-provider
- * dedup + capacity cooldowns the 8 hops land on DISTINCT, healthy providers
- * instead of burning the budget on siblings of a throttled gateway.
+ * Hard cap on backup hops per request (worst-case latency guard).
+ * r49 raised 5 → 8 but its "hops land on DISTINCT providers" claim was
+ * aspirational — the slice ran over the raw elo-sorted list, so one provider
+ * with many high-Elo lanes (aihubmix owns 18) crowded every other keyed
+ * provider out of the wire entirely. r51 makes the claim TRUE:
+ * interleaveByProvider() round-robins the sorted hops across providers BEFORE
+ * the cap, and the cap is raised 8 → 12 so a fully-keyed vault (16 providers)
+ * puts a whole fleet on the wire — one lane per provider in round 1 — instead
+ * of the top-2 gateways eating every slot while opencode/kilo/openrouter/zai
+ * sit idle beyond the slice.
  */
-export const MAX_RELAY_HOPS = 8;
+export const MAX_RELAY_HOPS = 12;
+
+/**
+ * r51 fleet-engagement doctrine (user: "lots of alternatives … are while
+ * waiting there" — elo-sorted slices structurally lock out small providers).
+ * Deterministic round-robin across providerId groups: every provider's lanes
+ * keep their internal (health/tier/elo) order, and providers contribute in
+ * first-seen order of the sorted list — round 1 = each provider's best lane,
+ * round 2 = each provider's second lane, and so on. NO randomness: same input
+ * ⇒ same wire, satisfying the "no random rotation" invariant while engaging
+ * the whole keyed fleet and spreading daily-credit pressure across gateways.
+ */
+export function interleaveByProvider(hops: RelayHop[]): RelayHop[] {
+  const groups = new Map<string, RelayHop[]>();
+  for (const h of hops) {
+    const g = groups.get(h.providerId);
+    if (g) g.push(h);
+    else groups.set(h.providerId, [h]);
+  }
+  const out: RelayHop[] = [];
+  for (let round = 0; ; round++) {
+    let added = false;
+    for (const g of groups.values()) {
+      if (round < g.length) {
+        out.push(g[round]);
+        added = true;
+      }
+    }
+    if (!added) return out;
+  }
+}
 
 // ─── r49 Capacity cooldown (failover state machine, STATE 3) ─────────────────
 // Doctrine change: a soft 429/capacity failure used to NEVER demote a hop —
@@ -288,6 +335,29 @@ export function capacityCooldownMs(consecutiveFails: number, rand: number): numb
   const r = Math.min(1, Math.max(0, rand));
   const jitter = 1 + CAPACITY_COOLDOWN_JITTER * (r * 2 - 1); // ±20%
   return Math.round(raw * jitter);
+}
+
+// ─── r54 Structural cooldown (account-shaped failures) ─────────────────────
+// A 402 means the provider CONSOLE is empty — no lane of that provider can
+// answer until a top-up or the daily reset. That reality heals on the scale
+// of hours, not minutes, so structural failures escalate from a 10-min base
+// to a 4-h cap (vs capacity's 2–30 min). Still never removal: the probe loop
+// keeps verifying and a passing probe re-admits instantly.
+export const STRUCTURAL_COOLDOWN_BASE_MS = 10 * 60_000;
+export const STRUCTURAL_COOLDOWN_MAX_MS = 4 * 60 * 60_000;
+
+export function structuralCooldownMs(consecutiveFails: number, rand: number): number {
+  const n = Math.max(1, Math.floor(consecutiveFails));
+  const raw = Math.min(STRUCTURAL_COOLDOWN_BASE_MS * 2 ** (n - 1), STRUCTURAL_COOLDOWN_MAX_MS);
+  const r = Math.min(1, Math.max(0, rand));
+  const jitter = 1 + CAPACITY_COOLDOWN_JITTER * (r * 2 - 1); // ±20%
+  return Math.round(raw * jitter);
+}
+
+/** r54: account-shaped failure — 402 / "out of credits" family. */
+export function isStructuralCreditsError(error?: string): boolean {
+  if (!error) return false;
+  return /\b402\b|out of credits/i.test(error);
 }
 
 /**
@@ -334,6 +404,8 @@ export interface RelayHealthEntry {
   cooldownUntil?: number;
   /** r49: consecutive capacity failures — drives the escalating backoff. */
   cooldownCount?: number;
+  /** r54: last time a probe or roster sweep verified this lane (drives sweep rotation). */
+  lastProbeAt?: number;
 }
 
 /**
@@ -346,7 +418,10 @@ export interface RelayHealthEntry {
  */
 export function isHardRelayFailure(error?: string): boolean {
   if (!error) return true;
-  return !/\b429\b|rate.?limit|quota|too many requests|capacity is limited|\b4(?:0[13578]|1[02-9])\b/i.test(error);
+  // r52: prompt-cap errors are REQUEST-shaped (the transcript is fat, the
+  // lane is healthy) — they join the soft family so a deep-research step
+  // that outgrew a free-tier cap never demotes a perfectly good provider.
+  return !/\b429\b|rate.?limit|quota|too many requests|capacity is limited|prompt is longer|prompt too long|context.?length.?exceeded|free tier allows|\b4(?:0[13578]|1[02-9])\b/i.test(error);
 }
 
 type RelayHealth = Record<string, RelayHealthEntry>;
@@ -372,10 +447,16 @@ function saveHealth(h: RelayHealth): void {
 }
 
 /** Record one hop outcome (called from the rotation status lines the server emits). */
-export function recordRelayHopResult(key: string, ok: boolean, error?: string): void {
+export function recordRelayHopResult(
+  key: string,
+  ok: boolean,
+  error?: string,
+  opts?: { probe?: boolean }
+): void {
   if (!key || key === "auto::builtin") return;
   const h = loadHealth();
   const e = h[key] ?? { ok: 0, fail: 0 };
+  if (opts?.probe) e.lastProbeAt = Date.now();
   if (ok) {
     e.ok += 1;
     e.lastOkAt = Date.now();
@@ -397,26 +478,38 @@ export function recordRelayHopResult(key: string, ok: boolean, error?: string): 
       const count = (e.cooldownCount ?? 0) + 1;
       e.cooldownCount = count;
       e.cooldownUntil = Date.now() + capacityCooldownMs(count, Math.random());
+    } else if (!e.soft && isStructuralCreditsError(error)) {
+      // r54: 402 is account-shaped — cool THIS lane on the slow structural
+      // escalation instead of the 5-min hard stamp that expired and let the
+      // chain re-dial an empty account every few minutes all week.
+      const count = (e.cooldownCount ?? 0) + 1;
+      e.cooldownCount = count;
+      e.cooldownUntil = Date.now() + structuralCooldownMs(count, Math.random());
     } else {
       // Non-capacity failures don't extend a capacity cooldown retroactively,
-      // but a HARD failure (network death, 402) invalidates any cooling grace
+      // but a HARD failure (network death) invalidates any cooling grace
       // the lane had — it's not merely throttled, it's broken.
       if (!e.soft) {
         e.cooldownUntil = undefined;
         e.cooldownCount = 0;
       }
     }
-    // r43 credits are ACCOUNT-wide (HTTP 402 — the whole provider console is
-    // empty, not just this model): stamp every hop of the same provider as a
-    // hard failure so the rotator skips the entire provider for the cooldown.
-    if (!e.soft && error && /\b402\b|out of credits/i.test(error)) {
+    // r43/r54: credits are ACCOUNT-wide (HTTP 402 — the whole provider console
+    // is empty, not just this model). Every sibling lane cools with the same
+    // structural escalation, so providerInCooldown() stays true for hours and
+    // the probe loop — not wishful re-dialing — decides when it has recovered.
+    if (!e.soft && isStructuralCreditsError(error)) {
       const pid = `${key.split("::")[0]}::`;
       for (const k of Object.keys(h)) {
         if (k.startsWith(pid) && k !== key) {
+          const s = h[k] ?? { ok: 0, fail: 0 };
+          const sc = (s.cooldownCount ?? 0) + 1;
           h[k] = {
-            ...(h[k] ?? { ok: 0, fail: 0 }),
+            ...s,
             lastFailAt: Date.now(),
             lastError: "account out of credits",
+            cooldownUntil: Date.now() + structuralCooldownMs(sc, Math.random()),
+            cooldownCount: sc,
           };
         }
       }
@@ -468,6 +561,7 @@ export function recordProbeResult(key: string, ok: boolean, error?: string, late
   if (!key || key === "auto::builtin") return;
   const h = loadHealth();
   const e = h[key] ?? { ok: 0, fail: 0 };
+  e.lastProbeAt = Date.now();
   if (ok) {
     e.ok += 1;
     e.lastOkAt = Date.now();
@@ -485,13 +579,61 @@ export function recordProbeResult(key: string, ok: boolean, error?: string, late
       Math.max(remaining * 2, CAPACITY_COOLDOWN_BASE_MS * 2),
       CAPACITY_COOLDOWN_MAX_MS
     );
-    e.cooldownUntil = now + extend;
+    // r54: a probe may EXTEND a cooldown but never SHORTEN one — a failing
+    // probe against a 4-h structural cooldown must not collapse it to the
+    // 30-min capacity cap (the account is still empty either way).
+    e.cooldownUntil = Math.max(e.cooldownUntil ?? 0, now + extend);
     e.soft = true;
     if (error) e.lastError = error.slice(0, 160);
     e.lastFailAt = now;
   }
   h[key] = e;
   saveHealth(h);
+}
+
+/**
+ * r54 lane reliability — the long-run shape the Elo sort must not ignore.
+ * A lane that answered 17× but stalled/failed 30× (vyce::deepseek-v4.1 in the
+ * 7d log) loses to a 13-0 sibling regardless of tier: chronic flakiness is a
+ * routing fact. Returns 0 (no history or healthy), 1 (ratio < 0.6), 2 (ratio
+ * < 0.4). Needs ≥ 6 observations so one bad call never demotes a lane, and
+ * heals organically as successes accumulate (ratio recovers → penalty lifts).
+ */
+export function laneReliabilityPenalty(entry: RelayHealthEntry | undefined): 0 | 1 | 2 {
+  if (!entry) return 0;
+  const total = entry.ok + entry.fail;
+  if (total < 6) return 0;
+  const ratio = entry.ok / total;
+  if (ratio < 0.4) return 2;
+  if (ratio < 0.6) return 1;
+  return 0;
+}
+
+// ─── r54 Roster sweep (pure selector) ──────────────────────────────────────
+// Cooldown probes only check lanes that ALREADY failed. The sweep is the
+// other half of "regular checks for them if they are cut out": periodically
+// 1-token ping keyed lanes that look healthy but haven't been VERIFIED
+// (answered or probed) in ≥ SWEEP_MIN_GAP_MS. Pure + deterministic so the
+// prober stays thin and the tests can pin the rotation.
+export const SWEEP_MIN_GAP_MS = 6 * 60 * 60_000;
+
+export function selectSweepCandidates(
+  keys: string[],
+  health: RelayHealth,
+  now: number,
+  limit: number
+): string[] {
+  return keys
+    .filter((k) => k !== "auto::builtin")
+    .map((k) => {
+      const e = health[k];
+      const lastVerified = Math.max(e?.lastProbeAt ?? 0, e?.lastOkAt ?? 0);
+      return { k, at: lastVerified };
+    })
+    .filter(({ at }) => now - at >= SWEEP_MIN_GAP_MS)
+    .sort((a, b) => a.at - b.at || (a.k < b.k ? -1 : 1))
+    .slice(0, Math.max(0, limit))
+    .map(({ k }) => k);
 }
 
 /** True when the hop failed inside the cooldown window. */
@@ -674,10 +816,17 @@ export function buildRelayChain(
       });
     }
     // Live-roster extras (Refresh models button) join as generic T2 hops.
+    // r54: free lanes FIRST among the extras and a slightly higher free Elo —
+    // a keyed provider's fresh $0 capacity (tracker-synced) should enter the
+    // chain ahead of its paid long tail, not buried behind it at #7 of 6.
     const liveExtras = (loadLiveCatalog()[providerId] ?? []).filter(
       (m) => !seen.has(m.id) && !/imagine|embed|whisper|tts|image/i.test(m.id)
     );
-    for (const m of liveExtras.slice(0, 6)) {
+    const sortedExtras = [...liveExtras].sort(
+      (a, b) => Number(isFreeLane(b.id)) - Number(isFreeLane(a.id))
+    );
+    for (const m of sortedExtras.slice(0, 8)) {
+      const free = isFreeLane(m.id);
       hops.push({
         key: hopKey(providerId, m.id),
         providerId,
@@ -686,8 +835,8 @@ export function buildRelayChain(
         baseUrl,
         apiKey: key,
         tier: 2,
-        elo: 0.8,
-        note: "live roster",
+        elo: free ? 0.85 : 0.8,
+        note: free ? "live roster · free" : "live roster",
       });
     }
   }
@@ -705,11 +854,15 @@ export function buildRelayChain(
   const freeBonus = (h: RelayHop) => (freeFirst && isFreeLane(h.model) ? 1 : 0);
   const boost = (h: RelayHop) => taskBoost(h, fit);
   const cooled = (h: RelayHop) => (recentlyFailed(health[h.key]) || isCapacityCooled(health[h.key]) ? 1 : 0);
+  const r54rel = (h: RelayHop) => laneReliabilityPenalty(health[h.key]);
   const wBoost = (h: RelayHop) => weightBoost(settings, h.providerId);
   hops.sort((a, b) => {
     const hp = cooled(a);
     const hb = cooled(b);
     if (hp !== hb) return hp - hb;
+    const ra = r54rel(a);
+    const rb = r54rel(b);
+    if (ra !== rb) return ra - rb;
     if (fit === "decision") {
       const db = boost(b) - boost(a);
       if (db !== 0) return db;
@@ -740,6 +893,9 @@ export function buildRelayChain(
       const da = cooled(a);
       const db = cooled(b);
       if (da !== db) return da - db;
+      const ra = r54rel(a);
+      const rb = r54rel(b);
+      if (ra !== rb) return ra - rb;
       const fb = freeBonus(b) - freeBonus(a);
       if (fb !== 0) return fb;
       return idx(a.key) - idx(b.key);
@@ -751,7 +907,11 @@ export function buildRelayChain(
   // a cooled lane beats no lane.
   const MIN_HEALTHY_HOPS = 4;
   const healthy = hops.filter((h) => cooled(h) === 0);
-  const chain = healthy.length >= MIN_HEALTHY_HOPS ? healthy : hops;
+  const picked = healthy.length >= MIN_HEALTHY_HOPS ? healthy : hops;
+  // r51: the user's saved ordering is an EXPLICIT routing doctrine — never
+  // reshuffle it. The default order gets the provider round-robin so the
+  // wire actually spans the fleet (see interleaveByProvider).
+  const chain = order.length > 0 ? picked : interleaveByProvider(picked);
 
   // The built-in engine is the unconditional last resort.
   chain.push(AUTO_HOP);
@@ -775,10 +935,18 @@ export function buildRelayWire(
       ? hopKey(primary.providerId, primary.model)
       : undefined;
   const excludeAuto = primary?.providerId === "auto";
-  return buildRelayChain(settings, opts)
-    .filter((h) => h.key !== excludeKey && !(excludeAuto && h.providerId === "auto"))
-    .slice(0, MAX_RELAY_HOPS)
-    .map((h) => ({
+  const chain = buildRelayChain(settings, opts).filter(
+    (h) => h.key !== excludeKey && !(excludeAuto && h.providerId === "auto")
+  );
+  // r51: the built-in engine is the "never dead-ends" backstop — it used to be
+  // sliced off the wire by any full vault (70+ lanes vs an 8-hop cap), turning
+  // its promise into dead letter. Keep it: non-auto hops cap at MAX_RELAY_HOPS
+  // minus the auto hop, auto ALWAYS rides last.
+  const auto = chain.filter((h) => h.providerId === "auto");
+  const rest = chain
+    .filter((h) => h.providerId !== "auto")
+    .slice(0, auto.length > 0 ? MAX_RELAY_HOPS - 1 : MAX_RELAY_HOPS);
+  return [...rest, ...auto].map((h) => ({
       key: h.key,
       ...(h.baseUrl ? { baseUrl: h.baseUrl } : {}),
       ...(h.apiKey ? { apiKey: h.apiKey } : {}),

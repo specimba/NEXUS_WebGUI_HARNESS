@@ -1,0 +1,38 @@
+[
+  {
+    "url": "https://gemini.google",
+    "name": "Gemini Deep Research — your personal research assistant",
+    "snippet": "Deep Research , an agentic feature in Gemini that can automatically browse up to hundreds of websites and even your Gmail, Drive and Chat on your behalf,",
+    "host_name": "gemini.google",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.humansecurity.com",
+    "name": "What is Google Mariner and why is it on my website?",
+    "snippet": "Google Mariner is DeepMind's browser agent that uses Gemini to see what is on a Chrome screen, reason about it, and act. It can understand text, images, code,",
+    "host_name": "www.humansecurity.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ai.google.dev",
+    "name": "Gemini Deep Research agent - Google AI for Developers",
+    "snippet": "The Gemini Deep Research agent autonomously plans, executes, and synthesizes multi-step research tasks . Powered by Gemini, it navigates complex information ...",
+    "host_name": "ai.google.dev",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://en.wikipedia.org",
+    "name": "Project Mariner",
+    "snippet": "Project Mariner was a research prototype developed by Google DeepMind that explored human-agent interactions, particularly within web browsers.",
+    "host_name": "en.wikipedia.org",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  }
+]

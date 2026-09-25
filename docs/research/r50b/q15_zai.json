@@ -1,0 +1,29 @@
+[
+  {
+    "url": "https://docs.z.ai",
+    "name": "Quick Start - Overview - Z.AI DEVELOPER DOCUMENT",
+    "snippet": "GLM Coding Plan — monthly access to world-class models, compatible with top coding tools like Claude Code and Cline. All from just $18/month. Try it now ... Read more",
+    "host_name": "docs.z.ai",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://z.ai",
+    "name": "GLM-4.5: Reasoning, Coding, and Agentic Abililties",
+    "snippet": "Jul 28, 2025 — Detailed instructions for integrating GLM - 4.5 with Claude Code and other coding agent frameworks are available in the documentation at Z . ai API . Read more",
+    "host_name": "z.ai",
+    "rank": 1,
+    "date": "Jul 28, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "GLM-4.7 & GLM-4.6 & GLM-4.5",
+    "snippet": "Check out the GLM -4.7 technical blog, technical report( GLM - 4.5 ), and Zhipu AI technical documentation . Use GLM -4.7 API services on Z . ai API Platform. Read more",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  }
+]

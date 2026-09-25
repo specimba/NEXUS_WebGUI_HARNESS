@@ -1,0 +1,38 @@
+[
+  {
+    "url": "https://docs.x.ai",
+    "name": "MCP Servers | SpaceXAI Docs - Grok API Documentation",
+    "snippet": "Jul 2, 2026 — MCP ( Model Context Protocol ) servers expose external tools to Grok . Once configured, their tools are available alongside the built-in ones,",
+    "host_name": "docs.x.ai",
+    "rank": 0,
+    "date": "Jul 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.superagent.sh",
+    "name": "Grok CLI Gets MCP Support - Superagent",
+    "snippet": "Jul 29, 2025 — Grok CLI now supports MCP ( Model Context Protocol ), enabling seamless integration with 1000+ development tools . AI Codex and Claude Code agents ...",
+    "host_name": "www.superagent.sh",
+    "rank": 1,
+    "date": "Jul 29, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://mcpservers.org",
+    "name": "Grok MCP Server",
+    "snippet": "A MCP server for xAI's Grok API, providing access to capabilities including image understanding, image generation, live web search, and reasoning models .",
+    "host_name": "mcpservers.org",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "joemccann/xai-mcp-server: MCP server for xAI Grok APIs",
+    "snippet": "A Model Context Protocol ( MCP ) server that brings xAI's Grok APIs to Claude Code. Generate images, chat with Grok , analyze images, search the web, ... Read more",
+    "host_name": "github.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  }
+]

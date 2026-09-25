@@ -3,7 +3,7 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { useSuitesStore, useWorkflowsStore } from "@/lib/stores";
-import { executeWorkflowRun, isWorkflowRunning } from "@/lib/workflow-runner";
+import { executeWorkflowRun, isWorkflowRunning, activeRunCount } from "@/lib/workflow-runner";
 import { isSuiteRunning, runSuite } from "@/lib/suite-runner";
 import { SUITE_REPEATS_MAX, SUITE_SCHEDULE_FAIL_BREAKER, SUITE_SCHEDULE_MIN_MS } from "@/lib/constants";
 import { fmtIntervalShort } from "@/lib/helpers";
@@ -30,6 +30,14 @@ export function WorkflowScheduler() {
       ticking = true;
       try {
         const now = Date.now();
+        // r53 cross-pipeline burst guard: scheduled work fires ONLY when
+        // nothing else is executing — no manual run, no other scheduled
+        // pipeline, no suite bake-off. This is the fix for the "two pipelines
+        // bursting the same free API simultaneously" failure mode (the
+        // per-workflow guard could not see ACROSS workflows). A due schedule
+        // simply stays due and fires on the first idle tick. Manual runs are
+        // never gated — the user clicked, the user controls.
+        if (activeRunCount() > 0 || isSuiteRunning()) return;
         const store = useWorkflowsStore.getState();
         const due = store.workflows.filter(
           (w) =>
@@ -99,6 +107,9 @@ export function SuiteScheduler() {
       suiteTicking = true;
       try {
         const now = Date.now();
+        // r53 burst guard (symmetric): a bake-off never starts while any
+        // pipeline is executing — scheduled quota spend stays serial.
+        if (activeRunCount() > 0) return;
         const store = useSuitesStore.getState();
         const due = store.suites.filter(
           (s) =>

@@ -15,6 +15,7 @@ import type { WorkflowRun, WorkflowRunStep } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const SEGMENT_COLOR: Record<WorkflowRunStep["status"], string> = {
+  pending: "bg-muted-foreground/30",
   running: "bg-violet-500",
   done: "bg-emerald-500",
   error: "bg-red-500",
@@ -22,6 +23,7 @@ const SEGMENT_COLOR: Record<WorkflowRunStep["status"], string> = {
 };
 
 const SEGMENT_COLOR_SOFT: Record<WorkflowRunStep["status"], string> = {
+  pending: "bg-muted-foreground/15",
   running: "bg-violet-500/25",
   done: "bg-emerald-500/25",
   error: "bg-red-500/25",
@@ -201,7 +203,14 @@ export function RunReplayTimeline({
             aria-label={`Step ${i + 1}: ${s.label} — ${s.status}`}
             title={`Step ${i + 1} · ${s.label} · ${s.status}${s.ms != null ? ` · ${fmtMs(s.ms)}` : ""}${
               s.toolCalls.length ? ` · ${s.toolCalls.length} tool${s.toolCalls.length === 1 ? "" : "s"}` : ""
-            }${s.llmCalls?.length ? ` · ${s.llmCalls.length} LLM call${s.llmCalls.length === 1 ? "" : "s"}` : ""}`}
+            }${s.llmCalls?.length ? ` · ${s.llmCalls.length} LLM call${s.llmCalls.length === 1 ? "" : "s"}` : ""}${
+              // r51 anti-theatre: substance receipt in the scrubber tooltip too
+              s.status === "done"
+                ? s.output.trim() === ""
+                  ? " · EMPTY output"
+                  : ` · ${s.output.trim().length} chars${s.output.trim().length < 120 ? " (thin)" : ""}`
+                : ""
+            }`}
             onClick={() => {
               onPlayingChange(false);
               onScrub(i === current && playhead != null ? null : i);

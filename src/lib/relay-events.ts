@@ -24,7 +24,7 @@ export interface RelayEventPayload {
   modelId: string;
   ok: boolean;
   kind?: string;
-  attempt?: "primary" | "relay" | "probe";
+  attempt?: "primary" | "relay" | "probe" | "sweep";
   action?: string;
   latencyMs?: number;
   error?: string;
@@ -36,6 +36,9 @@ export interface RelayEventPayload {
 export function classifyRelayKind(error?: string): string {
   if (!error) return "unknown";
   const m = error;
+  // r52 BEFORE rate-limit: the free-tier prompt cap mentions neither 429 nor
+  // rate limit — left alone it fell through to "network" (wrong lane story).
+  if (/prompt is longer|prompt too long|context.?length.?exceeded|free tier allows/i.test(m)) return "prompt_too_long";
   if (/\b429\b|rate.?limit|quota|too many requests|capacity is limited/i.test(m)) return "rate-limit";
   if (/\b402\b|out of credits|insufficient (?:credits?|funds|balance)/i.test(m)) return "credits";
   if (/\b401\b|\b403\b|unauthorized|invalid.{0,12}(api )?key|forbidden|permission denied/i.test(m)) return "auth";

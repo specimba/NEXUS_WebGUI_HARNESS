@@ -107,6 +107,13 @@ export interface PrevStepOutput {
   output: string;
   /** r29: the step ended on a tool-budget auto-digest (material is thin). */
   degraded?: boolean;
+  /**
+   * r51 anti-theatre: the step returned EMPTY output — it counts as done in
+   * the timeline but contributed nothing. Context builders surface an honest
+   * note instead of silently skipping it, so downstream agents widen their
+   * own work instead of building on air.
+   */
+  hollow?: boolean;
 }
 
 /**
@@ -129,22 +136,32 @@ export function buildDateAnchor(): string {
 /** Sequential (CrewAI-style) context: distilled handoff of previous outputs. */
 export function buildSequentialContext(task: string, prev: PrevStepOutput[]): string {
   if (prev.length === 0) return `${buildDateAnchor()}\n\nTASK:\n${task}`;
+  const hollow = prev.filter((p) => p.hollow || p.output.trim() === "").length;
   const handoffs = prev
     .map(
       (p, i) =>
-        `--- Step ${i + 1}: ${p.label} (by ${p.agentName})${p.degraded ? " [ended on auto-digest]" : ""} ---\n${truncate(p.output, 4000)}`
+        `--- Step ${i + 1}: ${p.label} (by ${p.agentName})${p.degraded ? " [ended on auto-digest]" : ""}${p.hollow || p.output.trim() === "" ? " [EMPTY — no usable output]" : ""} ---\n${p.output.trim() === "" ? "(this step returned no output)" : truncate(p.output, 4000)}`
     )
     .join("\n\n");
-  return `${buildDateAnchor()}\n\nORIGINAL TASK:\n${task}\n\nOUTPUTS FROM PREVIOUS STEPS (use them as your input):\n${handoffs}\n\nContinue the pipeline: do YOUR step only, building on the outputs above.`;
+  const hollowNote =
+    hollow > 0
+      ? `\n\nHONESTY NOTE: ${hollow} of ${prev.length} prior step${hollow === 1 ? "" : "s"} returned NO usable output. Do not assume the chain covered them — verify or research those parts yourself.`
+      : "";
+  return `${buildDateAnchor()}\n\nORIGINAL TASK:\n${task}\n\nOUTPUTS FROM PREVIOUS STEPS (use them as your input):\n${handoffs}${hollowNote}\n\nContinue the pipeline: do YOUR step only, building on the outputs above.`;
 }
 
 /** Conversational (AutoGen-style) context: full transcript between agents. */
 export function buildConversationalContext(task: string, prev: PrevStepOutput[]): string {
   if (prev.length === 0) return `${buildDateAnchor()}\n\nTASK:\n${task}`;
+  const hollow = prev.filter((p) => p.hollow || p.output.trim() === "").length;
   const transcript = prev
-    .map((p) => `${p.agentName} (step: ${p.label})${p.degraded ? " [ended on auto-digest]" : ""}:\n${truncate(p.output, 4000)}`)
+    .map((p) => `${p.agentName} (step: ${p.label})${p.degraded ? " [ended on auto-digest]" : ""}${p.hollow || p.output.trim() === "" ? " [EMPTY — no usable output]" : ""}:\n${p.output.trim() === "" ? "(returned nothing)" : truncate(p.output, 4000)}`)
     .join("\n\n");
-  return `${buildDateAnchor()}\n\nTASK:\n${task}\n\nCONVERSATION SO FAR BETWEEN TEAM AGENTS:\n${transcript}\n\nYou are the next speaker in this conversation. React to what was said and do YOUR step.`;
+  const hollowNote =
+    hollow > 0
+      ? `\n\nHONESTY NOTE: ${hollow} of ${prev.length} prior speaker${hollow === 1 ? "" : "s"} returned NO usable output. Do not assume the conversation covered them — verify or research those parts yourself.`
+      : "";
+  return `${buildDateAnchor()}\n\nTASK:\n${task}\n\nCONVERSATION SO FAR BETWEEN TEAM AGENTS:\n${transcript}${hollowNote}\n\nYou are the next speaker in this conversation. React to what was said and do YOUR step.`;
 }
 
 /** Review-gate prompt: judge the previous step's output, return a strict JSON verdict. */
@@ -177,6 +194,7 @@ const LESSON_KIND_LABEL: Record<RunErrorKind | "rework" | "dream", string> = {
   model: "model",
   region: "region block",
   credits: "out of credits",
+  context: "prompt cap",
   unknown: "unknown",
   rework: "review rework",
   dream: "dream",

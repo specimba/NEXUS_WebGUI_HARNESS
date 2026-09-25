@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://modelcontextprotocol.io",
+    "name": "Transports",
+    "snippet": "In the Streamable HTTP transport , the server operates as an independent process that can handle multiple client connections. This transport uses HTTP POST and ...",
+    "host_name": "modelcontextprotocol.io",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "NapthaAI/http-oauth-mcp-server",
+    "snippet": "This repo provides a reference implementation for creating a remote MCP server that supports the Streamable HTTP & SSE Transports , authorized with OAuth based ...",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.christianposta.com",
+    "name": "Understanding MCP Authorization, Step by Step, Part One",
+    "snippet": "Jun 30, 2025 — The HTTP transport for the MCP specification uses a single GET/POST endpoint (ie, / mcp ) with optional streamable responses (ie, based on Server ... Read more",
+    "host_name": "blog.christianposta.com",
+    "rank": 2,
+    "date": "Jun 30, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.descope.com",
+    "name": "Diving Into the MCP Authorization Specification",
+    "snippet": "Jul 28, 2026 — The June 2025 spec explicitly prohibits MCP servers from passing through tokens to upstream APIs.",
+    "host_name": "www.descope.com",
+    "rank": 3,
+    "date": "Jul 28, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://glama.ai",
+    "name": "MCP OAuth Server by huberp",
+    "snippet": "Nov 1, 2025 — This server uses HTTP transport (Streamable HTTP with SSE ) per MCP Specification 2025-06-18. For migration details from stdio, see HTTP ...",
+    "host_name": "glama.ai",
+    "rank": 4,
+    "date": "Nov 1, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.logto.io",
+    "name": "In-Depth review of the MCP authorization spec (2025-03-",
+    "snippet": "Mar 26, 2025 — This article deeply analyzes the design philosophy and implementation challenges of MCP Authorization Spec . As an authorization framework based ... Read more",
+    "host_name": "blog.logto.io",
+    "rank": 5,
+    "date": "Mar 26, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://gingerlabs.ai",
+    "name": "MCP Transport Comparison: stdio vs SSE vs Streamable HTTP",
+    "snippet": "Jun 19, 2026 — Streamable HTTP is the current standard MCP server transport for remote deployments, introduced in spec 2025 -03-26. It supports stateless  ...",
+    "host_name": "gingerlabs.ai",
+    "rank": 6,
+    "date": "Jun 19, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://auth0.com",
+    "name": "Why MCP's Move Away from Server Sent Events Simplifies",
+    "snippet": "Dec 19, 2025 — Back in May 2025 , the Model Context Protocol ( MCP ) team made a decision that confused a lot of people: they deprecated the old HTTP +SSE ... Read more",
+    "host_name": "auth0.com",
+    "rank": 7,
+    "date": "Dec 19, 2025",
+    "favicon": ""
+  }
+]

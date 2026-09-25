@@ -23,6 +23,14 @@ import {
   type TurnSafetyAudit,
 } from "./tools-defs";
 import type { RouteReceipt, ToolCallInfo, ToolId } from "./types";
+import {
+  compactToBudget,
+  describeCompaction,
+  DEFAULT_CONTEXT_BUDGET_CHARS,
+  estimateMessagesChars,
+  PROMPT_TOO_LONG_RE,
+  shrinkMessages,
+} from "./context-budget";
 
 // ─── Wire types ──────────────────────────────────────────────────────────────
 
@@ -82,6 +90,13 @@ export interface EngineBody {
    * tool list actually includes a keyed tool (client attaches it conditionally).
    */
   hyperbrowserKey?: string;
+  /**
+   * r52 context budget: per-request transcript ceiling in chars. Free-tier
+   * lanes cap REQUEST size well below the model's real context window; above
+   * the budget old tool results compact newest-first. Missing ⇒
+   * DEFAULT_CONTEXT_BUDGET_CHARS (clamped ≥20k).
+   */
+  contextBudgetChars?: number;
 }
 
 export type EngineSend = (evt: Record<string, unknown>) => void;
@@ -281,6 +296,11 @@ export function looksLikeRegionBlock(status: number, bodyText: string): boolean 
   return HTML_BLOCK_RE.test(bodyText) || CF_BLOCK_RE.test(bodyText) || status === 451;
 }
 
+/** r52: after this many successful tool calls in ONE turn, nudge synthesis. */
+export const TOOL_WRAP_NUDGE_AT = 28;
+const TOOL_WRAP_NUDGE =
+  "TOOL CALL DEPTH WARNING: you have gathered a lot of material. Do not start new research threads unless a critical gap remains. Within your next 1-2 replies, synthesize everything you have into your final answer.";
+
 export const REGION_HINT =
   "This provider refuses datacenter IPs (server-region block) — your key is fine. Calls now go browser-direct from your own network; if you still see this, switch provider via the header picker (the relay rotates automatically).";
 
@@ -324,6 +344,8 @@ export type UpstreamErrorKind =
   | "model"
   | "region"
   | "credits"
+  /** r52: request-shaped — the transcript exceeds the lane's per-request prompt cap. */
+  | "prompt_too_long"
   | "unknown";
 
 export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
@@ -336,6 +358,14 @@ export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
   }
   if (/blocked this network|region\/?IP block|datacenter|server-region|\b451\b/i.test(msg)) {
     return "region";
+  }
+  if (PROMPT_TOO_LONG_RE.test(msg)) {
+    // r52: request-SHAPED failure — the transcript is fatter than the lane's
+    // per-request cap (OrcaRouter free tier: "This prompt is longer than the
+    // free tier allows for a single request"). The provider is HEALTHY; the
+    // engine compacts + retries the same lane instead of demoting it, and the
+    // relay's hard/soft doctrine must treat it as soft (request-shaped).
+    return "prompt_too_long";
   }
   if (/out of credits|\b402\b|insufficient (?:credits?|funds|balance)|credit.{0,16}(?:exhausted|balance)/i.test(msg)) {
     // r43: 402 is its own kind — "Unknown" hid the single most actionable
@@ -525,7 +555,7 @@ export async function runRelayedCustom(
 function receiptReason(err: unknown): "rate_limit" | "provider_error" | "capacity" | "policy" | "unknown" {
   const kind = classifyUpstreamError(err);
   if (kind === "rate-limit") return "rate_limit";
-  if (kind === "region") return "policy";
+  if (kind === "region" || kind === "prompt_too_long") return "policy";
   if (kind === "auth" || kind === "timeout" || kind === "network" || kind === "model" || kind === "credits") return "provider_error";
   return "unknown";
 }
@@ -597,6 +627,8 @@ export async function runCustomEngine(
   ];
 
   let graceUsed = 0; // tool-calls salvaged from the FINAL pass (max 2)
+  let wrapNudged = false; // r52 runaway guard: depth nudge fires once per turn
+  let capShrinks = 0; // r52 reactive prompt-cap compactions this turn (max 2)
   // r34 harness knob: per-turn stall-resume budget (harness “fast” = 1,
   // deep-research/worker = 3, balanced = MAX_STALL_RESUMES).
   const stallResumesMax = Math.max(0, Math.min(3, Math.floor(body.stallResumes ?? MAX_STALL_RESUMES)));
@@ -608,6 +640,20 @@ export async function runCustomEngine(
   ) {
     send({ type: "iteration", n: iteration });
     const isFinalPass = iteration > maxIterations;
+    // r52 CONTEXT BUDGET (preventive): deep-research loops stack 38+ tool
+    // results at ≤8k chars each — free-tier lanes cap the REQUEST (not the
+    // model window) and the step dies mid-run with an opaque error. Keep the
+    // transcript under budget on every iteration; old tool results shrink
+    // first, newest stay verbatim, nothing is ever deleted (protocol-safe).
+    const contextBudget = Math.max(20_000, body.contextBudgetChars ?? DEFAULT_CONTEXT_BUDGET_CHARS);
+    if (estimateMessagesChars(msgs) > contextBudget) {
+      const c = compactToBudget(msgs, contextBudget);
+      if (c.changed) {
+        toolIO.audit = toolIO.audit ?? newTurnSafetyAudit();
+        toolIO.audit.contextTruncated = true;
+        send({ type: "status", message: describeCompaction(c, contextBudget) });
+      }
+    }
     // Resilience (r19): gateways like Vyce sit behind rotating upstream pools
     // and occasionally drop a call mid-run (502/504/socket death) — exactly
     // what killed a Morning-Briefing step after 7 successful tool calls.
@@ -695,6 +741,31 @@ export async function runCustomEngine(
         composed.dispose();
         clearFirstTokenTimer();
         const text = await res.text().catch(() => "");
+        // r52 REACTIVE compaction: the lane's per-request prompt cap tripped
+        // ("This prompt is longer than the free tier allows…"). Request-shaped,
+        // NOT lane-shaped: shrink the transcript in place and retry the SAME
+        // hop — no rotation (the step's material lives here, the next lane
+        // accepting a fat request helps nobody), no provider demotion. Two
+        // escalating retries fit inside the existing 3-attempt budget.
+        if (PROMPT_TOO_LONG_RE.test(text)) {
+          if (capShrinks < 2) {
+            capShrinks += 1;
+            toolIO.audit = toolIO.audit ?? newTurnSafetyAudit();
+            toolIO.audit.contextTruncated = true;
+            const r = shrinkMessages(msgs, capShrinks === 1 ? 2 : 3);
+            if (r.changed) {
+              send({
+                type: "status",
+                message: `Prompt too long for this lane's free tier — compacted ${r.toolResultsShrunk} old tool results (${Math.round(r.before / 1000)}k → ${Math.round(r.after / 1000)}k chars), retrying the same lane…`,
+              });
+              continue attemptLoop;
+            }
+          }
+          // Nothing left to shrink: surface as its own kind (never "unknown").
+          throw new Error(
+            `Prompt too long for this lane even after compaction — ${clip(text, 200)}`
+          );
+        }
         if (res.status === 400 && tools.length > 0 && !isFinalPass && /tool/i.test(text)) {
           send({ type: "status", message: "Model does not support tools — continuing without them" });
           tools = [];
@@ -839,6 +910,14 @@ export async function runCustomEngine(
           tool_call_id: tc.id,
           content: clip(fenceToolOutputForModel(tc.name, result.content, 8000, toolIO.audit), 8000),
         });
+      }
+      // r52 runaway guard: a turn that has burned 28+ tool calls is in a
+      // dig-for-ever loop (observed: 38 calls, thin 92-char output). Nudge
+      // ONCE — the model wraps up instead of mining until the budget dies.
+      if (collected.length >= TOOL_WRAP_NUDGE_AT && !wrapNudged) {
+        wrapNudged = true;
+        send({ type: "status", message: `Tool call depth ${collected.length} — nudging the model to synthesize` });
+        msgs.push({ role: "user", content: TOOL_WRAP_NUDGE });
       }
       if (iteration >= maxIterations) {
         // r29 autonomous synthesis (Temporal/LangGraph "reserve a final pass"

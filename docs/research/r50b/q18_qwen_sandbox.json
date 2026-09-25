@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://qwenlm.github.io",
+    "name": "Sandbox | Qwen Code Docs",
+    "snippet": "Sep 8, 2026 — To build a custom sandbox , you need to access the build scripts (scripts/buildsandbox.js) in the source code repository. 2.",
+    "host_name": "qwenlm.github.io",
+    "rank": 0,
+    "date": "Sep 8, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "qwen-code/docs/users/configuration/settings.md at main",
+    "snippet": "When . qwen / sandbox .Dockerfile exists, you can use BUILD_SANDBOX environment variable when running Qwen Code to automatically build the custom sandbox image:. Read more",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://zitniklab.hms.harvard.edu",
+    "name": "Qwen Code - ToolUniverse Documentation",
+    "snippet": "Qwen Code is a coding agent CLI that can query and edit large codebases and automate workflows. Integrated with the Model Context Protocol (MCP), it can connect ... Read more",
+    "host_name": "zitniklab.hms.harvard.edu",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://qwen.ai",
+    "name": "Qwen Code is an open-source AI agent",
+    "snippet": "Qwen Code is an open-source AI agent for the terminal, optimized for Qwen series models. It helps you understand large codebases, automate tedious work, ... Read more",
+    "host_name": "qwen.ai",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://inventivehq.com",
+    "name": "Codex CLI, Claude Code & Gemini CLI Sandbox and",
+    "snippet": "Jun 8, 2026 — A risk-oriented comparison of the sandbox modes and approval policies in Codex CLI , Claude Code , Gemini CLI , Qwen Code , and Oh My Pi — with ...",
+    "host_name": "inventivehq.com",
+    "rank": 4,
+    "date": "Jun 8, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://docs.sambanova.ai",
+    "name": "Build with Qwen Code CLI - SambaNova Integration Guide",
+    "snippet": "This guide walks you through connecting SambaNova's LLMs with Qwen Code CLI to streamline coding, debugging, and architectural tasks in your development ... Read more",
+    "host_name": "docs.sambanova.ai",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.truefoundry.com",
+    "name": "Qwen Code CLI - TrueFoundry Docs",
+    "snippet": "Qwen Code is an open-source, AI-powered terminal coding assistant optimized for the Qwen3-Coder model. It helps you understand large codebases, automate tedious ... Read more",
+    "host_name": "www.truefoundry.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  }
+]

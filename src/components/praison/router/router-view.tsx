@@ -40,13 +40,14 @@ import { fmtRel } from "@/lib/helpers";
 import {
   buildRelayChain,
   isCapacityCooled,
+  laneReliabilityPenalty,
   leaderboardMeta,
   providerInCooldown,
   relayHealthSnapshot,
   resetRelayHealth,
   type RelayHealthEntry,
 } from "@/lib/relay";
-import { probeNow, PROBE_INTERVAL_MS } from "@/lib/relay-prober";
+import { lastRosterSweepAt, probeNow, PROBE_INTERVAL_MS, sweepNow, SWEEP_EVERY_TICKS } from "@/lib/relay-prober";
 import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
 
@@ -72,6 +73,8 @@ const ACTION_LABEL: Record<string, string> = {
   exhausted: "chain exhausted",
   "probe-revived": "probe revived",
   "probe-extended": "probe extended",
+  "sweep-ok": "sweep ok",
+  "sweep-fail": "sweep caught",
   failed: "failed",
 };
 
@@ -79,6 +82,7 @@ function actionStyle(action?: string | null): string {
   switch (action) {
     case "served":
     case "probe-revived":
+    case "sweep-ok":
       return "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
     case "cooled":
     case "probe-extended":
@@ -88,6 +92,9 @@ function actionStyle(action?: string | null): string {
       return "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400";
     case "rotated":
       return "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400";
+    case "sweep-fail":
+      // a sweep-caught corpse: same family as a demotion but visually distinct
+      return "border-orange-500/40 bg-orange-500/10 text-orange-600 dark:text-orange-400";
     default:
       return "border-muted-foreground/40 bg-muted text-muted-foreground";
   }
@@ -132,9 +139,11 @@ export function RouterView() {
           </h1>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
             The failover state machine behind every LLM call: capacity errors cool a lane
-            down (2–30 min, jittered, escalating) and the chain deterministically rotates
-            to the healthiest lane — within the same request. A background probe re-admits
-            recovered lanes every {Math.round(PROBE_INTERVAL_MS / 1000)}s. Cooldown is
+            down (2–30 min, jittered, escalating), account-shaped 402s cool the whole
+            provider (10 min → 4 h) and the chain deterministically rotates to the
+            healthiest lane — within the same request. A background probe re-admits
+            recovered lanes every {Math.round(PROBE_INTERVAL_MS / 1000)}s; a slower roster
+            sweep re-verifies quiet lanes every ~{SWEEP_EVERY_TICKS} min. Cooldown is
             never removal.
           </p>
         </div>
@@ -294,6 +303,19 @@ function HealthTab() {
         <Button
           type="button"
           size="sm"
+          variant="outline"
+          className="h-7 gap-1.5 rounded-lg text-xs"
+          onClick={() => {
+            sweepNow();
+            toast.info("Roster sweep started — the two least-recently-verified lanes get a 1-token check.");
+          }}
+        >
+          <RadarIcon className="h-3 w-3" aria-hidden />
+          Sweep now
+        </Button>
+        <Button
+          type="button"
+          size="sm"
           variant="ghost"
           className="h-7 gap-1.5 rounded-lg text-xs text-muted-foreground"
           onClick={() => {
@@ -305,6 +327,10 @@ function HealthTab() {
           <TimerReset className="h-3 w-3" aria-hidden />
           Clear health memory
         </Button>
+        <span className="text-[11px] text-muted-foreground">
+          sweep every ~{SWEEP_EVERY_TICKS} min · 2 lanes/tick · last{" "}
+          {lastRosterSweepAt() ? fmtRel(lastRosterSweepAt()) : "never"}
+        </span>
         {ticking ? (
           <span className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
             <RefreshCw className="h-3 w-3 animate-spin" aria-hidden />
@@ -357,6 +383,10 @@ function HealthTab() {
                   const remainMs = Math.max(0, cooledUntil - now);
                   const hardDemoted =
                     !!e?.lastFailAt && !e.soft && now - e.lastFailAt < 5 * 60_000;
+                  // r54: chronic-flakiness chip — mirrors the chain sort's
+                  // reliability penalty so the ordering is explainable.
+                  const rel = laneReliabilityPenalty(e);
+                  const relTotal = (e?.ok ?? 0) + (e?.fail ?? 0);
                   return (
                     <div
                       key={lane.key}
@@ -391,6 +421,19 @@ function HealthTab() {
                         <Badge variant="outline" className="border-rose-500/40 bg-rose-500/10 text-[10px] font-normal text-rose-500">
                           demoted — hard failure
                         </Badge>
+                      ) : rel > 0 ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="border-orange-500/40 bg-orange-500/10 text-[10px] font-normal text-orange-600 dark:text-orange-400">
+                              flaky — {e?.ok ?? 0}/{relTotal} answered
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            Long-run reliability {Math.round(((e?.ok ?? 0) / Math.max(1, relTotal)) * 100)}% —
+                            the chain sorts this lane below reliable siblings (the watchdog's
+                            stall-dominant finding explains the shape).
+                          </TooltipContent>
+                        </Tooltip>
                       ) : (e?.ok ?? 0) > 0 ? (
                         <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-[10px] font-normal text-emerald-600 dark:text-emerald-400">
                           healthy
@@ -649,6 +692,18 @@ const SEVERITY_STYLE: Record<WatchdogFinding["severity"], string> = {
   critical: "border-rose-500/50 bg-rose-500/5",
 };
 
+/** r54: human labels for the pattern badges (deep-dive detections included). */
+const PATTERN_LABEL: Record<string, string> = {
+  "high-fail-rate": "high fail rate",
+  "capacity-cycle": "capacity cycle",
+  "auth-lock": "auth/model lock",
+  "hard-streak": "hard streak",
+  "stall-dominant": "stall-dominant lane",
+  "structural-credits": "structural credits",
+  "single-lane-vault": "single-lane vault",
+  "stale-model": "stale model id",
+};
+
 function WatchdogTab() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
@@ -720,7 +775,7 @@ function WatchdogTab() {
               <div key={f.id} className={cn("rounded-xl border p-3", SEVERITY_STYLE[f.severity])}>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="text-[10px] font-normal">
-                    {f.pattern}
+                    {PATTERN_LABEL[f.pattern] ?? f.pattern}
                   </Badge>
                   <Badge variant="outline" className="border-border/70 font-mono text-[10px] font-normal">
                     {f.providerId}
@@ -772,8 +827,10 @@ function WatchdogTab() {
               {loading ? "Scanning the failover log…" : "No patterns need attention"}
             </p>
             <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-              The watchdog flags repeated capacity cycles, hard-fail streaks, auth locks
-              and high fail rates — always as suggestions, applied only after you confirm.
+              The watchdog flags repeated capacity cycles, hard-fail streaks, auth locks,
+              high fail rates — plus the deep dives: account-shaped credit exhaustion,
+              stall-dominant lanes, stale model ids and one-lane vaults — always as
+              suggestions, applied only after you confirm.
             </p>
           </CardContent>
         </Card>

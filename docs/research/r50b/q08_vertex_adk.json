@@ -1,0 +1,38 @@
+[
+  {
+    "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/adk",
+    "name": "Agent Development Kit | Gemini Enterprise Agent Platform",
+    "snippet": "Agent Development Kit (ADK ) is an open-source agent development framework that lets you build, debug, and deploy reliable AI agents at enterprise scale. Read more",
+    "host_name": "docs.cloud.google.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://cloud.google.com/products/gemini-enterprise-agent-platform",
+    "name": "Gemini Enterprise Agent Platform (formerly Vertex AI)",
+    "snippet": "Gemini Enterprise Agent Platform (formerly Vertex AI) is a comprehensive platform for developers to build, scale, govern and optimize agents.",
+    "host_name": "cloud.google.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://discuss.google.dev",
+    "name": "Deploying ADK agents with MCP on Vertex AI Agent Engine",
+    "snippet": "Aug 6, 2025 — Vertex AI Agent Engine has a new feature for custom installation scripts, which lets you run shell scripts during your agent's build process. Read more",
+    "host_name": "discuss.google.dev",
+    "rank": 2,
+    "date": "Aug 6, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.codecademy.com",
+    "name": "How to Build Agents with Vertex AI Builder",
+    "snippet": "For developers who want more control, Vertex AI offers the ADK ( Agent Development Kit ). With the ADK , you can define logic and orchestration in Python. Read more",
+    "host_name": "www.codecademy.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  }
+]

@@ -130,3 +130,10 @@ Every round ends with: the worklog template section (Task ID / Agent / Task / Wo
 - **P2 observability & replay** — replay timeline + branch (r33/r35), tool-def audit receipt (r40), route receipts (r27/r34); remaining: ledger stats beside run receipts, trace enrichment.
 
 Update this section as items land; keep every claim consistent with the worklog.
+
+## r54 addendum — provider-behavior shapes, honeypot acceptance, sweep cadence
+
+- **Three failure shapes get tailored handling** (relay.ts r54): CAPACITY (429) = per-lane 2–30 min jittered cooldown; STRUCTURAL CREDITS (402) = account-shaped — the whole provider cools on a slow 10 min → 4 h escalation (never removal; probe re-admits); CHRONIC STALLS = long-run reliability penalty sinks a lane that answers <60% of its attempts below reliable siblings, regardless of Elo. The chain sorts by: cooling → reliability → (decision fit) → watchdog weight → free-first → tier → blended Elo → task fit.
+- **Roster sweep** (relay-prober r54): every ~30 min, idle-only, ≤2 lanes/tick, 1-token probes of keyed lanes not verified in ≥6 h. This is the "regular checks" guarantee — a provider cut out silently is caught by a probe, not by a failing pipeline. Cooldown probes cover lanes that already failed; the sweep covers the ones that only LOOK healthy.
+- **Watchdog deep dives** are standing rules, each from a real 7-day log: structural-credits (402-mass), stall-dominant (mid-stream timeout ratio), stale-model (retired model id), single-lane-vault (≥90% of successes from one lane). Findings stay suggestions — supervised control loop, never self-applying.
+- **ACCEPTED RISK (honeypot, user-directed, do not re-flag):** the public Google Drive curation folder is INTENTIONAL — comment-only sharing (no editor access), ~95% free-provider API keys with zero steal value, and it serves as an exfiltration tripwire the team can trace during development. The r53 security alarm is withdrawn permanently; this artifact must not be reported as a finding again.

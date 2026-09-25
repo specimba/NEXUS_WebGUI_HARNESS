@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://docs.x.ai",
+    "name": "Function Calling | SpaceXAI Docs - Grok API Documentation",
+    "snippet": "Sep 4, 2026 — Function calling works alongside built-in agentic tools . The model can use web search, then call your custom function : in tools execute ...",
+    "host_name": "docs.x.ai",
+    "rank": 0,
+    "date": "Sep 4, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://x.ai",
+    "name": "Grok 4.1 Fast and Agent Tools API",
+    "snippet": "Nov 19, 2025 — The Agent Tools API , which gives agents access to real-time X data, web search, remote code execution , and more. API keys, rate limits,  ...",
+    "host_name": "x.ai",
+    "rank": 1,
+    "date": "Nov 19, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://foundrysoft.co",
+    "name": "Building AI Agents with the Grok xAI API - FoundrySoft",
+    "snippet": "Jul 20, 2026 — Grok Build is xAI's dedicated agentic tool , designed to help developers build, test, and deploy autonomous agents directly from the command line ... Read more",
+    "host_name": "foundrysoft.co",
+    "rank": 2,
+    "date": "Jul 20, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://beam.ai",
+    "name": "Grok 4.5 by xAI",
+    "snippet": "Grok 4.5 is positioned for reasoning, coding, agentic tool use, and current-information workflows, with supported web, X, and code-execution tools.",
+    "host_name": "beam.ai",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "Vibing with Grok — agentic coding",
+    "snippet": "Autonomous AI agent with streaming SSE, tool calling , and a three-tier permission system. The agent can read and write files, execute shell commands, run code , ... Read more",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  }
+]

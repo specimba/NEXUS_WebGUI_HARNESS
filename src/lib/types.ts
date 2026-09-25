@@ -274,7 +274,8 @@ export interface WorkflowRunStep {
   label: string;
   output: string;
   toolCalls: ToolCallInfo[];
-  status: "running" | "done" | "error" | "stopped";
+  /** r53 honest states: "pending" = queued behind earlier steps (never lied to as "running"). */
+  status: "pending" | "running" | "done" | "error" | "stopped";
   ms?: number;
   /** Mirrors the step definition kind (missing = "generate"). */
   kind?: StepKind;
@@ -297,6 +298,12 @@ export interface WorkflowRunStep {
    */
   degraded?: boolean;
   /**
+   * r51 anti-theatre: the step finished with a SUSPICIOUSLY SHORT but
+   * non-empty answer (< ~120 chars) — surfaced as a "thin output" chip so a
+   * 2-call/6-second ceremony round is visibly different from real work.
+   */
+  thin?: boolean;
+  /**
    * r31 harness rank-②: per-iteration trace recorded at each engine loop
    * boundary (see LlmCallTrace). Absent on pre-r31 runs and synthetic
    * gate-skips.
@@ -318,6 +325,8 @@ export type RunErrorKind =
   | "region"
   /** r43: the provider account is out of credits (HTTP 402) — actionable: top up or let the relay step over. */
   | "credits"
+  /** r52: request-shaped — the transcript exceeded the lane's per-request prompt cap (free-tier limiter, not the model's real window). */
+  | "context"
   | "unknown";
 
 /**

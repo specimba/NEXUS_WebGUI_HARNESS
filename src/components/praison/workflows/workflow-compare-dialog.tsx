@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { ArrowRight, Check, Download, GitCompareArrows, Loader2, Ban, X } from "lucide-react";
+import { ArrowRight, Check, Clock, Download, GitCompareArrows, Loader2, Ban, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -77,6 +77,7 @@ function computeComparison(a: WorkflowRun, b: WorkflowRun): RunComparison {
 
 const STATUS_ICON: Record<WorkflowRunStep["status"] | "missing", React.ReactNode> = {
   done: <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" aria-label="Done" />,
+  pending: <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Queued" />,
   running: <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-violet-400" aria-label="Running" />,
   stopped: <Ban className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label="Stopped" />,
   error: <X className="h-3.5 w-3.5 shrink-0 text-red-500" aria-label="Failed" />,

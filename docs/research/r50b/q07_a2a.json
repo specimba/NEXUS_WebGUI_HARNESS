@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.linuxfoundation.org",
+    "name": "A2A Protocol Surpasses 150 Organizations, Lands in",
+    "snippet": "Apr 9, 2026 — The Agent-to-Agent ( A2A ) Protocol is an open standard that enables AI agents to discover, communicate, and transact with each other across ... Read more",
+    "host_name": "www.linuxfoundation.org",
+    "rank": 0,
+    "date": "Apr 9, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "Agent2Agent (A2A) is an open protocol enabling",
+    "snippet": "The A2A Protocol is an open source project under the Linux Foundation , contributed by Google . It is licensed under the Apache License 2.0 and is open to ... Read more",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.ibm.com",
+    "name": "What is A2A protocol (Agent2Agent)?",
+    "snippet": "The Agent2Agent ( A2A ) protocol is a communication protocol for artificial intelligence (AI) agents, initially introduced by Google in April 2025. Read more",
+    "host_name": "www.ibm.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://developers.googleblog.com",
+    "name": "Google Cloud donates A2A to Linux Foundation",
+    "snippet": "Jun 23, 2025 — Explore how Google, Amazon, and Cisco form the Agent2Agent Foundation under the Linux Foundation to drive AI innovation via interoperability ...",
+    "host_name": "developers.googleblog.com",
+    "rank": 3,
+    "date": "Jun 23, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://palma.ai",
+    "name": "Agent2Agent (A2A) and MCP: What the Handover Means",
+    "snippet": "Jun 23, 2025 — Google handed its Agent2Agent protocol to the Linux Foundation . A2A is how agents talk to each other; MCP is how an agent reaches a tool or a ...",
+    "host_name": "palma.ai",
+    "rank": 4,
+    "date": "Jun 23, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.fierce-network.com",
+    "name": "Linux Foundation to host Google's Agent2Agent protocol",
+    "snippet": "Jun 23, 2025 — The Linux Foundation will host Google's Agent2Agent protocol — \"an open ecosystem for AI agents\" — as part of the newly formed Agent2Agent ...",
+    "host_name": "www.fierce-network.com",
+    "rank": 5,
+    "date": "Jun 23, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://codelabs.developers.google.com/intro-a2a-purchasing-concierge",
+    "name": "Getting Started with Agent2Agent (A2A) Protocol",
+    "snippet": "Jul 22, 2026 — Agent2Agent (A2A) protocol is designed to standardize communication between AI agents, particularly for those which are deployed in external ... Read more",
+    "host_name": "codelabs.developers.google.com",
+    "rank": 6,
+    "date": "Jul 22, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://agenticcommerceprotocol.info",
+    "name": "A2A Protocol v1.0: Official Spec, TCK & SDKs | ACP Info",
+    "snippet": "Aug 27, 2026 — Google created A2A (9 April 2025 ) and donated it to the Linux Foundation on 23 June 2025; the Agent2Agent project includes AWS, Cisco, Google, ... Read more",
+    "host_name": "agenticcommerceprotocol.info",
+    "rank": 7,
+    "date": "Aug 27, 2026",
+    "favicon": ""
+  }
+]

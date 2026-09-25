@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://gemini.google",
+    "name": "Build custom experts with Gems",
+    "snippet": "Gems are your custom AI experts for help on any topic . Gems can be anything from a career coach or brainstorm partner to a coding helper. Read more",
+    "host_name": "gemini.google",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.google",
+    "name": "5 tips on getting started with Gems, your custom AI experts",
+    "snippet": "Sep 5, 2024 — Use Gems for repetitive tasks like writing help or simplifying sentences . Need help with Gem instructions? Use the magic wand icon to let Gemini ... Read more",
+    "host_name": "blog.google",
+    "rank": 1,
+    "date": "Sep 5, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://workspace.google.com/blog/product-announcements/new-gemini-gems-deeper-knowledge-and-business-context",
+    "name": "New features in Gemini to deepen usage for organizations",
+    "snippet": "Nov 13, 2024 — Enhance productivity with new Gemini features like custom Gems with Drive integration, premade Gems , and enhanced security controls.",
+    "host_name": "workspace.google.com",
+    "rank": 2,
+    "date": "Nov 13, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.cmswire.com",
+    "name": "The Rise of AI Mini Agents: What Marketers Need to Know",
+    "snippet": "Dec 17, 2024 — The agentic role of Customized Gems is up to the user. They can act as an expert on topics or refine them toward your specific goals. Users ... Read more",
+    "host_name": "www.cmswire.com",
+    "rank": 3,
+    "date": "Dec 17, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.ai-academy.com",
+    "name": "Gemini Gems: Your Personal AI Assistants for Business",
+    "snippet": "Feb 24, 2026 — Think of Gemini Gems as custom AI assistants you build once and use forever . This guide shows business professionals exactly how to set them ...",
+    "host_name": "www.ai-academy.com",
+    "rank": 4,
+    "date": "Feb 24, 2026",
+    "favicon": ""
+  }
+]
