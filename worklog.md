@@ -7211,3 +7211,31 @@ Verification result: PASS
 Open risks: 11 suites still reference /json/list — unconverted reuse-scanners will now FAIL FAST (janitor closes app leftovers they used to ride); each needs the digit recipe (create own tab via /json/new PUT) — triage build-info/editor-autoplan/editor-save-truth/image-studio-global/markdown-fidelity/pipeline-search/provider-nokey-nav/radar-persist/setup-wizard/test-dialog-ime/whatsfixed-order first (some may list for non-scan purposes). Carried: ensureChrome wedge-recovery path awaits natural exercise; r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); W-suite wizard marker copy; /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions await natural fleet runs.
 Blockers: none
 Next recommended action: r266 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r265 auto-backup or successor; cron-named commit on top = harness worklog auto-commit, diff it). (3) PRIMARY: triage the 11 /json/list suites and convert true reuse-scanners to self-created tabs (digit-shortcuts r265 recipe); re-run each converted suite once. If budget remains, spot-check 1-2 converted suites of r259-r262. Alternatives: any user report; fresh product-surface audit from the non-avoid list. Avoid list per r264 entry (unchanged); standing checks per r264 entry (unchanged).
+
+---
+Task ID: r266
+Agent: main (platform dev)
+Task: r265 handoff — triage the 11 /json/list suites, convert true reuse-scanners to self-created tabs, re-run each converted suite once.
+
+Work Log:
+- Lineage: HEAD 887ec5009 = worklog-only harness auto-commit atop r265's 957f66d0c; round executed as r266.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- Triage: ALL 11 /json/list suites are true reuse-scanners (zero false positives). Three code shapes: A) top-level let/const page + console.error exit (build-info, markdown-fidelity, pipeline-search, radar-persist, test-dialog-ime, whatsfixed-order), B) in-function prefer-app-page fallback (editor-autoplan, editor-save-truth), C) in-function throw (image-studio-global, provider-nokey-nav, setup-wizard). All 11 converted to the r265 digit-shortcuts recipe (self-created tab via PUT /json/new) — 11 mechanical edits, node --check 11/11.
+- BONUS FIX (build-info V2): first in-vivo run failed 2/3 with fingerprints in PERFECT agreement (apiBoot===shownBoot, tsms equal) but source-mtime ageMinutes=481 vs the check's fixed 2h freshness window. Healthy state — QA-only rounds legitimately leave app source untouched for hours. V2 now FAILS only on UI/API fingerprint disagreement (the actual stale-build signal) and REPORTS staleness as an informational ⚠️ line. Re-run: 3/3 with the ⚠️ line working as designed.
+- In-vivo tally (each converted suite, this round): build-info 3/3, whatsfixed-order 4/4, provider-nokey-nav 4/4, image-studio-global 4/4, editor-save-truth 5/5, editor-autoplan 6/6, markdown-fidelity 4/4, pipeline-search 9/9, test-dialog-ime 4/4, setup-wizard 7/7, radar-persist 3/3. radar-persist showed one transient mid-run interruption on a diag attempt before its clean 3/3 — same class as r263's CDP flake, self-resolved.
+- editor-save-truth's clean run also doubles as an in-vivo validation of an r260-converted suite.
+
+Stage Summary:
+- The scan-reuse race is extinct fleet-wide: every suite now boots on its own tab; ensureChrome janitor (r265) cleans leftovers at each boot.
+- build-info V2's false-positive mode is fixed semantically, not by threshold-fudging.
+
+Round Handoff:
+Round ID: r267
+Task owner: main (platform dev)
+Scope completed: 11/11 scanner conversions + build-info V2 semantic fix; 11 suites green in-vivo.
+User-visible changes: none product-side; QA fleet fully self-booting per suite, no cross-suite target dependencies.
+Verification steps: node --check 11/11; 11 in-vivo runs (tally above); eslint 0 errors; bun run qa:tsc 0 unmasked.
+Verification result: PASS
+Open risks: radar-persist transient mid-run interruption observed once (self-resolved; watch for recurrence — if it repeats, port the r264 waitFor-tolerance pattern there); ensureChrome wedge-recovery path still awaits natural exercise; r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); W-suite wizard marker copy; /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions (r260's four, r261's a11y+timestamps) still await natural fleet runs.
+Blockers: none
+Next recommended action: r267 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r266 auto-backup or successor; cron-named commit on top = harness worklog auto-commit, diff it). (3) Rotate surfaces — the scanner-race epic is DONE: prefer a fresh product-surface audit from the non-avoid list (settings/chat-lane adjacent surfaces recently stable; chat-lane requires esc-stop 3/3 + chat-guard 8/8), or spot-check 2-3 CDP suites not run this round (e.g. lane-true, tracker-dedup, chat-list-truth, sidebar-timestamps), or the vault epic (only with a real key). Avoid workflow-editor-dialog, workflow-run-panel/run-kanban, agents-view, agent-form-dialog, chat-search, image-studio, conversation-list, composer, markdown.tsx, whats-fixed.tsx, settings-view.tsx, test-agent-dialog.tsx, radar-view, shell.tsx, page.tsx + chat-view.tsx, stale-build-guard/memory-dialog/atoms/chat-heartbeat, use-shortcuts + command-palette + README, the 18 API route files, chat/route.ts, agent-engine.ts + tools-defs.ts, providers.ts + free-provider-matrix.md, workflows-view.tsx, setup-wizard.tsx, scripts/cdp-qa-setup-wizard.mjs, provider-gallery.tsx, global-search-dialog.tsx, scripts/cdp-qa-search-match-truth.mjs, model-picker.tsx, and the twenty-six converted suites (r259-r266; only touch via a failing run). (4) Standing: bun run qa:tsc (unmasked, includes qa-ime-parity) + eslint every code round; chat suites esc-stop 3/3 + chat-guard 8/8 for any chat-lane change; CDP suites self-heal chrome on 9222 (wedge-aware r263, janitor r265); full matrix per r262 entry (unchanged).
