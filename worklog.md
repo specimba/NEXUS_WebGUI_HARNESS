@@ -7451,3 +7451,36 @@ Verification result: PASS (static)
 Open risks: none new. Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor. git push fork 128 environmental. provider-gallery.tsx lines 120-907 still unread (head audited only).
 Blockers: none
 Next recommended action: r274 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r273 snapshot or successor). (3) Product-side rotation: finish provider-gallery.tsx audit (lines 120-907), settings/whats-fixed.tsx + setup-wizard.tsx (never covered), or a small vault-epic feature. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.
+
+---
+
+## r274 — What's-fixed receipts refreshed (r270-r273) + refresh-all honest no-op (2026-10-05, Job 424432)
+
+Task ID: r274
+Agent: main (platform dev agent)
+Task: Handoff — product-side rotation: finish provider-gallery audit (lines 120-907), settings/whats-fixed.tsx + setup-wizard.tsx (never covered), or a small vault-epic feature. Avoid QA-only.
+
+Work Log:
+- Lineage: HEAD 2cc2425b0 (r273 snapshot) — verified; no user report.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- Surfaces audited (all read this round): provider-gallery.tsx lines 120-907 — clean (per-entry vault-import sanitization, honest zero-balance credits toast, relay-health badges, live roster refresh with browser-direct retry); setup-wizard.tsx full — clean (r255 IME-safe Enter + tautology fix intact, deep-link step logic correct, drafts prefill both paths).
+- DEFECT 1 (whats-fixed.tsx): the r195 receipt panel had gone 32 rounds stale — newest receipt was r241 while r270-r273 shipped four user-visible fixes; the description line still read "r186-r241".
+- SHIPPED 1: four verified receipts appended (r270 copy-resilience, r271 OS reduce-motion app-wide, r272 view deep-links, r273 radar shown-count honesty) + description updated to "r186-r273". Chronological append order preserved (newest-first render untouched).
+- DEFECT 2 (provider-gallery.tsx refreshAllModels): with zero saved keys (any fresh browser) the "Refresh all models" button was a silent no-op — targets filters on liveCatalog && (noKey || saved key), and NO registry entry sets noKey (verified: rg across src shows zero assignments; Pollinations is keyed BY DESIGN — free key from enter.pollinations.ai, anonymous tier exhausted). Empty targets = reachable dead button.
+- SHIPPED 2: honest guard — empty targets now toasts "Nothing to refresh yet" with what "ready" means and how to get there; non-empty path byte-identical.
+- Verification: eslint 0 errors (33 pre-existing warnings, no new); bun run qa:tsc clean. In-vivo skipped with reason: client-only render strings on a stale running bundle (last rebuild r272); both changes are static JSX/object edits with no logic coupling — queued for the next rebuild-to-serve round.
+- Budget: 12 tool batches — at the ≤12 cap (three-surface audit reads + noKey reachability proof).
+
+Stage Summary:
+- The in-app receipt panel is current again (r270-r273 receipts with board evidence); fresh-profile users get an explanation instead of a dead button on Refresh all models.
+
+Round Handoff:
+Round ID: r275
+Task owner: main (platform dev)
+Scope completed: whats-fixed receipts r270-r273 + refresh-all empty-targets toast.
+User-visible changes: Settings "What's fixed recently" lists the last four rounds of fixes; "Refresh all models" on a fresh profile explains itself instead of doing nothing.
+Verification steps: eslint; qa:tsc.
+Verification result: PASS (static)
+Open risks: in-vivo pass pending for r274's two render-string changes (next rebuild-to-serve). Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor; copy SUCCESS path inferred (headless denies). git push fork 128 environmental.
+Blockers: none
+Next recommended action: r275 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r274 snapshot or successor). (3) If a rebuild-to-serve happens anyway (any client-side round), add a 2-check CDP rider: whats-fixed shows the r273 receipt first + fresh-profile refresh-all toast fires. (4) Product-side rotation options: vault-epic small feature (long-standing), tracker/model-radar-tab tail-half re-verify, or audit an unread surface (agents/*, workflows/* beyond r237-239). Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.

@@ -117,6 +117,33 @@ const FIXES: FixNote[] = [
       "Model replies that embed images now show them clamped to the card (lazy-loaded), broken image URLs get a clean fallback that keeps the alt text instead of the browser's raw broken glyph, inline data-URI images (charts, screenshots) actually render, and - [x] task lists display as real checkboxes.",
     lookFor: "images in replies stay inside the bubble; task lists show checkboxes",
   },
+  {
+    round: "r270",
+    title: "Copy buttons survive clipboard blockers",
+    detail:
+      "Copy actions (referral link, model names) used to die silently wherever the Clipboard API is unavailable or denied — HTTP origins, embedded frames, focus races. They now fall back to the legacy hidden-textarea copy, and if the browser blocks that too you get an explicit \"Copy failed\" toast instead of nothing.",
+    lookFor: "copy the referral link in Settings — a success or an honest failure toast, never silence",
+  },
+  {
+    round: "r271",
+    title: "Motion respects your OS reduce-motion setting",
+    detail:
+      "With prefers-reduced-motion enabled, every looping animation (model ticker, typing dots, ripples, EQ bars, shimmer) and all slide/fade view transitions now stop app-wide (WCAG 2.3.3). Previously only the ticker complied — the rest kept moving for vestibular-sensitive users.",
+    lookFor: "enable reduce motion in your OS and reload — the ticker freezes, views switch without sliding",
+  },
+  {
+    round: "r272",
+    title: "Every view is deep-linkable",
+    detail:
+      "#/chat, #/agents, #/workflows and #/settings now open their view directly, like the existing #/setup, #/providers and #/radar links. Bare #/settings lands at the top of Settings instead of a section, and any of these links cleanly exits the setup wizard.",
+    lookFor: "add #/agents to the URL and reload — the agents view opens; bookmarkable",
+  },
+  {
+    round: "r273",
+    title: "Trend Radar's watched-lanes count stopped overclaiming",
+    detail:
+      "A wide filter made the header say \"250 shown\" while the list rendered its first 120 rows; the header now reads \"first 120 of 250 shown\" when a result set outgrows the render cap.",
+  },
 ];
 
 export function WhatsFixedSection() {
@@ -125,7 +152,7 @@ export function WhatsFixedSection() {
       <CardHeader className="pb-3">
         <CardTitle>What&apos;s fixed recently</CardTitle>
         <CardDescription>
-          r186-r241 shipped pipeline, radar &amp; rendering repairs while boards can look unchanged
+          r186-r273 shipped pipeline, radar, provider &amp; rendering repairs while boards can look unchanged
           (background tabs stop hot-reloading). Newest receipts first. If you can read this section,
           this tab already runs current code — otherwise an amber refresh pill appears within a
           minute.

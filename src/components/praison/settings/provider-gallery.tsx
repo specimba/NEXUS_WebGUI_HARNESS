@@ -340,6 +340,15 @@ export function ProviderGallery() {
     const targets = FREE_PROVIDERS.filter(
       (p) => p.liveCatalog && (p.noKey || !!settings.providerKeys?.[p.id]?.key?.trim())
     );
+    if (targets.length === 0) {
+      // Honesty: on a fresh profile nothing is "ready" yet — a silent no-op
+      // here reads as a dead button. Say what ready means and how to get there.
+      toast("Nothing to refresh yet", {
+        description:
+          "Model rosters pull per provider once it's ready — save a key on a provider card below (each free guide takes ~2 minutes), then refresh again.",
+      });
+      return;
+    }
     let total = 0;
     let okCount = 0;
     const failures: string[] = [];
