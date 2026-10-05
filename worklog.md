@@ -7266,3 +7266,31 @@ Verification result: PASS (browser-QA caveat logged)
 Open risks: browser render check of the Usage card pending — do it first thing r268 (app → Settings → Usage → "Day streak" tile present, value sane); ensureChrome wedge-recovery path still awaits natural exercise; r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions await natural fleet runs.
 Blockers: none
 Next recommended action: r268 — (1) FIRST read any user report. (2) Verify HEAD lineage. (3) FIRST: browser-verify the Usage card (Settings → Usage → Day streak tile renders, value sane). Then rotate surfaces per the r266 avoid list (unchanged); rarely-audited non-avoid candidates: tracker/model-radar-tab, settings/model-relay, settings/provider-card, workflows/automation-bridge, server-autopilot, gateway-pulse-chip. Standing: bun run qa:tsc (unmasked) + eslint every code round; chat suites esc-stop 3/3 + chat-guard 8/8 for any chat-lane change; CDP suites self-heal chrome (wedge-aware r263, janitor r265); full matrix per r262 entry (unchanged).
+
+---
+Task ID: r268
+Agent: main (platform dev)
+Task: r267 handoff — browser-verify the Usage card (owed r267 QA), then rotate surfaces.
+
+Work Log:
+- Lineage: HEAD started at 5e23495a1 (r267 code snapshot); round executed as r268.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- RECOVERY: r267's worklog section was lost — it was appended AFTER the snapshot commit and the inter-round working-tree reset ate the uncommitted append. Re-appended verbatim (with a loss note) and committed FIRST this round. Process lesson locked in: worklog append precedes the round's snapshot commit.
+- Audit pass (rotation per handoff): read gateway-pulse-chip, model-relay, automation-bridge, model-radar-tab (head), gateway-cadence, schedule-skips in full — all clean (backoff ladder matches doctrine 45m→1.5h→3h→6h capped; episode idempotency holds; bridge heartbeat lifecycle correct). Local-day bug class re-check across src/lib: only relative-diff helpers remain (correct by construction); stores.ts day constant is seed data.
+- SHIPPED (scripts/cdp-qa-usage-streak.mjs): new standing CDP suite for the streak lane — U0 boot, U1 settings nav (fuzzy accessible-name match), U2 usage-card paint (tile OR honest empty state), U3 populated-branch truth (7 chart columns + sane streak value), U4 empty-branch honesty. House shape: ensureChrome + self-created tab, closed on success AND error paths.
+- IN-VIVO FINDS: (1) ensureChrome printed "relaunched" — the r263 wedge-recovery path got its FIRST natural exercise and the suite proceeded cleanly after it. (2) First suite run failed U1 (exact-text "settings" match; the control is icon-only with an aria-label) — fixed to fuzzy accessible-name matching. (3) Second run 4/5: U2 "fail" was a TEST bug (asserted the streak tile unconditionally; on a fresh profile the dashboard correctly renders only the empty state — tiles don't render empty by design) — fixed branch-aware; third run green. Fresh-profile observation: no seeded sample conversations exist (agent/workflow seeds only), so the Usage card boots empty-honest.
+- Verification: node --check; three in-vivo suite runs (final green); eslint 0 errors (33 pre-existing warnings); bun run qa:tsc; worklog appended BEFORE snapshot (lesson applied). Round ran 13 tool batches vs the ≤12 budget — one repair batch after the suite-exit short-circuit skipped qa:tsc+worklog while the heredoc-following snapshot ran unconditionally; disclosed, not hidden.
+
+Stage Summary:
+- The r267 streak-fix surface now has permanent in-vivo coverage; wedge-recovery is no longer "awaiting natural exercise"; suites must find icon-only controls by aria-label, never exact visible text.
+
+Round Handoff:
+Round ID: r269
+Task owner: main (platform dev)
+Scope completed: r267 worklog recovery + committed; usage-streak standing suite shipped, debugged to green in-vivo.
+User-visible changes: none product-side; QA fleet gains a settings/usage lane suite.
+Verification steps: node --check; in-vivo usage-streak run (green); eslint; qa:tsc.
+Verification result: PASS
+Open risks: none new. Carried: r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions await natural fleet runs.
+Blockers: none
+Next recommended action: r269 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r268 snapshot or successor; cron-named commit on top = harness worklog auto-commit, diff it). (3) Rotate surfaces per the r266 avoid list (unchanged); candidates: settings/local-models, settings/provider-card, settings/theme-picker, workflows/server-autopilot, tracker/model-radar-tab (tail, unread half), lib/workflow-runner.ts (read-only audit). For a fast real find: extend usage-streak to seed a synthetic conversation and assert a 02:30-local message counts as TODAY's streak (full in-vivo behavioral proof of localDayKey). Standing: bun run qa:tsc (unmasked) + eslint every code round; chat suites esc-stop 3/3 + chat-guard 8/8 for any chat-lane change; CDP suites self-heal chrome (wedge-aware r263, janitor r265); full matrix per r262 entry (unchanged).

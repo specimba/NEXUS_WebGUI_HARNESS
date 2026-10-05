@@ -4,7 +4,9 @@
 // via localDayKey (helpers.ts). This suite verifies the card renders truth
 // in-vivo on both branches:
 //   U1  Settings view opens (h2 == "Settings")
-//   U2  Usage card paints the r267 markers ("Day streak" tile, "local" badge)
+//   U2  Usage card paints — streak tile on a populated profile, OR the
+//       honest empty-state line on a fresh one (tiles don't render empty;
+//       r268 first run asserted the tile unconditionally — test bug, fixed)
 //   U3  Populated branch → 7-day chart has exactly 7 day columns; streak
 //       tile value is sane (integer + 🔥 or "—")
 //   U4  Empty branch → honest empty-state line instead of a hollow chart
@@ -117,7 +119,7 @@ async function main() {
       chart: t.includes("Last 7 days"),
     };
   })()`);
-  check("U2 streak tile painted", markers.streakTile, JSON.stringify(markers));
+  check("U2 usage card painted (tile or honest empty state)", markers.localBadge && (markers.streakTile || markers.emptyState), JSON.stringify(markers));
 
   // U3/U4 — branch truth
   if (markers.emptyState) {
