@@ -7294,3 +7294,31 @@ Verification result: PASS
 Open risks: none new. Carried: r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions await natural fleet runs.
 Blockers: none
 Next recommended action: r269 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r268 snapshot or successor; cron-named commit on top = harness worklog auto-commit, diff it). (3) Rotate surfaces per the r266 avoid list (unchanged); candidates: settings/local-models, settings/provider-card, settings/theme-picker, workflows/server-autopilot, tracker/model-radar-tab (tail, unread half), lib/workflow-runner.ts (read-only audit). For a fast real find: extend usage-streak to seed a synthetic conversation and assert a 02:30-local message counts as TODAY's streak (full in-vivo behavioral proof of localDayKey). Standing: bun run qa:tsc (unmasked) + eslint every code round; chat suites esc-stop 3/3 + chat-guard 8/8 for any chat-lane change; CDP suites self-heal chrome (wedge-aware r263, janitor r265); full matrix per r262 entry (unchanged).
+
+---
+Task ID: r269
+Agent: main (platform dev)
+Task: r268 handoff — rotate surfaces (server-autopilot et al.) or the sanctioned fast find: in-vivo behavioral proof of localDayKey.
+
+Work Log:
+- Lineage: HEAD 50f25afa5 (r268 snapshot chain, no stray harness commit — append-before-snapshot lesson holding); round executed as r269.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- Surface rotation: server-autopilot.tsx opened (31KB, r116/v20-hardened — no cheap find); with six surfaces audited clean in r268, chose the handoff's sanctioned fast find over low-EV bulk reading.
+- SHIPPED (scripts/cdp-qa-usage-streak.mjs S-phase): behavioral proof of the r267 localDayKey fix, in-vivo. On an empty profile the suite seeds two assistant messages on consecutive LOCAL days at UTC-straddling times (02:30 local yesterday, 04:30 local today; early-morning runs fall back to 00:01 local, which still straddles), reloads, and asserts the streak tile reads 2 — the value raw-UTC keying would have missed (1) in most run windows — plus a 7-column chart, then RESTORES the prior praison-conversations value (suite is re-runnable, zero profile pollution).
+- Verification: node --check; in-vivo 9/9 (U0-U4 + S1-S4, S3 streak=2, S4 bars=7); eslint 0 errors (33 pre-existing warnings); bun run qa:tsc; ensureChrome "relaunched" again — wedge-recovery exercising naturally, second observation.
+- The suite's persist-shape seeding (zustand persist {state,version} merge, version-preserving) is now a proven recipe for future store-level suites.
+
+Stage Summary:
+- r267's fix is closed out end-to-end: unit (TZ-forced discriminator) + structural render + behavioral in-vivo proof.
+- QA fleet gains a re-runnable store-seeding recipe.
+
+Round Handoff:
+Round ID: r270
+Task owner: main (platform dev)
+Scope completed: localDayKey behavioral proof (S-phase) shipped and green in-vivo.
+User-visible changes: none product-side; r267 fix now has full verification closure.
+Verification steps: node --check; in-vivo usage-streak 9/9; eslint; qa:tsc.
+Verification result: PASS
+Open risks: none new. Carried: r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions await natural fleet runs.
+Blockers: none
+Next recommended action: r270 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r269 snapshot or successor). (3) Rotate to a PRODUCT-side change — two QA-infra rounds in a row; prefer a real user-facing find on an unread surface: settings/local-models, settings/provider-card, settings/theme-picker, settings/referral-card, tracker/model-radar-tab (tail half), or a fresh audit walk of src/app (layout.tsx, globals.css) which no round has covered. Chat-lane work requires esc-stop 3/3 + chat-guard 8/8. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome (wedge-aware r263, janitor r265); full matrix per r262 entry (unchanged).

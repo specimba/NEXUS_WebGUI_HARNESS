@@ -10,6 +10,11 @@
 //   U3  Populated branch → 7-day chart has exactly 7 day columns; streak
 //       tile value is sane (integer + 🔥 or "—")
 //   U4  Empty branch → honest empty-state line instead of a hollow chart
+//   S1-4  BEHAVIORAL proof of localDayKey (r267): on an empty profile, seed
+//       two assistant messages on consecutive LOCAL days at UTC-straddling
+//       times (02:30 local yesterday, 04:30 local today) → streak tile must
+//       read 2🔥 (raw-UTC keying would read 1 in most run windows); chart
+//       paints 7 columns; profile restored afterwards (no pollution).
 // House shape (r265-r266 doctrine): self-created tab via PUT /json/new —
 // never scans /json/list for a leftover to ride; ensureChrome self-heals
 // 9222 (wedge-aware r263, janitor r265). Tab is closed on success AND error.
@@ -133,6 +138,50 @@ async function main() {
       return m ? m[1] : (t.includes("Day streak") ? "—" : null);
     })()`);
     check("U3b streak value sane (int+🔥 or —)", streakVal === "—" || /^\d+$/.test(String(streakVal)), `value=${streakVal}`);
+  }
+
+  // ── S-phase: behavioral proof of localDayKey (r267) in-vivo ──────────────
+  // Runs ONLY on an empty profile (no pollution of real data); restores the
+  // previous praison-conversations value afterwards.
+  if (markers.emptyState) {
+    const orig = await evalJs(ws, `localStorage.getItem("praison-conversations")`);
+    const seeded = await evalJs(ws, `(() => {
+      try {
+        const DAY = 86_400_000;
+        const nowD = new Date();
+        const startToday = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate()).getTime();
+        const msgA = startToday - DAY + 2.5 * 3_600_000;          // yesterday 02:30 local
+        let msgB = startToday + 4.5 * 3_600_000;                  // today 04:30 local
+        if (msgB > Date.now()) msgB = startToday + 60_000;        // early-morning run: 00:01 local (still straddles)
+        const mk = (ts) => ({ id: "qa-seed-" + ts, role: "assistant", content: "QA streak seed reply", createdAt: ts, toolCalls: [], status: "done", durationMs: 1200 });
+        const conv = { id: "qa-usage-streak-seed", title: "QA streak seed (disposable)", messages: [mk(msgA), mk(msgB)], createdAt: msgA, updatedAt: msgB };
+        let parsed = null;
+        try { parsed = JSON.parse(localStorage.getItem("praison-conversations") ?? "null"); } catch {}
+        const state = Object.assign({}, (parsed && parsed.state) || {}, { conversations: [conv], activeId: conv.id });
+        localStorage.setItem("praison-conversations", JSON.stringify({ state, version: (parsed && parsed.version) || 0 }));
+        return true;
+      } catch (e) { return "ERR:" + ((e && e.message) || e); }
+    })()`);
+    check("S1 seed written to praison-conversations", seeded === true, String(seeded));
+    await evalJs(ws, `location.reload()`).catch(() => {});
+    check("S2 app re-hydrated", await waitFor(ws, `document.readyState === "complete" && document.body && document.body.innerText.length > 0`));
+    // Reload lands on the persisted view (was Settings); re-click defensively.
+    await evalJs(ws, `(() => {
+      const hay = (e) => [e.getAttribute("aria-label"), e.getAttribute("title"), e.textContent].map((x) => (x || "").toLowerCase()).join(" ");
+      const els = [...document.querySelectorAll("button, a, [role='tab'], [role='menuitem']")].filter((e) => /settings/.test(hay(e)) && e.offsetParent !== null);
+      if (!els.length) return false;
+      els[0].click();
+      return true;
+    })()`).catch(() => false);
+    await waitFor(ws, `document.querySelector("h2")?.textContent?.trim() === "Settings"`);
+    const streakN = await evalJs(ws, `(() => { const m = document.body.innerText.match(/(\\d+)\\s*🔥/); return m ? Number(m[1]) : null; })()`);
+    check("S3 streak counts straddling messages as consecutive local days (=2)", streakN === 2, `streak=${streakN}`);
+    const bars2 = await evalJs(ws, `document.querySelector("[aria-label='Messages per day, last 7 days']")?.children?.length ?? 0`);
+    check("S4 chart painted post-seed (7 columns)", bars2 === 7, `bars=${bars2}`);
+    const origJson = JSON.stringify(orig ?? null);
+    await evalJs(ws, `(() => { const v = ${origJson}; if (v === null) localStorage.removeItem("praison-conversations"); else localStorage.setItem("praison-conversations", v); return true; })()`);
+    await evalJs(ws, `location.reload()`).catch(() => {});
+    await waitFor(ws, `document.readyState === "complete" && document.body && document.body.innerText.length > 0`);
   }
 
   await closeTab();
