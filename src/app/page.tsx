@@ -37,6 +37,7 @@ function useIsClient(): boolean {
 // #/providers        → Settings scrolled to the free provider gallery
 // #/local-models     → Settings scrolled to the WebGPU local-model panel
 // #/radar            → Trend Radar view (GitHub stars / HF trending / papers)
+// #/chat | #/agents | #/workflows | #/settings → bare view deep-links (r272)
 
 function applyHashRoute(): void {
   const hash = window.location.hash.replace(/^#\/?/, "");
@@ -55,6 +56,12 @@ function applyHashRoute(): void {
   } else if (head === "radar") {
     ui.setSetupWizardOpen(false);
     ui.setView("radar");
+  } else if (head === "chat" || head === "agents" || head === "workflows" || head === "settings") {
+    // r272: every view is linkable/bookmarkable, not just radar. Navigational
+    // anchors imply leaving the wizard — dismiss it if open.
+    ui.setSetupWizardOpen(false);
+    ui.setView(head);
+    if (head === "settings") ui.setSettingsAnchor(null); // bare link: top, no section scroll
   }
 }
 

@@ -7389,3 +7389,33 @@ Verification result: PASS (static)
 Open risks: pending in-vivo pass for r270 copy-resilience + r271 reduced-motion (one rebuild-to-serve covers both). Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor. git push fork 128 remains environmental.
 Blockers: none
 Next recommended action: r272 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r271 snapshot or successor). (3) Optional first move: rebuild-to-serve (bun run build && restart) then one CDP pass asserting BOTH pending client changes in-vivo (copy fallback + emulated prefers-reduced-motion) — closes two verification debts at once. (4) Otherwise implement the hash deep-link completion (page.tsx applyHashRoute: agents/workflows/chat/settings) or audit settings/provider-card. Standing: bun run qa:tsc (unmasked) + eslint every code round; worklog append BEFORE snapshot.
+
+---
+
+## r272 — Hash deep-link completion + both verification debts closed in-vivo (2026-10-05, Job 424432)
+
+Task ID: r272
+Agent: main (platform dev agent)
+Task: Handoff — optional rebuild-to-serve + one CDP pass closing r270/r271 verification debts; hash deep-link completion as the product-side increment.
+
+Work Log:
+- Lineage: HEAD ba19dbf7b (r271 snapshot) — verified; no user report.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- SHIPPED product-side: hash deep-link completion (page.tsx applyHashRoute + route doc) — #/chat, #/agents, #/workflows, #/settings now bookmarkable alongside the existing setup/guide/providers/local-models/radar heads; bare #/settings clears the section anchor (setSettingsAnchor(null) — valid per stores.ts:562 union).
+- Verification: rebuild-to-serve carried r270 copy-resilience + r271 reduced-motion + r272 deep-links into the live bundle; NEW suite scripts/cdp-qa-motion-copy.mjs closed BOTH debts in one 11-check pass, ALL GREEN: M1/M2 reduced-motion A/B (probe .ticker-track animationName ticker-scroll → none under CDP Emulation.setEmulatedMedia reduce) = r271 proven; M3 ×4 deep-links flip the persisted praison-ui view + M3b anchor cleared + M3c settings painted = r272 proven; M4/M4b copy click surfaced the toast "Copy failed — your browser blocked clipboard access" = r270's honest-failure lane proven LIVE (headless denies clipboard-write; success path unchanged for permissive browsers).
+- Suite bring-up fixed 3 test-side bugs (extends r268 doctrine): (1) the real ModelTicker renders NULL when the feed is empty (model-ticker.tsx:251 `if (!data || feed.length === 0) return null`) — stylesheet assertions use an injected probe element in the real page context; (2) assertion ordering — settings-view checks must run before navigating away (first run checked h2 after the chat leg); (3) `?? "unset"` nullish-coalescing turned a legitimate null anchor into "unset" — use `== null`. New diagnostic tool: scripts/cdp-probe-buttons.mjs dumps the live button landscape (114 buttons, "copy link" visible/enabled) — probe-first beat guess-first.
+- BUDGET DISCLOSURE: 13 tool batches vs ≤12 (suite bring-up debugging: 2 failed assertion runs + 1 probe round before the green pass).
+
+Stage Summary:
+- Every view is now deep-linkable; r270+r271+r272 all have in-vivo behavioral proof, not just static checks. QA fleet gains the probe tool + probe-first debugging doctrine.
+
+Round Handoff:
+Round ID: r273
+Task owner: main (platform dev)
+Scope completed: hash deep-links (product) + 11/11 CDP verification pass (both debts).
+User-visible changes: #/chat #/agents #/workflows #/settings are shareable/bookmarkable; nothing else product-side.
+Verification steps: node scripts/cdp-qa-motion-copy.mjs (11/11); eslint 0 errors; qa:tsc clean.
+Verification result: PASS (in-vivo)
+Open risks: copy SUCCESS path (clipboard-permitted browsers) still inferred, not asserted — headless always denies; low risk (fallback exercised both branches of the lane). Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor. git push fork 128 environmental.
+Blockers: none
+Next recommended action: r273 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r272 snapshot or successor). (3) Product-side rotation: audit settings/provider-card or provider-gallery (unread), tracker/model-radar-tab tail half, or ship a small feature from the vault epic. Avoid another QA-only round — r272 already spent the verification budget. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.
