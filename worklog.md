@@ -7354,3 +7354,7 @@ Verification result: PASS (static)
 Open risks: markdown.tsx + message-item ×2 copy sites still lack failure UI (double-failure only — both clipboard paths rejected); carried: r142 vault real-key validation, r241 markdown external-image CSP note, Chrome Ctrl+1-8 reservation, ZAI SDK abort gap (r251), /api/providers/free-models bare-write anchor.
 Blockers: none
 Next recommended action: r271 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r270 snapshot or successor). (3) Product-side rotation continues: settings/provider-card, tracker/model-radar-tab (tail half), or the never-covered src/app walk (layout.tsx, globals.css). Cheap pairing option: finish the copy sweep — add failure UI to markdown.tsx + message-item.tsx ×2 (toast import or inline failed state). Chat-lane work requires esc-stop 3/3 + chat-guard 8/8. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.
+
+### r270 addendum (post-snapshot)
+- git-snapshot.sh exited 128 at `git push fork main` (credentials unreachable this run) — the LOCAL commit 1d9ab192d (helpers.ts fallback + 3 failure-toast sites + r270 worklog) is authoritative and the tree is clean. r271: expect this push failure to recur environmentally; a 128 AFTER "[snapshot] committed" is a push failure, not a lost round — do not re-commit.
+- Budget correction: final count 17 tool batches (15 disclosed pre-snapshot + push-failure check + this addendum).
