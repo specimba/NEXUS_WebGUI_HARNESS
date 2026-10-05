@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { AgentAvatar } from "@/components/praison/atoms";
 import { TOOL_META } from "@/lib/constants";
-import { fmtMs } from "@/lib/helpers";
+import { fmtMs, localDayKey } from "@/lib/helpers";
 import { useAgentsStore, useConversationsStore } from "@/lib/stores";
 import type { AgentColor, Conversation, ToolId } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -83,11 +83,15 @@ function computeUsage(conversations: Conversation[]): UsageStats {
     .sort((a, b) => b.count - a.count);
   const totalToolRuns = toolCounts.reduce((n, t) => n + t.count, 0);
 
-  // Activity streak (consecutive days ending today or yesterday with ≥1 message)
+  // Activity streak (consecutive days ending today or yesterday with ≥1 message).
+  // r267: keyed by LOCAL calendar day via localDayKey — the raw UTC day index
+  // silently shifted the streak by the zone offset (a daily 02:30-local chatter
+  // in UTC+3 straddled UTC midnight and showed a broken streak) and disagreed
+  // with the perDay chart above, which already buckets by local days.
   const daysWithMsgs = new Set<number>();
-  for (const m of msgs) daysWithMsgs.add(Math.floor(m.createdAt / DAY_MS));
+  for (const m of msgs) daysWithMsgs.add(localDayKey(m.createdAt));
   let streak = 0;
-  let cursor = Math.floor(Date.now() / DAY_MS);
+  let cursor = localDayKey(Date.now());
   if (!daysWithMsgs.has(cursor)) cursor -= 1; // streak survives if yesterday had activity
   while (daysWithMsgs.has(cursor)) {
     streak++;

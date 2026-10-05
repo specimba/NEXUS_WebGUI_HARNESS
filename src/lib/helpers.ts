@@ -39,6 +39,19 @@ export function truncate(s: string, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
 
+/**
+ * Local-calendar-day index for a timestamp (r267). DST-safe: uses the
+ * per-timestamp UTC offset, so consecutive integers = consecutive LOCAL
+ * calendar days even across DST transitions. The usage dashboard's activity
+ * streak previously keyed days with the raw UTC index, which silently shifted
+ * "a day" by the zone offset (a daily 02:30-local chatter in UTC+3 straddled
+ * UTC midnight and showed a broken streak) and disagreed with the dashboard's
+ * own 7-day chart, which buckets by local days.
+ */
+export function localDayKey(ts: number): number {
+  return Math.floor((ts - new Date(ts).getTimezoneOffset() * 60_000) / 86_400_000);
+}
+
 export function titleFrom(text: string): string {
   const clean = text.replace(/\s+/g, " ").trim();
   return truncate(clean, 42) || "New chat";
