@@ -58,6 +58,7 @@ export function ReferralCard() {
                 onClick={async () => {
                   const ok = await copyText(VYCE_REFERRAL_URL);
                   if (ok) toast("Referral link copied — share it to earn credits", { icon: "🎁" });
+                  else toast.error("Copy failed — your browser blocked clipboard access");
                 }}
               >
                 <Copy className="h-3 w-3" aria-hidden />

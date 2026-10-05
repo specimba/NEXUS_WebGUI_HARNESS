@@ -278,9 +278,30 @@ export function estimateNextTurnTokens(
 }
 
 export async function copyText(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fall through to the legacy path below (r270)
+    }
+  }
+  // Clipboard API unavailable or denied (insecure origin, iframe without
+  // clipboard-write permission, focus race). Legacy execCommand fallback so
+  // copy buttons still work in blocked contexts — and callers' failure
+  // feedback stays honest instead of firing on a silent no-op.
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
   } catch {
     return false;
   }

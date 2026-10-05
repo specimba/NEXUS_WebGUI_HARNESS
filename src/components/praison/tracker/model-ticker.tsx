@@ -430,6 +430,7 @@ function TickerRow({
           onClick={async () => {
             const ok = await copyText(row.modelId);
             if (ok) toast(`Copied ${row.modelId}`, { icon: "📋" });
+            else toast.error("Copy failed — select the id and copy manually");
           }}
         >
           <Copy className="h-3.5 w-3.5" />

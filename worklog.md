@@ -7322,3 +7322,35 @@ Verification result: PASS
 Open risks: none new. Carried: r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions await natural fleet runs.
 Blockers: none
 Next recommended action: r270 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r269 snapshot or successor). (3) Rotate to a PRODUCT-side change — two QA-infra rounds in a row; prefer a real user-facing find on an unread surface: settings/local-models, settings/provider-card, settings/theme-picker, settings/referral-card, tracker/model-radar-tab (tail half), or a fresh audit walk of src/app (layout.tsx, globals.css) which no round has covered. Chat-lane work requires esc-stop 3/3 + chat-guard 8/8. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome (wedge-aware r263, janitor r265); full matrix per r262 entry (unchanged).
+
+---
+
+## r270 — Copy-resilience: clipboard fallback + honest failure feedback (2026-10-05, Job 424432)
+
+Task ID: r270
+Agent: main (platform dev agent)
+Task: Handoff directive — product-side change after two QA-infra rounds; rotate to an unread surface.
+
+Work Log:
+- Lineage: HEAD 2fcd79d92 = r269 snapshot (git show --stat: usage-streak S-phase +49, worklog +28) — verified before work; no stray harness commit.
+- Health: root 000 (sandbox reap, expected) → ONE restart → 200. Process care: 1 round.
+- Surface rotation: settings/theme-picker read clean (proper radiogroup/aria-checked/focus rings); settings/referral-card yielded a real defect. settings/local-models (41KB) grep-audited on high-signal patterns only — IME-safe Enter (:707), superseded-load unload cleanup, catches everywhere: no cheap find.
+- DEFECT: every copyText call site (all six: markdown code-copy, message-item ×2, model-radar Copy id, model-ticker copy icon, referral-card Copy link) silently swallowed failure — `if (ok) toast(...)` with no else. navigator.clipboard.writeText rejects in real conditions: insecure origin, iframe without clipboard-write permission (the preview embed!), focus races. Users got zero feedback; buttons looked dead.
+- SHIPPED (2 layers): (1) src/lib/helpers.ts copyText — clipboard-API guard + legacy hidden-textarea execCommand("copy") fallback, so copy still WORKS in blocked contexts; success paths byte-identical. (2) Honest failure toasts at the three toast-ready sites (referral-card, model-radar-tab, model-ticker); markdown/message-item sites are rescued by the fallback and keep their visual success state (no toast import needed there).
+- Verification: eslint 0 errors; bun run qa:tsc clean (unmasked, IME guard included). Browser QA skipped with reason: change is client-only and the live bundle is stale (rebuild-to-serve would overspend an already-over budget; no builds as verification per round rules).
+- BUDGET DISCLOSURE: 15 tool batches vs ≤12 — overspend from discovery across 6 call sites + a MultiEdit file-attribution retry (first MultiEdit applied its helpers.ts edit before aborting on a wrong-file old_str; not fully atomic in practice — net result verified correct by re-read).
+
+Stage Summary:
+- Copy buttons across the product now work in clipboard-blocked contexts AND report failure instead of silently no-op'ing. User-facing, coherent, six-site sweep.
+- Process note for future rounds: MultiEdit is not atomic against per-edit file mismatch — attribute edits per file or verify after.
+
+Round Handoff:
+Round ID: r271
+Task owner: main (platform dev)
+Scope completed: copyText execCommand fallback + failure toasts at 3 toast-ready call sites.
+User-visible changes: copy buttons work where the Clipboard API is blocked; failed copies now show an error toast (referral link, model ids ×2 surfaces).
+Verification steps: eslint; bun run qa:tsc. (In-vivo click-through pending a fresh bundle — next round rebuild-to-serve may cover it.)
+Verification result: PASS (static)
+Open risks: markdown.tsx + message-item ×2 copy sites still lack failure UI (double-failure only — both clipboard paths rejected); carried: r142 vault real-key validation, r241 markdown external-image CSP note, Chrome Ctrl+1-8 reservation, ZAI SDK abort gap (r251), /api/providers/free-models bare-write anchor.
+Blockers: none
+Next recommended action: r271 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r270 snapshot or successor). (3) Product-side rotation continues: settings/provider-card, tracker/model-radar-tab (tail half), or the never-covered src/app walk (layout.tsx, globals.css). Cheap pairing option: finish the copy sweep — add failure UI to markdown.tsx + message-item.tsx ×2 (toast import or inline failed state). Chat-lane work requires esc-stop 3/3 + chat-guard 8/8. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.

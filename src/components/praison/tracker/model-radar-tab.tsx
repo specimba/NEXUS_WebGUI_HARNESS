@@ -226,6 +226,7 @@ export function ModelRadarTab() {
                       onClick={async () => {
                         const ok = await copyText(m.modelId);
                         if (ok) toast(`Copied ${m.modelId}`, { icon: "📋" });
+                        else toast.error("Copy failed — select the id and copy manually");
                       }}
                     >
                       Copy id
