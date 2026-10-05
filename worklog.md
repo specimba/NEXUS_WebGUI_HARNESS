@@ -7419,3 +7419,35 @@ Verification result: PASS (in-vivo)
 Open risks: copy SUCCESS path (clipboard-permitted browsers) still inferred, not asserted — headless always denies; low risk (fallback exercised both branches of the lane). Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor. git push fork 128 environmental.
 Blockers: none
 Next recommended action: r273 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r272 snapshot or successor). (3) Product-side rotation: audit settings/provider-card or provider-gallery (unread), tracker/model-radar-tab tail half, or ship a small feature from the vault epic. Avoid another QA-only round — r272 already spent the verification budget. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.
+
+---
+
+## r273 — Radar watched-lanes shown-count honesty + lint hygiene (2026-10-05, Job 424432)
+
+Task ID: r273
+Agent: main (platform dev agent)
+Task: Handoff — product-side rotation: audit settings/provider-card, provider-gallery, or tracker/model-radar-tab tail half (queued two rounds); avoid QA-only.
+
+Work Log:
+- Lineage: HEAD 132e82d4b (r272 snapshot) — verified; no user report.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- Lint hygiene rider: removed the 2 unused eslint-disable directives r272 introduced in cdp-qa-motion-copy.mjs (warnings back to the 33 baseline; probe-buttons.mjs itself is clean).
+- Surfaces audited (all read this round): settings/provider-card.tsx — clean (radiogroup semantics, aria-live test lane, show/hide key aria-label); the suspected empty-baseUrl test edge is HANDLED BY DESIGN in chat-client.ts:148-178 (canDirect gate falls back to the server relay lane — no garbage protocol-relative fetch); settings store update() is a plain spread so activeProviderId:undefined correctly clears (stores.ts:105). provider-gallery.tsx head (907 lines total) — vault-entry sanitization doctrine visible, no cheap find in the audited portion.
+- DEFECT (tracker/model-radar-tab.tsx:178): the "Watched lanes" header claimed "{filtered.length} shown" while the list body caps at filtered.slice(0, 120) — with 250 filtered lanes the header said "250 shown" and rendered 120. Honesty bug, same class as the usage-card "no hollow chart" doctrine.
+- SHIPPED: cap-aware label — ">120 → first 120 of N shown", ≤120 → unchanged; rationale comment in place.
+- Verification: node --check; eslint 0 errors (33 pre-existing warnings, no new); bun run qa:tsc clean. In-vivo not exercised for this one-line label (would need >120 tracked lanes; the live profile has none — the cap path is data-gated and the change is a pure render-string).
+- Budget: 11 tool batches — within ≤12.
+
+Stage Summary:
+- Radar tab now tells the truth about how many lanes render; provider-card + chat-client dual-lane behavior audited and documented clean (useful negative results).
+
+Round Handoff:
+Round ID: r274
+Task owner: main (platform dev)
+Scope completed: radar shown-count honesty fix + r272 lint warnings cleared.
+User-visible changes: with >120 filtered lanes the header says "first 120 of N shown" instead of overclaiming.
+Verification steps: eslint; qa:tsc; node --check suite.
+Verification result: PASS (static)
+Open risks: none new. Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor. git push fork 128 environmental. provider-gallery.tsx lines 120-907 still unread (head audited only).
+Blockers: none
+Next recommended action: r274 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r273 snapshot or successor). (3) Product-side rotation: finish provider-gallery.tsx audit (lines 120-907), settings/whats-fixed.tsx + setup-wizard.tsx (never covered), or a small vault-epic feature. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.

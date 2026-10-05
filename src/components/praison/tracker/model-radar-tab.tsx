@@ -175,7 +175,12 @@ export function ModelRadarTab() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-[14px]">
-            Watched lanes <span className="text-[11px] font-normal text-muted-foreground">({filtered.length} shown)</span>
+            Watched lanes{" "}
+            <span className="text-[11px] font-normal text-muted-foreground">
+              {/* The list body caps at 120 rows — the count must not claim
+                  more than actually render (r273 honesty fix). */}
+              ({filtered.length > 120 ? `first 120 of ${filtered.length} shown` : `${filtered.length} shown`})
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">

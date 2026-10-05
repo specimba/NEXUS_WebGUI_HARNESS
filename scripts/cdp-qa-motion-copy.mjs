@@ -126,14 +126,12 @@ async function main() {
     `(JSON.parse(localStorage.getItem("praison-ui") || "{}")?.state?.view ?? null) === "${head}"`;
   for (const head of ["agents", "workflows", "chat"]) {
     await evalJs(ws, `location.hash = "#/${head}"`).catch(() => {});
-    // eslint-disable-next-line no-await-in-loop
     const ok = await waitFor(ws, viewExpr(head), 8_000);
     check(`M3 #/${head} deep-link flips view`, ok);
   }
   await evalJs(ws, `location.hash = "#/settings"`).catch(() => {});
   const settingsFlipped = await waitFor(ws, viewExpr("settings"), 8_000);
   check("M3 #/settings deep-link flips view", settingsFlipped);
-  // eslint-disable-next-line no-await-in-loop
   const anchorCleared = await evalJs(ws, `(JSON.parse(localStorage.getItem("praison-ui") || "{}").state.settingsAnchor) == null`);
   check("M3b bare #/settings clears section anchor", anchorCleared === true, `anchorCleared=${anchorCleared}`);
   check("M3c settings view painted via deep link", await waitFor(ws, `document.querySelector("h2")?.textContent?.trim() === "Settings"`));
