@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { AppSidebar, MobileNav, Splash, TopBar } from "@/components/praison/shell";
 import { CommandPalette } from "@/components/praison/command-palette";
 import { GlobalSearchDialog } from "@/components/praison/global-search-dialog";
@@ -88,7 +88,11 @@ export default function Page() {
   if (!mounted) return <Splash />;
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-background text-foreground">
+    /* reducedMotion="user": every framer slide/fade (view transitions, dialogs)
+       honors the OS prefers-reduced-motion setting — pairs with the expanded
+       CSS block in globals.css (r271, WCAG 2.3.3). */
+    <MotionConfig reducedMotion="user">
+      <div className="flex h-dvh overflow-hidden bg-background text-foreground">
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
@@ -125,6 +129,7 @@ export default function Page() {
       <AutomationBridge />
       <StaleBuildGuard />
       <HeartbeatEngine />
-    </div>
+      </div>
+    </MotionConfig>
   );
 }

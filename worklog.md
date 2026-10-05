@@ -7358,3 +7358,34 @@ Next recommended action: r271 — (1) FIRST read any user report. (2) Verify HEA
 ### r270 addendum (post-snapshot)
 - git-snapshot.sh exited 128 at `git push fork main` (credentials unreachable this run) — the LOCAL commit 1d9ab192d (helpers.ts fallback + 3 failure-toast sites + r270 worklog) is authoritative and the tree is clean. r271: expect this push failure to recur environmentally; a 128 AFTER "[snapshot] committed" is a push failure, not a lost round — do not re-commit.
 - Budget correction: final count 17 tool batches (15 disclosed pre-snapshot + push-failure check + this addendum).
+
+---
+
+## r271 — App-wide prefers-reduced-motion (WCAG 2.3.3) (2026-10-05, Job 424432)
+
+Task ID: r271
+Agent: main (platform dev agent)
+Task: Handoff — product-side rotation; executed the never-covered src/app walk (layout.tsx, globals.css, page.tsx).
+
+Work Log:
+- Lineage: HEAD aeaa995a3 (r270 addendum) ← 1d9ab192d (r270 snapshot) — matches the documented push-failure state; no stray commits. No user report.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- src/app walk findings: layout.tsx clean (metadata/manifest/icons verified against public/ — all assets present; THEME_BOOT pre-hydration pattern sound); page.tsx clean (hydration gate, hash routes, r247 ImageStudio fix intact). globals.css: REAL FIND.
+- DEFECT: prefers-reduced-motion was honored ONLY by .ticker-track, while globals.css defines 8 other looping/transform animations (typing-dot, soft-pulse, rec-ripple, eq-bar, heart-ping, memory-glow, shimmer, card-in/queue-in) and page.tsx layers framer-motion slide transitions on every view change — vestibular-triggering motion for users with the OS reduce-motion setting on (WCAG 2.3.3 / 2.2.2).
+- SHIPPED (2 layers): (1) globals.css — reduced-motion block expanded to all looping/transform animations + .card-lift hover transform; one-shot informational background fades (msg-flash, soft-pulse opacity) intentionally stay. (2) page.tsx — tree wrapped in <MotionConfig reducedMotion="user"> so every framer transition (view switches, dialogs) complies too.
+- Verification: eslint 0 errors; bun run qa:tsc clean. Browser QA skipped with reason: client-only change on a stale running bundle; in-vivo reduced-motion check (CDP Emulation.setEmulatedMedia) queued for the next rebuild-to-serve round.
+- FOUND-NOT-FIXED (queued): hash deep-links incomplete — applyHashRoute covers setup/guide/providers/local-models/radar but NOT #/agents, #/workflows, #/chat, or bare #/settings; bookmarkable links to those views silently do nothing.
+
+Stage Summary:
+- The app now honors the OS reduce-motion setting across its own CSS animations AND framer transitions — an a11y gap present since the animation suite was introduced, invisible in screenshot QA.
+
+Round Handoff:
+Round ID: r272
+Task owner: main (platform dev)
+Scope completed: app-wide prefers-reduced-motion (globals.css block + MotionConfig).
+User-visible changes: with OS reduce-motion on, no more infinite pulses/pings/bounces or page slides anywhere in the app.
+Verification steps: eslint; qa:tsc. In-vivo CDP emulated-media check pending fresh bundle.
+Verification result: PASS (static)
+Open risks: pending in-vivo pass for r270 copy-resilience + r271 reduced-motion (one rebuild-to-serve covers both). Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor. git push fork 128 remains environmental.
+Blockers: none
+Next recommended action: r272 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r271 snapshot or successor). (3) Optional first move: rebuild-to-serve (bun run build && restart) then one CDP pass asserting BOTH pending client changes in-vivo (copy fallback + emulated prefers-reduced-motion) — closes two verification debts at once. (4) Otherwise implement the hash deep-link completion (page.tsx applyHashRoute: agents/workflows/chat/settings) or audit settings/provider-card. Standing: bun run qa:tsc (unmasked) + eslint every code round; worklog append BEFORE snapshot.

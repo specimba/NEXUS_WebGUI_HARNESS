@@ -517,8 +517,28 @@
 .ticker-track:focus-within {
   animation-play-state: paused;
 }
+/* ─── Reduced motion (WCAG 2.3.3): OS-level "reduce motion" kills every
+       looping/transform animation, not just the ticker. One-shot background
+       fades (msg-flash, soft-pulse opacity) are informational and stay. ───── */
 @media (prefers-reduced-motion: reduce) {
-  .ticker-track {
+  .ticker-track,
+  .typing-dot,
+  .rec-ripple,
+  .eq-bar,
+  .shimmer-text,
+  .heart-ping::after,
+  .memory-chip,
+  .card-in,
+  .queue-in {
     animation: none;
+  }
+  .soft-pulse {
+    animation: none;
+  }
+  .card-lift {
+    transition: none;
+  }
+  .card-lift:hover {
+    transform: none;
   }
 }
