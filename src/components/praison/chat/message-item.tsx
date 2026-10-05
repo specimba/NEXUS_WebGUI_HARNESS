@@ -41,6 +41,7 @@ import { AgentAvatar, ModelBadge } from "@/components/praison/atoms";
 import { MarkdownRenderer } from "@/components/praison/markdown";
 import { TOOL_META } from "@/lib/constants";
 import { copyText, fmtBytes, fmtChatTime, fmtChatTimeFull, fmtMs } from "@/lib/helpers";
+import { toast } from "sonner";
 import type { Agent, ChatMessage, MessageAttachment, RouteReceipt, ToolCallInfo, ToolId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -410,6 +411,11 @@ function UserBubble({
     if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    } else {
+      // r275: honest failure — copyText's legacy fallback already ran, so the
+      // browser blocked BOTH clipboard lanes. Never die silently (r270 doctrine,
+      // now applied to the last three copy sites).
+      toast.error("Copy failed — your browser blocked clipboard access");
     }
   }, [message.content]);
 
@@ -674,6 +680,11 @@ export const MessageItem = React.memo(function MessageItem({
     if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    } else {
+      // r275: honest failure — copyText's legacy fallback already ran, so the
+      // browser blocked BOTH clipboard lanes. Never die silently (r270 doctrine,
+      // now applied to the last three copy sites).
+      toast.error("Copy failed — your browser blocked clipboard access");
     }
   }, [message.content]);
 

@@ -135,6 +135,10 @@ async function main() {
   const anchorCleared = await evalJs(ws, `(JSON.parse(localStorage.getItem("praison-ui") || "{}").state.settingsAnchor) == null`);
   check("M3b bare #/settings clears section anchor", anchorCleared === true, `anchorCleared=${anchorCleared}`);
   check("M3c settings view painted via deep link", await waitFor(ws, `document.querySelector("h2")?.textContent?.trim() === "Settings"`));
+  // r275: the h2 paints from SSR HTML before the client sections mount — the
+  // original M4 could scan a sections-less SSR shell and report copyish:0
+  // (race, timing-dependent). Wait for the gallery itself before scanning.
+  check("M3d settings sections hydrated", await waitFor(ws, `document.querySelectorAll("#providers button").length > 0`, 15_000));
 
   // M4 — copy feedback lane (r270): click a copy control on Settings, expect
   // a toast (success via clipboard API or execCommand fallback, or the

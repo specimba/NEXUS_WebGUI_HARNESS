@@ -7,6 +7,7 @@ import { Check, Copy, ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
 import { applyReferral, referralAnchorProps, type ReferralRewrite } from "@/lib/referral-registry";
+import { toast } from "sonner";
 
 // ─── Shared markdown renderer (chat, workflows, test dialogs) ────────────────
 
@@ -27,6 +28,10 @@ function CodeBlock({ className, children }: { className?: string; children: Reac
             if (ok) {
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
+            } else {
+              // r275: honest failure — copyText's legacy fallback already ran,
+              // so the browser blocked BOTH clipboard lanes. Never die silently.
+              toast.error("Copy failed — select the code and copy manually");
             }
           }}
         >

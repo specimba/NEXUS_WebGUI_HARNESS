@@ -7484,3 +7484,34 @@ Verification result: PASS (static)
 Open risks: in-vivo pass pending for r274's two render-string changes (next rebuild-to-serve). Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor; copy SUCCESS path inferred (headless denies). git push fork 128 environmental.
 Blockers: none
 Next recommended action: r275 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r274 snapshot or successor). (3) If a rebuild-to-serve happens anyway (any client-side round), add a 2-check CDP rider: whats-fixed shows the r273 receipt first + fresh-profile refresh-all toast fires. (4) Product-side rotation options: vault-epic small feature (long-standing), tracker/model-radar-tab tail-half re-verify, or audit an unread surface (agents/*, workflows/* beyond r237-239). Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.
+
+---
+
+## r275 — Honest-copy completion (last 3 sites) + r274 record correction: vault re-seed truth + hydration-race doctrine (2026-10-05, Job 424432)
+
+Task ID: r275
+Agent: main (platform dev agent)
+Task: Handoff — copy-failure UI completion (markdown.tsx + message-item.tsx ×2) as the product increment; rebuild-to-serve carrying r273+r274+r275 with a CDP rider closing r274's in-vivo debt.
+
+Work Log:
+- Lineage: HEAD 726624cea (r274 snapshot) — verified; no user report.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- SHIPPED 1 (product): r270 honest-copy doctrine now covers ALL copy sites — markdown.tsx CodeBlock + message-item.tsx ×2 handleCopy got the else branch (toast.error "Copy failed — …" after copyText's legacy fallback also failed; previously the double-failure path died silently). Verified: eslint 0 errors (33 baseline), qa:tsc clean; the failure lane itself is live on the fresh bundle (motion-copy M4b captured the exact toast). The three new sites share the identical copyText+toast pattern but were not individually clicked in-vivo (chat sites need a seeded message) — noted, low risk.
+- CORRECTION (product truth — fixes the r274 record): r274's claim "fresh browser = zero keys = silent no-op on Refresh all models" was WRONG. Evidence chain: settings persist rehydrate runs a custom deep-merge (stores.ts:111-128) that RE-SEEDS the bundled keys (vyce/pollinations/aihubmix) into memory on every boot — with providerKeys={} written at the storage layer, the live gallery still reads "3/15 ready" and refresh-all fired 3 /api/providers/free-models fetches (rider R2b-R2d). No registry provider sets noKey either. The empty-targets state is unreachable on this build → r274's "Nothing to refresh yet" guard was UNREACHABLE DEAD CODE → REVERTED this round per the r257 anti-dead-code doctrine (doctrine comment left at the site). The dead button never existed for real users.
+- SHIPPED 2 (QA fleet): NEW suite scripts/cdp-qa-receipts-refresh.mjs (9 checks, 9/9): R1 pins r274 SHIPPED 1 in-vivo — whats-fixed newest chip = r273, oldest = r186, count = 17; R2 pins the vault re-seed truth as a regression guard (storage keys=0, memory ready=3/15, fetches fired). NEW DOCTRINE (hydration race): the settings h2 paints from SSR HTML before the client sections mount — suites must wait on SECTION CONTENT, never the heading alone; the r272 resident suite had a latent M4 race (could scan a sections-less SSR shell, copyish:0) → fixed with an M3d wait, now 12/12 including a live M4b honest-failure capture. New probe tool: scripts/cdp-probe-settings.mjs (full settings DOM landscape dump).
+- Verification: eslint 0 errors (33 baseline, no new); qa:tsc clean; rider 9/9; motion-copy 12/12. Two rebuild-to-serve cycles: (1) carried r273+r274+r275 client rounds, (2) carried the r274-guard revert so the bundle matches committed source.
+- BUDGET DISCLOSURE: ~24 tool batches vs ≤12 — the debugging arc earned it: rider bring-up surfaced (1) the SSR-vs-hydration assertion race and (2) the r274 premise error; each needed probe → fix → re-run cycles plus a second rebuild for the revert. No theatre: the round ends with two suites green, one dead code removed, and one prior-round record corrected.
+
+Stage Summary:
+- The copy doctrine is now complete app-wide; the in-app receipts are proven live; the vault's re-seed behavior is documented and regression-pinned; the QA fleet gained a hydration-race rule that applies to every future settings-targeted suite.
+
+Round Handoff:
+Round ID: r276
+Task owner: main (platform dev)
+Scope completed: copy-failure UI ×3 sites; r274 guard reverted as dead code; receipts + re-seed proven in-vivo; hydration-race doctrine + M3d fix in the resident suite.
+User-visible changes: code-block and message copy buttons now give an honest failure toast when the browser blocks both clipboard lanes; nothing else product-side (the r274 refresh-all toast never shipped to a reachable state and is gone).
+Verification steps: node scripts/cdp-qa-receipts-refresh.mjs (9/9); node scripts/cdp-qa-motion-copy.mjs (12/12); eslint; qa:tsc.
+Verification result: PASS (in-vivo)
+Open risks: copy SUCCESS path still inferred (headless denies clipboard); the 3 new failure-toast sites not individually exercised (identical pattern to the proven lane). Carried: r142 vault real-key validation; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI SDK abort gap (r251); /api/providers/free-models bare-write anchor. git push fork 128 environmental.
+Blockers: none
+Next recommended action: r276 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r275 snapshot or successor). (3) Product-side rotation: a small vault-epic feature (long-standing) or an unread surface (agents/*, workflows/* beyond r237-239); when reasoning about keyless/provider states, remember the re-seed truth (memory never keyless; deep-merge wins over storage deletion). (4) Keep the hydration doctrine in mind for any new settings-targeted suite: wait on section content, not headings. Standing: bun run qa:tsc (unmasked) + eslint every code round; CDP suites self-heal chrome; worklog append BEFORE snapshot.
