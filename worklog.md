@@ -7239,3 +7239,30 @@ Verification result: PASS
 Open risks: radar-persist transient mid-run interruption observed once (self-resolved; watch for recurrence — if it repeats, port the r264 waitFor-tolerance pattern there); ensureChrome wedge-recovery path still awaits natural exercise; r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); W-suite wizard marker copy; /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions (r260's four, r261's a11y+timestamps) still await natural fleet runs.
 Blockers: none
 Next recommended action: r267 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r266 auto-backup or successor; cron-named commit on top = harness worklog auto-commit, diff it). (3) Rotate surfaces — the scanner-race epic is DONE: prefer a fresh product-surface audit from the non-avoid list (settings/chat-lane adjacent surfaces recently stable; chat-lane requires esc-stop 3/3 + chat-guard 8/8), or spot-check 2-3 CDP suites not run this round (e.g. lane-true, tracker-dedup, chat-list-truth, sidebar-timestamps), or the vault epic (only with a real key). Avoid workflow-editor-dialog, workflow-run-panel/run-kanban, agents-view, agent-form-dialog, chat-search, image-studio, conversation-list, composer, markdown.tsx, whats-fixed.tsx, settings-view.tsx, test-agent-dialog.tsx, radar-view, shell.tsx, page.tsx + chat-view.tsx, stale-build-guard/memory-dialog/atoms/chat-heartbeat, use-shortcuts + command-palette + README, the 18 API route files, chat/route.ts, agent-engine.ts + tools-defs.ts, providers.ts + free-provider-matrix.md, workflows-view.tsx, setup-wizard.tsx, scripts/cdp-qa-setup-wizard.mjs, provider-gallery.tsx, global-search-dialog.tsx, scripts/cdp-qa-search-match-truth.mjs, model-picker.tsx, and the twenty-six converted suites (r259-r266; only touch via a failing run). (4) Standing: bun run qa:tsc (unmasked, includes qa-ime-parity) + eslint every code round; chat suites esc-stop 3/3 + chat-guard 8/8 for any chat-lane change; CDP suites self-heal chrome on 9222 (wedge-aware r263, janitor r265); full matrix per r262 entry (unchanged).
+
+---
+Task ID: r267
+Agent: main (platform dev)
+Task: r266 handoff — rotate surfaces: fresh product-surface audit from the non-avoid list.
+
+Work Log:
+- Lineage: HEAD 50f9800a2 = worklog-only harness auto-commit atop r266's auto-backup (ffe7c1ed4); round executed as r267.
+- Health: root 000 (sandbox reap) → ONE restart → 200. Process care: 1 round.
+- Audit pass (non-avoid surfaces): read usage-dashboard, workflow-scheduler, model-ticker, workflow-compare-dialog in full — all heavily hardened (r74-r210 annotations); a11y:audit clean (41 files / 139 buttons / 0 icon-only gaps). FIND: usage-dashboard's activity streak keyed days with the raw UTC index (Math.floor(ts/DAY_MS)) while its own 7-day chart buckets by LOCAL start-of-day — for non-UTC users the streak silently shifted by the zone offset (a daily 02:30-local chatter in UTC+3 straddles UTC midnight → broken/inflated streak). Same bug class as the r259-r261 timestamp fixes.
+- SHIPPED: src/lib/helpers.ts gains exported localDayKey(ts) — DST-safe local calendar-day index via the per-timestamp UTC offset; usage-dashboard streak (daysWithMsgs + cursor) now keys local days, agreeing with its own chart. helpers trunc left byte-identical (one accidental signature widening during edit reverted immediately).
+- VERIFICATION: bun unit check (TZ=Asia/Istanbul): 02:30-local message keys the SAME local day as the 03:00-local anchor (keys 20731,20731), old UTC formula demonstrably disagrees (discriminator true); eslint 0 errors (33 pre-existing warnings); bun run qa:tsc clean. Commit 5e23495a1 (2 files, +21/-4). Browser QA of the tile NOT run that round — budget exhausted (12/12).
+- [r268 NOTE] This section was originally appended AFTER the snapshot commit and the uncommitted append was lost to the inter-round working-tree reset; re-appended (and committed) first thing r268. Process lesson: worklog append must precede the round's snapshot commit.
+
+Stage Summary:
+- Day streak is now timezone-honest and consistent with the dashboard's own 7-day chart; pure localDayKey helper exported for future local-day consumers.
+
+Round Handoff:
+Round ID: r268
+Task owner: main (platform dev)
+Scope completed: usage streak tz fix (localDayKey) + unit verification (code commit 5e23495a1).
+User-visible changes: Day-streak tile now counts LOCAL calendar days (correct for non-UTC users).
+Verification steps: TZ=Asia/Istanbul bun unit check PASS; lint 0 errors; qa:tsc clean. PENDING: browser render check of the Usage card.
+Verification result: PASS (browser-QA caveat logged)
+Open risks: browser render check of the Usage card pending — do it first thing r268 (app → Settings → Usage → "Day streak" tile present, value sane); ensureChrome wedge-recovery path still awaits natural exercise; r142 vault real-key validation; markdown external-image CSP note (r241); Chrome Ctrl+1-8 reservation (cosmetic); ZAI SDK LLM call can't be signal-aborted (r251); /api/providers/free-models bare-write anchor for ~14 suites; CDP-variant conversions await natural fleet runs.
+Blockers: none
+Next recommended action: r268 — (1) FIRST read any user report. (2) Verify HEAD lineage. (3) FIRST: browser-verify the Usage card (Settings → Usage → Day streak tile renders, value sane). Then rotate surfaces per the r266 avoid list (unchanged); rarely-audited non-avoid candidates: tracker/model-radar-tab, settings/model-relay, settings/provider-card, workflows/automation-bridge, server-autopilot, gateway-pulse-chip. Standing: bun run qa:tsc (unmasked) + eslint every code round; chat suites esc-stop 3/3 + chat-guard 8/8 for any chat-lane change; CDP suites self-heal chrome (wedge-aware r263, janitor r265); full matrix per r262 entry (unchanged).
