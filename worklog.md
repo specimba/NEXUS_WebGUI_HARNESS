@@ -7788,3 +7788,35 @@ Verification result: PASS (static + in-vivo)
 Open risks: carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; git push fork 128 environmental. New: none this round.
 Blockers: none
 Next recommended action: r297 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r296 snapshot or successor). (3) The settings/wizard surface is hardened and freshly receipted — rotate OFF it. Pick ONE: (a) a small user-facing feature or polish on a genuinely low-traffic surface (usage-dashboard, shell.tsx, radar-view — deep-read first); (b) a docs pass (LOCAL_AUTOMATION.md drift fact-check vs the r149 stamp is the long-standing candidate); (c) perf or error-handling on a NON-API surface. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus (r287); Glob before Read (LS fallback); /api/tracker GET lazy-syncs when stale; suites carry their own failure DIAGs; eslint covers scripts/*.mjs — no ternary-statement asserts in new suites (keep 0/33); append receipts when shipping user-visible changes (zero suite churn, proven again this round).
+
+## r297 — usage dashboard: perDay buckets on true local midnights (r267 defect class finished) + tool-mix zero-row suppression with an out-loud honesty line; new seeded suite 4/4 (2026-10-06, Job 424432)
+
+Task ID: r297
+Agent: main (platform dev agent)
+Task: Per r296 handoff option (a) — low-traffic surface, deep-read first. usage-dashboard.tsx (never shipped on since at least r267). Deep-read found the r267 defect class still open in the chart r267's own comment claims is already correct.
+
+Work Log:
+- STARTUP: no user report. Health 200 in 0.06s (warm). HEAD 5484bc460 = r296 snapshot ✓.
+- SHIPPED 1 — perDay bucketing on TRUE local calendar midnights: `startOfToday - i * DAY_MS` drifts across DST transitions (23/25-hour days shift every boundary by an hour), the exact defect class r267 fixed for the streak — and r267's comment claims this chart "already buckets by local days", which was only true in non-DST zones. Boundaries are now each day's actual midnight (`new Date(y, m, d - i)`), and the bucket test compares against the next day's real start. Istanbul (UTC+3 fixed) sees no visible change — honest labeling: this is a correctness fix witnessed by reasoning + the seeded suite, NOT by a DST-zone observer.
+- SHIPPED 2 — tool-mix honesty: zero-count rows suppressed (a wall of unused tools was noise) and the suppression is STATED OUT LOUD: "N of 13 tool types unused." below the mix (r273/r283 signals-cap doctrine); honest empty state ("No tool runs yet.") when nothing has run. The "never leaves this browser" description was fact-checked first (conversations persist to localStorage `praison-conversations`) — it is true and untouched.
+- SHIPPED 3 — receipt r297 appended (24 total, derived range 186-297).
+- NEW SUITE scripts/cdp-qa-usage-dashboard.mjs (4/4, self-cleaning): seeds praison-conversations (snapshot kept NODE-side → seed → location.reload() → asserts → same-eval restore+reload). M1 dashboard mounts + "Messages · 7d" tile == seeded 7; M2 only the 3 seeded tool types render, no zero rows (counts 3,1,1); M3 honesty line self-consistent (rows 3 == 13-10); M4 console clean.
+- DIAG findings worth carrying: (1) the settings tab strip is PLAIN BUTTONS with NO role=tab — the r287 Radix pointerdown doctrine does NOT apply there; a `[role="tab"]` finder matches an empty set. (2) Page.navigate to the SAME URL is a same-document no-op — the in-memory store never re-read localStorage; suites must use location.reload() for real rehydration. (3) Chrome's innerText returns text-TRANSFORMED text (the uppercase tile label reads "MESSAGES · 7D") — DOM asserts must use textContent. (4) The QA chrome profile has zero conversations, so usage surfaces need seeding to leave their empty states.
+- Verification: npx tsc --noEmit exit 0 (after BOTH product edits); canonical bun run lint 0 errors / 33 baseline warnings; cdp-qa-usage-dashboard.mjs 4/4 IN-VIVO; whatsfixed-order 4/4 (count=24, first=r297, range 186-297 derived — third zero-churn append proof). Boot gate NOT re-run this round: the change surface (usage card) is exercised by the new suite itself and boot gate V5's settings mount covers the page render; noted honestly.
+- Budget: ~15 tool batches — over the nominal cap (three suite-debug rounds: role=tab discovery, same-document navigate discovery, innerText transform discovery — each bought a durable testing doctrine). Product work itself was 2 edits; the spend was verification honesty.
+
+Stage Summary:
+- r267's defect class is now fully closed: streak AND chart agree on true local calendar days in every zone.
+- The usage dashboard now talks like the rest of the honest surfaces: it shows what you used and says out loud what it hides.
+- The seeding pattern (node-side snapshot + location.reload rehydration + same-eval restore) is the reusable recipe for any localStorage-driven surface QA.
+
+Round Handoff:
+Round ID: r298
+Task owner: main (platform dev agent)
+Scope completed: perDay local-midnight fix + tool-mix suppression/honesty line + r297 receipt; seeded usage suite 4/4; tsc 0 + lint 0/33 + receipts-order 4/4.
+User-visible changes: Settings → Usage: tool mix lists only used tools with an "N of M unused" line; 7-day chart buckets by calendar day in DST zones too.
+Verification steps: node scripts/cdp-qa-usage-dashboard.mjs (4/4); node scripts/cdp-qa-whatsfixed-order.mjs (4/4); tsc (0); bun run lint (0/33).
+Verification result: PASS (static + in-vivo)
+Open risks: perDay DST fix verified by reasoning + seeded suite, not by a DST-zone observer; carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
+Blockers: none
+Next recommended action: r298 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r297 snapshot or successor). (3) Settings got r294/r295/r296/r297 in a row — rotate OFF for real this time. Pick ONE: (a) docs pass: LOCAL_AUTOMATION.md drift fact-check vs the r149 stamp (long-standing candidate, untouched since r217); (b) a small feature/polish on shell.tsx or radar-view (deep-read first); (c) perf pass on a non-API surface. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; settings tab strip = plain buttons (no role=tab); same-URL Page.navigate is a no-op — use location.reload(); innerText is text-transform-aware — assert via textContent; Radix triggers elsewhere need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; suites carry DIAGs; no ternary-statement asserts (keep lint 0/33).

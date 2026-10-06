@@ -31,21 +31,25 @@ interface UsageStats {
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAY_MS = 86_400_000;
 
 function computeUsage(conversations: Conversation[]): UsageStats {
   const msgs = conversations.flatMap((c) => c.messages);
 
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-  // Last 7 days buckets (oldest → today)
+  // Last 7 days buckets (oldest → today), keyed by TRUE local calendar
+  // midnights. r297 completes r267: `startOfToday - i * DAY_MS` drifts across
+  // DST transitions (23/25-hour days shift every boundary by an hour), so
+  // late-evening and early-morning messages could land in the wrong bucket —
+  // the same defect class r267 fixed for the streak. Bucket boundaries are
+  // now each day's actual local midnight, and the claim in r267's comment
+  // that this chart "already buckets by local days" is finally true in
+  // every zone, not just non-DST ones.
   const perDay: { label: string; count: number; isToday: boolean }[] = [];
   const dayStarts: number[] = [];
   for (let i = 6; i >= 0; i--) {
-    const start = startOfToday - i * DAY_MS;
-    dayStarts.push(start);
-    const d = new Date(start);
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    dayStarts.push(d.getTime());
     perDay.push({
       label: i === 0 ? "Today" : DAY_LABELS[d.getDay()],
       count: 0,
@@ -53,7 +57,9 @@ function computeUsage(conversations: Conversation[]): UsageStats {
     });
   }
   for (const m of msgs) {
-    const idx = dayStarts.findIndex((s, i) => m.createdAt >= s && (i === 6 || m.createdAt < s + DAY_MS));
+    const idx = dayStarts.findIndex(
+      (s, i) => m.createdAt >= s && (i === 6 || m.createdAt < dayStarts[i + 1])
+    );
     if (idx !== -1) perDay[idx].count++;
   }
   const weekMessages = perDay.reduce((n, d) => n + d.count, 0);
@@ -143,6 +149,11 @@ export function UsageDashboard() {
   const maxDay = Math.max(1, ...stats.perDay.map((d) => d.count));
   const maxTool = Math.max(1, ...stats.toolCounts.map((t) => t.count));
   const maxAgent = Math.max(1, ...stats.topAgents.map((a) => a.count));
+  // r297: zero-count tool rows are suppressed — a wall of unused tools is
+  // noise — and the suppression is stated OUT LOUD below the mix instead of
+  // being silent (same honesty doctrine as the signals-cap line, r273/r283).
+  const usedTools = stats.toolCounts.filter((t) => t.count > 0);
+  const unusedToolCount = stats.toolCounts.length - usedTools.length;
 
   const tiles = [
     {
@@ -258,29 +269,35 @@ export function UsageDashboard() {
                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Tool mix
                 </div>
-                <div className="space-y-2">
-                  {stats.toolCounts.map((t) => (
-                    <div key={t.id} className="flex items-center gap-2">
-                      <span className="w-24 shrink-0 truncate text-xs" aria-hidden>
-                        {t.emoji} {t.label}
-                      </span>
-                      <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(t.count / maxTool) * 100}%` }}
-                          transition={{ duration: 0.5, ease: "easeOut" }}
-                          className={cn(
-                            "h-full rounded-full",
-                            t.count === 0 ? "bg-transparent" : "bg-gradient-to-r from-violet-500 to-fuchsia-400"
-                          )}
-                        />
+                {usedTools.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No tool runs yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {usedTools.map((t) => (
+                      <div key={t.id} className="flex items-center gap-2">
+                        <span className="w-24 shrink-0 truncate text-xs" aria-hidden>
+                          {t.emoji} {t.label}
+                        </span>
+                        <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(t.count / maxTool) * 100}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                            className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
+                          />
+                        </div>
+                        <span className="w-6 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
+                          {t.count}
+                        </span>
                       </div>
-                      <span className="w-6 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
-                        {t.count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                    {unusedToolCount > 0 ? (
+                      <p className="text-[10px] text-muted-foreground">
+                        {unusedToolCount} of {stats.toolCounts.length} tool types unused.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               {/* Top agents */}

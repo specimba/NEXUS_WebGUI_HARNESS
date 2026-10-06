@@ -184,6 +184,13 @@ const FIXES: FixNote[] = [
     detail:
       "Switching providers or closing the guided setup while a \u201cSave & test\u201d round-trip was still in flight could let the old dial's error render inside the new provider's dialog (witnessed live during r295's QA). In-flight validations are now invalidated by any provider switch or close \u2014 a result only applies if you are still on the provider you tested.",
   },
+  {
+    round: "r297",
+    title: "The usage dashboard counts days like your calendar does",
+    detail:
+      "The 7-day activity chart bucketed messages by 24-hour arithmetic from today's midnight, which drifts an hour across DST transitions \u2014 the same defect class r267 fixed for the streak (late-evening and early-morning messages could land in the wrong day). Buckets are now true local calendar midnights. The tool mix also stops rendering a wall of zero rows: unused tool types are summarized out loud (\u201cN of M tool types unused\u201d) instead of drawn.",
+    lookFor: "Settings \u2192 Usage: the tool mix lists only tools you have actually run",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
