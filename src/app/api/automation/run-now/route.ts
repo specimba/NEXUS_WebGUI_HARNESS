@@ -4,8 +4,9 @@ import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 // ─── v20: fire a registered workflow on the server immediately ──────────────
-// Sets nextRunAt = now; the scheduler mini-service claims it within 30s when
-// it is driving (tab closed or heartbeat stale). Meant for closed-tab mode —
+// Sets nextRunAt = now; the in-repo claim loop (automation-executor, 15s
+// tick) claims it within ~30s when it is driving (tab closed or heartbeat
+// stale). Meant for closed-tab mode —
 // while the tab is open, the in-app Run button uses the BYOK lane.
 
 export async function POST(req: Request) {

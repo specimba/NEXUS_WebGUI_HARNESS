@@ -217,6 +217,13 @@ try {
     }
   }
 
+  // M4 — console hygiene, read while __errs is still alive. r299 fix: this
+  // read used to sit AFTER the restore-reload below, which wipes window state
+  // — it always saw undefined and passed vacuously (r298 DIAG finding).
+  const errs = await evalJs(ws, `window.__errs`);
+  if (!errs || errs.length === 0) pass("M4", "no console errors during the suite");
+  else fail("M4", `console errors: ${JSON.stringify(errs)}`);
+
   // Restore the pre-test conversations (no seed pollution) — same-eval
   // location.reload() so a debounced persist flush can't overwrite the
   // restore after the tab unloads.
@@ -228,11 +235,6 @@ try {
     return true;
   })()`);
   await waitFor(ws, `document.readyState === "complete"`, 60_000);
-
-  // M4 — console hygiene.
-  const errs = await evalJs(ws, `window.__errs`);
-  if (!errs || errs.length === 0) pass("M4", "no console errors during the suite");
-  else fail("M4", `console errors: ${JSON.stringify(errs)}`);
 } catch (e) {
   fail("DRIVE", `harness error: ${e.message}`);
   try { await shot(ws, "usage-dash-DRIVE-FAIL"); } catch {}
