@@ -7910,3 +7910,32 @@ Verification result: PASS (static + in-vivo)
 Open risks: paused/foreign tooltip branches witnessed statically only (registry never seeded — banned ritual adjacent); radar-view deep-read still owed (handoff option a, untouched — 46KB); carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; vault consume round-trip + prune-on-push live-unverified (keyless profile); git push fork 128 environmental.
 Blockers: none
 Next recommended action: r301 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r300 snapshot or successor). (3) Pick ONE: (a) radar-view deep-read + small polish (the other half of this handoff's option a — 46KB, give it a full round); (b) non-API perf or error-handling (e.g. UserBubble memo, r293 perf-win instrumentation); (c) if a vault key gets stored, live-verify consume round-trip + prune-on-push. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; suites read __errs BEFORE any restore-reload; settings tab strip = plain buttons (no role=tab); same-URL Page.navigate is a no-op — use location.reload(); assert via textContent; Radix triggers need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; no ternary-statement asserts (keep lint 0/33); append receipts when shipping user-visible changes.
+
+---
+Task ID: r301
+Agent: main (platform dev agent)
+Task: Per r300 handoff (a) — radar-view deep-read (the 46KB file owed a full round) + small polish.
+
+Work Log:
+- STARTUP: no user report. Health 200. HEAD 3ea6674cc = r300 snapshot, no newer-HEAD this hour. Vault precondition for option (c) checked and failed again (sync GET: vaultLane.hasKey=false, executorLane "no-vault-key") → proceeded with (a).
+- DEEP-READ: radar-view.tsx fully (1067 lines) — CacheStatus/ErrorBox/CardGridSkeleton/Chip/LinkChip primitives + GitHubStarsTab + HfTrendingTab + PaperRadarTab + RadarView (4 Radix tabs). File is in good health: r245 IME guards, r139/r26 proxy routing, r160 stale stamps all present.
+- SHIPPED — radar tab persistence (r240's class, one level up): r240's own premise is that the view remounts on every view switch, and r240 taught the INNER controls to survive (HF kind, GH username, arXiv query) — but the tab strip itself stayed uncontrolled defaultValue="models", so leaving the radar and returning always snapped back to Models while everything below the strip remembered its state. Fix: RADAR_TAB_KEY ("praison-radar-tab") + RADAR_TABS const + controlled Tabs (value/onValueChange); invalid saved values fall back to Models; readCache/writeCache (already guarded) keep the radar never-throwing.
+- Receipt r301 appended to whats-fixed.tsx (27 entries; derived range auto-extends to r186-r301).
+- QA: new suite scripts/cdp-qa-radar-tab.mjs (4/4): T1 no-key default preserved (suite snapshots+removes+restores its own key — no product seeding); T2 Radix trigger driven with the full r287 pointer sequence → selection + synchronous key write witnessed; T3 the fix witness — after a REAL location.reload() the radar reopens on GitHub Stars; T4 console hygiene across BOTH reload segments (errs snapshotted before the reload, read after — airtight against the r297 vacuity class). #/radar deep-link confirmed via page.tsx r272 comments.
+- Suite W4 correction (honest): first run failed T2 on a SUITE bug, not a product bug — writeCache stores JSON.stringify(value), so the raw localStorage value is a quoted string; the assert compared the parsed form. Suite now parses like the component's readCache. The product fix was correct from the first run (T3 passed even then).
+- Verification: npx tsc --noEmit exit 0; canonical bun run lint 0 errors / 33 baseline warnings; suite 4/4.
+- Budget: 9 tool batches.
+
+Stage Summary:
+- The radar now remembers its tab like its inner controls always did; deep-read debt on the 46KB file is paid, and no other defect in it was worth this round's budget (polish candidates noted in handoff).
+
+Round Handoff:
+Round ID: r302
+Task owner: main (platform dev agent)
+Scope completed: radar tab persistence + receipt r301 + cdp-qa-radar-tab.mjs 4/4; radar-view deep-read complete.
+User-visible changes: Radar keeps the last-visited tab (Models/GitHub Stars/HF Trending/Paper Radar) across view switches and reloads.
+Verification steps: node scripts/cdp-qa-radar-tab.mjs (4/4); npx tsc --noEmit (0); bun run lint (0/33).
+Verification result: PASS (static + in-vivo)
+Open risks: radar deep-read noted minor non-defects (HF tab lacks the GitHub tab's inline "Refreshing…" line while a cached board refreshes — cosmetic inconsistency, the refresh spinner is its only signal) — polish candidates, not defects; carried: paused/foreign fleet-chip tooltip branches witnessed statically only; clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; vault consume round-trip + prune-on-push live-unverified (keyless profile); git push fork 128 environmental.
+Blockers: none
+Next recommended action: r302 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r301 snapshot or successor). (3) Pick ONE: (a) HF refresh parity polish + one more radar cosmetic (small, same file); (b) non-API perf/error-handling (UserBubble memo, r293 perf-win instrumentation); (c) if a vault key gets stored, live-verify consume round-trip + prune-on-push; (d) rotate to a fresh surface entirely — agents-view or chat composer have not shipped since ~r245. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; suites read __errs BEFORE any restore-reload; settings tab strip = plain buttons (no role=tab); same-URL Page.navigate is a no-op — use location.reload(); assert via textContent; Radix triggers need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; no ternary-statement asserts (keep lint 0/33); append receipts when shipping user-visible changes.

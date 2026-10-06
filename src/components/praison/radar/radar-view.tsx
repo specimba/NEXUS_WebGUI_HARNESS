@@ -36,6 +36,12 @@ const HF_CACHE_KEY = "praison-radar-hf";
 const HF_KIND_KEY = "praison-radar-hf-kind";
 const ARXIV_CACHE_KEY = "praison-radar-arxiv";
 const ARXIV_QUERY_KEY = "praison-radar-paper-query";
+// r301: the last-visited radar tab joins the persisted set — r240 taught the
+// inner controls to survive remounts (HF kind, GH username, arXiv query);
+// this is the same treatment one level up.
+const RADAR_TAB_KEY = "praison-radar-tab";
+const RADAR_TABS = ["models", "github", "hf", "papers"] as const;
+type RadarTab = (typeof RADAR_TABS)[number];
 
 const DEFAULT_GH_USER = "specimba";
 const GH_PAGES = 3; // 3 × 100 repos — enough radar, not a full scrape
@@ -1021,13 +1027,26 @@ function PaperRadarTab() {
 // ─── View shell ──────────────────────────────────────────────────────────────
 
 export function RadarView() {
+  // r301: controlled tab + persistence. The view remounts on every view
+  // switch (r240's own premise), so the uncontrolled defaultValue="models"
+  // yanked the user back to Models each time — the inner controls remembered
+  // their state while the tab strip itself forgot. Invalid saved values fall
+  // back to Models (the radar never throws on a stale key).
+  const [tab, setTabState] = React.useState<RadarTab>(() => {
+    const saved = readCache<string>(RADAR_TAB_KEY);
+    return (RADAR_TABS as readonly string[]).includes(saved ?? "") ? (saved as RadarTab) : "models";
+  });
+  const setTab = (t: string) => {
+    setTabState(t as RadarTab);
+    writeCache(RADAR_TAB_KEY, t);
+  };
   return (
     <div className="flex h-full flex-col">
       <PageHeader
         title="Trend Radar"
         description="Free/new models · GitHub stars · HF trending · arXiv papers — fetched on demand, cached locally"
       />
-      <Tabs defaultValue="models" className="flex min-h-0 flex-1 flex-col">
+      <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
         <div className="border-b px-4 pt-3 md:px-6">
           <TabsList aria-label="Trend radar sections">
             <TabsTrigger value="models" className="gap-1.5">

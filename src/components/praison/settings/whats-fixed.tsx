@@ -207,6 +207,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Sidebar \u2192 hover the cron chip at the bottom: the tooltip says 'agentTurns armed' and names any paused or foreign jobs explicitly",
   },
+  {
+    round: "r301",
+    title: "The radar remembers which tab you were on",
+    detail:
+      "The four radar tabs (Models / GitHub Stars / HF Trending / Paper Radar) snapped back to Models every time you left the view and returned \u2014 even though r240 already made the HF section, GitHub username and arXiv query survive the same trip. The active tab now persists locally and reopens exactly where you left it.",
+    lookFor:
+      "Radar \u2192 switch to any tab, visit Chat, come back: the same tab is still selected",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
