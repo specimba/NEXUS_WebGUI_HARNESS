@@ -13,6 +13,7 @@ import {
   Pencil,
   ReceiptText,
   RotateCcw,
+  Trash2,
   Users,
   Volume2,
   X,
@@ -653,6 +654,8 @@ export interface MessageItemProps {
   speechRate?: number;
   /** Toggles read-aloud for this assistant message. */
   onToggleSpeak?: () => void;
+  /** r284: offered on assistant messages when idle — removes this single reply. */
+  onDelete?: () => void;
 }
 
 export const MessageItem = React.memo(function MessageItem({
@@ -667,8 +670,11 @@ export const MessageItem = React.memo(function MessageItem({
   speechState,
   speechRate,
   onToggleSpeak,
+  onDelete,
 }: MessageItemProps) {
   const [copied, setCopied] = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const deleteTimerRef = React.useRef<number | null>(null);
 
   const isUser = message.role === "user";
   const isStreamingNow = message.status === "streaming" && streaming;
@@ -687,6 +693,31 @@ export const MessageItem = React.memo(function MessageItem({
       toast.error("Copy failed — your browser blocked clipboard access");
     }
   }, [message.content]);
+
+  // r284 two-click confirm for the delete button: the first click ARMS
+  // (auto-disarms after 2.5s so a stale armed state can't eat an unrelated
+  // click later), the second click fires onDelete. Unmount always clears the
+  // pending timer.
+  const handleDeleteClick = React.useCallback(() => {
+    if (confirmDelete) {
+      if (deleteTimerRef.current != null) window.clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+      setConfirmDelete(false);
+      onDelete?.();
+    } else {
+      setConfirmDelete(true);
+      deleteTimerRef.current = window.setTimeout(() => {
+        deleteTimerRef.current = null;
+        setConfirmDelete(false);
+      }, 2500);
+    }
+  }, [confirmDelete, onDelete]);
+
+  React.useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current != null) window.clearTimeout(deleteTimerRef.current);
+    };
+  }, []);
 
   if (isUser) {
     return (
@@ -810,6 +841,24 @@ export const MessageItem = React.memo(function MessageItem({
               </button>
             </>
           ) : null}
+          {onDelete && !isStreamingNow && (
+            <button
+              type="button"
+              onClick={handleDeleteClick}
+              aria-label={
+                confirmDelete
+                  ? "Click again to confirm deleting this reply"
+                  : "Delete this reply"
+              }
+              title={confirmDelete ? "Click again to confirm" : "Delete this reply"}
+              className={cn(
+                "rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-red-400 focus-visible:opacity-100 group-hover/msg:opacity-100",
+                confirmDelete && "text-red-400 opacity-100"
+              )}
+            >
+              <Trash2 className="h-3 w-3" aria-hidden />
+            </button>
+          )}
         </div>
 
         {/* Tool calls */}

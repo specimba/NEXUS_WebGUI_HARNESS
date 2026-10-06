@@ -226,6 +226,8 @@ interface ConversationsState {
   patchToolCall: (convId: string, msgId: string, callId: string, patch: Partial<ToolCallInfo>) => void;
   /** Drop every message after `msgId` (or including it when `inclusive`). */
   truncateFrom: (convId: string, msgId: string, inclusive?: boolean) => void;
+  /** r284: remove ONE message (assistant replies — heartbeat noise, failed or mistaken turns). */
+  deleteMessage: (convId: string, msgId: string) => void;
   /** Replace the folded memory doc (source: auto consolidation or manual edit). */
   setMemory: (convId: string, memory: ConversationMemory | undefined) => void;
   /** Enable/disable/configure the proactive heartbeat loop. */
@@ -343,6 +345,16 @@ export const useConversationsStore = create<ConversationsState>()(
               updatedAt: Date.now(),
             };
           }),
+        })),
+      // r284: remove ONE message without touching the rest of the transcript —
+      // heartbeat noise, failed or mistaken turns.
+      deleteMessage: (convId, msgId) =>
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === convId
+              ? { ...c, messages: c.messages.filter((m) => m.id !== msgId), updatedAt: Date.now() }
+              : c
+          ),
         })),
       setMemory: (convId, memory) =>
         set((s) => ({

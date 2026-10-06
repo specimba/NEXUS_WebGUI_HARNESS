@@ -86,6 +86,7 @@ export function ChatView() {
   const conversations = useConversationsStore((s) => s.conversations);
   const activeId = useConversationsStore((s) => s.activeId);
   const create = useConversationsStore((s) => s.create);
+  const deleteMessage = useConversationsStore((s) => s.deleteMessage);
   const agents = useAgentsStore((s) => s.agents);
   const chatListOpen = useUiStore((s) => s.chatListOpen);
   const toggleChatList = useUiStore((s) => s.toggleChatList);
@@ -872,6 +873,17 @@ export function ChatView() {
     toast.success("Chat cleared — fresh start!");
   }, [conversation]);
 
+  // r284: delete ONE assistant reply (heartbeat noise, failed or mistaken
+  // turns) without nuking the surrounding transcript.
+  const deleteReply = React.useCallback(
+    (msgId: string) => {
+      if (!activeId) return;
+      deleteMessage(activeId, msgId);
+      toast.success("Reply deleted");
+    },
+    [activeId, deleteMessage]
+  );
+
   // Close the mobile overlay after navigating from the list
   const closeOnMobile = React.useCallback(() => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
@@ -1131,6 +1143,11 @@ export function ChatView() {
                     onToggleSpeak={
                       m.role === "assistant" && !streaming && m.status === "done" && m.content
                         ? () => void toggleSpeak(m.id, m.content)
+                        : undefined
+                    }
+                    onDelete={
+                      m.role === "assistant" && !streaming && speech?.msgId !== m.id
+                        ? () => deleteReply(m.id)
                         : undefined
                     }
                   />

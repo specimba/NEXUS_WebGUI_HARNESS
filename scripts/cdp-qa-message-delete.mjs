@@ -17,13 +17,9 @@
 // reaches hover-revealed buttons (opacity-0 does not gate programmatic clicks).
 // Usage: node scripts/cdp-qa-message-delete.mjs [baseUrl]
 //
-// r288 DISASTER-RECOVERY RESTORE (verbatim from the session record): the
-// sandbox rolled back to the r275 snapshot and lost r276-r287, including the
-// r284 delete feature itself (stores.deleteMessage + two-click confirm UI).
-// Until that feature is re-applied (r289 recipe in worklog r288 section),
-// this suite self-skips via FEATURE_PRESENT instead of failing red.
-
-import { readFileSync } from "node:fs";
+// r289 WAVE-2 RESTORE: the r284 feature (stores.deleteMessage + two-click
+// confirm UI) is re-applied per the worklog r288 recipe; the r288-era
+// FEATURE_PRESENT self-skip guard is removed — the suite runs for real again.
 import { ensureChrome } from "./cdp-ensure-chrome.mjs";
 
 const BASE = process.argv[2] ?? "http://localhost:3000";
@@ -32,18 +28,6 @@ const CONV_ID = "conv_cdp_rider_r285";
 const USER_MSG_ID = "msg_cdp_rider_r285_user";
 const ASST_MSG_ID = "msg_cdp_rider_r285_asst";
 const LS_KEY = "praison-conversations";
-
-// The suite targets the r284 feature; without stores.deleteMessage in the
-// tree it would fail every check. Detect and skip cleanly (r288).
-const FEATURE_PRESENT = (() => {
-  try {
-    return /deleteMessage/.test(
-      readFileSync(new URL("../src/lib/stores.ts", import.meta.url), "utf8")
-    );
-  } catch {
-    return false;
-  }
-})();
 
 let passed = 0;
 let failed = 0;
@@ -159,12 +143,6 @@ async function seedConversation(ws) {
 }
 
 async function main() {
-  if (!FEATURE_PRESENT) {
-    console.log(
-      "SKIP: r284 single-reply delete feature is not in the tree (sandbox rollback r288) — suite inert until the feature is re-applied."
-    );
-    process.exit(0);
-  }
   const mode = await ensureChrome();
   console.log(`ensureChrome: ${mode}`);
 
