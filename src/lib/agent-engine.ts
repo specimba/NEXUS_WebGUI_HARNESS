@@ -13,7 +13,7 @@
 // 400 fallback, tool-call-as-text salvage with grace rounds + digest fallback.
 
 import { CUSTOM_FALLBACK_MODEL, MAX_ITERATIONS_DEFAULT } from "./constants";
-import { isAuthRelayFailure, isDeadlyRelayFailure, isSoftRelayFailure } from "./relay";
+import { isAuthRelayFailure, isDeadlyRelayFailure, isSoftRelayFailure } from "./relay-core";
 import {
   buildToolDefs,
   fenceToolOutputForModel,

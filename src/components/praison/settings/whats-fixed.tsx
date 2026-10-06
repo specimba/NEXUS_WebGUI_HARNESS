@@ -271,6 +271,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows → the red “Lane degraded” strip when the failure breaker has paused a schedule: each name reads “…” ×N in a row with its true count",
   },
+  {
+    round: "r309",
+    title: "Server-side relay rotation no longer crashes on its own failure classifier",
+    detail:
+      "The relay failure classifiers (soft/dead/auth) lived in a client-only module while the dial engine is deliberately isomorphic — it runs both in the browser and inside the /api/chat server route. On the server, every one of those calls threw Next's client-boundary error — “Attempted to call isDeadlyRelayFailure() from the server” — and the run recorded THAT as the step error, so the relay ladder died at its first hop failure instead of rotating. The pure taxonomy moved to a directive-free core module both sides execute natively, and a boundary-guard QA script now fails if any server-graph module runtime-imports a client-only module again.",
+    lookFor:
+      "A run dying at step 1 with “Attempted to call … from the server” should be gone; after a provider hop fails, the relay emits its real rotation status line instead",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
