@@ -263,6 +263,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows → a run’s call log after a mid-stream drop: the wire note says “recent 429s or mid-stream drops”; with a second provider key saved, the final attempt notes “registry rotation” instead of parking",
   },
+  {
+    round: "r308",
+    title: "The “Lane degraded” breaker banner now names each schedule’s OWN failure streak",
+    detail:
+      "The banner attributed one MAX-across-schedules number to every listed name — if one pipeline failed 5 runs in a row and another only 2, both were announced as “failed 5 runs in a row”. Each schedule name now carries its own count (“Name” ×3 in a row), so the strip is honest about which pipeline actually burned which attempts.",
+    lookFor:
+      "Workflows → the red “Lane degraded” strip when the failure breaker has paused a schedule: each name reads “…” ×N in a row with its true count",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

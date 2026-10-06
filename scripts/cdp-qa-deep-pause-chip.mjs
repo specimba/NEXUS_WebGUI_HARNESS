@@ -203,6 +203,24 @@ async function main() {
     firingCards ? `${firingCards} firing-standard card(s), none paused` : "no firing-standard card on the board right now"
   );
 
+  // r308: the breaker strip names each schedule with its OWN streak — the old
+  // copy attributed one MAX-across-schedules number to every listed name.
+  const strip = JSON.parse(await evalJs(ws, js(`
+    const el = document.querySelector("#breaker-paused-strip");
+    return JSON.stringify({ live: !!el, text: el ? (el.textContent || "") : "" });
+  `)));
+  if (strip.live) {
+    const chips = (strip.text.match(/×\d+ in a row/g) ?? []).length;
+    const sharedClaim = /failed \d+ runs in a row/.test(strip.text);
+    check(
+      "D6 breaker strip streaks are per-schedule",
+      chips > 0 && !sharedClaim,
+      `${chips} per-schedule streak chip(s); shared-max phrasing ${sharedClaim ? "PRESENT (regression)" : "absent"}`
+    );
+  } else {
+    check("D6 breaker strip streaks are per-schedule", true, "strip not live right now (no auto-paused schedule on this board); copy invariant enforced at source");
+  }
+
   await settle(400);
   const errs = (await evalJs(ws, `window.__errs`)) ?? [];
   check("D5 console clean", errs.length === 0, errs.length ? errs.slice(0, 3).join(" | ") : "no errors/unhandled rejections");

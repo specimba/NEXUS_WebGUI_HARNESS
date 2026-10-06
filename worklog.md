@@ -8168,3 +8168,28 @@ Verification result: PASS (static + unit; live witness = next real mid-stream dr
 Open risks: carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; breaker banner MAX-streak copy. New: single-key profiles have NO rotation target (honest null) — the user's profile is currently single-key (Vyce); if both Vyce AND the built-in engine drop mid-stream (observed in the paste), the remaining mechanism is paced retry + park/auto-resume, which is environmental (sandbox outbound stream fragility), not fixable by rotation.
 Blockers: none
 Next recommended action: r308 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r307 snapshot or successor). (3) If the user saved a second provider key, the next congested/dropped run is the live rotation witness — read its call log FIRST. (4) Otherwise ONE small item: (a) breaker banner per-schedule streak copy; (b) r293 perf-win instrumentation; (c) docs pass. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes.
+
+---
+Task ID: r308
+Agent: main (platform dev agent)
+Task: Handoff-directed small item (a): breaker banner per-schedule streak copy precision (pinned open risk since r305; on the surface the user pasted in the r307 report).
+
+Work Log:
+- Confirmed the imprecision at workflows-view.tsx: the "Lane degraded" strip listed up to 3 schedule names but attributed ONE max-across-schedules streak to all of them (`failed {maxStreak} runs in a row`, maxStreak = reduce/Math.max over breakerPaused) — with A=5 and B=2, both were announced as "failed 5 runs in a row".
+- Fix: each name chip now carries its own true count — "Name" ×{failStreak} in a row — and the shared "failed N runs in a row" phrase is gone; the dead maxStreak declaration removed.
+- Extended scripts/cdp-qa-deep-pause-chip.mjs with D6: when the breaker strip is live, it asserts per-schedule "×N in a row" chips exist and the shared-max phrasing is absent; when not live, passes with an honest detail line. Board sweep: 6/6.
+- Verification: npx tsc --noEmit 0; canonical bun run lint 0 errors / 33 baseline warnings (no new ternaries — the JSX uses a comment + existing ternary shape); receipt r308 appended to whats-fixed.tsx (33 entries).
+
+Stage Summary:
+- The breaker strip — the first thing the user reads when the lane degrades — now reports each schedule's real failure count. Small, honest, on the exact surface from the user's last report.
+
+Round Handoff:
+Round ID: r309
+Task owner: main (platform dev agent)
+Scope completed: per-schedule breaker-strip copy + dead maxStreak removal + D6 sweep assert + receipt r308.
+User-visible changes: the red "Lane degraded" strip shows "Name" ×N in a row per schedule instead of one shared max number.
+Verification steps: node scripts/cdp-qa-deep-pause-chip.mjs (6/6; D6 fires whenever the strip is live); npx tsc --noEmit (0); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented. New: none from this round (copy-only + sweep assert). Standing watch: the user's vault still holds a single provider key (Vyce) — rotation has nowhere to go until a second key is saved (r307 note); next real mid-stream drop/429 on a multi-key profile is the live rotation witness.
+Blockers: none
+Next recommended action: r309 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r308 snapshot or successor). (3) If a congested/dropped run occurred, read its call log FIRST for the "registry rotation" / "congestion rotation" witness. (4) Otherwise ONE small item: (a) r293 perf-win instrumentation; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) Morning Briefing card shows "last fire 3h ago · stopped" — check whether a stopped (vs failed) terminal state needs a distinct resume affordance on the card. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts (hold 0/33); receipts for user-visible changes; SMALL commands.

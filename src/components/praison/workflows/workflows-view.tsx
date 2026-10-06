@@ -1138,7 +1138,6 @@ export function WorkflowsView() {
   const congestionBackoff = workflows.filter(
     (wf) => wf.schedule && !wf.schedule.enabled && wf.schedule.autoResumeAt != null
   );
-  const maxStreak = breakerPaused.reduce((m, wf) => Math.max(m, wf.schedule?.failStreak ?? 0), 0);
   const resumeAllPaused = () => {
     const n = breakerPaused.length;
     breakerPaused.forEach((wf) => {
@@ -1486,8 +1485,9 @@ export function WorkflowsView() {
               </AlertTitle>
               <AlertDescription className="flex flex-wrap items-center gap-2 text-red-600/90 dark:text-red-400/90">
                 <span>
-                  {breakerPaused.slice(0, 3).map((wf) => `“${wf.name}”`).join(" · ")}
-                  {breakerPaused.length > 3 ? ` +${breakerPaused.length - 3} more` : ""} failed {maxStreak} runs in a row — the breaker paused them instead of burning more quota. Fix each card's error, or resume straight away.
+                  {/* r308: per-schedule streaks — a shared max across schedules misattributed failures */}
+                  {breakerPaused.slice(0, 3).map((wf) => `“${wf.name}” ×${wf.schedule?.failStreak ?? 0} in a row`).join(" · ")}
+                  {breakerPaused.length > 3 ? ` +${breakerPaused.length - 3} more` : ""} — the breaker paused them instead of burning more quota. Fix each card's error, or resume straight away.
                   {congestionBackoff.length > 0 ? ` ${congestionBackoff.length} more in 429 backoff (self-resuming).` : ""}
                 </span>
                 <Button
