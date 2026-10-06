@@ -16,11 +16,19 @@ import {
   ROTATION_RECOVERY_MS,
   nextRotation,
   noteProvider429,
+  noteProviderFailure,
   provider429CooldownLeftMs,
   provider429Streak,
   resetProvider429,
 } from "../src/lib/provider-rotation";
-import { LANE_SICK_MS, laneStrikes, noteLane429, rotateHops } from "../src/lib/lane-rotation";
+import {
+  LANE_SICK_MS,
+  laneSickUntil,
+  laneStrikes,
+  noteLane429,
+  noteLaneFailure,
+  rotateHops,
+} from "../src/lib/lane-rotation";
 import { FREE_PROVIDERS, providerById } from "../src/lib/providers";
 import type { Settings } from "../src/lib/types";
 
@@ -162,6 +170,22 @@ ok(
   "wire-order demotion still fires while the registry cooldown runs (both halves compose)"
 );
 
+// ── r307: mid-stream drops feed the SAME saturation memory as 429s ───────────
+ok(noteLaneFailure === noteLane429, "noteLaneFailure is the family-window recorder (failure-kind agnostic alias)");
+ok(noteProviderFailure === noteProvider429, "noteProviderFailure is the registry-cooldown recorder (failure-kind agnostic alias)");
+const dropStore = new Map<string, { until: number; strikes: number }>();
+noteLaneFailure(dropStore, "vyce", t0);
+ok(
+  laneSickUntil(dropStore, "vyce", t0 + 1_000) === t0 + LANE_SICK_MS,
+  "a mid-stream drop opens the same 5m family window a 429 does"
+);
+resetProvider429("vyce");
+noteProviderFailure("vyce", t0);
+ok(
+  provider429CooldownLeftMs("vyce", t0 + 1_000) === ROTATION_COOLDOWN_BASE_MS - 1_000,
+  "a mid-stream drop puts the provider on the same registry cooldown"
+);
+
 console.log(`\n${pass}/${pass + fail} checks passed`);
 if (fail > 0) process.exit(1);
 
@@ -182,6 +206,13 @@ const rlEnd = runner.indexOf(`if (kind === "network"`);
 const rlRegion = rlStart !== -1 && rlEnd > rlStart ? runner.slice(rlStart, rlEnd) : "";
 wireOk(rlRegion.includes("noteProvider429(dialLlm.providerId"), "the 429 handler records REGISTRY exhaustion for the dialed provider");
 wireOk(rlRegion.includes("demotePrimary = true;"), "a pre-stream 429 on the primary demotes it for the next attempt");
+const msStart = runner.indexOf("localToolCalls.length > 0 && SELF_HEAL_KINDS.includes(kind)");
+const msEnd = runner.indexOf("if (attempt < MAX_STEP_ATTEMPTS && SELF_HEAL_KINDS.includes(kind)");
+const msRegion = msStart !== -1 && msEnd > msStart ? runner.slice(msStart, msEnd) : "";
+wireOk(
+  msRegion.includes("noteLaneFailure(laneSaturation") && msRegion.includes("noteProviderFailure(dialLlm.providerId"),
+  "MID-STREAM network/timeout drops feed the same family window + registry cooldown (r307 — the live failure kind)"
+);
 wireOk(runner.includes("nextRotation(settings.settings, llm.providerId)"), "the registry escape dials nextRotation");
 wireOk(
   runner.indexOf("attempt === MAX_STEP_ATTEMPTS") !== -1 &&

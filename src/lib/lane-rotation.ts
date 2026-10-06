@@ -76,6 +76,14 @@ export function laneSickUntil(
   return e.until > now ? e.until : 0;
 }
 
+/**
+ * r307: any PROVEN lane failure feeds the same saturation window — a 429
+ * (quota exhaustion) or a MID-STREAM DROP (the connection died after real
+ * tool rounds streamed: the live dominant failure kind). Alias of
+ * noteLane429; window/strike semantics are failure-kind agnostic by design.
+ */
+export const noteLaneFailure = noteLane429;
+
 /** Consecutive 429 strikes for `family` while its window is live (0 = forgiven). */
 export function laneStrikes(
   store: Map<string, LaneSaturation>,

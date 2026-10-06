@@ -255,6 +255,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows → a run’s call log after a 429 on a multi-key profile: the final attempt notes “registry rotation — <provider> dialed instead of the saturated <family> family” and dials a different endpoint; single-key profiles keep the r305 rotation behavior",
   },
+  {
+    round: "r307",
+    title: "Mid-stream network drops now trigger provider rotation too — not just 429s",
+    detail:
+      "The r305/r306 rotation machinery fed off 429s only, but the live failure kind was different: streams that die MID-CALL after tool rounds succeeded (network/timeout drops). Those marked nothing, so the retry ladder kept re-dialing the same flaky lane and the rotation escape never fired. Now a proven mid-stream drop feeds the same saturation memory: the dropped provider’s family is demoted on the relay wire for 5 minutes across all runs, the next attempt leads with the built-in engine, and the final attempt rotates to another provider you have a key for. Note copy now reads “recent 429s or mid-stream drops”.",
+    lookFor:
+      "Workflows → a run’s call log after a mid-stream drop: the wire note says “recent 429s or mid-stream drops”; with a second provider key saved, the final attempt notes “registry rotation” instead of parking",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

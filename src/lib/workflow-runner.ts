@@ -21,6 +21,7 @@ import { maxParks, parkDelayMs, resolvePark, type ParkKind } from "@/lib/park-po
 import {
   nextRotation,
   noteProvider429,
+  noteProviderFailure,
   resetProvider429,
 } from "@/lib/provider-rotation";
 import {
@@ -28,6 +29,7 @@ import {
   laneFamilyKey,
   laneSickUntil,
   noteLane429,
+  noteLaneFailure,
   rotateHops,
   type LaneSaturation,
 } from "@/lib/lane-rotation";
@@ -1226,7 +1228,7 @@ export async function executeWorkflowRun(
         if (rotation.demoted.length > 0) {
           relayHops = rotation.hops;
           relayNotes.push(
-            `congestion rotation — ${rotation.demoted.join(", ")} demoted to the back of the wire (recent 429s)`
+            `congestion rotation — ${rotation.demoted.join(", ")} demoted to the back of the wire (recent 429s or mid-stream drops)`
           );
         }
         // r126 model substitution: on the FINAL attempt, stop dials inside
@@ -1396,6 +1398,18 @@ export async function executeWorkflowRun(
           // r126: promote to run scope — every later step starts demoted until
           // the window passes (stable continuation, not per-step re-learning).
           primarySickUntil = Date.now() + PRIMARY_SICK_MS;
+          // r307: a mid-stream drop is PROVEN lane sickness — the connection
+          // died after real tool rounds streamed. Feed the SAME saturation
+          // memory 429s use: the wire demotes this family, every later step
+          // and run opens demoted (tab-wide), and the final-attempt registry
+          // escape can rotate off it. Before this, network/timeout deaths fed
+          // ONLY the per-run demotion — the dominant live failure kind (Vyce
+          // streams dying after tool calls) never reached rotation.
+          const droppedFamily = laneFamilyKey(dialLlm.providerId);
+          if (droppedFamily !== "" && droppedFamily !== "auto") {
+            noteLaneFailure(laneSaturation, droppedFamily, Date.now());
+            noteProviderFailure(dialLlm.providerId, Date.now());
+          }
         }
         if (attempt < MAX_STEP_ATTEMPTS && SELF_HEAL_KINDS.includes(kind) && !signal.aborted) {
           // v23: a 429 is congestion, not flakiness — re-dialing within seconds

@@ -49,6 +49,13 @@ export function provider429Streak(providerId: string): number {
   return lanes.get(providerId)?.streak ?? 0;
 }
 
+/**
+ * r307: registry cooldowns key on any PROVEN lane failure — a 429 or a
+ * mid-stream drop. A lane that died mid-call is not a safe rotation target
+ * until its cooldown clears, exactly like a quota-exhausted one.
+ */
+export const noteProviderFailure = noteProvider429;
+
 /** A lane that just served a full successful call is healthy again. */
 export function resetProvider429(providerId: string): void {
   lanes.delete(providerId);
