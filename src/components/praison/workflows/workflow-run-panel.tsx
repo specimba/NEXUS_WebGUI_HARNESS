@@ -78,6 +78,7 @@ import {
   useWorkflowsStore,
 } from "@/lib/stores";
 import {
+  describeRunShape,
   executeWorkflowRun,
   getRunController,
   runErrorKindLabel,
@@ -921,6 +922,18 @@ export function WorkflowRunPanel({
   };
 
   const hasSteps = (liveWorkflow?.steps.length ?? 0) > 0;
+  // r298: the meta line must agree with the rows a run actually shows. Depth
+  // injection (r26) materializes extra passes per run, so quoting the authored
+  // count here read as "9 steps" one screen above a "Failed at step 3/11" run
+  // banner — the user-reported discontinuity. When the counts differ, say the
+  // delta out loud instead of silently contradicting the run below.
+  const runShape = React.useMemo(
+    () =>
+      liveWorkflow
+        ? describeRunShape(liveWorkflow, useAgentsStore.getState().agents)
+        : null,
+    [liveWorkflow]
+  );
 
   // Run history list — reachable from BOTH the empty state and the run view,
   // so past runs can be re-opened, compared and exported anytime.
@@ -1230,7 +1243,9 @@ export function WorkflowRunPanel({
           <div className="mt-3 flex items-center justify-between gap-2">
             <p className="truncate text-[11px] text-muted-foreground">
               {hasSteps
-                ? `${liveWorkflow?.steps.length} step${liveWorkflow?.steps.length === 1 ? "" : "s"} · agents hand outputs down the chain`
+                ? runShape
+                  ? `${runShape.effective} steps per run · ${liveWorkflow?.steps.length} authored + ${runShape.note} · agents hand outputs down the chain`
+                  : `${liveWorkflow?.steps.length} step${liveWorkflow?.steps.length === 1 ? "" : "s"} · agents hand outputs down the chain`
                 : "This workflow has no steps yet — edit it first."}
             </p>
             <div className="flex shrink-0 items-center gap-1.5">

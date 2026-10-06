@@ -7820,3 +7820,35 @@ Verification result: PASS (static + in-vivo)
 Open risks: perDay DST fix verified by reasoning + seeded suite, not by a DST-zone observer; carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
 Blockers: none
 Next recommended action: r298 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r297 snapshot or successor). (3) Settings got r294/r295/r296/r297 in a row — rotate OFF for real this time. Pick ONE: (a) docs pass: LOCAL_AUTOMATION.md drift fact-check vs the r149 stamp (long-standing candidate, untouched since r217); (b) a small feature/polish on shell.tsx or radar-view (deep-read first); (c) perf pass on a non-API surface. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; settings tab strip = plain buttons (no role=tab); same-URL Page.navigate is a no-op — use location.reload(); innerText is text-transform-aware — assert via textContent; Radix triggers elsewhere need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; suites carry DIAGs; no ternary-statement asserts (keep lint 0/33).
+
+## r298 — run-panel step-count honesty (USER REPORT): "9 steps" vs the run's "3/11" killed with an out-loud depth note; new run-shape suite 3/3 (2026-10-06, Job 424432)
+
+Task ID: r298
+Agent: main (platform dev agent)
+Task: USER REPORT — "check this same discontinuity again" with a pasted run detail: the run panel's meta line said "9 steps" one screen above a "Failed at step 3/11" banner and 11 step rows. Report overrides the r297 handoff menu.
+
+Work Log:
+- STARTUP: health 200 in 0.04s (warm). NEWER-HEAD doctrine fired a third time: 560707e4a on top of r296 + worklog r297 section → parallel instance shipped r297 (usage perDay midnights + tool-mix honesty) at 12:41Z; claimed its handoff, did not redo. This round = r298.
+- DIAGNOSIS (mechanism fully explained, ONE real defect): r26's materializeRunSteps injects deep pipelines' 2 "Deep research pass" rows (cloned from the first step's agent); 9 authored steps materialize 11 per run. workflow-run-panel's meta line quoted the AUTHORED count (liveWorkflow.steps.length) while the banner/rows show the MATERIALIZED count → "9 steps" vs "3/11" in one view. The paste's other oddities are NOT defects: "tag [Strategic Planner] ≠ worker" is the r182 role-mismatch annotation on user-authored "[Tag]" labels; "I'm the Strategic Planner" under a Research Scout step is free-model persona sloppiness (deep passes clone the FIRST step's agent by design); "doneauto-retried" run-together is flex-gap text-copy artifact, not missing DOM text; "blocked" on the card is the no-server-key lane state, not the run's parked state.
+- FIX: new describeRunShape() in workflow-runner.ts — computes the effective count and the delta noun-phrase from the SAME predicates as materializeRunSteps (deep 2 passes; verification pass when no review gate), so note and rows can never disagree — plus the panel's meta line now reads "N steps per run · M authored + <note> · agents hand outputs down the chain" when the counts differ, unchanged plain line otherwise. Uses the workflow's OWN depth (scheduler degradation still overrides individual runs; the run banner reports that run's rows) — documented in-code.
+- NEW SUITE scripts/cdp-qa-run-shape.mjs (3/3, self-cleaning via praison-workflows snapshot→seed→reload→assert→restore; NO run ever executed — the card "Run" button only opens the panel): D1 deep pipeline (4 authored incl. review gate) reads "6 steps per run · 4 authored + 2 deep-research passes · …"; D2 standard + review gate (no injection) keeps the plain "2 steps · …" line; D3 console clean.
+- HONESTY CARRY-OVER FINDING: r297's usage suite M4 reads window.__errs AFTER its restore location.reload() — the reload wipes the array, so that check is vacuous (passes even with errors). Not touched (their suite, not this round's surface), but THIS suite reads __errs BEFORE the restore-reload; future suites must do the same.
+- Receipt r298 appended to whats-fixed (25 total, derived range auto-extends to 186-298).
+- Verification: npx tsc --noEmit exit 0; canonical bun run lint 0 errors / 33 baseline warnings (new suite added zero); cdp-qa-run-shape.mjs 3/3 IN-VIVO.
+- Budget: 11 tool batches.
+
+Stage Summary:
+- The run panel now agrees with itself: header line and run rows quote the same counting, and any authored-vs-run-time difference is stated, not discovered.
+- Defect class named: when a materialization layer expands a count, EVERY surface quoting the count must say which counting it uses.
+- User-visible: deep pipelines' run panels read "11 steps per run · 9 authored + 2 deep-research passes" instead of silently contradicting their own runs.
+
+Round Handoff:
+Round ID: r299
+Task owner: main (platform dev agent)
+Scope completed: describeRunShape + panel meta-line honesty + r298 receipt; run-shape suite 3/3; tsc 0 + lint 0/33.
+User-visible changes: Workflows run panel: depth-injected pipelines state their run-time step count and delta out loud.
+Verification steps: node scripts/cdp-qa-run-shape.mjs (3/3); tsc (0); bun run lint (0/33).
+Verification result: PASS (static + in-vivo)
+Open risks: card description ("From pasted plan · 9 steps") remains a creation-time snapshot of the authored plan — arguably fine, untouched. Scheduler depth-degradation can still make a given run differ from the meta line's prediction (the banner describes the run itself). Carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; git push fork 128 environmental; r297 M4 vacuous console check (above).
+Blockers: none
+Next recommended action: r299 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r298 snapshot or successor). (3) Pick ONE: (a) fix r297's vacuous M4 in cdp-qa-usage-dashboard.mjs (move the __errs read before the restore-reload — small, restores a real console gate) paired with one more independent improvement; (b) docs pass: LOCAL_AUTOMATION.md drift fact-check vs the r149 stamp (untouched since r217); (c) small feature/polish on shell.tsx or radar-view (deep-read first). (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; suites read __errs BEFORE any restore-reload; settings tab strip = plain buttons (no role=tab); same-URL Page.navigate is a no-op — use location.reload(); assert via textContent; Radix triggers need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; no ternary-statement asserts (keep lint 0/33); append receipts when shipping user-visible changes.

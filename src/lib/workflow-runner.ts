@@ -550,6 +550,34 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[], depthOverr
 }
 
 /**
+ * r298: honest run-shape copy for UI surfaces. Depth injection (r26) makes a
+ * run's materialized step count differ from the authored count — the run
+ * panel quoted the authored count one screen above a run banner counting
+ * materialized rows ("9 steps" vs "3/11"), the user-reported discontinuity.
+ * Returns the step count a FRESH run of this workflow would materialize plus
+ * a noun phrase for the delta ("2 deep-research passes"), or null when the
+ * counts agree (quick depth, no injection, or no authored steps). Uses the
+ * workflow's OWN depth: a scheduler degradation can still override an
+ * individual run, and that run's banner reports its own rows.
+ */
+export function describeRunShape(
+  wf: Workflow,
+  agentsNow: Agent[]
+): { effective: number; note: string } | null {
+  const authored = wf.steps.length;
+  if (authored === 0) return null;
+  const depth: PipelineDepth = wf.depth ?? "standard";
+  if (depth === "quick") return null;
+  const effective = materializeRunSteps(wf, agentsNow).length;
+  if (effective === authored) return null;
+  const hasReview = wf.steps.some((s) => s.kind === "review");
+  const parts: string[] = [];
+  if (depth === "deep") parts.push("2 deep-research passes");
+  if (!hasReview) parts.push("1 verification pass");
+  return { effective, note: parts.join(" + ") };
+}
+
+/**
  * Run a workflow pipeline end-to-end: creates the run row in the store,
  * streams each step through the agent chain, patches statuses live.
  * Steps marked kind:"review" act as quality gates — they audit the previous

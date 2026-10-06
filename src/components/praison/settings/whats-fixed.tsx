@@ -191,6 +191,14 @@ const FIXES: FixNote[] = [
       "The 7-day activity chart bucketed messages by 24-hour arithmetic from today's midnight, which drifts an hour across DST transitions \u2014 the same defect class r267 fixed for the streak (late-evening and early-morning messages could land in the wrong day). Buckets are now true local calendar midnights. The tool mix also stops rendering a wall of zero rows: unused tool types are summarized out loud (\u201cN of M tool types unused\u201d) instead of drawn.",
     lookFor: "Settings \u2192 Usage: the tool mix lists only tools you have actually run",
   },
+  {
+    round: "r298",
+    title: "The pipeline header no longer argues with its own runs",
+    detail:
+      "Deep pipelines run extra research passes at run time, so a 9-step pipeline actually shows 11 step rows per run \u2014 but the run panel's header still said \u201c9 steps\u201d right above the run's \u201c3/11\u201d banner. The header now reads the run-time count and states the delta out loud: \u201c11 steps per run \u00b7 9 authored + 2 deep-research passes\u201d. Pipelines without injected passes keep their plain step line.",
+    lookFor:
+      "Workflows \u2192 open a deep pipeline's run panel: the small line under the task box matches the step rows below it",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
