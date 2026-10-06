@@ -29,6 +29,11 @@ type Filter = "all" | "new" | "free";
 /** r219: matches the always-on ticker's cadence (model-ticker.tsx POLL_MS). */
 const POLL_MS = 15 * 60_000;
 
+/** r283/r290: the HF early-signals card renders at most this many rows —
+ *  when the server delivers more, the header must SAY so (honest truncation,
+ *  r273 doctrine) instead of silently dropping the tail. */
+const SIGNALS_CAP = 24;
+
 export function ModelRadarTab() {
   const [data, setData] = React.useState<TrackerData | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -255,11 +260,16 @@ export function ModelRadarTab() {
                 (just-published text-gen repos — watch-list, never alerts)
               </span>
             </CardTitle>
+            {data && data.signals.length > SIGNALS_CAP && (
+              <p className="text-[11px] text-muted-foreground" aria-live="polite">
+                first {SIGNALS_CAP} of {data.signals.length} shown
+              </p>
+            )}
           </CardHeader>
           <CardContent className="pt-0">
             <div className="max-h-56 overflow-y-auto pr-1">
               <ul className="grid gap-1.5 sm:grid-cols-2">
-                {data!.signals.slice(0, 24).map((s) => (
+                {data!.signals.slice(0, SIGNALS_CAP).map((s) => (
                   <li key={s.id} className="rounded-md border px-2.5 py-1.5">
                     <p className="truncate font-mono text-[11.5px] font-medium">{s.modelId}</p>
                     <p className="text-[10px] text-muted-foreground">

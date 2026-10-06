@@ -1039,7 +1039,13 @@ export function WorkflowsView() {
   /** Kanban card → open the run panel on that specific run. */
   const openRunFromBoard = React.useCallback((workflowId: string, runId?: string) => {
     const wf = useWorkflowsStore.getState().workflows.find((w) => w.id === workflowId);
-    if (!wf) return;
+    if (!wf) {
+      // Stale kanban card (workflow deleted elsewhere between render and
+      // click) — r270 doctrine: an action that did nothing must SAY so,
+      // never a silent no-op. Re-applies r286's fix (lost to the rollback).
+      toast.error("That pipeline no longer exists — refresh to sync the board.");
+      return;
+    }
     setRunning(wf);
     setPendingRunFocus(runId ?? null);
     setRunOpen(true);
@@ -1152,8 +1158,16 @@ export function WorkflowsView() {
   };
 
   const handleDuplicate = (wf: Workflow) => {
+    // duplicateWf returns null when the workflow is already gone from the
+    // store (another tab deleted it between render and click) — r270 doctrine:
+    // an action that did nothing must SAY so. Re-applies r286's fix (lost to
+    // the sandbox rollback); mirrors the r287 agents duplicate toast verbatim.
     const id = duplicateWf(wf.id);
     if (id) toast.success(`Duplicated "${wf.name}"`);
+    else
+      toast.error(
+        `Could not duplicate "${wf.name}" — it no longer exists. Refresh to sync.`
+      );
   };
 
   const handleDelete = () => {
