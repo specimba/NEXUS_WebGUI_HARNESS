@@ -754,6 +754,17 @@ function HfTrendingTab() {
 
       {error ? <ErrorBox message={error} onRetry={() => void fetchTrending()} /> : null}
 
+      {/* r302: refreshing a CACHED board used to show only the spinner inside
+          the Refresh button — up to 25 silent seconds (three Hub calls race
+          the 25s timeout) that felt identical to a dead click. The GitHub tab
+          already prints an inline, aria-live "Refreshing from GitHub…" line
+          in the same situation; this is that parity. */}
+      {loading && cache ? (
+        <p className="text-[11px] text-muted-foreground" aria-live="polite">
+          Refreshing from the Hugging Face Hub…
+        </p>
+      ) : null}
+
       {loading && !cache ? (
         <CardGridSkeleton count={6} />
       ) : (

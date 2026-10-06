@@ -73,7 +73,9 @@ export function sanitizeAgent(raw: unknown, existingIds: Set<string> = new Set()
     instructions: str(r.instructions).slice(0, 4000),
     model: str(r.model, "auto") || "auto",
     temperature: num(r.temperature, 0, 1.5, 0.7),
-    maxIterations: Math.round(num(r.maxIterations, 1, 10, 3)),
+    // r302: a missing/garbage maxIterations used to import as 3 — a third
+    // default nobody chose; the create form seeds 6. One default everywhere.
+    maxIterations: Math.round(num(r.maxIterations, 1, 10, 6)),
     tools: Array.isArray(r.tools)
       ? [...new Set(r.tools.filter((t) => VALID_TOOLS.includes(t as ToolId)) as ToolId[])]
       : [],

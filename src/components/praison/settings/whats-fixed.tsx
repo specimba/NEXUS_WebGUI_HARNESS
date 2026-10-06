@@ -215,6 +215,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Radar \u2192 switch to any tab, visit Chat, come back: the same tab is still selected",
   },
+  {
+    round: "r302",
+    title: "The HF board says what it's doing while it refreshes",
+    detail:
+      "Refreshing a cached Hugging Face board showed only a tiny spinner inside the Refresh button \u2014 up to 25 silent seconds that felt like a dead click (the GitHub Stars tab already prints an inline 'Refreshing from GitHub\u2026' line in the same situation). The HF tab now shows an inline, screen-reader-live status line until the board settles \u2014 and the agent importer's fallback tool-iteration cap now matches the create form's default (6) instead of a third value nobody chose (3).",
+    lookFor:
+      "Radar \u2192 HF Trending with a cached board \u2192 hit Refresh: an inline 'Refreshing from the Hugging Face Hub\u2026' line appears until the board settles",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

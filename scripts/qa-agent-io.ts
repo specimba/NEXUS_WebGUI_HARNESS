@@ -71,6 +71,7 @@ check("temperature clamped low (-1 → 0)", sanitizeAgent({ name: "x", temperatu
 check("temperature garbage → 0.7", sanitizeAgent({ name: "x", temperature: "hot" })?.temperature === 0.7);
 check("maxIterations clamped (99 → 10)", sanitizeAgent({ name: "x", maxIterations: 99 })?.maxIterations === 10);
 check("maxIterations rounded (2.6 → 3)", sanitizeAgent({ name: "x", maxIterations: 2.6 })?.maxIterations === 3);
+check("missing maxIterations → 6 (form default parity, r302)", sanitizeAgent({ name: "x" })?.maxIterations === 6);
 check("unknown tools dropped, deduped", JSON.stringify(sanitizeAgent({ name: "x", tools: ["nope", "run_code", "run_code"] })?.tools) === JSON.stringify(["run_code"]));
 check("non-array tools → []", JSON.stringify(sanitizeAgent({ name: "x", tools: "all" })?.tools) === "[]");
 check("invalid color → violet", sanitizeAgent({ name: "x", color: "hotpink" })?.color === "violet");
