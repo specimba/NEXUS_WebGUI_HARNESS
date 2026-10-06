@@ -2,15 +2,17 @@ import { ensureChrome } from "./cdp-ensure-chrome.mjs";
 // ─── QA — K-series (r145): composer Esc-to-stop while streaming ──────────────
 // r145 adds: pressing Escape in the composer textarea while the agent is
 // streaming calls onStop() (the same handler as the "Stop generating" button).
-// Rules: slash-menu Esc still closes the menu first (checked earlier in the
-// handler), IME composing is ignored, and the typed draft is PRESERVED.
+// Rules: slash-menu Esc still handles the key first (dismisses the menu,
+// keeps the draft since r303), IME composing is ignored, and the typed
+// draft is PRESERVED.
 //   K1  a real send starts streaming: "Stop generating" button appears AND the
 //       placeholder advertises the new affordance ("· Esc stops" — proves the
 //       r145 edit is live in the served bundle).
 //   K2  dispatching Escape on the textarea stops the stream within ~5s:
 //       stop button disappears and the reply row shows the "(stopped)" chip.
 //   K3  draft preservation: text typed before Esc survives the stop (the
-//       slash-menu Esc clears text; the stop Esc must not).
+//       slash-menu Esc dismisses the menu and keeps the draft since r303;
+//       the stop Esc must not clear it either).
 // Uses a REAL model lane (default routing) — if the lane fails, the script
 // reports honestly and exits 2.
 // Usage: node scripts/cdp-qa-chat-esc-stop.mjs [baseUrl]

@@ -362,8 +362,12 @@ export function Composer({
 
   // Slash menu
   const slashCommands = useSlashCommands();
+  // r303: Esc DISMISSES the menu without wiping the draft (the header promises
+  // "Esc to dismiss", and r144's philosophy is that dismissing things must not
+  // eat typed text). Editing the draft re-summons the menu.
+  const [slashDismissed, setSlashDismissed] = React.useState(false);
   const slashQuery = value.startsWith("/") && !value.includes(" ") ? value.slice(1).toLowerCase() : null;
-  const slashOpen = slashQuery !== null;
+  const slashOpen = slashQuery !== null && !slashDismissed;
   const [slashIndex, setSlashIndex] = React.useState(0);
   const filteredSlash = React.useMemo(
     () =>
@@ -381,7 +385,10 @@ export function Composer({
             }),
     [slashQuery, slashCommands]
   );
-  React.useEffect(() => setSlashIndex(0), [slashQuery]);
+  React.useEffect(() => {
+    setSlashIndex(0);
+    setSlashDismissed(false);
+  }, [slashQuery]);
 
   const runSlash = React.useCallback(
     (cmd: SlashCommand) => {
@@ -986,9 +993,12 @@ export function Composer({
                     runSlash(filteredSlash[slashIndex]);
                     return;
                   }
-                  if (e.key === "Escape") {
+                  // r303 + r245 parity: Esc cancels a CJK composition in the
+                  // IME — only treat it as "dismiss the menu" when no
+                  // composition is active. Dismissal keeps the typed draft.
+                  if (e.key === "Escape" && !e.nativeEvent.isComposing) {
                     e.preventDefault();
-                    setValue("");
+                    setSlashDismissed(true);
                     return;
                   }
                 }

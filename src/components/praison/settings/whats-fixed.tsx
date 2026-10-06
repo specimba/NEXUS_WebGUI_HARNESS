@@ -223,6 +223,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Radar \u2192 HF Trending with a cached board \u2192 hit Refresh: an inline 'Refreshing from the Hugging Face Hub\u2026' line appears until the board settles",
   },
+  {
+    round: "r303",
+    title: "Esc on the slash menu dismisses it instead of deleting your draft",
+    detail:
+      "Typing \u201C/\u201D opened the quick-actions menu, but pressing Esc \u2014 which the menu header literally promises will dismiss it \u2014 wiped the entire message you had typed so far. Dismissing a menu should never eat typed text (the same rule r144 set for stopping a reply), so Esc now just closes the menu and your draft stays; editing the text re-summons the menu, and Esc during an active CJK composition is left alone for the IME to cancel.",
+    lookFor:
+      "Chat \u2192 type \u201C/the\u201D \u2192 press Esc: the menu closes and \u201C/the\u201D is still in the composer",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
