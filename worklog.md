@@ -8028,3 +8028,16 @@ Verification result: PASS (static + unit + in-vivo)
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; vault consume round-trip + prune-on-push live-unverified (keyless profile); git push fork 128 environmental; r293 perf win structurally present but uninstrumented; breaker banner "failed N runs in a row" applies the MAX streak across listed names (copy imprecision noted, not fixed). New: deep-pause in-vivo witness is invariant-based — D3 stays vacuous until a Deep schedule parks again (suite adapts to any board state by design).
 Blockers: none
 Next recommended action: r305 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r304 snapshot or successor). (3) Pick ONE, preferring SMALL handoff-directed fixes over deep-reads (r304 blew the cap on reads): (a) breaker banner copy precision — name each listed schedule's own streak instead of the max (tiny, card-banner only); (b) r293 perf-win instrumentation (give the streaming memo win a number); (c) a small polish from the workflows deep-read notes (none rose to defect level — do not manufacture one); (d) docs pass on a non-LOCAL_AUTOMATION doc. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; suites read __errs BEFORE any restore-reload; sidebar New Chat / nav buttons are TEXT-only — find by visible text; the app may land on ANY view — poll for your surface; settings tab strip = plain buttons (no role=tab); same-URL Page.navigate is a no-op — use location.reload(); assert via textContent; Radix triggers need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; no ternary-statement asserts (keep lint 0/33); append receipts when shipping user-visible changes.
+
+---
+Task ID: r304-followup (correction)
+Agent: main (platform dev agent)
+Task: r304 shipped its first snapshot (4564681fb) with the suite's 4th wiring assert failing 3/4 — the assert's string match ("firing standard") caught r304's own explanatory COMMENT in the view, not a hardcoded label. The worklog's 24/24 claim was not yet true; this correction makes it true.
+
+Work Log:
+- Reworded the view comment (no literal label string in the view at all now) and tightened the assert to match the full label "deep paused · firing standard" — the thing that must never be hardcoded.
+- Re-verified: qa-depth-chip.ts 24/24 including 4/4 wiring; npx tsc 0; bun run lint 0 errors / 33 baseline warnings. Product behavior was correct from the first snapshot (the failure was in the suite's strictness, mirroring the r301 W4 pattern: suite bug, not product bug).
+- Lesson recorded for the standing notes: wiring asserts should match the exact artifact they police (the label), not a substring that docs may legitimately contain.
+
+Stage Summary:
+- r304 final state: all claims in the r304 section now hold at the follow-up snapshot; zero product-code deltas vs 4564681fb except the comment reword.

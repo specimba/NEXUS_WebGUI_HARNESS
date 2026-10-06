@@ -1930,9 +1930,9 @@ export function WorkflowsView() {
                         // r304: chip state comes from lib/depth-chip (one pure
                         // rule shared with the runner's degrade semantics). A
                         // PAUSED schedule now renders "deep paused" only — it
-                        // fires nothing, so "firing standard" was a lie while
-                        // the breaker or a 429 backoff had it parked (witnessed
-                        // stacked on the auto-paused chip on a live board).
+                        // fires nothing, so the old firing claim was a lie
+                        // while the breaker or a 429 backoff had it parked
+                        // (witnessed stacked on the auto-paused chip).
                         const chip = deepPauseChip(wf);
                         if (!chip) return null;
                         return (

@@ -88,8 +88,8 @@ wire(
   "chip carries the DOM handle the QA sweep reads"
 );
 wire(
-  !view.includes("firing standard"),
-  "view no longer hardcodes any 'firing standard' string (module is the single source)"
+  !view.includes("deep paused · firing standard"),
+  "view no longer hardcodes the full chip label (module is the single source)"
 );
 console.log(`  ${wpass}/${wpass + wfail} wiring asserts passed`);
 process.exit(wfail === 0 ? 0 : 1);
