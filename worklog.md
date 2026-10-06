@@ -7633,3 +7633,35 @@ Verification result: PASS
 Open risks: chat fresh-profile content state unidentified (see Open Question — could mask a real first-run UX bug, e.g. blank content area on first ever boot); carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/providers/free-models bare-write anchor; /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
 Blockers: none
 Next recommended action: r292 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r291 snapshot or successor). (3) Pick ONE: (a) resolve the chat fresh-profile content mystery — fresh-profile tab → #/chat, dump document.querySelector("main").innerText + check for Next dev-overlay/error text; if a real first-boot UX bug (blank pane), FIX it (that is a user-facing ship); if benign (e.g. seeded state renders fine and the earlier probe was mid-transition), upgrade the boot gate's chat anchor back to content-level; OR (b) the chat-stream perf pass (React.memo/useCallback audit — chat-view carries the r284 delete callback + one more per-message prop); OR (c) a small user-facing feature on the next least-touched surface. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus — bare .click() is NOT enough (r287 doctrine); VERIFY handoff paths with Glob before Read; suites carry their own failure DIAGs.
+
+---
+
+## r292 — chat fresh-profile mystery RESOLVED (benign three-state content); boot gate chat anchors upgraded to content-level, 7/7 (2026-10-06, Job 424432)
+
+Task ID: r292
+Agent: main (platform dev agent)
+Task: Per r291 handoff option (a) — resolve the chat fresh-profile content mystery; fix if a real first-boot bug, else upgrade the boot gate's chat anchor back to content-level.
+
+Work Log:
+- STARTUP: no user report. Health 000 (sandbox reap) → ONE restart → 200 (~2s). HEAD f6a9ff091 = r291 snapshot ✓ (a parallel-instance round — verified via git show --stat + worklog tail before proceeding, per the newer-HEAD doctrine).
+- ROOT CAUSE (static + in-vivo): chat-view has THREE legitimate content states — (1) no conversation → "No chat selected" h2 (L919); (2) conversation with 0 messages → agent-intro hero (L1068-1098: avatar, agent name, TRY suggestion chips); (3) ≥1 message → messages log aria-label="Chat messages" (L1108). A fresh profile SELF-SEEDS one empty conversation ("New chat · 0 msgs"; praison-conversations appears in localStorage), so first boot lands in state 2 — which matched NEITHER r291 anchor. The app is healthy: no blank pane, no error boundary. NOT a bug.
+- IN-VIVO EVIDENCE (new probe scripts/cdp-probe-chat-fresh.mjs, read-only, self-cleaning, kept as a DIAG asset): fresh chrome profile → #/chat → mainText witnessed the hero ("Praison Assistant … TRY Introduce yourself …"); mainAriaLabels had "Switch agent" but no "Chat messages" log; appErrorText false. BONUS FINDING: document.querySelector("nextjs-portal") EXISTS in dev even with no error — the dev-overlay portal mounts unconditionally; only the error-boundary TEXT is a crash signal (noted in the gate header for future DIAG readers).
+- SHIP (benign branch per handoff): cdp-qa-boot-gate.mjs V1 + V6 chat anchors upgraded from the TopBar view title to the CONTENT-level three-state disjunction — [aria-label="Chat messages"] OR [aria-label="Switch agent"] OR "No chat selected" — so the gate now catches a genuinely blank chat content pane, which the TopBar witness could NOT. Header + inline comments updated with the resolution.
+- Verification: node scripts/cdp-qa-boot-gate.mjs → 7/7 with the new anchors (V1 + V6 PASS on the freshly-seeded profile); npx tsc --noEmit exit 0; canonical bun run lint 0 errors / 33 baseline warnings. No src/ changes this round — tsc/lint confirm the tree untouched and clean.
+- Budget: 12 tool batches — exactly at the cap (startup lineage verification on a newer HEAD cost one extra read; probe-first then static-confirm avoided a second diagnose loop).
+
+Stage Summary:
+- r291's carried Open Question is CLOSED: the fresh-profile chat content state is the agent-intro hero (seeded empty conversation); the first-ever-boot UX is good as-is (intro + suggestion chips + composer). No product fix needed.
+- The boot gate is now strictly stronger than the pre-disaster vault-dial gate for chat: content-level witnessing on V1/V6.
+- Suite inventory: cdp-qa-boot-gate.mjs 7/7 (content-level chat), cdp-qa-hf-filter.mjs 8/8, cdp-qa-message-delete.mjs 6/6, cdp-qa-tracker-cap.mjs 4/4; new probe asset cdp-probe-chat-fresh.mjs.
+
+Round Handoff:
+Round ID: r293
+Task owner: main (platform dev agent)
+Scope completed: mystery resolved (benign — three-state content, self-seeding first boot), probe committed as a DIAG asset, boot gate chat anchors upgraded to content-level (7/7).
+User-visible changes: none (verification asset + closed open question); the app's first-boot chat UX was confirmed good as-is.
+Verification steps: node scripts/cdp-qa-boot-gate.mjs (7/7); tsc (0); bun run lint (0/33).
+Verification result: PASS
+Open risks: no src/ change this round — second consecutive QA-asset round, so r293 should ship product code; carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/providers/free-models bare-write anchor; /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
+Blockers: none
+Next recommended action: r293 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r292 snapshot or successor). (3) Ship PRODUCT code — pick ONE: (a) the chat-stream perf pass (React.memo on MessageItem + stabilize the per-message callbacks: onRetry/onEdit/onAnswerAs/onDelete are fresh closures per render at chat-view L1112-1140; deleteReply is already a stable useCallback — pass it down and let MessageItem close over its own message id; regression gates: cdp-qa-message-delete.mjs 6/6 + boot gate 7/7); (b) a small user-facing feature on a least-touched surface (whats-fixed.tsx / setup-wizard.tsx haven't shipped since r274); or (c) an error-handling polish sweep on API routes. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus (r287 doctrine); VERIFY handoff paths with Glob before Read (LS fallback — Glob false-negative twice now); /api/tracker GET lazy-syncs when stale; suites carry their own failure DIAGs.

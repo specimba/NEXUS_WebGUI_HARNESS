@@ -6,7 +6,9 @@
 // to restore, safe to run at any time. Rebuilt from scratch per the r290
 // handoff (the original scripts/cdp-qa-vault-dial.mjs is unrecoverable).
 //   V0  / renders the shell (body non-empty, no error boundary)
-//   V1  #/chat mounts (TopBar view title — profile-independent witness)
+//   V1  #/chat mounts (CONTENT-level, r292: any of the three legitimate
+//       chat content states — messages log / conversation header / "No
+//       chat selected")
 //   V2  #/agents mounts ("Agent Roster")
 //   V3  #/workflows mounts (New Workflow toolbar button)
 //   V4  #/radar mounts (view tablist)
@@ -14,7 +16,10 @@
 //   V6  round-trip back to #/chat — hash routing is repeatable, still no crash
 // Crash sentinel after every hop: the Next error boundary text must never
 // appear. House shape: self-created tab via PUT /json/new, tab closed on
-// success AND error, waitFor tolerates transient evals.
+// success AND error, waitFor tolerates transient evals. (Note for DIAG
+// readers: document.querySelector("nextjs-portal") EXISTS in dev even with
+// no error — the dev overlay portal mounts unconditionally; only the error
+// boundary TEXT is a crash signal.)
 // Usage: node scripts/cdp-qa-boot-gate.mjs [baseUrl]
 
 import { ensureChrome } from "./cdp-ensure-chrome.mjs";
@@ -131,16 +136,19 @@ async function main() {
   ).catch(() => true);
   check("V0 app boots, error boundary silent", booted && bootCrash === false);
 
-  // V1..V5 — one hop per view. Chat's witness is its TopBar view title
-  // (VIEW_TITLES.chat — unique per view): r291 found the chat CONTENT-AREA
-  // anchors ("No chat selected" h2 / messages log) never render on a fresh
-  // profile even though the view mounts cleanly per the TopBar — content-area
-  // anchors proved profile-dependent, so the gate uses the title instead
-  // (open question carried to r291).
+  // V1..V5 — one hop per view. Chat's witness is CONTENT-level again (r292):
+  // r291's mystery is RESOLVED — chat-view has THREE legitimate content
+  // states, and a fresh profile self-seeds ONE empty conversation, landing in
+  // the middle one (agent-intro hero, chat-view L1068-1098) which matched
+  // neither of r291's anchors ("No chat selected" needs ZERO conversations;
+  // the messages log needs ≥1 message). In-vivo probe evidence
+  // (scripts/cdp-probe-chat-fresh.mjs): seeded "New chat · 0 msgs" + hero with
+  // TRY chips, no error boundary. The disjunction below witnesses ALL three
+  // states, so a genuinely blank content pane still fails the gate.
   await hop(
     ws,
     "#/chat",
-    `document.body.innerText.includes("Converse with your agents")`,
+    `document.querySelector('[aria-label="Chat messages"], [aria-label="Switch agent"]') !== null || document.body.innerText.includes("No chat selected")`,
     "V1 chat view mounts"
   );
   await hop(
@@ -172,7 +180,7 @@ async function main() {
   await hop(
     ws,
     "#/chat",
-    `document.body.innerText.includes("Converse with your agents")`,
+    `document.querySelector('[aria-label="Chat messages"], [aria-label="Switch agent"]') !== null || document.body.innerText.includes("No chat selected")`,
     "V6 round-trip back to chat"
   );
 
