@@ -198,8 +198,17 @@ export function AgentsView() {
   };
 
   const handleDuplicate = (agent: Agent) => {
+    // r287 (re-applied r288 after sandbox rollback): duplicateAgent returns
+    // null when the agent is already gone from the store (another tab deleted
+    // it between render and click) — r270 doctrine: an action that did nothing
+    // must SAY so, not leave the user clicking a dead control. Same
+    // silent-failure fix r286 shipped for workflow duplicate.
     const newId = duplicateAgent(agent.id);
     if (newId) toast.success(`Duplicated "${agent.name}"`);
+    else
+      toast.error(
+        `Could not duplicate "${agent.name}" — it no longer exists. Refresh to sync.`
+      );
   };
 
   const handleDelete = () => {

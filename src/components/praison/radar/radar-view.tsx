@@ -679,6 +679,19 @@ function HfTrendingTab() {
   const items = cache ? cache[kind] : [];
   const kindMeta = HF_KINDS.find((k) => k.id === kind)!;
 
+  // r287: keyword filter — the GitHub Stars tab has had one for ages, but the
+  // HF board (30 items × 3 kinds) rendered everything with no way to narrow
+  // it. Client-side live filter (no Enter/IME path), matching id, pipeline
+  // tag and library name; the honest count line below mirrors the GitHub tab.
+  const [hfQuery, setHfQuery] = React.useState("");
+  const filtered = React.useMemo(() => {
+    const q = hfQuery.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((it) =>
+      `${it.id} ${it.pipeline_tag ?? ""} ${it.library_name ?? ""}`.toLowerCase().includes(q)
+    );
+  }, [items, hfQuery]);
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -710,7 +723,20 @@ function HfTrendingTab() {
             );
           })}
         </div>
-        <div className="ml-auto">
+        <div className="relative ml-auto">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            value={hfQuery}
+            onChange={(e) => setHfQuery(e.target.value)}
+            placeholder="Filter…"
+            aria-label="Filter HF items by keyword"
+            className="h-8 w-32 pl-8 text-xs sm:w-44"
+          />
+        </div>
+        <div>
           <CacheStatus
             fetchedAt={cache?.fetchedAt}
             onRefresh={() => void fetchTrending()}
@@ -725,6 +751,7 @@ function HfTrendingTab() {
       {loading && !cache ? (
         <CardGridSkeleton count={6} />
       ) : (
+        <>
         <div
           className="max-h-[62vh] overflow-y-auto pr-1"
           role="region"
@@ -736,9 +763,15 @@ function HfTrendingTab() {
               title={`No ${kindMeta.label.toLowerCase()} cached`}
               description="Hit Refresh to pull the current trending board from the Hugging Face Hub."
             />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              emoji="🔭"
+              title="Nothing matches"
+              description="Clear the filter or hit Refresh for a fresh board."
+            />
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {items.map((item) => (
+              {filtered.map((item) => (
                 <Card key={`${kind}-${item.id}`} className="card-lift flex flex-col gap-2 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <a
@@ -778,6 +811,13 @@ function HfTrendingTab() {
             </div>
           )}
         </div>
+        {items.length > 0 ? (
+          <p className="text-[11px] text-muted-foreground" aria-live="polite">
+            {filtered.length} of {items.length} {kindMeta.label.toLowerCase()}
+            {hfQuery.trim() ? <> matching &ldquo;{hfQuery.trim()}&rdquo;</> : null}
+          </p>
+        ) : null}
+        </>
       )}
     </div>
   );
