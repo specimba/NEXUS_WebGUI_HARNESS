@@ -92,6 +92,9 @@ export function SetupWizard() {
   const [showKey, setShowKey] = React.useState(false);
   const [testing, setTesting] = React.useState(false);
   const [test, setTest] = React.useState<TestResult | null>(null);
+  // r296: invalidation token for in-flight validation dials — see the effect
+  // below and validateAndFinish.
+  const validateRun = React.useRef(0);
 
   const provider = FREE_PROVIDERS.find((p) => p.id === providerId) ?? null;
 
@@ -145,6 +148,14 @@ export function SetupWizard() {
     // Deps intentionally omit settings.providerKeys — see the r295 note above.
   }, [open, deepLinkProviderId]);
 
+  // r296: any provider switch (pick, deep-link, "add another") or close
+  // invalidates an in-flight validation dial — no latest-ref plumbing, the
+  // token bump IS the guard. Witnessed r295: a stale vyce 401 rendered its
+  // error box inside the aihubmix dialog after the user had moved on.
+  React.useEffect(() => {
+    validateRun.current += 1;
+  }, [providerId, open]);
+
   function pickProvider(p: FreeProvider) {
     setProviderId(p.id);
     const entry = settings.providerKeys?.[p.id];
@@ -181,6 +192,10 @@ export function SetupWizard() {
     setTest(null);
     const model = draftModel || p.models[0]?.id;
     const started = performance.now();
+    // r296: a dial that resolves after the user switched providers or closed
+    // the wizard must land NOWHERE — no test state, no auto-save, no activation.
+    const runToken = ++validateRun.current;
+    const stale = () => runToken !== validateRun.current;
     try {
       await runAgentChat({
         provider: "custom",
@@ -190,15 +205,19 @@ export function SetupWizard() {
         maxIterations: 1,
         messages: [{ role: "user", content: "Reply with the single word: OK" }],
       });
+      if (stale()) return;
       const ms = Math.round(performance.now() - started);
       saveEntry(p, { validatedAt: Date.now() });
       setTest({ ok: true, ms });
       update({ provider: "custom", activeProviderId: p.id });
       setStep(3);
     } catch (err) {
+      if (stale()) return;
       setTest({ ok: false, error: err instanceof Error ? err.message : "Unknown error" });
     } finally {
-      setTesting(false);
+      // Only the owning run clears the busy flag — a stale resolution must
+      // not re-enable the button while a NEWER dial is still in flight.
+      if (!stale()) setTesting(false);
     }
   }
 

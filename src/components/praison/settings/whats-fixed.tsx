@@ -171,6 +171,19 @@ const FIXES: FixNote[] = [
     detail:
       "Every streaming token used to re-render the whole transcript (an invisible memo breaker: five per-message callbacks were fresh closures on each render). Now only the streaming bubble updates — long conversations stay smooth while replies stream, and scrolling or toggling speech no longer redraws every message.",
   },
+  {
+    round: "r295",
+    title: "The setup wizard stopped bouncing mid-flow",
+    detail:
+      "Opening the guided free-key setup from the sidebar, provider gallery or command palette and clicking \u201cSave & test\u201d or \u201cActivate\u201d snapped the dialog straight back to the provider picker: the wizard's reset effect subscribed to the very store slice its own save mutates, so saving re-fired the reset. Deep-link entries masked it, which is why hash-route QA never witnessed it. The reset now fires only on open/deep-link transitions.",
+    lookFor: "Settings \u2192 Providers \u2192 guided setup: pick a provider, Save & test \u2014 the connect step stays put",
+  },
+  {
+    round: "r296",
+    title: "A validation that outlives your click can't haunt the next screen",
+    detail:
+      "Switching providers or closing the guided setup while a \u201cSave & test\u201d round-trip was still in flight could let the old dial's error render inside the new provider's dialog (witnessed live during r295's QA). In-flight validations are now invalidated by any provider switch or close \u2014 a result only applies if you are still on the provider you tested.",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

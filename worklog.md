@@ -7758,3 +7758,33 @@ Verification result: PASS (static + in-vivo)
 Open risks: pre-existing validateAndFinish stale-error micro-race across provider switches (witnessed this round, cosmetic, unfixed — see Stage Summary); carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
 Blockers: none
 Next recommended action: r296 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r295 snapshot or successor). (3) Rotate OFF settings/wizard (shipped r294+r295 back-to-back). Pick ONE: (a) the validateAndFinish cancellation guard (capture provider id at call time; drop stale setTest/setStep if the wizard switched providers or closed — small, witnessed, closes the carried micro-race) but only if paired with one more independent improvement so the round isn't wizard-heavy; (b) a docs pass or a small feature on a low-traffic surface (radar-view, shell.tsx, usage-dashboard are all fair); (c) perf or error-handling on a NON-API surface. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus (r287); Glob before Read (LS fallback); /api/tracker GET lazy-syncs when stale; suites carry their own failure DIAGs; eslint covers scripts/*.mjs — no ternary-statement asserts in new suites (keep 0/33).
+
+## r296 — validateAndFinish cancellation guard (stale-dial cross-talk killed, W6 witnessed in-vivo) + r295/r296 receipts appended, receipts suites 4/4+9/9 prove the evergreen append (2026-10-06, Job 424432)
+
+Task ID: r296
+Agent: main (platform dev agent)
+Task: Per r295 handoff option (a) — the validateAndFinish cancellation guard (witnessed-carried micro-race), PAIRED per the handoff's condition with an independent improvement: two receipts appended to whats-fixed (r295's fix documented for users + this round's guard).
+
+Work Log:
+- STARTUP: no user report. Health 200 in 13.7s (cold compile — first probe of the hour compiles the root; the app was never down). HEAD b8eb119ec = r295 snapshot ✓, no newer-HEAD this time.
+- SHIPPED 1 — cancellation guard in setup-wizard validateAndFinish: a `validateRun` ref token captured at dial start; a dedicated effect bumps it on `[providerId, open]` (any pick, deep-link, "add another", close, or reopen). On resolution (success OR failure), a stale token drops EVERYTHING — no setTest, no auto-save, no activation, no setStep — and only the owning run clears the `testing` flag in finally (a stale resolution must not re-enable the button while a newer dial is in flight). Note: the saveEntry that fires synchronously ON CLICK (pre-dial) is unchanged — only post-dial landing is guarded; semantics documented in-code.
+- SHIPPED 2 — receipts: r295 ("The setup wizard stopped bouncing mid-flow", with the deep-link-masking explanation and a lookFor) and r296 ("A validation that outlives your click can't haunt the next screen"). Range label auto-derived to r186-r296. Panel now at 23 receipts.
+- SUITE: cdp-qa-wizard-flow.mjs extended with W6 — the guard witness: fire a fresh dial, deep-link-switch providers ~300ms in, then poll 8s requiring the stale "Invalid API key" to NEVER render in the switched (AIHubMix) context. Deterministic outcomes: fast dial → legit error cleared by the switch's reset; slow dial → guard drops it; either path PASS with the guard, FAIL without (the r295-witnessed case).
+- Verification: npx tsc --noEmit exit 0; canonical bun run lint 0 errors / 33 baseline warnings; cdp-qa-wizard-flow.mjs 6/6 IN-VIVO (W6 passed with the guard live); boot gate 7/7; whatsfixed-order 4/4 (count=23, first=r296, order [296,295,293,290,…,186], derived range 186-296) and receipts-refresh 9/9 — the r294 evergreen promise ("appending is zero-suite-churn") survived its first REAL append unmodified.
+- Budget: 8 tool batches — comfortable. No deviations, no theatre.
+
+Stage Summary:
+- The last carried wizard defect is closed: a validation dial that outlives the user's context now lands nowhere. The guard is witnessed in-vivo by W6, not just reasoned.
+- User-facing: the What's-fixed panel documents both wizard fixes (r295+r296) with the derived range auto-updating; the receipts evergreening is validated by a real append, not just by design.
+- The wizard surface is now thoroughly hardened (r255 Enter flow, r295 reset effect, r296 dial guard) — future rounds should treat it as done unless a user report arrives.
+
+Round Handoff:
+Round ID: r297
+Task owner: main (platform dev agent)
+Scope completed: validateAndFinish cancellation guard (token + invalidation effect, stale = land nowhere), W6 guard witness in the wizard suite (6/6), two receipts appended (23 total, range r186-r296 derived); tsc 0 + lint 0/33 + boot gate 7/7 + receipts suites 4/4 & 9/9.
+User-visible changes: guided setup validations can no longer leak results/errors across provider switches or after close; What's fixed recently documents r295+r296.
+Verification steps: node scripts/cdp-qa-wizard-flow.mjs (6/6); node scripts/cdp-qa-boot-gate.mjs (7/7); node scripts/cdp-qa-whatsfixed-order.mjs (4/4); node scripts/cdp-qa-receipts-refresh.mjs (9/9); tsc (0); bun run lint (0/33).
+Verification result: PASS (static + in-vivo)
+Open risks: carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; git push fork 128 environmental. New: none this round.
+Blockers: none
+Next recommended action: r297 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r296 snapshot or successor). (3) The settings/wizard surface is hardened and freshly receipted — rotate OFF it. Pick ONE: (a) a small user-facing feature or polish on a genuinely low-traffic surface (usage-dashboard, shell.tsx, radar-view — deep-read first); (b) a docs pass (LOCAL_AUTOMATION.md drift fact-check vs the r149 stamp is the long-standing candidate); (c) perf or error-handling on a NON-API surface. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus (r287); Glob before Read (LS fallback); /api/tracker GET lazy-syncs when stale; suites carry their own failure DIAGs; eslint covers scripts/*.mjs — no ternary-statement asserts in new suites (keep 0/33); append receipts when shipping user-visible changes (zero suite churn, proven again this round).

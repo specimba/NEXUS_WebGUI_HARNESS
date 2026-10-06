@@ -15,6 +15,9 @@ import { ensureChrome } from "./cdp-ensure-chrome.mjs";
 //      (r295 first run: the live profile has an aihubmix key, so the
 //      fresh→register expectation was wrong; made profile-aware.)
 //  W5  no console errors during the suite
+//  W6  r296 guard witness: click Save & test, switch providers ~300ms into
+//      the dial — the stale failure must NEVER render in the switched dialog
+//      (witnessed live in r295 before the guard existed)
 // Live-profile suite: settings are snapshotted before W3's saveEntry and
 // restored before W4 (no dummy-key pollution left behind).
 // Usage: node scripts/cdp-qa-wizard-flow.mjs [baseUrl]
@@ -169,6 +172,33 @@ try {
     fail("W3", `connect step did not hold (held=${held}, bounced=${bounced})`);
   }
   if (!(held && !bounced)) { await shot(ws, "wizard-flow-W3-FAIL"); }
+
+  // W6 — r296 GUARD WITNESS: W3's failed dial left its error box visible on
+  // the vyce dialog (legitimate). Fire a fresh dial, deep-link-switch to
+  // aihubmix ~300ms in, then require the stale error to stay absent in the
+  // aihubmix context for the rest of the dial's life. Before the guard, a
+  // dial resolving after the switch rendered its 401 in the wrong dialog.
+  await evalJs(ws, `(() => {
+    const b = [...document.querySelectorAll('[role="dialog"] button')]
+      .find((x) => x.textContent.includes("Save & test"));
+    if (b && !b.disabled) b.click();
+    return Boolean(b);
+  })()`);
+  await new Promise((r) => setTimeout(r, 300));
+  await evalJs(ws, `location.hash = "#/guide/aihubmix"; true`);
+  let w6 = true;
+  const w6t0 = Date.now();
+  while (Date.now() - w6t0 < 8000) {
+    const staleErr = await evalJs(ws, `
+      document.body.innerText.includes("Invalid API key") &&
+      document.body.innerText.includes("AIHubMix") &&
+      document.querySelector('[role="dialog"]') !== null
+    `);
+    if (staleErr) { w6 = false; break; }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  if (w6) pass("W6", "mid-dial provider switch: stale validation error never rendered (r296 guard)");
+  else { fail("W6", "stale validation error rendered in the switched dialog"); await shot(ws, "wizard-flow-W6-FAIL"); }
 
   // Cleanup — restore the pre-test settings so no dummy key pollutes the
   // live profile, then reload for a clean W4.
