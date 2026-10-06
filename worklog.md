@@ -7665,3 +7665,34 @@ Verification result: PASS
 Open risks: no src/ change this round — second consecutive QA-asset round, so r293 should ship product code; carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/providers/free-models bare-write anchor; /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
 Blockers: none
 Next recommended action: r293 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r292 snapshot or successor). (3) Ship PRODUCT code — pick ONE: (a) the chat-stream perf pass (React.memo on MessageItem + stabilize the per-message callbacks: onRetry/onEdit/onAnswerAs/onDelete are fresh closures per render at chat-view L1112-1140; deleteReply is already a stable useCallback — pass it down and let MessageItem close over its own message id; regression gates: cdp-qa-message-delete.mjs 6/6 + boot gate 7/7); (b) a small user-facing feature on a least-touched surface (whats-fixed.tsx / setup-wizard.tsx haven't shipped since r274); or (c) an error-handling polish sweep on API routes. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus (r287 doctrine); VERIFY handoff paths with Glob before Read (LS fallback — Glob false-negative twice now); /api/tracker GET lazy-syncs when stale; suites carry their own failure DIAGs.
+
+---
+
+## r293 — chat-stream perf pass: the transcript-wide re-render per streaming token is FIXED (memo engaged); behavior proven identical 6/6 + 7/7 (2026-10-06, Job 424432)
+
+Task ID: r293
+Agent: main (platform dev agent)
+Task: Per r292 handoff option (a) — the chat-stream perf pass (product code, after two QA-asset rounds).
+
+Work Log:
+- STARTUP: no user report. Health 000 (sandbox reap) → ONE restart → 200 (~2s). HEAD 653a876c3 = r292 snapshot ✓, no parallel section.
+- ROOT CAUSE FOUND: MessageItem was ALREADY React.memo-wrapped (pre-r276 work), but chat-view passed FRESH closures for five props (onRetry/onEdit/onAnswerAs/onToggleSpeak/onDelete) on every render — Object.is comparison failed for every message, every time, so the memo never engaged: each streaming token (one patchMessage → new conversations array → chat-view re-render) re-rendered the ENTIRE transcript. The store was already memo-friendly: patchMessage maps messages preserving refs for untouched messages (stores.ts L292-302).
+- FIX (two files, no behavior change): (1) chat-view.tsx — all five props now receive the stable store/useCallback functions directly (regenerate / editAndResend / answerAs / toggleSpeak / deleteReply); the per-message role/streaming/speech conditions stay in the parent so the undefined↔function boundary only moves on genuine state changes. (2) message-item.tsx — MessageItemProps contract now takes msgId as first arg on all five callbacks (documented in-code); MessageItem wraps them via four small useCallbacks (handleRetry/handleEdit/handleAnswerAs/handleToggleSpeak) into the internal ()/(newText)/(agentId) shapes consumed by UserBubble (sub-component chain untouched) and the speak/retry/delete buttons; handleDeleteClick fires onDelete?.(message.id) with message.id added to deps.
+- Verification: npx tsc --noEmit exit 0 (direct async→void-callback passing is clean); canonical bun run lint 0 errors / 33 baseline warnings; scripts/cdp-qa-message-delete.mjs 6/6 (the r284 two-click delete works identically through the new contract, store-level witness V4 included); scripts/cdp-qa-boot-gate.mjs 7/7 (all views mount, V1 content-level chat anchor proves the refactored render path).
+- Perf claim honesty: the win is structural (referential equality now holds for all non-streaming messages during token updates), witnessed indirectly — 6/6 + 7/7 prove BEHAVIOR identical; render-count instrumentation was deliberately not added (would be theatre for a one-round pass). patchMessage's ref preservation is the load-bearing fact (read directly).
+
+Stage Summary:
+- Streaming a reply now re-renders only the streaming message (+ its MarkdownRenderer) instead of the whole transcript; scroll (showJump state), speech toggles, and unrelated store changes also stop re-rendering every bubble.
+- Code size: net +~30 lines (4 adapter useCallbacks + contract comments) — the cheap kind of perf fix (no instrumentation, no new deps, no behavior change).
+- Suite gates remain: message-delete 6/6 guards the delete path contract change; boot gate 7/7 guards the render path.
+
+Round Handoff:
+Round ID: r294
+Task owner: main (platform dev agent)
+Scope completed: chat-stream perf pass — MessageItem's memo actually engages now (five stable callbacks, msgId-taking contract); behavior proven identical (tsc 0, lint 0/33, delete 6/6, boot gate 7/7).
+User-visible changes: none visible by design — but long transcripts stop re-rendering wholesale during streaming (smoother typing dots, less main-thread churn on low-end devices).
+Verification steps: node scripts/cdp-qa-message-delete.mjs (6/6); node scripts/cdp-qa-boot-gate.mjs (7/7); tsc (0); bun run lint (0/33).
+Verification result: PASS
+Open risks: perf win is structural, not render-count-instrumented (deliberate — see honesty note); UserBubble is NOT memoized (user bubbles re-render on parent render but are cheap — could be a future micro-pass if ever measured as hot); carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/providers/free-models bare-write anchor; /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
+Blockers: none
+Next recommended action: r294 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r293 snapshot or successor). (3) Ship product code — pick ONE: (a) a small user-facing feature on a least-touched surface (whats-fixed.tsx / setup-wizard.tsx haven't shipped since r274; radar-view and shell.tsx are also low-traffic); (b) an error-handling polish sweep on API routes (bare-catch / silent-500 audit — /api/providers/free-models is a known bare-write anchor); or (c) the vault epic's next increment (see worklog r123+). (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus (r287 doctrine); VERIFY handoff paths with Glob before Read (LS fallback); /api/tracker GET lazy-syncs when stale; suites carry their own failure DIAGs; rotate surfaces — chat got r289+r293, leave it alone next round.

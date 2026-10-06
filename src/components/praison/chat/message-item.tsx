@@ -640,12 +640,17 @@ export interface MessageItemProps {
   agent?: Agent | null;
   isLast: boolean;
   streaming: boolean;
+  // r293 callback contract: every callback receives THIS message's id as its
+  // first argument so the parent can pass referentially-stable store callbacks
+  // (useCallback) instead of fresh per-render closures — fresh closures were
+  // defeating the React.memo below on every message, every chat re-render
+  // (each streaming token re-rendered the whole transcript).
   /** Offered on the last assistant message when idle — retries a failed reply. */
-  onRetry?: () => void;
+  onRetry?: (msgId: string) => void;
   /** Offered on user messages when idle — edits and resends the turn. */
-  onEdit?: (newText: string) => void;
+  onEdit?: (msgId: string, newText: string) => void;
   /** Offered on user messages when idle — re-runs the turn with a chosen agent. */
-  onAnswerAs?: (agentId: string) => void;
+  onAnswerAs?: (msgId: string, agentId: string) => void;
   /** Roster for the "Answer as…" picker. */
   agents?: Agent[];
   /** Read-aloud state for THIS assistant message (undefined = not playing). */
@@ -653,9 +658,9 @@ export interface MessageItemProps {
   /** Current playback rate while playing — shown as a badge when ≠ 1. */
   speechRate?: number;
   /** Toggles read-aloud for this assistant message. */
-  onToggleSpeak?: () => void;
+  onToggleSpeak?: (msgId: string, content: string) => void;
   /** r284: offered on assistant messages when idle — removes this single reply. */
-  onDelete?: () => void;
+  onDelete?: (msgId: string) => void;
 }
 
 export const MessageItem = React.memo(function MessageItem({
@@ -703,7 +708,7 @@ export const MessageItem = React.memo(function MessageItem({
       if (deleteTimerRef.current != null) window.clearTimeout(deleteTimerRef.current);
       deleteTimerRef.current = null;
       setConfirmDelete(false);
-      onDelete?.();
+      onDelete?.(message.id);
     } else {
       setConfirmDelete(true);
       deleteTimerRef.current = window.setTimeout(() => {
@@ -711,7 +716,7 @@ export const MessageItem = React.memo(function MessageItem({
         setConfirmDelete(false);
       }, 2500);
     }
-  }, [confirmDelete, onDelete]);
+  }, [confirmDelete, onDelete, message.id]);
 
   React.useEffect(() => {
     return () => {
@@ -719,13 +724,30 @@ export const MessageItem = React.memo(function MessageItem({
     };
   }, []);
 
+  // r293: adapt the (msgId, …) parent callbacks to the internal ()/(newText)/
+  // (agentId) shapes. Stable per message — MessageItem re-renders only when
+  // its own message (or a state it genuinely depends on) changes.
+  const handleRetry = React.useCallback(() => onRetry?.(message.id), [onRetry, message.id]);
+  const handleEdit = React.useCallback(
+    (newText: string) => onEdit?.(message.id, newText),
+    [onEdit, message.id]
+  );
+  const handleAnswerAs = React.useCallback(
+    (agentId: string) => onAnswerAs?.(message.id, agentId),
+    [onAnswerAs, message.id]
+  );
+  const handleToggleSpeak = React.useCallback(
+    () => onToggleSpeak?.(message.id, message.content),
+    [onToggleSpeak, message.id, message.content]
+  );
+
   if (isUser) {
     return (
       <div data-msg-id={message.id}>
         <UserBubble
           message={message}
-          onEdit={onEdit}
-          onAnswerAs={onAnswerAs}
+          onEdit={handleEdit}
+          onAnswerAs={handleAnswerAs}
           agents={agents}
         />
       </div>
@@ -789,7 +811,7 @@ export const MessageItem = React.memo(function MessageItem({
               {onToggleSpeak && (
                 <button
                   type="button"
-                  onClick={onToggleSpeak}
+                  onClick={handleToggleSpeak}
                   aria-label={
                     speechState === "playing"
                       ? "Stop reading aloud"
@@ -907,7 +929,7 @@ export const MessageItem = React.memo(function MessageItem({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={onRetry}
+                onClick={handleRetry}
                 className="h-7 shrink-0 gap-1.5 border-red-500/40 px-2.5 text-xs text-red-300 hover:bg-red-500/15 hover:text-red-200"
               >
                 <RotateCcw className="h-3 w-3" aria-hidden />

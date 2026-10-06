@@ -1109,6 +1109,11 @@ export function ChatView() {
               aria-label="Chat messages"
             >
               <div className="mx-auto max-w-3xl space-y-6">
+                {/* r293: all five callbacks are the stable store/useCallback
+                    functions (MessageItem prepends message.id internally) —
+                    fresh per-message closures here used to defeat MessageItem's
+                    React.memo, re-rendering the whole transcript on every
+                    streaming token. */}
                 {messages.map((m, i) => (
                   <MessageItem
                     key={m.id}
@@ -1118,17 +1123,15 @@ export function ChatView() {
                     streaming={streaming}
                     onRetry={
                       m.role === "assistant" && i === messages.length - 1 && !streaming
-                        ? () => void regenerate()
+                        ? regenerate
                         : undefined
                     }
                     onEdit={
-                      m.role === "user" && !streaming
-                        ? (text) => void editAndResend(m.id, text)
-                        : undefined
+                      m.role === "user" && !streaming ? editAndResend : undefined
                     }
                     onAnswerAs={
                       m.role === "user" && !streaming && agents.length > 1
-                        ? (agentId) => void answerAs(m.id, agentId)
+                        ? answerAs
                         : undefined
                     }
                     agents={m.role === "user" ? agents : undefined}
@@ -1142,12 +1145,12 @@ export function ChatView() {
                     }
                     onToggleSpeak={
                       m.role === "assistant" && !streaming && m.status === "done" && m.content
-                        ? () => void toggleSpeak(m.id, m.content)
+                        ? toggleSpeak
                         : undefined
                     }
                     onDelete={
                       m.role === "assistant" && !streaming && speech?.msgId !== m.id
-                        ? () => deleteReply(m.id)
+                        ? deleteReply
                         : undefined
                     }
                   />
