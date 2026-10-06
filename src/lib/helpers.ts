@@ -262,6 +262,35 @@ export function resolveStepRole(
   return parsed ? { role: parsed, source: "parsed" } : { role: null, source: null };
 }
 
+/** r311: per-surface role-tag noise policy. When EVERY step that carries a
+ * role signal mismatches its worker (imported plans authored for a different
+ * agent chain — the user's Continuous Research pipeline showed 9 identical
+ * amber chips), per-step chips are repetition, not information: callers
+ * render ONE summary note instead. A single mismatched step stays per-step
+ * (it is actionable). Tagged = steps with an explicit roleId or a "[Tag]"
+ * label prefix; a missing worker name counts as a mismatch (nothing to
+ * agree with). */
+export interface RoleTagMismatchSummary {
+  tagged: number;
+  mismatched: number;
+  universal: boolean;
+}
+
+export function summarizeRoleTagMismatches(
+  steps: { label?: string | null; roleId?: string | null; agentName?: string | null }[]
+): RoleTagMismatchSummary {
+  let tagged = 0;
+  let mismatched = 0;
+  for (const s of steps) {
+    const roleInfo = resolveStepRole(s.roleId, s.label ?? "");
+    if (roleInfo.role == null) continue;
+    tagged += 1;
+    const worker = (s.agentName ?? "").trim();
+    if (!worker || !roleMatchesAgent(roleInfo.role, worker)) mismatched += 1;
+  }
+  return { tagged, mismatched, universal: tagged > 1 && mismatched === tagged };
+}
+
 /** Rough token estimate for the NEXT chat turn (4 chars ≈ 1 token). */
 export function estimateNextTurnTokens(
   messages: ChatMessage[],

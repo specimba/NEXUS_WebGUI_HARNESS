@@ -67,7 +67,7 @@ import {
 import type { SpawnProposal, Workflow, WorkflowStep } from "@/lib/types";
 import { buildAngleHistory, buildVariationProposal, latestScoredNovelty, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
 import { useSettingsStore } from "@/lib/stores";
-import { downloadJson, fmtIn, fmtIntervalShort, fmtRel, resolveStepRole, roleMatchesAgent, uid } from "@/lib/helpers";
+import { downloadJson, fmtIn, fmtIntervalShort, fmtRel, resolveStepRole, roleMatchesAgent, summarizeRoleTagMismatches, uid } from "@/lib/helpers";
 import { resolveLlm } from "@/lib/llm-config";
 import { isWorkflowRunning } from "@/lib/workflow-runner";
 import { deepPauseChip } from "@/lib/depth-chip";
@@ -1633,6 +1633,16 @@ export function WorkflowsView() {
                         roleInfo.role != null &&
                         agent?.name != null &&
                         !roleMatchesAgent(roleInfo.role, agent.name);
+                      // r311: universal mismatch (every tagged step wrong for its
+                      // worker — imported-plan legacy) de-ambers the chain; the
+                      // card shows one summary note below instead.
+                      const roleUniversal = summarizeRoleTagMismatches(
+                        wf.steps.map((s) => ({
+                          label: s.label,
+                          roleId: s.roleId,
+                          agentName: agentById.get(s.agentId)?.name ?? null,
+                        }))
+                      ).universal;
                       return (
                         <React.Fragment key={step.id}>
                           {i > 0 ? (
@@ -1651,7 +1661,7 @@ export function WorkflowsView() {
                               "flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5",
                               isReview
                                 ? "border-amber-500/40 bg-amber-500/10"
-                                : roleMismatch
+                                : roleMismatch && !roleUniversal
                                   ? "border-amber-500/40 bg-amber-500/[0.06]"
                                   : "border bg-muted/40"
                             )}
@@ -1666,7 +1676,7 @@ export function WorkflowsView() {
                             <span className="max-w-32 truncate text-xs font-medium">
                               {agent?.name ?? step.label ?? "Unassigned"}
                             </span>
-                            {roleMismatch ? (
+                            {roleMismatch && !roleUniversal ? (
                               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden />
                             ) : null}
                           </span>
@@ -1679,6 +1689,26 @@ export function WorkflowsView() {
                       </span>
                     ) : null}
                   </div>
+
+                  {(() => {
+                    // r311: one summary line when the whole chain's tags are
+                    // source-plan legacy (universal mismatch) — replaces the
+                    // per-chip amber noise.
+                    const summary = summarizeRoleTagMismatches(
+                      wf.steps.map((s) => ({
+                        label: s.label,
+                        roleId: s.roleId,
+                        agentName: agentById.get(s.agentId)?.name ?? null,
+                      }))
+                    );
+                    if (!summary.universal) return null;
+                    return (
+                      <p className="text-[10px] leading-snug text-muted-foreground">
+                        All {summary.tagged} step labels carry source-plan role tags that don&apos;t match their
+                        assigned workers — routing follows the assigned agents, never the titles.
+                      </p>
+                    );
+                  })()}
 
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">

@@ -287,6 +287,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "A failed run card now reads “Out of credits” instead of “Unknown”; after a 402, the model picker shows the orca lanes as blocked until credits are added",
   },
+  {
+    round: "r311",
+    title: "Imported plans no longer stamp an identical “tag ≠ worker” warning on every single step",
+    detail:
+      "Plans imported from a pasted source carry the authoring chain's “ [Role]” tags, so every step row showed the same amber “tag [X] ≠ worker” chip — nine repetitions, zero routing information. When EVERY tagged step mismatches its worker, the run panel and the pipeline card now show one honest summary line instead (“routing follows the assigned agents, never the titles”) and the per-step chips go quiet. A single mismatched step keeps its chip — that one is actionable.",
+    lookFor:
+      "Workflows → open the Continuous Research run: one amber note above the step list instead of a chip on every row; the pipeline card shows the same one-liner under the step chain",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

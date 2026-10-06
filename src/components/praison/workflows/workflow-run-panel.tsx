@@ -66,6 +66,7 @@ import {
   parseRolePrefix,
   resolveStepRole,
   roleMatchesAgent,
+  summarizeRoleTagMismatches,
   runDiagnostics,
   runReportFileName,
   runToMarkdown,
@@ -1469,6 +1470,24 @@ export function WorkflowRunPanel({
                   </div>
                 );
               })() : null}
+              {(() => {
+                // r311: universal tag-vs-worker mismatch (imported plans) gets
+                // ONE honest note instead of an identical chip on every row.
+                const summary = summarizeRoleTagMismatches(
+                  viewedRun.steps.map((s) => ({
+                    label: s.label,
+                    roleId: s.roleId,
+                    agentName: agents.find((a) => a.id === s.agentId)?.name ?? s.agentName ?? null,
+                  }))
+                );
+                if (!summary.universal) return null;
+                return (
+                  <p className="rounded-md border border-amber-500/30 bg-amber-500/[0.06] px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground">
+                    All {summary.tagged} step labels carry "[role]" tags from the source plan and none match their
+                    assigned workers — routing follows the assigned agents (shown per step), never the titles.
+                  </p>
+                );
+              })()}
               {viewedRun.steps.map((step, i) => {
                 const agent = agents.find((a) => a.id === step.agentId);
                 // r180/r182 role honesty: routing is agentId, never the title.
@@ -1480,6 +1499,16 @@ export function WorkflowRunPanel({
                 const roleMismatch =
                   roleInfo.role != null &&
                   !roleMatchesAgent(roleInfo.role, agent?.name ?? step.agentName);
+                // r311: when EVERY tagged step mismatches (imported-plan legacy),
+                // the per-step chips are summarized above — repetition is not
+                // information. Partial mismatches keep their chips.
+                const roleUniversal = summarizeRoleTagMismatches(
+                  viewedRun.steps.map((s) => ({
+                    label: s.label,
+                    roleId: s.roleId,
+                    agentName: agents.find((a) => a.id === s.agentId)?.name ?? s.agentName ?? null,
+                  }))
+                ).universal;
                 return (
                   <Card
                     key={`${viewedRun.id}-${step.stepId}-${i}`}
@@ -1506,7 +1535,7 @@ export function WorkflowRunPanel({
                         <span className="truncate text-muted-foreground">
                           {roleTag.cleanLabel}
                         </span>
-                        {roleMismatch ? (
+                        {roleMismatch && !roleUniversal ? (
                           <span
                             className="ml-1.5 shrink-0 rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px align-middle text-[10px] font-medium text-amber-600 dark:text-amber-400"
                             title={

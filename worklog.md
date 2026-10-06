@@ -8274,3 +8274,30 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; 8 lib modules still "use client" (policed by qa-iso-boundary). New: the orca credit drain is the user's live constraint — until they top up orcarouter credits OR save a second non-orca provider key, free-lane rotation has nowhere to go (honest null stands); the "tag [X] ≠ worker" chips on run steps look like data noise worth one audit round.
 Blockers: none
 Next recommended action: r311 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r310 snapshot or successor). (3) If another run failed, confirm the card reads "Out of credits" (billing class witnessed). (4) Otherwise ONE small item: (a) audit the "tag [Agent] ≠ worker" step chips — validate or fix the tag/worker metadata noise; (b) r293 perf-win instrumentation; (c) docs pass on a non-LOCAL_AUTOMATION doc. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.
+
+---
+Task ID: r311
+Agent: main (platform dev agent)
+Task: Handoff-directed item (a) — audit the "tag [Agent] ≠ worker" step chips (the user's last two pastes both showed the amber chip glued to EVERY step row of the Continuous Research pipeline).
+
+Work Log:
+- Root cause of the noise: imported plans carry the authoring chain's "[Role]" label tags; the user's pipeline assigns a different worker chain, so EVERY tagged step mismatches → the run panel rendered an identical amber chip per row and the board card ambers every chip + dot. Per-step repetition of the same fact is not information.
+- New policy (lib/helpers.ts): summarizeRoleTagMismatches — universal mismatch (tagged > 1 AND mismatched === tagged) collapses the per-step chips into ONE summary note; partial mismatches keep per-step chips (actionable). Explicit roleId, substring identity, and missing-worker-name-mismatches all preserved via the existing resolveStepRole/roleMatchesAgent doctrine (r180-r182).
+- workflow-run-panel.tsx: single amber note above the step list on universal mismatch; per-step chip gated by !roleUniversal. workflows-view.tsx: pipeline card de-ambers chips + dots on universal mismatch and shows the same one-liner under the step chain.
+- New scripts/qa-role-tag-honesty.ts: 7 unit cases (all-match, universal, partial, untagged-ignored, orphan workers, explicit-roleId precedence, substring identity) + 5 source asserts pinning both render sites. 12/12.
+- Verification: npx tsc --noEmit 0; canonical bun run lint 0 errors / 33 baseline warnings (no new ternaries); qa-relay-taxonomy regression 97/97; cdp board boot smoke 6/6.
+- Receipt r311 appended to whats-fixed.tsx (36 entries).
+
+Stage Summary:
+- The user's run detail now reads: one honest line — "All N step labels carry [role] tags from the source plan and none match their assigned workers — routing follows the assigned agents, never the titles" — instead of N identical chips. Signal kept, noise gone.
+
+Round Handoff:
+Round ID: r312
+Task owner: main (platform dev agent)
+Scope completed: role-tag noise policy (helper + run panel + board card + QA suite 12/12) + receipt r311.
+User-visible changes: universal tag-vs-worker mismatch shows one summary note instead of per-step chips on both the run panel and the pipeline card.
+Verification steps: bun scripts/qa-role-tag-honesty.ts (12/12); bun scripts/qa-relay-taxonomy.ts (97/97); npx tsc --noEmit (0); bun run lint (0/33); node scripts/cdp-qa-deep-pause-chip.mjs (6/6).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key). New: none this round (display-only change).
+Blockers: none
+Next recommended action: r312 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r311 snapshot or successor). (3) If a run failed, confirm the recovery card still names its real class (billing/timeout/network). (4) Otherwise ONE small item: (a) r293 perf-win instrumentation; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) Morning Briefing card stopped-vs-failed resume affordance. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.
