@@ -7696,3 +7696,35 @@ Verification result: PASS
 Open risks: perf win is structural, not render-count-instrumented (deliberate — see honesty note); UserBubble is NOT memoized (user bubbles re-render on parent render but are cheap — could be a future micro-pass if ever measured as hot); carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/providers/free-models bare-write anchor; /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
 Blockers: none
 Next recommended action: r294 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r293 snapshot or successor). (3) Ship product code — pick ONE: (a) a small user-facing feature on a least-touched surface (whats-fixed.tsx / setup-wizard.tsx haven't shipped since r274; radar-view and shell.tsx are also low-traffic); (b) an error-handling polish sweep on API routes (bare-catch / silent-500 audit — /api/providers/free-models is a known bare-write anchor); or (c) the vault epic's next increment (see worklog r123+). (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus (r287 doctrine); VERIFY handoff paths with Glob before Read (LS fallback); /api/tracker GET lazy-syncs when stale; suites carry their own failure DIAGs; rotate surfaces — chat got r289+r293, leave it alone next round.
+
+---
+
+## r294 — What's-fixed receipts refreshed (r287-r293) + staleness class KILLED: derived range label + evergreen receipts suites 13/13 (2026-10-06, Job 424432)
+
+Task ID: r294
+Agent: main (platform dev agent)
+Task: Per r293 handoff — rotated off chat. Option (b) (API error-handling sweep) was PIVOTED AWAY after diagnosis: the "free-models bare-write anchor" turned out to be QA-suite jargon (the route's URL anchors five suites' gotoBare helpers — r260 note), the route itself is already clean (try/catch, timeouts, stale-cache fallbacks on GET+POST), and the 18 API route files were already audited at r250. Fell through to option (a): whats-fixed.tsx, unshipped since r274 and ~20 receipts-rounds stale again.
+
+Work Log:
+- STARTUP: no user report. Health 000 (sandbox reap) → ONE restart → 200 (~2s). HEAD 2fc4d8ddf = r293 snapshot ✓.
+- SHIPPED 1 — four new receipts (all verbatim-backed by worklog evidence): r287 HF Trending keyword filter (id/pipeline_tag/library_name + honest "N of M" count + empty state); r289 single-reply delete (two-click confirm, auto-disarm 2.5s); r290 signals-card honesty line ("first 24 of N shown") + workflows stale-card toasts; r293 chat streaming re-render fix. r274 deliberately SKIPPED (its refresh-all premise was corrected by r275's re-seed truth — an honest receipt needs the nuance; noted here instead).
+- SHIPPED 2 — staleness class KILLED: the CardDescription's covered range is now DERIVED (`FIXES[0].round`-`FIXES[FIXES.length-1].round` → "r186-r293") instead of the hardcoded string whose staleness was r274's DEFECT 1. The range can no longer lie: appending a receipt updates it.
+- SHIPPED 3 — both receipts suites made EVERGREEN (they had gone stale twice): cdp-qa-whatsfixed-order.mjs U1/U2/U3 literals ("first=r241, count=13" — already failing before this round) replaced by derived invariants: chip extremes == header range, FULL descending leading-number order (stronger than the old sampled sequence), header range + newest-first promise. cdp-qa-receipts-refresh.mjs R1a/R1b/R1c literals ("first=r273, total=17") same treatment (≥21 count floor).
+- Verification: npx tsc --noEmit exit 0; canonical bun run lint 0 errors / 33 baseline warnings; cdp-qa-whatsfixed-order.mjs 4/4 IN-VIVO on the fresh bundle (witnessed: 21 receipts, first "r293", last "r186", order [293,290,289,287,273,…,186]); cdp-qa-receipts-refresh.mjs 9/9 (R1c count=21 + the r275 vault re-seed legs intact); boot gate 7/7.
+- Budget: 12 tool batches — at the cap (the option-(b) pivot cost one diagnosis round that SAVED the round from fixing a non-defect; two receipts suites needed the evergreen patch).
+
+Stage Summary:
+- The receipts panel is current through r293 and CANNOT silently go stale again: the range label is derived, and both guarding suites now assert invariants instead of literals — appending receipts is a zero-suite-churn operation.
+- User-facing: Settings leads with four real fixes from the recovery + perf era that were invisible to anyone reading only the app.
+- Panel honesty note: r291/r292 were QA-asset rounds (boot gate, probe) — intentionally no receipts (panel documents user-visible changes).
+
+Round Handoff:
+Round ID: r295
+Task owner: main (platform dev agent)
+Scope completed: receipts refreshed (r287-r293, 4 new entries), derived range label (staleness class killed), both receipts suites evergreened; 13/13 in-vivo + tsc 0 + lint 0/33.
+User-visible changes: Settings → What's fixed recently now shows the HF filter, single-reply delete, signals truncation honesty + workflows stale-card toasts, and the streaming re-render fix; the header range reads r186-r293 and auto-updates.
+Verification steps: node scripts/cdp-qa-whatsfixed-order.mjs (4/4); node scripts/cdp-qa-receipts-refresh.mjs (9/9); node scripts/cdp-qa-boot-gate.mjs (7/7); tsc (0); bun run lint (0/33).
+Verification result: PASS (static + in-vivo)
+Open risks: receipts for r276-r282-era work can never be written (that work is lost — the panel's gap between r273 and r287 is honest); carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
+Blockers: none
+Next recommended action: r295 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r294 snapshot or successor). (3) Ship product code — pick ONE: (a) a small user-facing feature on setup-wizard.tsx or another low-traffic surface (deep-read first — r255/r275 touched it, know the re-seed doctrine); (b) a genuine vault-epic increment (r123+ epic, long-standing rotation candidate); or (c) an error-handling sweep on a NON-API surface (the API routes were audited at r250 — don't repeat). (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; Radix triggers need pointerdown/focus (r287 doctrine); VERIFY handoff paths with Glob before Read (LS fallback); /api/tracker GET lazy-syncs when stale; suites carry their own failure DIAGs; rotate surfaces — settings/whats-fixed shipped this round.

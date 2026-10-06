@@ -3,8 +3,10 @@
 // honest no-op (r274 SHIPPED 2), in-vivo on the fresh bundle (carries
 // r273+r274+r275 client rounds).
 //   R0  app boots
-//   R1  Settings → "What's fixed recently": newest receipt chip = r273,
-//       oldest = r186, total = 17 (13 pre-r274 + r270/r271/r272/r273)
+//   R1  Settings → "What's fixed recently": chips render newest-first; the
+//       FIRST chip == the header range's END and the LAST == its START, with
+//       the count still growing (r294: evergreen — the r275-era literals
+//       "first=r273, total=17" went stale the moment receipts grew again)
 //   R2  vault re-seed truth (r275 correction of the r274 premise): deleting
 //       providerKeys at the storage layer does NOT empty the vault — the app
 //       re-seeds bundled keys in memory each boot and refresh-all still fires
@@ -96,23 +98,35 @@ async function main() {
   check("R0 app renders", await waitFor(ws, `document.readyState === "complete" && document.body && document.body.innerText.length > 0`));
 
   // R1 — receipts panel current (r274 SHIPPED 1): chips render reversed
-  // (newest first), so the FIRST violet round-chip must be r273 and the LAST
-  // r186; 17 receipts total after the r274 append. Hydration note (r275): the
-  // h2 paints from SSR HTML before the client sections mount — wait on the
-  // section content itself, never on the heading alone (the first run of this
-  // suite scanned a sections-less SSR shell and reported count=0).
+  // (newest first). Hydration note (r275): the h2 paints from SSR HTML before
+  // the client sections mount — wait on the section content itself, never on
+  // the heading alone (the first run of this suite scanned a sections-less SSR
+  // shell and reported count=0). r294: expectations derive from the header's
+  // range label (itself derived from FIXES in the component), so appending
+  // receipts never breaks this suite again.
   await evalJs(ws, `location.hash = "#/settings"`).catch(() => {});
   const chipsReady = await waitFor(ws, `document.querySelectorAll("#whats-fixed span").length > 3`, 15_000);
   check("R1-pre settings sections hydrated", chipsReady);
   const receipts = await evalJs(ws, `(() => {
-    const chips = [...document.querySelectorAll("#whats-fixed span")]
+    const section = document.querySelector("#whats-fixed");
+    const chips = [...section.querySelectorAll("span")]
       .filter((e) => /^r\\d+(-r\\d+)?$/.test((e.textContent || "").trim()) && (e.className || "").includes("violet-500/10"))
       .map((e) => (e.textContent || "").trim());
-    return { chips, first: chips[0] ?? null, last: chips[chips.length - 1] ?? null, count: chips.length };
+    const range = (section.textContent ?? "").match(/r(\\d+)-r(\\d+)/);
+    return { chips, first: chips[0] ?? null, last: chips[chips.length - 1] ?? null, count: chips.length,
+             rangeStart: range ? range[1] : null, rangeEnd: range ? range[2] : null };
   })()`);
-  check("R1a newest receipt is r273", receipts?.first === "r273", `first=${receipts?.first} count=${receipts?.count}`);
-  check("R1b oldest receipt is r186 (reverse render intact)", receipts?.last === "r186", `last=${receipts?.last}`);
-  check("R1c receipt count = 17", receipts?.count === 17, `count=${receipts?.count}`);
+  check(
+    "R1a newest receipt == header range end",
+    receipts?.rangeEnd !== null && receipts?.first === `r${receipts?.rangeEnd}`,
+    `first=${receipts?.first} rangeEnd=${receipts?.rangeEnd}`
+  );
+  check(
+    "R1b oldest receipt == header range start (reverse render intact)",
+    receipts?.rangeStart !== null && receipts?.last === `r${receipts?.rangeStart}`,
+    `last=${receipts?.last} rangeStart=${receipts?.rangeStart}`
+  );
+  check("R1c receipt count still growing (≥21 after the r294 appends)", (receipts?.count ?? 0) >= 21, `count=${receipts?.count}`);
 
   // R2 — r275 CORRECTION of the r274 premise: the app re-seeds bundled keys
   // (vyce/pollinations/aihubmix) into memory on every boot — deleting keys at

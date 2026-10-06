@@ -144,7 +144,39 @@ const FIXES: FixNote[] = [
     detail:
       "A wide filter made the header say \"250 shown\" while the list rendered its first 120 rows; the header now reads \"first 120 of 250 shown\" when a result set outgrows the render cap.",
   },
+  {
+    round: "r287",
+    title: "Trend Radar's HF hub is filterable",
+    detail:
+      "The HF Trending section gains a keyword filter matching model id, pipeline tag and library name, with an honest \"N of M\" count line and a \"Nothing matches\" empty state — a 250-row wall is now three keystrokes from the one model you wanted.",
+    lookFor: "the filter box on the HF Trending hub — type a tag and watch the count line",
+  },
+  {
+    round: "r289",
+    title: "Delete a single bad reply",
+    detail:
+      "Assistant replies can be removed one at a time (heartbeat noise, a failed or mistaken turn) without clearing the surrounding transcript. Two-click confirm: the first click arms the trash icon (red, auto-disarms after 2.5s), the second deletes. Hidden while the reply streams or is being read aloud.",
+    lookFor: "hover an assistant reply → trash icon → click twice (the second click confirms)",
+  },
+  {
+    round: "r290",
+    title: "The signals card says what it truncates — and stale workflows explain themselves",
+    detail:
+      "The tracker's early-signals card rendered its first 24 rows while silently dropping the rest of a longer feed; it now states \"first 24 of N shown\" out loud (screen readers included). On the Workflows board, duplicating a workflow that just vanished or opening a kanban card whose pipeline is gone now shows an explicit refresh-sync toast instead of doing nothing.",
+    lookFor: "when the signals feed exceeds the cap: \"first 24 of N shown\" above the list",
+  },
+  {
+    round: "r293",
+    title: "Long chats stop re-rendering while a reply streams",
+    detail:
+      "Every streaming token used to re-render the whole transcript (an invisible memo breaker: five per-message callbacks were fresh closures on each render). Now only the streaming bubble updates — long conversations stay smooth while replies stream, and scrolling or toggling speech no longer redraws every message.",
+  },
 ];
+
+// r294: the covered range is DERIVED from FIXES (first → last entry) instead
+// of a hardcoded string — the r274 defect class was exactly this string going
+// stale ("r186-r241" while receipts ran to r273). The range can no longer lie.
+const RANGE_LABEL = `${FIXES[0].round}-${FIXES[FIXES.length - 1].round}`;
 
 export function WhatsFixedSection() {
   return (
@@ -152,10 +184,10 @@ export function WhatsFixedSection() {
       <CardHeader className="pb-3">
         <CardTitle>What&apos;s fixed recently</CardTitle>
         <CardDescription>
-          r186-r273 shipped pipeline, radar, provider &amp; rendering repairs while boards can look unchanged
-          (background tabs stop hot-reloading). Newest receipts first. If you can read this section,
-          this tab already runs current code — otherwise an amber refresh pill appears within a
-          minute.
+          {RANGE_LABEL} shipped pipeline, radar, provider &amp; rendering repairs while boards can look
+          unchanged (background tabs stop hot-reloading). Newest receipts first. If you can read this
+          section, this tab already runs current code — otherwise an amber refresh pill appears within
+          a minute.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

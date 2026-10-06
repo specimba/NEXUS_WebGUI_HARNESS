@@ -1,9 +1,11 @@
 import { ensureChrome } from "./cdp-ensure-chrome.mjs";
 // ─── CDP QA — U-series (r242): What's-fixed receipt panel order ──────────────
-// Feature under test: whats-fixed.tsx newest-first render + r239-r241 entries.
-//  U1  first receipt chip = "r241", last = "r186", 13 entries total
-//  U2  documented descending order (r240 before r239 before r237-r238 before r196)
-//  U3  header names the new range r186-r241 and says "Newest receipts first"
+// Feature under test: whats-fixed.tsx newest-first render.
+// r294: assertions are EVERGREEN — the r242-era literals went stale twice
+// (r274 refreshed receipts without touching this suite; r294 added four more).
+//  U1  chip extremes match the header's DERIVED range (first=newest, last=oldest), ≥15 entries
+//  U2  full descending order — the leading round number never increases downward
+//  U3  header still names a range and promises "Newest receipts first"
 //  U4  no console errors during the suite
 // Static content — no store seeding, no reload dance required.
 // Usage: node scripts/cdp-qa-whatsfixed-order.mjs [baseUrl]
@@ -107,28 +109,38 @@ const check = (name, ok, detail = "") => {
   console.log(`  ${ok ? "✅" : "❌"} ${name}${detail ? ` — ${detail}` : ""}`);
 };
 
-// U1 — order extremes + count
+// U1 — extremes match the header's declared range (derived in the component)
 const u1 = await evalJs(ws, `(() => {
   const chips = [...document.querySelectorAll('#whats-fixed span[class*="bg-violet-500"]')].map((s) => s.textContent.trim());
-  return { count: chips.length, first: chips[0] ?? null, last: chips[chips.length - 1] ?? null, chips };
+  const range = (document.querySelector('#whats-fixed')?.textContent ?? "").match(/r(\\d+)-r(\\d+)/);
+  return { count: chips.length, first: chips[0] ?? null, last: chips[chips.length - 1] ?? null,
+           rangeStart: range ? range[1] : null, rangeEnd: range ? range[2] : null };
 })()`);
-check("U1 first=r241 last=r186 count=13", u1.count === 13 && u1.first === "r241" && u1.last === "r186", JSON.stringify(u1));
+check(
+  "U1 chip extremes == header range (first=newest, last=oldest)",
+  u1.count >= 15 &&
+    u1.rangeStart !== null && u1.rangeEnd !== null &&
+    u1.first === `r${u1.rangeEnd}` && u1.last === `r${u1.rangeStart}`,
+  JSON.stringify(u1)
+);
 
-// U2 — exact expected descending sequence (source array reversed)
-const EXPECTED = "r241|r240|r239|r237-r238|r196|r195|r194|r193|r192|r190-r191|r189|r187-r188|r186";
+// U2 — full descending order (leading round number never increases downward)
 const u2 = await evalJs(ws, `(() => {
-  const chips = [...document.querySelectorAll('#whats-fixed span[class*="bg-violet-500"]')].map((s) => s.textContent.trim());
-  return { sequence: chips.join("|") };
+  const nums = [...document.querySelectorAll('#whats-fixed span[class*="bg-violet-500"]')]
+    .map((s) => parseInt((s.textContent ?? "").match(/\\d+/)?.[0] ?? "0", 10));
+  let sorted = true;
+  for (let i = 1; i < nums.length; i++) if (nums[i] > nums[i - 1]) sorted = false;
+  return { nums, sorted };
 })()`);
-check("U2 exact descending receipt sequence", u2.sequence === EXPECTED, JSON.stringify(u2));
+check("U2 receipts render strictly newest-first", u2.sorted && u2.nums.length >= 15, JSON.stringify(u2.nums));
 
-// U3 — header names the new range + ordering promise (checked at section
+// U3 — header names a range + keeps the ordering promise (checked at section
 // level: CardDescription may not render as a <p> in this shadcn version)
 const u3 = await evalJs(ws, `(() => {
   const desc = document.querySelector('#whats-fixed')?.textContent ?? "";
-  return { range: desc.includes("r186-r241"), newest: /newest receipts first/i.test(desc) };
+  return { hasRange: /r\\d+-r\\d+/.test(desc), newest: /newest receipts first/i.test(desc) };
 })()`);
-check("U3 header range r186-r241 + newest-first promise", u3.range && u3.newest, JSON.stringify(u3));
+check("U3 header names its range + newest-first promise", u3.hasRange && u3.newest, JSON.stringify(u3));
 
 await shot(ws, "u-series-whatsfixed");
 
