@@ -199,6 +199,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows \u2192 open a deep pipeline's run panel: the small line under the task box matches the step rows below it",
   },
+  {
+    round: "r300",
+    title: "The fleet chip counts what it says it counts",
+    detail:
+      "The sidebar's tiny 'cron 2/2' chip labelled its ratio '(agentTurn)' while the denominator counted EVERY registry job \u2014 a paused schedule or a wrong-kind job (the forensics route still warns about the webDevReview era) silently shrank the ratio and lit the amber degraded state even when every agent was armed. Both sides of the ratio now count agentTurn jobs only, and paused or non-agentTurn jobs are named out loud in the tooltip instead of hiding inside the denominator.",
+    lookFor:
+      "Sidebar \u2192 hover the cron chip at the bottom: the tooltip says 'agentTurns armed' and names any paused or foreign jobs explicitly",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

@@ -7882,3 +7882,31 @@ Verification result: PASS (static + in-vivo + live API shape)
 Open risks: vault consume round-trip and prune-on-push remain live-unverified (keyless dev profile) — a stored vault key in a future round could close both; carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; git push fork 128 environmental.
 Blockers: none
 Next recommended action: r300 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r299 snapshot or successor). (3) Pick ONE: (a) a small user-facing feature/polish on a genuinely low-traffic surface (shell.tsx or radar-view — deep-read first; settings and workflows both shipped recently, keep rotating); (b) perf or error-handling on a NON-API surface; (c) if a vault key gets stored between rounds, live-verify the consume round-trip and prune-on-push paths left open by this stamp. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; suites read __errs BEFORE any restore-reload; settings tab strip = plain buttons (no role=tab); same-URL Page.navigate is a no-op — use location.reload(); assert via textContent; Radix triggers need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; no ternary-statement asserts (keep lint 0/33); append receipts when shipping user-visible changes.
+
+---
+Task ID: r300
+Agent: main (platform dev agent)
+Task: Per r299 handoff (a) — small user-facing polish on a low-traffic surface: shell.tsx FleetChip ratio honesty (the r298 one-ratio-two-populations defect class, found by deep-read).
+
+Work Log:
+- STARTUP: no user report. Health 200. NEWER-HEAD 4th instance: HEAD cfcc9c2a1 (13:34Z) > last-known 06c97134b with a complete r299 section (M4 live-gate fix + LOCAL_AUTOMATION.md re-stamp; commit contents verified: docs + suite + run-now comment + worklog) → claimed the handoff, did NOT redo.
+- Candidates: (a) shell.tsx/radar-view polish, (b) non-API perf/error-handling, (c) vault-key live-verify. (c) precondition failed (dev profile still keyless). Deep-read shell.tsx fully (497 lines); radar-view (46KB) deferred whole to its own round — honest note: only its header was skimmed this round.
+- SHIPPED — FleetChip population fix (shell.tsx): n counted enabled agentTurn jobs but total counted EVERY registry job while the tooltip claimed "(agentTurn)" — a banned-kind job (the forensics route still documents the webDevReview era: "recreate missing jobs with kind=agentTurn ONLY") or a paused schedule silently shrank the ratio and lit the amber degraded state with every agent armed. Fix: both sides count agentTurn jobs only; FleetState gains paused/foreign; tooltip states "N/M agentTurns armed" and NAMES paused + non-agentTurn jobs instead of hiding them in the denominator; aria-label matches; the unreachable fallback was a guessed "?/2" → now "?/?". Color semantics unchanged on the pure population: amber only when armed < total agentTurns; foreign jobs disclosed in the tooltip without crying wolf.
+- QA: new suite scripts/cdp-qa-fleet-chip.mjs (4/4 in-vivo): F1 node-side forensics → expected ratio via the SAME predicates, chip text must start with it; F2 tooltip says "agentTurns armed", never "(agentTurn)", and claims NO paused/foreign problems when the live fleet has none (adaptive to real fleet state); F3 aria-label equality; F4 console hygiene — no reload ever in this suite (registry is server-side; seeding it = recreating cron jobs = banned ritual, so the paused/foreign tooltip branches are code-reviewed + tsc'd only, stated honestly). Healthy path witnessed: "cron 1/1" (registry currently 1 agentTurn job, 0 foreign, 0 paused). The "1/1next" textContent concat is the known flex-gap artifact class — assert uses startsWith.
+- Receipt r300 appended to whats-fixed.tsx (26 entries; derived range auto-extends to r186-r300).
+- Verification: npx tsc --noEmit exit 0; canonical bun run lint 0 errors / 33 baseline warnings; suite 4/4.
+- Budget: 10 tool batches.
+
+Stage Summary:
+- The shell's least-glamorous indicator now obeys the r298 doctrine: one ratio, one population, deltas named out loud. The suite fleet gains a 9th suite (self-cleaning, no seeding, no reload).
+
+Round Handoff:
+Round ID: r301
+Task owner: main (platform dev agent)
+Scope completed: FleetChip agentTurn-population fix + tooltip/aria honesty + "?/?" fallback; receipt r300; new cdp-qa-fleet-chip.mjs 4/4.
+User-visible changes: sidebar cron chip tooltip now says "N/M agentTurns armed" and names paused/foreign jobs; gray fallback shows "cron ?/?" instead of the guessed "?/2".
+Verification steps: node scripts/cdp-qa-fleet-chip.mjs (4/4); npx tsc --noEmit (0); bun run lint (0/33).
+Verification result: PASS (static + in-vivo)
+Open risks: paused/foreign tooltip branches witnessed statically only (registry never seeded — banned ritual adjacent); radar-view deep-read still owed (handoff option a, untouched — 46KB); carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP note; Chrome Ctrl+1-8 reservation; ZAI abort gap (r251); /api/tracker GET lazy-syncs when stale; vault consume round-trip + prune-on-push live-unverified (keyless profile); git push fork 128 environmental.
+Blockers: none
+Next recommended action: r301 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r300 snapshot or successor). (3) Pick ONE: (a) radar-view deep-read + small polish (the other half of this handoff's option a — 46KB, give it a full round); (b) non-API perf or error-handling (e.g. UserBubble memo, r293 perf-win instrumentation); (c) if a vault key gets stored, live-verify consume round-trip + prune-on-push. (4) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; suites read __errs BEFORE any restore-reload; settings tab strip = plain buttons (no role=tab); same-URL Page.navigate is a no-op — use location.reload(); assert via textContent; Radix triggers need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; no ternary-statement asserts (keep lint 0/33); append receipts when shipping user-visible changes.

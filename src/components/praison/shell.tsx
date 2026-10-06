@@ -109,6 +109,8 @@ function NewChatButton({ onDone }: { onDone?: () => void }) {
 type FleetState = {
   n: number;
   total: number;
+  paused: number;
+  foreign: number;
   nextMin: number | null;
   lastHeartbeat: string;
   cli: boolean;
@@ -136,10 +138,19 @@ function FleetChip() {
         if (!alive) return;
         const jobs: Array<{ kind?: string; enabled?: boolean; schedule?: { expr?: unknown } }> =
           d?.registry?.jobs ?? [];
-        const total = jobs.length;
-        const n = jobs.filter((j) => (j.enabled ?? true) && j.kind === "agentTurn").length;
+        // r300: one ratio, one population. The chip printed "cron n/total" with
+        // n over enabled agentTurn jobs but total over EVERY registry job —
+        // while its own tooltip claimed "(agentTurn)". A banned-kind job (the
+        // forensics route still warns about the webDevReview era) or a paused
+        // schedule silently shrank the ratio and lit the degraded state even
+        // when every agentTurn was armed. Both sides now count agentTurn jobs
+        // only; paused and foreign jobs are named in the tooltip instead of
+        // hiding inside the denominator.
+        const turns = jobs.filter((j) => j.kind === "agentTurn");
+        const total = turns.length;
+        const n = turns.filter((j) => j.enabled ?? true).length;
         const slots = Array.from(
-          new Set(jobs.flatMap((j) => parseMinuteSlots(j.schedule?.expr)))
+          new Set(turns.flatMap((j) => parseMinuteSlots(j.schedule?.expr)))
         ).sort((a, b) => a - b);
         const cur = new Date().getUTCMinutes();
         let nextMin: number | null = null;
@@ -148,7 +159,15 @@ function FleetChip() {
           if (nextMin === null || delta < nextMin) nextMin = delta;
         }
         const last = (d?.heartbeat?.last ?? []).slice(-1)[0] ?? "";
-        setFleet({ n, total, nextMin, lastHeartbeat: last, cli: d?.cli?.available === true });
+        setFleet({
+          n,
+          total,
+          paused: total - n,
+          foreign: jobs.length - total,
+          nextMin,
+          lastHeartbeat: last,
+          cli: d?.cli?.available === true,
+        });
       })
       .catch(() => {
         if (alive) setFleet(null);
@@ -168,10 +187,21 @@ function FleetChip() {
       onClick={() => setTick((x) => x + 1)}
       title={
         fleet
-          ? `cron fleet ${fleet.n}/${fleet.total} (agentTurn)${fleet.cli ? " · cli ok" : " · cli n/a — double-fire doctrine"}${fleet.lastHeartbeat ? `\nlast heartbeat: ${fleet.lastHeartbeat}` : ""}\nclick to re-check`
+          ? [
+              `cron fleet ${fleet.n}/${fleet.total} agentTurns armed`,
+              fleet.paused > 0 ? `${fleet.paused} paused` : null,
+              fleet.foreign > 0
+                ? `+${fleet.foreign} non-agentTurn job${fleet.foreign === 1 ? "" : "s"} in registry (agentTurn only)`
+                : null,
+              fleet.cli ? "cli ok" : "cli n/a — double-fire doctrine",
+              fleet.lastHeartbeat ? `last heartbeat: ${fleet.lastHeartbeat}` : null,
+              "click to re-check",
+            ]
+              .filter(Boolean)
+              .join("\n")
           : "fleet status unavailable — /api/cron/forensics unreachable\nclick to retry"
       }
-      aria-label={`Cron fleet ${fleet ? `${fleet.n} of ${fleet.total} alive` : "status unknown"}`}
+      aria-label={`Cron fleet ${fleet ? `${fleet.n} of ${fleet.total} agentTurns armed` : "status unknown"}`}
       className={cn(
         "mt-2 flex w-full items-center gap-1.5 rounded-md border px-2 py-1 text-left text-[10px] transition-colors",
         healthy && "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10",
@@ -186,7 +216,7 @@ function FleetChip() {
           healthy ? "bg-emerald-400 soft-pulse" : degraded ? "bg-amber-400" : "bg-muted-foreground/40"
         )}
       />
-      <span className="font-medium">cron {fleet ? `${fleet.n}/${fleet.total}` : "?/2"}</span>
+      <span className="font-medium">cron {fleet ? `${fleet.n}/${fleet.total}` : "?/?"}</span>
       {fleet?.nextMin != null && <span className="ml-auto text-muted-foreground">next {fleet.nextMin}m</span>}
     </button>
   );
