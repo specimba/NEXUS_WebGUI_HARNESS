@@ -112,13 +112,26 @@ export function SetupWizard() {
   // Reset whenever the wizard opens; honor deep-linked provider (#/guide/<id>).
   // Drafts pre-fill from the vault on BOTH paths, so a previously saved (even
   // stale) model stays visible and re-selectable at the connect step.
+  //
+  // r295: this effect must re-run ONLY on open / deep-link transitions. It used
+  // to subscribe to settings.providerKeys, but every in-wizard save produces a
+  // NEW providerKeys identity (stores.ts update() spreads settings; saveEntry
+  // spreads providerKeys) — so "Save & test" / "Activate" re-fired this reset
+  // and yanked a non-deep-linked wizard back to step 0 mid-flow: the pick-path
+  // never reached its own done screen (the async setStep(3) landed on a null
+  // provider; noKey "Activate" visibly bounced to the picker). Deep links
+  // masked the bug: with a non-null pid the re-run keeps step 2, so hash-route
+  // QA (the usual harness path) never witnessed it. Read the vault via
+  // getState() instead — same prefill semantics, no spurious re-runs.
   React.useEffect(() => {
     if (!open) return;
     const pid = deepLinkProviderId && FREE_PROVIDERS.some((p) => p.id === deepLinkProviderId)
       ? deepLinkProviderId
       : null;
     const reg = FREE_PROVIDERS.find((p) => p.id === pid);
-    const entry = reg ? settings.providerKeys?.[reg.id] : undefined;
+    const entry = reg
+      ? useSettingsStore.getState().settings.providerKeys?.[reg.id]
+      : undefined;
     setProviderId(pid);
     setDraftKey(entry?.key ?? "");
     setDraftAccount(entry?.accountId ?? "");
@@ -129,7 +142,8 @@ export function SetupWizard() {
     setShowKey(false);
     setTesting(false);
     setTest(null);
-  }, [open, deepLinkProviderId, settings.providerKeys]);
+    // Deps intentionally omit settings.providerKeys — see the r295 note above.
+  }, [open, deepLinkProviderId]);
 
   function pickProvider(p: FreeProvider) {
     setProviderId(p.id);
