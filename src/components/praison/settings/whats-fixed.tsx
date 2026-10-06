@@ -231,6 +231,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Chat \u2192 type \u201C/the\u201D \u2192 press Esc: the menu closes and \u201C/the\u201D is still in the composer",
   },
+  {
+    round: "r304",
+    title: "The deep-pause chip stops claiming to fire while nothing fires",
+    detail:
+      "A Deep pipeline that failed twice in a row shows a \u201Cdeep paused\u201D chip \u2014 but it said \u201Cdeep paused \u00B7 firing standard\u201D even while the failure breaker or a rate-limit backoff had the whole schedule parked, a state in which nothing runs at all (witnessed stacked on the red \u201Cauto-paused\u201D chip). Paused schedules now say just \u201Cdeep paused\u201D and the tooltip explains what actually restores deep; the state is derived from one shared rule instead of a hardcoded string.",
+    lookFor:
+      "Workflows \u2192 a Deep pipeline card that is auto-paused or in backoff: the violet chip says \u201Cdeep paused\u201D with no firing claim; only an enabled schedule can show \u201C\u00B7 firing standard\u201D",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

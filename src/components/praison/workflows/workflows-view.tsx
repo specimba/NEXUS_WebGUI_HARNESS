@@ -70,6 +70,7 @@ import { useSettingsStore } from "@/lib/stores";
 import { downloadJson, fmtIn, fmtIntervalShort, fmtRel, resolveStepRole, roleMatchesAgent, uid } from "@/lib/helpers";
 import { resolveLlm } from "@/lib/llm-config";
 import { isWorkflowRunning } from "@/lib/workflow-runner";
+import { deepPauseChip } from "@/lib/depth-chip";
 import { readScheduleSkips } from "@/lib/schedule-skips";
 import { cn } from "@/lib/utils";
 import { AgentAvatar, DepthChip, EmptyState, PageHeader } from "@/components/praison/atoms";
@@ -1925,15 +1926,26 @@ export function WorkflowsView() {
                           backoff · auto-resume {fmtIn(wf.schedule.autoResumeAt)}
                         </button>
                       )}
-                      {wf.depth === "deep" && (wf.schedule?.failStreak ?? 0) >= 2 && (
-                        <span
-                          title={`Deep passes are paused after ${wf.schedule?.failStreak} consecutive failures — scheduled fires run Standard until a run completes (manual Run keeps Deep). If you still see 11-step runs, this tab is running a stale bundle — refresh.`}
-                          className="inline-flex items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400"
-                        >
-                          <PauseCircle className="h-3 w-3" />
-                          deep paused · firing standard
-                        </span>
-                      )}
+                      {(() => {
+                        // r304: chip state comes from lib/depth-chip (one pure
+                        // rule shared with the runner's degrade semantics). A
+                        // PAUSED schedule now renders "deep paused" only — it
+                        // fires nothing, so "firing standard" was a lie while
+                        // the breaker or a 429 backoff had it parked (witnessed
+                        // stacked on the auto-paused chip on a live board).
+                        const chip = deepPauseChip(wf);
+                        if (!chip) return null;
+                        return (
+                          <span
+                            title={chip.title}
+                            data-testid="deep-pause-chip"
+                            className="inline-flex items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400"
+                          >
+                            <PauseCircle className="h-3 w-3" />
+                            {chip.label}
+                          </span>
+                        );
+                      })()}
                       {wf.schedule && !wf.schedule.enabled && wf.schedule.autoResumeAt == null && (wf.schedule.failStreak ?? 0) >= 2 && (
                         <button
                           type="button"
