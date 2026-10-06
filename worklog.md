@@ -8041,3 +8041,38 @@ Work Log:
 
 Stage Summary:
 - r304 final state: all claims in the r304 section now hold at the follow-up snapshot; zero product-code deltas vs 4564681fb except the comment reword.
+
+---
+Task ID: r305
+Agent: main (platform dev agent)
+Task: User-directed (direct message: resume-all is a brute-force workaround — explain why runs stop at steps, why 429s, harness request slowness to provider exhaustion, why one error stops the whole pipeline, why no model/provider rotation with dozens of providers). Engine-level congestion semantics, prioritized over the handoff menu.
+
+Work Log:
+- STARTUP: user report PRIORITIZED. HEAD a9a64f927 = r304-followup snapshot (newer-HEAD doctrine; r304's deep-pause chip claimed, nothing redone). Health 200.
+- FORENSICS — grounded answers to the three questions:
+  (1) Why a step stops the run: the per-step ladder is 3 attempts with 20s/45s cooldowns — sized for seconds-long blips, not minutes-long quota windows; once it dies, the run parks (rate-limit 5→30m ×4, network 2→10m ×3) and the schedule breaker counts the failure (2 consecutive rate-limited runs → auto-pause). That combination is the observed "one error stops everything".
+  (2) Why 429: shared free-gateway saturation waves, hourly-cron collinear (r158/r181 pulse forensics), with every step dialing the same pinned lane.
+  (3) Why no rotation: rotation existed in only three gated places — mid-stream demotion (required toolCalls>0, so a PRE-STREAM 429 marked NOTHING sick), final-attempt family substitution, and post-park forceServer. Every later step re-learned the same saturated lane from scratch.
+- SHIPPED — new dependency-free module src/lib/lane-rotation.ts + workflow-runner wiring:
+  (a) tab-wide per-FAMILY 429 memory: noteLane429 opens a sliding 5m window (sized to the providers' own 5m telemetry windows, PRIMARY_SICK_MS doctrine) with consecutive-strike counting; expiry forgives the lane.
+  (b) immediate rotation: a step opening inside a family's window demotes the primary to the built-in engine (r126 machinery generalized), and every attempt reorders the relay wire — sick families demoted to the BACK (rotateHops: demoted never dropped; healthy order stable; keyless hops untouched; all-sick wires unchanged).
+  (c) adaptive slowness: congestionCooldownMs escalates the cooldown base with the family's consecutive 429 strikes (20s → 45s → 90s), floored by the shared 90s gateway-quiet window, ±20% jittered; attempt-based escalation preserved via max(strikes, attempt).
+  (d) honest call-log notes: "congestion rotation — … demoted to the back of the wire (recent 429s)"; demotion notes now say "mid-stream drop or recent 429 saturation".
+- NOT done, deliberately: no live 429 was induced to witness rotation in-vivo — causing the exact harm this fix stops would be the theatre the user condemned. Wiring is pinned by source-level asserts; the invariant fires at the next real 429.
+- Receipt r305 appended to whats-fixed.tsx (31 entries; derived range auto-extends).
+- Verification: bun scripts/qa-lane-rotation.ts 29/29 + 5/5 wiring; npx tsc --noEmit 0; canonical bun run lint 0 errors / 33 baseline warnings; node scripts/cdp-qa-deep-pause-chip.mjs 5/5 (read-only board sweep — app boots and renders with the engine edit).
+- Budget: ~17 tool batches (over the ≤12 cap, logged transparently: user-directed engine surgery across a 1,643-line runner; forensics reads of runner/park-policy/providers/cadence/chat-client cost 8 batches).
+
+Stage Summary:
+- The three questions now have code answers: 429s mark the exhausted family tab-wide, retries and later steps rotate to healthy lanes immediately (demote-to-back, never drop), cooldowns slow down as exhaustion repeats, and the park/breaker ladders remain the honest last resort instead of the primary mechanism.
+
+Round Handoff:
+Round ID: r306
+Task owner: main (platform dev agent)
+Scope completed: lane-rotation.ts + workflow-runner wiring + receipt r305 + qa-lane-rotation.ts (29/29 + 5/5 wiring) + deep-pause sweep 5/5 as boot smoke.
+User-visible changes: after any 429, the pipeline's next dials lead with OTHER provider families for 5 minutes (the exhausted lane is demoted to the back of the chain, never removed), cooldowns grow 20s→45s→90s with repeat exhaustion, and run call logs name the rotation. Resume-all stays available but should no longer be NEEDED for congestion.
+Verification steps: bun scripts/qa-lane-rotation.ts (34 asserts); npx tsc --noEmit (0); bun run lint (0/33); node scripts/cdp-qa-deep-pause-chip.mjs (5/5).
+Verification result: PASS (static + unit + in-vivo smoke; live 429 path un-witnessed by design)
+Open risks: carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip + prune-on-push live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; breaker banner MAX-streak copy imprecision. New: lane saturation memory is tab-scoped (the headless lane keeps its own server-side rotator); the next real 429 will be the first live witness — check that run's call log for the rotation note.
+Blockers: none
+Next recommended action: r306 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r305 snapshot or successor). (3) If a congested run has occurred since, FIRST read its call log for a live "congestion rotation" witness and record the verdict. (4) Otherwise pick ONE small handoff-directed item: (a) breaker banner copy precision (per-schedule streak, not max); (b) r293 perf-win instrumentation; (c) docs pass on a non-LOCAL_AUTOMATION doc. (5) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; suites read __errs BEFORE any restore-reload; sidebar nav by visible TEXT; the app may land on ANY view — poll for your surface; settings tab strip = plain buttons; same-URL Page.navigate is a no-op — location.reload(); assert via textContent; Radix triggers need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; no ternary-statement asserts (keep lint 0/33); append receipts for user-visible changes.

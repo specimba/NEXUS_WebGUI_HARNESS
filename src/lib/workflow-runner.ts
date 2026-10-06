@@ -14,7 +14,21 @@ import {
 import { buildAngleHistory, latestScoredNovelty, maybeProposeSpawn, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { maxParks, parkDelayMs, resolvePark, type ParkKind } from "@/lib/park-policy";
-import { resolveLlm } from "@/lib/llm-config";
+import {
+  nextRotation,
+  noteProvider429,
+  provider429CooldownLeftMs,
+  resetProvider429,
+} from "@/lib/provider-rotation";
+import {
+  congestionCooldownMs,
+  laneFamilyKey,
+  laneSickUntil,
+  noteLane429,
+  rotateHops,
+  type LaneSaturation,
+} from "@/lib/lane-rotation";
+import { resolveLlm, type ResolvedLlm } from "@/lib/llm-config";
 import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
 import { buildRelayWire, recordRelayStatusLine, stripRelayMarkers, type RelayTaskFit, type RelayWireHop } from "@/lib/relay";
 import {
@@ -112,6 +126,15 @@ const MAX_AUTO_RESUMES = 3;
 // below are re-arm mechanics shared by both kinds.
 const PARK_REARM_MS = 60_000;
 const MAX_PARK_REARMS = 5;
+
+// r305 (user directive: "why is there no model or provider rotation while we
+// have dozens of them?"): per-FAMILY 429 saturation memory, module-scoped so
+// it outlives single runs — a lane that just ate a 429 is demoted for every
+// later step and retry (in ANY run of this tab) until its window passes.
+// Pure rules live in lib/lane-rotation.ts; this map is the tab-wide memory
+// they operate on. The "auto" family is intentionally never noted here —
+// gateway-cadence owns the built-in engine's politeness.
+const laneSaturation = new Map<string, LaneSaturation>();
 const STALL_CHECK_MS = 15_000;
 const STALL_WATCHDOG_KEY = "praison-stall-watchdog";
 let stallWatchdog: ReturnType<typeof setInterval> | null = null;
@@ -1029,6 +1052,11 @@ export async function executeWorkflowRun(
   // re-dialing the dead provider first instead of replaying the same failure
   // once per step (the user's 11-step pipeline re-learned one outage 11×).
   let primarySickUntil = 0;
+  // r305: the rotation lane this run currently rides. Set when a 429 marks
+  // the current lane exhausted; persists across steps so a long pipeline
+  // doesn't re-dial the exhausted lane once per step (r126 doctrine: stable
+  // continuation, not per-step re-learning).
+  let rotatedLlm: ResolvedLlm | null = null;
 
   /**
    * Stream one agent call for a run step; returns the final content + duration.
@@ -1075,7 +1103,15 @@ export async function executeWorkflowRun(
     // lead with the built-in engine and park the sick primary at the BACK of
     // the hop chain (its own key rides along, so it stays reachable). BYOK
     // intact — the auto lane needs no key and touches none of the vault.
-    let demotePrimary = Date.now() < primarySickUntil;
+    // r305: the primary is ALSO demoted when its provider family is inside a
+    // 429 saturation window (tab-wide memory — any earlier step or run may
+    // have marked it), not only after this run's own mid-stream drop.
+    const primaryFamilyKey = laneFamilyKey(llm.providerId);
+    const primaryFamilySick =
+      primaryFamilyKey !== "" &&
+      primaryFamilyKey !== "auto" &&
+      laneSickUntil(laneSaturation, primaryFamilyKey, Date.now()) > Date.now();
+    let demotePrimary = Date.now() < primarySickUntil || primaryFamilySick;
 
     for (let attempt = 1; attempt <= MAX_STEP_ATTEMPTS; attempt++) {
       // Rebuild the relay wire PER ATTEMPT (r25): attempt 1's failures were
@@ -1089,7 +1125,11 @@ export async function executeWorkflowRun(
       // r126: sick memory lets attempt 1 demote too — a step opening during
       // another step's outage window leads with the built-in engine from the
       // first dial (attempt > 1 alone would still re-dial the dead primary).
-      if (demotePrimary && (attempt > 1 || Date.now() < primarySickUntil) && !forceServer) {
+      if (
+        demotePrimary &&
+        (attempt > 1 || Date.now() < primarySickUntil || primaryFamilySick) &&
+        !forceServer
+      ) {
         const auto = resolveLlm(settings.settings, "auto");
         dialLlm = {
           ...llm,
@@ -1123,6 +1163,16 @@ export async function executeWorkflowRun(
         draft = "";
         localToolCalls = [];
         relayNotes = [];
+        // r305 congestion rotation: hops whose provider family recently ate a
+        // 429 move to the BACK of the wire (demoted, never dropped) so the
+        // retry leads with healthy lanes instead of re-dialing the wave.
+        const rotation = rotateHops(relayHops, laneSaturation, Date.now());
+        if (rotation.demoted.length > 0) {
+          relayHops = rotation.hops;
+          relayNotes.push(
+            `congestion rotation — ${rotation.demoted.join(", ")} demoted to the back of the wire (recent 429s)`
+          );
+        }
         // r126 model substitution: on the FINAL attempt, stop dials inside
         // the failing family — drop every hop from the primary's provider and
         // lead with whatever healthy alternate families the relay chain
@@ -1141,10 +1191,21 @@ export async function executeWorkflowRun(
           }
         }
         if (dialLlm !== llm) {
+          const sickLeft = Math.max(
+            0,
+            Math.ceil(
+              (Math.max(
+                primarySickUntil,
+                laneSickUntil(laneSaturation, primaryFamilyKey, Date.now())
+              ) -
+                Date.now()) /
+                1000
+            )
+          );
           relayNotes.push(
             attempt === 1
-              ? `primary skipped — marked sick earlier in this run (${Math.max(0, Math.ceil((primarySickUntil - Date.now()) / 1000))}s left on its window)`
-              : `primary demoted after a mid-stream drop — built-in engine dialed first, ${llm.label} parked as last hop`
+              ? `primary skipped — sick window active (${sickLeft}s left; mid-stream drop or recent 429 saturation)`
+              : `primary demoted — built-in engine dialed first, ${llm.label} parked as last hop (mid-stream drop or recent 429)`
           );
         }
         const res = await runAgentChat(
@@ -1284,13 +1345,27 @@ export async function executeWorkflowRun(
             // step's own retry ladder. Stops pipeline pile-ups from feeding
             // the same quota window.
             noteGateway429();
-            // r171: the cooldown now OUTLIVES the shared quiet window — the
-            // old 20s/45s waits always landed inside the same 90s congestion
-            // window (pulse forensics: 3 failed dials back-to-back), burning
-            // the whole ladder on one wave. Jitter desynchronizes concurrent
-            // steps the same way the scheduler desynchronizes starts.
+            // r305: remember WHICH lane family is exhausted — sliding 5m
+            // window, tab-wide (module memory). The retry below rotates off
+            // it (primary demotion + hop demotion) and every later step in
+            // any run opens demoted instead of re-learning the same 429.
+            const saturatedFamily = laneFamilyKey(dialLlm.providerId);
+            const saturatedNow =
+              saturatedFamily !== "" && saturatedFamily !== "auto"
+                ? noteLane429(laneSaturation, saturatedFamily, Date.now())
+                : null;
+            // r171+r305: the cooldown OUTLIVES the shared quiet window, and
+            // its base now scales with provider exhaustion — the family's
+            // consecutive 429 strikes (20s → 45s → 90s, tab-wide memory)
+            // instead of a fixed per-attempt ladder. Jitter desynchronizes
+            // concurrent steps the same way the scheduler desynchronizes
+            // starts.
             const cooldown = jitteredBackoff(
-              Math.max(attempt === 1 ? 20_000 : 45_000, gatewayQuietUntil() - Date.now())
+              congestionCooldownMs(
+                Math.max(saturatedNow?.strikes ?? 1, attempt),
+                gatewayQuietUntil(),
+                Date.now()
+              )
             );
             // r128: surface the wait in the step row (backoffUntil drives the
             // live "⏳ Cooldown Ns" chip) — waits were toast-only before.
