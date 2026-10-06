@@ -8076,3 +8076,16 @@ Verification result: PASS (static + unit + in-vivo smoke; live 429 path un-witne
 Open risks: carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip + prune-on-push live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; breaker banner MAX-streak copy imprecision. New: lane saturation memory is tab-scoped (the headless lane keeps its own server-side rotator); the next real 429 will be the first live witness — check that run's call log for the rotation note.
 Blockers: none
 Next recommended action: r306 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r305 snapshot or successor). (3) If a congested run has occurred since, FIRST read its call log for a live "congestion rotation" witness and record the verdict. (4) Otherwise pick ONE small handoff-directed item: (a) breaker banner copy precision (per-schedule streak, not max); (b) r293 perf-win instrumentation; (c) docs pass on a non-LOCAL_AUTOMATION doc. (5) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; suites read __errs BEFORE any restore-reload; sidebar nav by visible TEXT; the app may land on ANY view — poll for your surface; settings tab strip = plain buttons; same-URL Page.navigate is a no-op — location.reload(); assert via textContent; Radix triggers need the full pointer sequence (r287); /api/tracker GET lazy-syncs when stale; no ternary-statement asserts (keep lint 0/33); append receipts for user-visible changes.
+
+---
+Task ID: r305 post-snapshot note
+Agent: main (platform dev agent)
+Task: Document a parallel-instance overlap discovered at snapshot time.
+
+Work Log:
+- The snapshot commit c9c659fa2 contains, besides r305's own files, a file this round did NOT author: src/lib/provider-rotation.ts (118 lines, header says "r305: 429-aware provider rotation (user report)") plus an import-only wiring of it in workflow-runner.ts (nextRotation / noteProvider429 / provider429CooldownLeftMs / resetProvider429 — imported, zero call sites yet). A parallel instance is evidently mid-work on the SAME user directive with a COMPLEMENTARY mechanism: per-provider exponential cooldown (60s→15m, 30m recovery) + registry-wide lane rotation across READY providers.
+- Verified the merged tree is coherent as committed: npx tsc 0; canonical lint 0 errors / 33 baseline warnings (their unused imports are not flagged by config); git tree clean.
+- Decision: their files were NOT touched (live-parallel discipline). r305's lane-rotation (family windows + wire-order demotion + strike-scaled cooldown) and their provider-rotation (registry-wide lane switching + exponential cooldown) overlap in the 429 catch path — whoever lands r306 must RECONCILE the two into one coherent flow (single cooldown authority, single note path) or explicitly keep both with distinct roles, then unit-test the composed behavior.
+
+Stage Summary:
+- Snapshot c9c659fa2 = r305 (mine) + a parallel r305 WIP (theirs), both aimed at the same user directive; reconciliation is the first order of business for r306 before any new surface work.

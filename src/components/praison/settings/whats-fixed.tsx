@@ -243,9 +243,9 @@ const FIXES: FixNote[] = [
     round: "r305",
     title: "A 429 now rotates the pipeline to other providers instead of re-dialing the exhausted one",
     detail:
-      "Your report asked why a pipeline dies after one 429 when the registry lists dozens of providers \u2014 the honest answer was that the retry ladder never left the exhausted lane: the only escapes were the server relay (empty without a vault key) and the built-in engine, which shares the same saturated gateway. Now every 429 puts that provider on an exponential cooldown (60s \u2192 2m \u2192 4m \u2026 capped at 15m), the retry immediately dials a DIFFERENT ready provider from your registry \u2014 or, if every lane is cooling, waits out exactly the soonest-available window instead of hammering. A successful call clears the lane\u2019s record, the rotated lane carries into later steps so the pipeline stops re-learning one outage, and with no alternative provider the cooldown respects the demonstrated exhaustion window rather than a fixed 20\u201345s.",
+      "When a step hit a rate limit, the engine cooled down 20\u201345 seconds and then dialed the SAME provider family again \u2014 and because only mid-stream drops were remembered as \u201Csick\u201D, every later step re-learned the same saturation from scratch until the run parked. Now a 429 marks that provider family exhausted for 5 minutes across all runs: retries and later steps open on healthy lanes first (the exhausted lane is demoted to the back of the chain, never removed), and the cooldown grows with consecutive 429s on the same family (20s \u2192 45s \u2192 90s) so a saturated lane is approached slower each time instead of being hammered at a fixed pace.",
     lookFor:
-      "Workflows \u2192 a run\u2019s call log after a 429: entries note \u201Cprovider rotation \u2014 \u2026 is 429-exhausted; this step dials \u2026 instead\u201D and the retry leads with another provider",
+      "Workflows \u2192 a run\u2019s call log after a 429: entries note \u201Ccongestion rotation \u2014 \u2026 demoted to the back of the wire\u201D and the next dial leads with another lane",
   },
 ];
 
