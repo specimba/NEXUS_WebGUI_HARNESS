@@ -336,6 +336,7 @@ const ERROR_KIND_BADGE: Record<RunErrorKind, string> = {
   region: "border-orange-500/40 bg-orange-500/10 text-orange-500",
   auth: "border-red-500/40 bg-red-500/10 text-red-500",
   "rate-limit": "border-amber-500/40 bg-amber-500/10 text-amber-500",
+  billing: "border-rose-500/40 bg-rose-500/10 text-rose-500",
   timeout: "border-amber-500/40 bg-amber-500/10 text-amber-500",
   model: "border-rose-500/40 bg-rose-500/10 text-rose-500",
   unknown: "border-border bg-muted text-muted-foreground",

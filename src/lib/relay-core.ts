@@ -16,7 +16,7 @@
 /** Capacity noise — 429 / 408 / rate-limit / quota keywords in the text. */
 const SOFT_RE = /\b429\b|\b408\b|rate.?limit|quota|too many requests|slow down/i;
 const DEADLY_RE =
-  /\b401\b|\b403\b|authentication|unauthorized|access denied|not available in your region|region.?block|upgrade your account|requires?.{0,24}(lite|pro|max|tier|plan)|maintenance|invalid.{0,16}key|check your (api )?key/i;
+  /\b401\b|\b402\b|\b403\b|authentication|unauthorized|access denied|not available in your region|region.?block|upgrade your account|requires?.{0,24}(lite|pro|max|tier|plan)|maintenance|invalid.{0,16}key|check your (api )?key|out of credits|insufficient (?:credits?|balance|funds)|credit.?gate|add credits|payment required/i;
 const AUTH_RE = /\b401\b|authentication|unauthorized|invalid.{0,16}key|check your (api )?key/i;
 
 /**
@@ -30,11 +30,15 @@ const AUTH_RE = /\b401\b|authentication|unauthorized|invalid.{0,16}key|check you
  * engine gates auth on dead first (auth ⇒ whole key family sinks).
  * Quota exhaustion codes (insufficient_quota) stay SOFT per the r187 doctrine:
  * a drained window resets — the hop is healthy, the bucket is empty.
+ * r310: HTTP 402 / credit-gate deaths join DEAD — a drained PREPAID balance
+ * needs a human top-up, so re-dialing burns attempts on a corpse for hours.
+ * Distinct from insufficient_quota: a rate window resets on its own; a
+ * wallet at $0.00 does not.
  */
 const CODED_SOFT_RE =
   /"(?:code|type)"\s*:\s*"[^"]*(?:insufficient_quota|rate_limit|too_many_requests|overloaded|temporarily_unavailable|capacity|timeout)[^"]*"/i;
 const CODED_DEADLY_RE =
-  /"(?:code|type)"\s*:\s*"[^"]*(?:model_not_found|model_access_denied|permission_denied|access_denied|account_deactivated|account_suspended|authentication_error|invalid_api_key|incorrect_api_key|unsupported_region|region_not_supported|subscription_required|requires_[a-z_]*(?:tier|plan|upgrade))[^"]*"/i;
+  /"(?:code|type)"\s*:\s*"[^"]*(?:model_not_found|model_access_denied|permission_denied|access_denied|account_deactivated|account_suspended|authentication_error|invalid_api_key|incorrect_api_key|unsupported_region|region_not_supported|subscription_required|insufficient_credits|credit_gate|out_of_credits|insufficient_balance|requires_[a-z_]*(?:tier|plan|upgrade))[^"]*"/i;
 const CODED_AUTH_RE =
   /"(?:code|type)"\s*:\s*"[^"]*(?:invalid_api_key|incorrect_api_key|authentication_error|account_deactivated|account_suspended)[^"]*"/i;
 

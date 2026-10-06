@@ -342,6 +342,7 @@ export type UpstreamErrorKind =
   | "timeout"
   | "model"
   | "region"
+  | "billing"
   | "unknown";
 
 export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
@@ -354,6 +355,9 @@ export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
   }
   if (/blocked this network|region\/?IP block|datacenter|server-region|\b451\b/i.test(msg)) {
     return "region";
+  }
+  if (/\b402\b|out of credits|insufficient (?:credits?|balance|funds)|credit.?gate|add credits|payment required/i.test(msg)) {
+    return "billing";
   }
   if (/\b429\b|rate.?limit|quota|too many requests/i.test(msg)) {
     return "rate-limit";
@@ -513,6 +517,7 @@ function receiptReason(err: unknown): "rate_limit" | "provider_error" | "capacit
   const kind = classifyUpstreamError(err);
   if (kind === "rate-limit") return "rate_limit";
   if (kind === "region") return "policy";
+  if (kind === "billing") return "provider_error";
   if (kind === "auth" || kind === "timeout" || kind === "network" || kind === "model") return "provider_error";
   return "unknown";
 }

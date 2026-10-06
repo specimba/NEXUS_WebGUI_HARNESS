@@ -219,5 +219,30 @@ ok(
 );
 ok(!fs.existsSync("src/lib/relay-taxonomy.ts"), "no duplicate taxonomy module — relay-core is the single truth");
 
+console.log("K11 — r310 billing deaths: HTTP 402 credit gates are DEAD + workspace-stamped, quota stays SOFT");
+const creditErr =
+  "Out of credits (HTTP 402): You're out of credits — this request needs $0.0027. Add credits to keep going: https://www.orcarouter.ai/console/billing?ref=err_credit_gate#add-credits (request id: x)";
+ok(isDeadlyRelayFailure(creditErr), "K11: the user's live 402 paste is DEAD (was unknown/hard — corpse re-dialed 3x in one run)");
+ok(!isSoftRelayFailure(creditErr), "K11: credit drain is NOT soft (a drained balance does not reset on a window)");
+ok(!isAuthRelayFailure(creditErr), "K11: credit drain is NOT auth (the key is fine — the wallet is empty)");
+ok(
+  isDeadlyRelayFailure('{"error":{"code":"insufficient_credits"}}') &&
+    isDeadlyRelayFailure('{"code":"credit_gate"}'),
+  "K11: coded credit envelopes are DEAD"
+);
+ok(
+  isSoftRelayFailure('{"code":"insufficient_quota"}') && !isDeadlyRelayFailure('{"code":"insufficient_quota"}'),
+  "K11: quota exhaustion stays SOFT (window resets — r187 doctrine unregressed)"
+);
+recordRelayHopResult("orcarouter::sib", true);
+recordRelayHopResult("orcarouter::lane-9", false, creditErr.slice(0, 160), "dead");
+ok(
+  relayHealthSnapshot()["orcarouter::sib"]?.dead === true &&
+    relayHealthSnapshot()["orcarouter::sib"]?.lastError === "workspace-wide credit gate",
+  "K11: END-TO-END — the whole orca workspace sinks with the drained wallet"
+);
+ok(/kind: "billing"/.test(runnerSrc) && /Out of credits/.test(runnerSrc), "runner classifies billing with honest copy (no more 'couldn't classify')");
+ok(/return "billing";/.test(engineSrc), "engine classifies billing (receipt reason + self-heal gating)");
+
 console.log(`\nK-series (relay taxonomy): ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

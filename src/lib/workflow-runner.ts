@@ -404,6 +404,10 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
     label: "Rate limit",
     hint: "The provider's free-tier quota tripped (429). Wait a minute — or switch to another free provider in the header picker — then retry the failed step.",
   },
+  billing: {
+    label: "Out of credits",
+    hint: "The provider's credit balance is drained (HTTP 402) — re-dialing cannot fix a wallet at $0.00. Add credits on the provider's billing console, or save a second provider key so the rotation has another lane to dial; the relay already skipped past this lane for 6 hours.",
+  },
   timeout: {
     label: "Timeout",
     hint: "The provider took too long to answer. Retry usually helps; if it keeps happening, try a smaller/faster model for this step.",
@@ -420,6 +424,13 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
 
 const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
   { kind: "rate-limit", re: /\b429\b|rate.?limit|quota|too many requests/i },
+  {
+    // r310: prepaid credit gates (HTTP 402) are billing deaths — the wallet
+    // needs a HUMAN top-up, so the lane is a corpse until then (r187 DEAD,
+    // not the 5-minute hard window that kept re-dialing it all run long).
+    kind: "billing",
+    re: /\b402\b|out of credits|insufficient (?:credits?|balance|funds)|credit.?gate|add credits|payment required/i,
+  },
   {
     // BEFORE auth: a 403 with block-page signatures is a location block, not
     // a key problem — "Access forbidden (check key/region)" alone stays auth.

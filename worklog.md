@@ -8245,3 +8245,32 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; 8 lib modules still carry "use client" (policed by qa-iso-boundary). Standing watch: single-key vault (Vyce) — rotation needs a second saved key to have a target.
 Blockers: none
 Next recommended action: r310 — (1) FIRST read any user report; a failed run's error must NOT be the RSC boundary message (if it is, r309 regressed). (2) Verify HEAD lineage (expect the r309-b snapshot or successor). (3) Read the next failing run's call log for the verdict-marker witness. (4) Otherwise ONE small item: (a) r293 perf-win instrumentation; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) audit remaining "use client" lib modules for latent server-graph callers. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.
+
+---
+Task ID: r310
+Agent: main (platform dev agent)
+Task: USER REPORT (live paste) — "same !" — but the paste actually WITNESSES r309 working: the RSC boundary message is GONE, the server lane ran its first real runs (Server runs 24h: 0✓ 2✗), and the step error is now a REAL provider error with a request id: "Out of credits (HTTP 402) ... needs $0.0027 ... orcarouter console/billing". The remaining dishonesty: 402 fell into "Unknown — couldn't classify" in BOTH classifiers, the lane only took the 5-minute hard cooldown, and all 3 step retries burned themselves against a wallet at $0.00.
+
+Work Log:
+- relay-core.ts: HTTP 402 / credit-gate deaths join DEAD — DEADLY_RE gains \b402\b|out of credits|insufficient (credits|balance|funds)|credit.?gate|add credits|payment required; CODED_DEADLY_RE gains insufficient_credits|credit_gate|out_of_credits|insufficient_balance. Doctrine note: a drained PREPAID wallet needs a human top-up (hours), distinct from insufficient_quota which stays SOFT (window resets — r187 unregressed).
+- agent-engine.ts: UpstreamErrorKind gains "billing"; classifyUpstreamError classifies it (before rate-limit); receiptReason maps billing → provider_error. Billing is NOT in any self-heal/park path — fail-fast is the honest behavior (park-policy whitelist untouched).
+- workflow-runner.ts: RunErrorKind union (types.ts) gains "billing"; ERROR_PATTERNS gains the billing regex (placed after rate-limit); ERROR_KIND_META gains the "Out of credits" card with the two real fixes (top up, or save a second key so rotation has a target). The recovery card no longer says "couldn't classify" for 402s.
+- relay.ts recordRelayHopResult: the orcarouter workspace stamp now covers BILLING too — one lane's empty wallet sinks every orca lane at once (same shared-bucket rationale as the workspace-wide 429), stamped "workspace-wide credit gate" / dead 6h.
+- workflow-run-panel.tsx: ERROR_KIND_BADGE gains billing (rose — money death, distinct from amber transients).
+- qa-relay-taxonomy.ts: K11 added (10 asserts): live-paste 402 → DEAD not soft/auth; coded credit envelopes → DEAD; insufficient_quota stays SOFT; END-TO-END workspace stamp; runner + engine classification pins. 97/97.
+- Verification: npx tsc --noEmit 0; canonical bun run lint 0 errors / 33 baseline warnings; qa-relay-taxonomy 97/97; qa-iso-boundary PASS; qa-lane-rotation 5/5; qa-provider-rotation 11/11.
+- r309 LIVE WITNESS recorded (handoff step 3): the server lane executed and classified server-side without the boundary error — the fix holds.
+
+Stage Summary:
+- Every failure the user sees now names its real cause. The 402 wall is provider-side money, not pipeline logic: the recovery card says exactly that, the corpse cools 6 hours instead of 5 minutes, and the whole drained orca workspace sinks with one stamp so no lane re-dials it.
+
+Round Handoff:
+Round ID: r311
+Task owner: main (platform dev agent)
+Scope completed: billing failure class end-to-end (engine + runner + relay taxonomy + workspace stamp + badge + honest copy) + K11 QA + receipt r310 + r309 live-witness verdict recorded.
+User-visible changes: failed run cards read "Out of credits" with actionable hints instead of "Unknown"; 402 lanes (and the whole orca workspace) block for 6h in the relay/rotation instead of re-dialing every run.
+Verification steps: bun scripts/qa-relay-taxonomy.ts (97); bun scripts/qa-iso-boundary.ts (PASS); bun scripts/qa-lane-rotation.ts (5/5); bun scripts/qa-provider-rotation.ts (11/11); npx tsc --noEmit (0); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; 8 lib modules still "use client" (policed by qa-iso-boundary). New: the orca credit drain is the user's live constraint — until they top up orcarouter credits OR save a second non-orca provider key, free-lane rotation has nowhere to go (honest null stands); the "tag [X] ≠ worker" chips on run steps look like data noise worth one audit round.
+Blockers: none
+Next recommended action: r311 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r310 snapshot or successor). (3) If another run failed, confirm the card reads "Out of credits" (billing class witnessed). (4) Otherwise ONE small item: (a) audit the "tag [Agent] ≠ worker" step chips — validate or fix the tag/worker metadata noise; (b) r293 perf-win instrumentation; (c) docs pass on a non-LOCAL_AUTOMATION doc. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.

@@ -291,23 +291,32 @@ export function recordRelayHopResult(
     e.soft = verdict === "soft" || (!verdict && isSoftRelayFailure(error));
     e.dead = verdict === "dead" || verdict === "auth" || (!verdict && isDeadlyRelayFailure(error));
     if (error) e.lastError = error.slice(0, 160);
-    // OrcaRouter rate limits are WORKSPACE-wide (all keys share one bucket —
+    // OrcaRouter gates are WORKSPACE-wide (all keys share one bucket —
     // docs.orcarouter.ai/operations/rate-limits): one lane's 429 means every
-    // orca lane is throttled, so stamp them all. A server "soft" verdict counts:
-    // the 429 keyword itself may sit past the display truncation cut.
-    if (
-      e.soft &&
-      key.startsWith("orcarouter::") &&
-      (verdict === "soft" || (error && /\b429\b|rate.?limit/i.test(error)))
-    ) {
-      for (const k of Object.keys(h)) {
-        if (k.startsWith("orcarouter::") && k !== key) {
-          h[k] = {
-            ...(h[k] ?? { ok: 0, fail: 0 }),
-            lastFailAt: Date.now(),
-            soft: true,
-            lastError: "workspace-wide rate limit",
-          };
+    // orca lane is throttled, and r310 adds the 402 credit drain — one lane's
+    // empty wallet means every orca lane is drained. A server verdict counts
+    // even when the keyword sits past the display truncation cut.
+    if (key.startsWith("orcarouter::")) {
+      const workspace429 =
+        e.soft && (verdict === "soft" || (error && /\b429\b|rate.?limit/i.test(error)));
+      const workspaceBilling = e.dead && !!error && /\b402\b|credit|billing/i.test(error);
+      if (workspace429 || workspaceBilling) {
+        let stamp: { soft: boolean; dead: boolean; lastError: string };
+        if (workspace429) {
+          stamp = { soft: true, dead: false, lastError: "workspace-wide rate limit" };
+        } else {
+          stamp = { soft: false, dead: true, lastError: "workspace-wide credit gate" };
+        }
+        for (const k of Object.keys(h)) {
+          if (k.startsWith("orcarouter::") && k !== key) {
+            h[k] = {
+              ...(h[k] ?? { ok: 0, fail: 0 }),
+              lastFailAt: Date.now(),
+              soft: stamp.soft,
+              dead: stamp.dead,
+              lastError: stamp.lastError,
+            };
+          }
         }
       }
     }

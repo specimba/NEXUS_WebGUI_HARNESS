@@ -269,7 +269,7 @@ export interface WorkflowRunStep {
 }
 
 /** Classified cause of a failed run — drives the recovery card's copy. */
-export type RunErrorKind = "network" | "auth" | "rate-limit" | "timeout" | "model" | "region" | "unknown";
+export type RunErrorKind = "network" | "auth" | "rate-limit" | "billing" | "timeout" | "model" | "region" | "unknown";
 
 /**
  * Everything the user needs to understand WHY a run failed and what their

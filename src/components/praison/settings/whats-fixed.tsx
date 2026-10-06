@@ -279,6 +279,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "A run dying at step 1 with “Attempted to call … from the server” should be gone; after a provider hop fails, the relay emits its real rotation status line instead",
   },
+  {
+    round: "r310",
+    title: "Out-of-credits (HTTP 402) failures are now honestly classified — and stop re-dialing the drained lane",
+    detail:
+      "A 402 from a provider's credit gate used to land in “Unknown — couldn't classify”, the lane only cooled for 5 minutes, and all step retries burned themselves against a wallet at $0.00. Credit-gate deaths are now their own class: the recovery card reads “Out of credits” with the two real fixes (top up the provider, or save a second key so rotation has another lane), the relay taxonomy stamps the lane DEAD for 6 hours, and OrcaRouter's workspace-wide credit gate sinks every orca lane at once — no more corpse-dialing a drained workspace.",
+    lookFor:
+      "A failed run card now reads “Out of credits” instead of “Unknown”; after a 402, the model picker shows the orca lanes as blocked until credits are added",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
