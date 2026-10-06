@@ -14,10 +14,13 @@ import {
 import { buildAngleHistory, latestScoredNovelty, maybeProposeSpawn, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { maxParks, parkDelayMs, resolvePark, type ParkKind } from "@/lib/park-policy";
+// r306 reconciliation: the runner wires BOTH rotation halves — lane-rotation
+// owns family-window demotion (wire ORDER + same-family retry pacing),
+// provider-rotation owns registry-wide lane switching (LEAVING the family).
+// Single note path: every mechanism reports through `relayNotes`.
 import {
   nextRotation,
   noteProvider429,
-  provider429CooldownLeftMs,
   resetProvider429,
 } from "@/lib/provider-rotation";
 import {
@@ -1141,6 +1144,56 @@ export async function executeWorkflowRun(
           label: `${llm.label} → auto (primary demoted)`,
         };
       }
+      // r306 registry rotation (the reconciliation half): on the FINAL attempt,
+      // a still-saturated primary family is left ENTIRELY — the dial switches
+      // to a different READY provider from the registry, or the soonest
+      // available one (waiting exactly its remaining cooldown). Family-window
+      // demotion only reorders the relay wire; in keyless profiles that wire
+      // is short and lands on the SAME shared gateway, so leaving the family
+      // needs a registry-wide switch. The ladder becomes: primary → built-in
+      // engine → registry rotation. The gateway-wide "auto" congestion stays
+      // with gateway-cadence (untracked here by design).
+      let rotationNote: string | null = null;
+      if (
+        attempt === MAX_STEP_ATTEMPTS &&
+        !forceServer &&
+        primaryFamilyKey !== "" &&
+        laneSickUntil(laneSaturation, primaryFamilyKey, Date.now()) > Date.now()
+      ) {
+        const pick = nextRotation(settings.settings, llm.providerId);
+        if (pick) {
+          if (pick.waitMs > 0) {
+            // Harness pacing: the whole roster is cooling — wait the soonest
+            // window instead of blind-retrying into a fourth 429.
+            patchRunStep(runStep.stepId, {
+              backoffUntil: Date.now() + pick.waitMs,
+              backoffKind: "cooldown",
+            });
+            toast.info(
+              `"${runStep.label}" rotating to ${pick.llm.label} — waiting ${Math.round(pick.waitMs / 1000)}s for its quota window…`,
+              {
+                icon: "🔁",
+                description:
+                  "Every roster lane is cooling — the rotation waits exactly the soonest window instead of hammering a fourth 429.",
+              }
+            );
+            await new Promise((r) => setTimeout(r, pick.waitMs));
+            if (signal.aborted) {
+              throw new DOMException("Aborted during rotation wait", "AbortError");
+            }
+          }
+          dialLlm = {
+            ...llm,
+            provider: pick.llm.provider,
+            apiKey: pick.llm.apiKey,
+            baseUrl: pick.llm.baseUrl,
+            model: pick.llm.model,
+            providerId: pick.llm.providerId,
+            label: `${llm.label} → ${pick.llm.label} (registry rotation)`,
+          };
+          rotationNote = `registry rotation — ${pick.llm.label} dialed instead of the saturated ${primaryFamilyKey} family`;
+        }
+      }
       let relayHops: RelayWireHop[] = [
         ...buildRelayWire(
           settings.settings,
@@ -1163,6 +1216,9 @@ export async function executeWorkflowRun(
         draft = "";
         localToolCalls = [];
         relayNotes = [];
+        if (rotationNote) {
+          relayNotes.push(rotationNote);
+        }
         // r305 congestion rotation: hops whose provider family recently ate a
         // 429 move to the BACK of the wire (demoted, never dropped) so the
         // retry leads with healthy lanes instead of re-dialing the wave.
@@ -1190,7 +1246,7 @@ export async function executeWorkflowRun(
             );
           }
         }
-        if (dialLlm !== llm) {
+        if (dialLlm !== llm && !rotationNote) {
           const sickLeft = Math.max(
             0,
             Math.ceil(
@@ -1277,6 +1333,13 @@ export async function executeWorkflowRun(
                 ? { note: relayNotes.join(" → ") }
                 : {}),
         });
+        if (dialLlm.providerId && dialLlm.providerId !== "auto") {
+          // r306: a full successful dial proves the lane recovered — its
+          // registry cooldown clears so later rotation picks may use it
+          // immediately. (The family window keeps sliding by design: a 5m
+          // cautious tail beats flip-flopping demotion.)
+          resetProvider429(dialLlm.providerId);
+        }
         patchRunStep(runStep.stepId, {
           output: res.content,
           toolCalls: res.toolCalls.length > 0 ? res.toolCalls : localToolCalls,
@@ -1354,6 +1417,22 @@ export async function executeWorkflowRun(
               saturatedFamily !== "" && saturatedFamily !== "auto"
                 ? noteLane429(laneSaturation, saturatedFamily, Date.now())
                 : null;
+            // r306: registry-wide exhaustion memory — the dialed provider's own
+            // exponential cooldown (60s → 2m → … cap 15m) gates REGISTRY
+            // rotation picks (nextRotation skips cooling lanes). Distinct role
+            // from the family window above: that one paces SAME-family retries
+            // and hop order; this one paces whether a provider may serve as a
+            // rotation TARGET.
+            if (dialLlm.providerId && dialLlm.providerId !== "auto") {
+              noteProvider429(dialLlm.providerId, Date.now());
+            }
+            // r306: a pre-stream 429 on the primary itself demotes it for the
+            // next attempt — before this only MID-STREAM deaths set
+            // demotePrimary, so attempt 2 re-dialed the saturated primary
+            // first (the recorded "3 failed 429 dials back-to-back").
+            if (dialLlm === llm && llm.providerId !== "auto") {
+              demotePrimary = true;
+            }
             // r171+r305: the cooldown OUTLIVES the shared quiet window, and
             // its base now scales with provider exhaustion — the family's
             // consecutive 429 strikes (20s → 45s → 90s, tab-wide memory)

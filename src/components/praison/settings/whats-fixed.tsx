@@ -247,6 +247,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows \u2192 a run\u2019s call log after a 429: entries note \u201Ccongestion rotation \u2014 \u2026 demoted to the back of the wire\u201D and the next dial leads with another lane",
   },
+  {
+    round: "r306",
+    title: "The pipeline now LEAVES an exhausted provider family — full provider rotation on the final attempt",
+    detail:
+      "r305 reordered the relay chain, but the retry ladder still re-dialed the just-429’d primary first (only mid-stream drops demoted it), and when every chain hop was exhausted the run parked. Now a 429 also puts the dialed provider on an exponential registry cooldown (60s → 2m → … capped at 15m) and demotes the primary for the next attempt, so attempt 2 leads with the built-in engine instead of hammering the saturated lane. If the family is still saturated on the final attempt, the dial leaves it entirely: a different provider you have a key for is rotated in (its own endpoint, model and key), or — when the whole roster is cooling — the engine waits exactly the soonest provider’s remaining window instead of blind-retrying into a fourth 429. A successful dial clears that provider’s cooldown immediately.",
+    lookFor:
+      "Workflows → a run’s call log after a 429 on a multi-key profile: the final attempt notes “registry rotation — <provider> dialed instead of the saturated <family> family” and dials a different endpoint; single-key profiles keep the r305 rotation behavior",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
