@@ -8089,3 +8089,29 @@ Work Log:
 
 Stage Summary:
 - Snapshot c9c659fa2 = r305 (mine) + a parallel r305 WIP (theirs), both aimed at the same user directive; reconciliation is the first order of business for r306 before any new surface work.
+
+---
+Task ID: r305-correction (collision integrity)
+Agent: main (platform dev agent, 03:23 slot)
+Task: User report (why steps stop the run / why 429 / why no provider rotation) — this slot independently worked the same directive and collided mid-round with the parallel r305 (lane-rotation). This section documents the collision handling and the integrity correction that landed in 76afcf981.
+
+Work Log:
+- Independently reproduced the same three-part forensics BEFORE seeing the parallel round: the 3-attempt ladder's 20s/45s cooldowns are sized for seconds-long blips, not quota windows, and the park (5→30m ×4 / 2→10m ×3) + breaker (2 consecutive → auto-pause) ladders amplify one error into "the whole pipeline stops"; 429s are shared free-gateway saturation waves (hourly-cron collinear, r158/r181); rotation was missing because pre-stream 429s marked NOTHING sick (demotion required toolCalls>0), later steps re-learned the saturated lane, and the relay chain is empty in keyless profiles. Corroborates the r305 section above.
+- Drafted src/lib/provider-rotation.ts (registry-wide switching: per-provider exponential 429 cooldowns 60s→2m→4m… cap 15m, ready-lane rotation preferring registry order, soonest-window pacing when the whole roster cools, success clears memory) before discovering the parallel lane-rotation implementation landing; my runner MultiEdit was correctly rejected as stale; the drafted module was swept into c9c659fa2 by the parallel snapshot and is now the reconciliation draft the merge note describes.
+- COLLISION INCIDENT, documented for the history: my briefly-rewritten r305 receipt (describing MY design — registry rotation, 60s→15m cooldowns — not the shipped lane-rotation code) was swept into c9c659fa2, so receipt and code disagreed at HEAD. Reverted byte-for-byte to the accurate lane-rotation text; the restoration is what 76afcf981 carries. No runner or product logic was touched by this agent.
+- Verified the merged tree: npx tsc --noEmit 0; canonical bun run lint 0 errors / 33 baseline warnings; git tree clean at 76afcf981.
+- Budget: ~15 tool batches — over the ≤12 cap; the collision handling (detect → stand down → revert receipt → verify → coordinate) consumed the excess. Logged transparently.
+
+Stage Summary:
+- r305's user-visible fix (lane-rotation: family windows + wire-order demotion + strike-scaled cooldowns) is intact, correctly receipted, and green; provider-rotation.ts is a deliberate reconciliation draft, not dead code.
+
+Round Handoff:
+Round ID: r306
+Task owner: main (platform dev agent)
+Scope completed: collision handling + receipt integrity restoration (76afcf981) + provider-rotation draft preserved + independent forensics corroboration; NO new product code from this slot.
+User-visible changes: none beyond r305 itself (the receipt the user reads now matches the shipped code again).
+Verification steps: npx tsc --noEmit (0); bun run lint (0/33); git status clean.
+Verification result: PASS (static only — no behavior change shipped)
+Open risks: the two rotation flows overlap in the 429 catch path (lane-rotation's family windows vs provider-rotation's registry switching) — unreconciled dual mechanisms are worse than either alone; the receipt-describes-code invariant proved fragile under concurrent ships (two snapshots carried a wrong receipt for ~3 minutes).
+Blockers: none
+Next recommended action: r306 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect 76afcf981 or successor). (3) RECONCILE the two rotation flows into one coherent mechanism before any new surface work: single cooldown authority, single call-log note path; compose them as family-window demotion for wire ORDER plus registry-wide provider switching for when the primary family must be left entirely (keyless profiles have short relay wires — registry switching is the missing half); unit-test the composed behavior (extend qa-lane-rotation.ts + a qa-provider-rotation.ts). (4) Then standing small items: breaker banner per-schedule streak copy; r293 perf instrumentation; non-LOCAL_AUTOMATION docs pass. (5) Standing: qa:tsc + CANONICAL bun run lint every code round; worklog append BEFORE snapshot; SMALL commands; nav by visible TEXT; poll for your surface; no ternary-statement asserts; append receipts for user-visible changes.
