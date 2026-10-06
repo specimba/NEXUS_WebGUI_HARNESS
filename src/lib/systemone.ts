@@ -16,7 +16,7 @@
 // provider they chose; nothing is logged anywhere else. Jev may reject browser
 // CORS — the ladder simply falls through to ②, never breaks the harness.
 
-import { buildRelayChain } from "./relay";
+import { buildRelayChain, type RelayHop } from "./relay";
 import type { Settings } from "./types";
 
 const JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
@@ -120,9 +120,15 @@ async function fastJudge(
   question: SystemOneQuestion,
   signal?: AbortSignal
 ): Promise<(SystemOneVerdict & { judge: string }) | null> {
-  const chain = buildRelayChain(settings, { taskFit: "decision" }).filter(
-    (h) => !!h.baseUrl // skip the built-in auto hop — it has no OpenAI-compatible surface here
-  );
+  // r309: the vault chain is client-side (lib/relay is "use client") — on the
+  // server lane skip ①'s relay hop entirely; the ladder falls through to ②
+  // unchanged (never breaks the harness).
+  let chain: RelayHop[] = [];
+  if (typeof window !== "undefined") {
+    chain = buildRelayChain(settings, { taskFit: "decision" }).filter(
+      (h) => !!h.baseUrl // skip the built-in auto hop — it has no OpenAI-compatible surface here
+    );
+  }
   const asked = state.slice(0, 8_000);
   const prompt =
     `${question.prompt}\n\nAnswer with ONLY a raw JSON object (no markdown fences):\n` +

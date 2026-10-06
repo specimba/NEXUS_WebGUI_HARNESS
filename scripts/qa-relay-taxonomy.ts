@@ -154,7 +154,11 @@ const engineSrc = fs.readFileSync("src/lib/agent-engine.ts", "utf8");
 const runnerSrc = fs.readFileSync("src/lib/workflow-runner.ts", "utf8");
 const chatSrc = fs.readFileSync("src/components/praison/chat/chat-view.tsx", "utf8");
 ok(/" \[hopauth\]" : dead \? " \[hopdead\]" : soft \? " \[hopsoft\]"/.test(engineSrc), "agent-engine emits all three verdict markers");
-ok(/from "\.\/relay"/.test(engineSrc) && /isDeadlyRelayFailure/.test(engineSrc), "agent-engine classifies from the FULL error server-side");
+ok(
+  /isAuthRelayFailure,\s*isDeadlyRelayFailure,\s*isSoftRelayFailure\s*\} from "\.\/relay-core"/.test(engineSrc),
+  "agent-engine classifies from the FULL error server-side (isomorphic relay-core module — r309)"
+);
+ok(!/from "\.\/relay";/.test(engineSrc), "agent-engine no longer imports the client-only relay module");
 ok(/recordRelayStatusLine\(m\)/.test(runnerSrc) && /recordRelayStatusLine\(m\)/.test(chatSrc), "both consumers use the shared wire parser");
 ok(!runnerSrc.includes("recordRelayHopResult") && !chatSrc.includes("recordRelayHopResult"), "no consumer re-implements the regexes (old dual parsers gone)");
 ok(/stripRelayMarkers\(m\)/.test(runnerSrc) && /stripRelayMarkers\(m\)/.test(chatSrc), "notes + status lines stay marker-free");
@@ -204,6 +208,16 @@ ok(
   "K9: codes outside the vocabulary stay HARD (no over-reach)"
 );
 ok(isDeadlyRelayFailure("This model is currently in maintenance"), "K9: text-keyword classification unregressed");
+
+console.log("K10 — r309 server-lane hardening: client-only vault calls are window-guarded");
+ok(/let relayHops: RelayWireHop\[\] = \[\];/.test(runnerSrc), "runner builds no relay hops on the server lane (no client-reference call)");
+ok(/typeof window !== "undefined"\) \{[^}]*?recordRelayStatusLine\(m\);/.test(runnerSrc), "runner guards the wire recorder + note stripper behind the window check");
+const oneSrc = fs.readFileSync("src/lib/systemone.ts", "utf8");
+ok(
+  /let chain: RelayHop\[\] = \[\];/.test(oneSrc) && /typeof window !== "undefined"/.test(oneSrc),
+  "systemone fastJudge skips the vault chain on the server lane"
+);
+ok(!fs.existsSync("src/lib/relay-taxonomy.ts"), "no duplicate taxonomy module — relay-core is the single truth");
 
 console.log(`\nK-series (relay taxonomy): ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

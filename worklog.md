@@ -8219,3 +8219,29 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; workflows toasts typed-not-witnessed; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented. New: 8 other lib modules also carry "use client" (memory, schedule-skips, stores, relay-health, systemone, workflow-runner, use-shortcuts, chat-client) — the guard now polices the boundary so any FUTURE server-graph caller fails QA instead of production. Live witness for r309: the next server-side hop failure should rotate with real verdict markers instead of the boundary error. Standing watch: single-key vault (Vyce) — rotation still needs a second saved key to have a target.
 Blockers: none
 Next recommended action: r310 — (1) FIRST read any user report; if a run failed, check whether the error is still the RSC boundary message (it must NOT be — if it is, the fix regressed). (2) Verify HEAD lineage (expect the r309 snapshot or successor). (3) Read the next failing run's call log: rotation status lines should now be REAL verdicts (hop markers) — the live witness for r309. (4) Otherwise ONE small item: (a) r293 perf-win instrumentation; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) audit the remaining "use client" lib modules for latent server-graph callers the guard would flag. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts (hold 0/33); receipts for user-visible changes; SMALL commands.
+
+---
+Task ID: r309-b (collision reconciliation)
+Agent: main (platform dev agent)
+Task: r309 cron round collided with a parallel instance shipping its own r309 (relay-core.ts isomorphic taxonomy, commit 7f42ddce7, mid-round). Reconciled the duplicate implementations and closed the server-lane call sites their round left open.
+
+Work Log:
+- Detected mid-round HEAD movement (179d42c6c → 7f42ddce7): a parallel r309 extracted the failure classifiers into src/lib/relay-core.ts ("no directive", server-callable), re-pointed agent-engine, added qa-iso-boundary.ts + receipt; its snapshot also swallowed my in-flight duplicate src/lib/relay-taxonomy.ts.
+- Reconciled: restored their relay.ts verbatim, deleted my duplicate relay-taxonomy.ts + the used one-shot patcher — relay-core is the single truth.
+- Complementary hardening kept (their round policed but did not fix these call sites): workflow-runner now builds NO relay hops on the server lane (buildRelayWire is a browser-vault construct behind a window guard) and the wire-recorder/note-stripper block is window-guarded; systemone fastJudge skips the vault chain server-side (ladder falls through to ② by design).
+- Fixed their stale K8 assert in qa-relay-taxonomy.ts (still pinned `from "./relay"` against their own `./relay-core` change) and added K10: runner hop-guard, recorder guard, systemone guard, no-duplicate-module check. One assert regex initially missed the in-block comment ([^}]*? fix).
+
+Stage Summary:
+- Verified: tsc 0; canonical bun run lint 0 errors / 33 baseline warnings; qa-iso-boundary PASS (152 files); qa-relay-taxonomy 89/89 (incl. new K10); qa-lane-rotation 5/5; qa-provider-rotation 11/11.
+- Live witness unchanged: next server-side hop failure must rotate with real verdict markers, never the RSC boundary message.
+
+Round Handoff:
+Round ID: r310
+Task owner: main (platform dev agent)
+Scope completed: r309 collision reconciliation (single relay-core truth) + server-lane window guards in workflow-runner/systemone + qa-relay-taxonomy K8 un-staled + K10 boundary asserts.
+User-visible changes: none beyond the parallel r309 receipt (plumbing only).
+Verification steps: npx tsc --noEmit (0); bun run lint (0/33); bun scripts/qa-iso-boundary.ts (PASS); bun scripts/qa-relay-taxonomy.ts (89/89); bun scripts/qa-lane-rotation.ts (5/5); bun scripts/qa-provider-rotation.ts (11/11).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; 8 lib modules still carry "use client" (policed by qa-iso-boundary). Standing watch: single-key vault (Vyce) — rotation needs a second saved key to have a target.
+Blockers: none
+Next recommended action: r310 — (1) FIRST read any user report; a failed run's error must NOT be the RSC boundary message (if it is, r309 regressed). (2) Verify HEAD lineage (expect the r309-b snapshot or successor). (3) Read the next failing run's call log for the verdict-marker witness. (4) Otherwise ONE small item: (a) r293 perf-win instrumentation; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) audit remaining "use client" lib modules for latent server-graph callers. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.

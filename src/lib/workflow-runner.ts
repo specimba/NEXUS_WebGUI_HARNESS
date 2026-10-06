@@ -1196,24 +1196,30 @@ export async function executeWorkflowRun(
           rotationNote = `registry rotation — ${pick.llm.label} dialed instead of the saturated ${primaryFamilyKey} family`;
         }
       }
-      let relayHops: RelayWireHop[] = [
-        ...buildRelayWire(
-          settings.settings,
-          { providerId: dialLlm.providerId, model: dialLlm.model },
-          { taskFit }
-        ),
-        ...(dialLlm !== llm && llm.providerId !== "auto"
-          ? [
-              {
-                key: `${llm.providerId}::${llm.model ?? ""}`,
-                ...(llm.baseUrl ? { baseUrl: llm.baseUrl } : {}),
-                ...(llm.apiKey ? { apiKey: llm.apiKey } : {}),
-                model: llm.model ?? "",
-                label: llm.label,
-              },
-            ]
-          : []),
-      ];
+      // r309: the relay chain is a browser-vault construct (keys live client-side;
+      // lib/relay is "use client"). On the server lane there is no vault — send no
+      // relay hops rather than crash calling a client-reference function.
+      let relayHops: RelayWireHop[] = [];
+      if (typeof window !== "undefined") {
+        relayHops = [
+          ...buildRelayWire(
+            settings.settings,
+            { providerId: dialLlm.providerId, model: dialLlm.model },
+            { taskFit }
+          ),
+          ...(dialLlm !== llm && llm.providerId !== "auto"
+            ? [
+                {
+                  key: `${llm.providerId}::${llm.model ?? ""}`,
+                  ...(llm.baseUrl ? { baseUrl: llm.baseUrl } : {}),
+                  ...(llm.apiKey ? { apiKey: llm.apiKey } : {}),
+                  model: llm.model ?? "",
+                  label: llm.label,
+                },
+              ]
+            : []),
+        ];
+      }
       try {
         draft = "";
         localToolCalls = [];
@@ -1288,8 +1294,15 @@ export async function executeWorkflowRun(
                 // r188: one shared wire parser — the server's verdict marker
                 // ([hopdead]/[hopauth]/[hopsoft]) overrides the 90-char
                 // display-text guess, and notes stay marker-free.
-                recordRelayStatusLine(m);
-                relayNotes.push(stripRelayMarkers(m));
+                if (typeof window !== "undefined") {
+                  // r309 hardening: these touch client-only surfaces (localStorage
+                  // health memory via a "use client" module) — the server lane must
+                  // never call through a client-reference proxy. No relay hops are
+                  // sent server-side, so this branch is de-facto browser-only; the
+                  // guard makes that structural, not incidental.
+                  recordRelayStatusLine(m);
+                  relayNotes.push(stripRelayMarkers(m));
+                }
               }
             },
             onToken: (t) => {
