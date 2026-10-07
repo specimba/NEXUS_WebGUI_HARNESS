@@ -175,7 +175,17 @@ export function ProviderGallery() {
 
   async function validate(p: FreeProvider) {
     if (busy) return;
-    const entry = settings.providerKeys?.[p.id] ?? { key: draftKeyFor(p).trim() };
+    // r339: read the vault through getState(), not this render's `settings`
+    // snapshot. The Validate button chains saveProvider() → validate() in one
+    // tick when the card's key was never saved — inside that tick the closure
+    // `settings` still predates the save, so the validatedAt stamp below used
+    // to be written on a spread of the PRE-SAVE key map, clobbering the
+    // accountId/model saveProvider had just persisted (Cloudflare-style cards:
+    // paste key + account id → Validate → success → account id silently gone,
+    // next dial hits a broken base URL). Same stale-closure class as the r338
+    // composer bleed and the r295 wizard reset note.
+    const saved = useSettingsStore.getState().settings.providerKeys?.[p.id];
+    const entry = saved ?? { key: draftKeyFor(p).trim() };
     const key = entry.key?.trim() || draftKeyFor(p).trim();
     if (!p.noKey && !key) {
       toast.error("Save a key first");
@@ -198,9 +208,13 @@ export function ProviderGallery() {
       });
       const ms = Math.round(performance.now() - started);
       setTests((t) => ({ ...t, [p.id]: { ok: true, ms } }));
-      // stamp validatedAt into the vault
+      // stamp validatedAt into the vault — spread the FRESH map via getState()
+      // (r339 note above: the closure map can predate a same-tick save)
       update({
-        providerKeys: { ...(settings.providerKeys ?? {}), [p.id]: { ...entry, key, validatedAt: Date.now() } },
+        providerKeys: {
+          ...(useSettingsStore.getState().settings.providerKeys ?? {}),
+          [p.id]: { ...entry, key, validatedAt: Date.now() },
+        },
       });
       toast.success(`${p.name} connected ✓`, { description: `Round-trip ${ms}ms · model ${model ?? "default"}` });
     } catch (err) {
