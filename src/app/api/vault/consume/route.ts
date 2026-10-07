@@ -20,13 +20,28 @@ export const dynamic = "force-dynamic";
 // `forwarded` header), are rejected 403 BEFORE any key lookup. Guard limits
 // (honest): a same-LAN client can still spoof `Host` — this is
 // defense-in-depth against accidental remote exposure, not auth; deliberate
-// exposure beyond localhost must add real auth. The key is NEVER logged,
+// exposure beyond localhost must add real auth.
+//
+// r321 browser drive-by gate (house doctrine, mirrors tools/execute r26.1):
+// the r138 guard stops proxies and DNS-rebinding but a page on ANOTHER origin
+// in the user's browser could still FIRE this POST — a text/plain body skips
+// preflight and the route's json().catch(() => ({})) defaults provider to
+// "builtin". The response was unreadable to that page under same-origin
+// policy — but that shield is one CORS misconfiguration away from gone, so
+// the gate is enforced here instead of trusted upstream: foreign pages cannot
+// attach "x-praison-csrf" without a granted preflight (never granted), and
+// Sec-Fetch-Site "cross-site" is rejected outright. Non-browser callers (the
+// scheduler mini-service, CLI) send neither Origin nor Sec-Fetch-Site and
+// pass — the r133 handoff contract is unchanged. The same-LAN raw-process
+// limit above remains honestly open.
+// The key is NEVER logged,
 // never telemetered, and never returned by GET /api/vault (masked-only).
 //
 // Response shapes:
 //   200 { ok: true, provider, key, updatedAt }
 //   400 { ok: false, error: "provider required" }
 //   403 { ok: false, error: "consume is localhost-only (<reason>)" }
+//   403 { ok: false, error: "consume rejects cross-site browser calls (CSRF gate)" }
 //   404 { ok: false, error: "no vault key stored for this provider" }
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -75,12 +90,26 @@ function localGuard(req: Request): { ok: true } | { ok: false; reason: string } 
   return { ok: true };
 }
 
+function csrfOk(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  const origin = req.headers.get("origin");
+  if (site === null && origin === null) return true; // CLI / server-to-server
+  if (req.headers.get("x-praison-csrf") !== "1") return false; // preflight gate
+  return site !== "cross-site";
+}
+
 export async function POST(req: Request) {
   try {
     const guard = localGuard(req);
     if (!guard.ok) {
       return NextResponse.json(
         { ok: false, error: `consume is localhost-only (${guard.reason})` },
+        { status: 403 }
+      );
+    }
+    if (!csrfOk(req)) {
+      return NextResponse.json(
+        { ok: false, error: "consume rejects cross-site browser calls (CSRF gate)" },
         { status: 403 }
       );
     }

@@ -8557,3 +8557,32 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); free-lane quality unknown until first live rotation. New: (1) CRITICAL USER ACTION — the tab must be hard-reloaded (Ctrl+Shift+R) once; r318/r319/r320 client fixes are all inert in a stale bundle, and gateway 429s climbed 13→20/24h while it ran; (2) if the post-reload card shows the free lane dialed AND failed, the next lever is schedule staggering / a second key, not more code.
 Blockers: none
 Next recommended action: r321 — (1) FIRST read any user report: after the reload, the parked card's failed-dial lane list is the verdict on the whole r318-r320 family. (2) Verify HEAD lineage (expect the r320 snapshot or successor). (3) ONE small item, prefer non-rotation surfaces: (a) vault-epic increment (r123+, untouched since r304); (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) ResolvedDial providerId threading (rotation family again — last resort). (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog BEFORE snapshot; receipts for user-visible changes; SMALL commands.
+
+## r321 — vault handoff endpoint gets the house drive-by CSRF gate (2026-10-07, Job 424432)
+
+Task ID: r321
+Agent: main (platform dev agent)
+Task: r320 handoff (a) — vault-epic increment, non-rotation surface. No new user report this fire; health 200; HEAD lineage 60a4b8022 (r320 snapshot), tree clean.
+
+Work Log:
+- PICKED the vault epic's oldest debt: POST /api/vault/consume (hands the RAW stored key to the scheduler). The r138 localhost guard (Host + proxy-header checks) stops proxies and DNS-rebinding, but NOT a drive-by page in the user's browser: a text/plain body skips preflight and the route's json().catch(() => ({})) defaults provider to "builtin" — the POST fired server-side; the response was unreadable to the attacker page only by same-origin-policy grace (one CORS misconfiguration away from gone).
+- SHIPPED: the house r26.1 double-gate (mirrored from tools/execute + tracker) is now enforced server-side in consume/route.ts — (1) custom-header gate: foreign pages cannot attach "x-praison-csrf: 1" without a granted preflight (never granted); (2) fetch-metadata gate: Sec-Fetch-Site "cross-site" rejected. Non-browser callers (scheduler mini-service, CLI) send neither Origin nor Sec-Fetch-Site and pass — the r133 handoff contract unchanged. Route trust-model comment updated with the r321 paragraph; same-LAN raw-process limit stays honestly documented.
+- Callers taught the header: automation-vault-card.tsx Test-key + reveal fetches (both) now send x-praison-csrf: 1.
+- LIVE GUARD MATRIX (server up, provider qa-guard-probe so gates-pass=404 lookup / gates-reject=403, key never printed): A CLI no-browser-headers=404 PASS; B Origin evil + Sec-Fetch-Site cross-site=403 PASS; C text/plain simple-request preflight-bypass=403 PASS; D UI same-origin + csrf header=404 PASS; E Host spoof (r138 guard)=403 PASS.
+- Receipt r321 appended to whats-fixed.tsx.
+- Verification: npx tsc --noEmit 0 (unmasked); bun run lint 0 errors/33 warnings (exact baseline); cdp-qa-chat-interactions 8 passed, 0 failed; live curl matrix 5/5 as above.
+- Budget: 7 tool rounds.
+
+Stage Summary:
+- The vault consume endpoint now enforces the same drive-by defense as every other sensitive route instead of leaning on same-origin-policy grace. The vault epic's documented limits shrink to exactly one: same-LAN raw-process Host spoofing (requires a non-browser attacker already on the machine's LAN — documented, deliberate).
+
+Round Handoff:
+Round ID: r322
+Task owner: main (platform dev agent)
+Scope completed: consume CSRF double-gate + caller headers + receipt r321.
+User-visible changes: blocked cross-site callers get a 403 with an honest reason; Test key / reveal buttons unchanged in behavior; whats-fixed r321 card.
+Verification steps: live curl guard matrix (5/5); npx tsc --noEmit (0, unmasked); bun run lint (0/33); node scripts/cdp-qa-chat-interactions.mjs (8/8).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified (the curl matrix exercised the guard, not a real slot round-trip — the user's Test key button remains the live witness); git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); free-lane quality unknown until first live rotation. New: (1) user still owes the ONE hard reload (Ctrl+Shift+R) — r318/r319/r320 client fixes stay inert in a stale bundle; (2) same-LAN Host-spoof limit remains documented-deliberate (real auth = only closure, out of local-first scope for now).
+Blockers: none
+Next recommended action: r322 — (1) FIRST read any user report: the parked card's "✗N failed dials (lane ×count)" list is the verdict on the r318-r320 rotation family. (2) Verify HEAD lineage (expect the r321 snapshot or successor). (3) ONE small item, keep rotating: (a) docs pass — LOCAL_AUTOMATION.md drift check against r305-r321 lane-semantics changes (r149 stamp is stale by ~16 rounds of 429 doctrine); (b) vault-epic: teach the GET /api/vault masked route the same csrf gate for symmetry (small); (c) perf or UI polish away from workflows. Avoid the rotation family (r305-r321 saturated) unless the user's paste shows a NEW defect.

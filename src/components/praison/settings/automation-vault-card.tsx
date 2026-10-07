@@ -265,7 +265,7 @@ export function AutomationVaultCard() {
     try {
       const res = await fetch("/api/vault/consume", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-praison-csrf": "1" },
         body: JSON.stringify({ provider }),
       });
       if (res.status === 404) {
@@ -326,7 +326,7 @@ export function AutomationVaultCard() {
     try {
       const res = await fetch("/api/vault/consume", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-praison-csrf": "1" },
         body: JSON.stringify({ provider }),
       });
       if (res.status === 404) {

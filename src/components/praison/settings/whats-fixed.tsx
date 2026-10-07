@@ -335,6 +335,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows → a parked run card's LLM calls row ends with ✗N failed dials (lane ×count, …); hard-reload the tab (Ctrl+Shift+R) so the newest engine bundle is live, and the free lane should appear among the failed (or successful) lanes",
   },
+  {
+    round: "r321",
+    title: "The vault handoff endpoint now refuses cross-site browser calls (drive-by CSRF gate)",
+    detail:
+      "POST /api/vault/consume returns the stored key and sat behind the r138 localhost guard — which stops proxies and DNS-rebinding, but a page on another origin in your browser could still FIRE the POST (a text/plain body skips preflight; the route defaulted provider to builtin). The response was unreadable to that page only by same-origin-policy grace — now the gate is enforced server-side with the app's standard double-gate: foreign pages can't attach the x-praison-csrf header without a preflight that is never granted, and Sec-Fetch-Site cross-site is rejected. The headless scheduler and CLI (no browser headers) pass unchanged; the Settings Test-key and reveal buttons were taught the header.",
+    lookFor:
+      "Settings → Automation vault → Test key still verifies as before (200 path); a cross-site caller now gets a 403 “consume rejects cross-site browser calls (CSRF gate)” instead of the key",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
