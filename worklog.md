@@ -8643,3 +8643,31 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); USER OWES the one hard reload (Ctrl+Shift+R) — now doubly important: r318/319/320/323 all ship client/registry code. New: (1) pollinations anonymous tier is globally budgeted — expect it to 429 sometimes; that is the memory sinking it, not a regression; (2) orcarouter noKey status needs a live keyless probe before flagging; (3) free-provider-matrix.md audit still owed (this round's original task, superseded by the fix).
 Blockers: none
 Next recommended action: r324 — (1) FIRST read any user report: post-reload parked card with a Pollinations dial in the ✗N witness = the family works; no Pollinations anywhere = report immediately. (2) Verify HEAD lineage (expect the r323 snapshot or successor). (3) ONE small item: (a) live keyless probe of orcarouter's free pool (one curl) → flag or not, with the evidence recorded in free-provider-matrix.md (folds the owed doc audit in); (b) else vault-epic/ResolvedDial per prior handoffs.
+
+## r324 — orcarouter is NOT keyless: live probe kills the flag, doc corrected (2026-10-07, Job 424432)
+
+Task ID: r324
+Agent: main (platform dev agent)
+Task: r323 handoff (a) — live keyless probe of orcarouter's free pool → flag or not, evidence into free-provider-matrix.md (folding in the owed doc audit). No new user report this fire; health 200; HEAD lineage 0c39d9025 (r323 snapshot), tree clean (runtime db/gateway-pulse.json churn only).
+
+Work Log:
+- LIVE PROBE (no auth header sent, max_tokens 5, zero wallet exposure — respects the orca-credit constraint): A) keyless POST /v1/chat/completions model orcarouter/free → HTTP 401 `Invalid API key` (orcarouter_api_error); B) keyless GET /v1/models → HTTP 200 (public catalog, matches the r23 guide claim). VERDICT: the free pool is free-with-key, NOT keyless — only the model catalog is.
+- DECISION: do NOT flag `noKey: true` on orcarouter. relay.ts:564 (r318 chain pass) and automation-executor.ts:152 (r319 server fallback) iterate `noKey === true` lanes — a 401ing lane would be a dead rotation target the cooldown memory would keep re-entering. The probe is the receipt; r323's suspicion resolved with evidence instead of a guess.
+- DOC AUDIT (free-provider-matrix.md, 4 edits): (1) accuracy-pass bullet "keyless difficulty-routed free pool" corrected to free-with-key + probe evidence inline; (2) pollinations row's In-registry cell now carries the r323 `noKey: true` fact + 429-sinks-lane caveat; (3) "pollinations remains the keyless entry" bullet now states the r14-declared flag had zero setters until r323; (4) new dated addendum "Accuracy pass — 2026-10-07 (r324, live probe)" with the probe table, the no-flag verdict + code-level reason, the r323 correction folded in, and a doctrine cross-reference to LOCAL_AUTOMATION.md (r322 stamp) so this matrix stays provider-research-scoped. Registry count unchanged (15).
+- No code change — the honest outcome of "flag or not" is "not", and the probe prevented a bad flag rather than shipping one.
+- Verification: npx tsc --noEmit 0 (unmasked); bun run lint 0 errors/33 warnings (exact baseline); docs-only change so no client bundle touched (CDP honestly skipped); qa-nokey-chain not re-run since the registry is untouched (chain_len=2 still holds from r323's PASS).
+- Budget: 8 tool rounds.
+
+Stage Summary:
+- The rotation family's free-lane census is now evidence-complete: exactly one true keyless chat lane exists (pollinations), orcarouter's free pool is keyed-and-rate-capped, and the doc that claimed otherwise now carries the live probe instead of the stale r23 wording. Future rounds considering a noKey flag own this probe as the bar.
+
+Round Handoff:
+Round ID: r325
+Task owner: main (platform dev agent)
+Scope completed: orcarouter keyless probe (401 verdict, no flag) + free-provider-matrix.md accuracy pass r324 (4 edits incl. new dated addendum).
+User-visible changes: docs only (docs/free-provider-matrix.md); no app surface changed.
+Verification steps: live orca probe (401 chat / 200 models); npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified (user's Test key button is the witness); git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); free-lane quality unknown until first live rotation; USER OWES the one hard reload (Ctrl+Shift+R) — r318/319/320/323 client/registry code stays inert in a stale bundle. New: pollinations anonymous tier is globally budgeted — expect 429s; the cooldown memory sinking the lane is by design, not a regression.
+Blockers: none
+Next recommended action: r325 — (1) FIRST read any user report: the post-reload parked card's "✗N failed dials (lane ×count)" list is the rotation-family verdict (a Pollinations dial among the lanes = family works). (2) Verify HEAD lineage (expect the r324 snapshot or successor). (3) ONE small item, rotate surfaces: (a) vault-epic increment (r123+, untouched since r304): teach GET /api/vault masked route the r321 csrf gate for symmetry (small, prior-listed); (b) perf or UI polish away from workflows/vault; (c) non-automation docs pass if another drift is suspected. Rotation family stays closed unless the user's paste shows a NEW defect.
