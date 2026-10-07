@@ -8474,3 +8474,31 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key); answerAs popover still unwitnessed live; provider-card raw-custom lane un-noted (no id scheme). New: none this round.
 Blockers: none
 Next recommended action: r318 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r317 snapshot or successor). (3) Otherwise ONE small item, rotate surface (chat/rotation family got r312-r317 — prefer elsewhere): (a) vault-epic increment (r123+, untouched since before r305); (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) UserBubble memo micro-pass ONLY if chat jank is ever reported (probe exists to measure). (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog append BEFORE snapshot; receipts only for user-visible changes; SMALL commands.
+
+## r318 — USER REPORT: keyless free lanes join the relay chain (root cause of "⇄0 relay" parking) (2026-10-07, Job 424432)
+
+Task ID: r318
+Agent: main (platform dev agent)
+Task: USER PASTE (live run card, Continuous Research pipeline): failed at step 2/11, 429 park 1/4, "LLM calls · 6 recorded · 5 failed · ⇄0 relay / ⊙1 direct", board header "gateway 429 · 13 in 24h", server runs 0✓ 2✗. User asked point-blank: fix this, or switch models/agents, or handoff the project.
+
+Work Log:
+- ROOT CAUSE (witnessed in the paste + code): relay.ts buildRelayChain line 516 `if (!key) continue` — with ONE saved key (Vyce) the per-call fallback chain degenerates to Vyce's OWN catalog models + AUTO. When Vyce's quota bucket trips, the engine rotates inside the same bucket (every hop 429s) and the run parks — the paste's "⇄0 relay" is the empty-rotation smoking gun. Meanwhile nextRotation (provider-rotation r306) ALREADY treats noKey registry lanes as valid targets — the two rotators disagreed.
+- FIX: buildRelayChain now appends every FREE_PROVIDERS lane with noKey===true (not already covered by the keyed pass) as one generic hop: registry default model, tier 2, elo 0.7, note "no-key free lane", apiKey undefined. Health memory self-corrects misbehaving free lanes (sick hops sink via recentlyFailed sort); buildRelayWire's excludeKey still removes the primary; MAX_RELAY_HOPS cap unchanged. Hops engage ONLY after the primary fails pre-stream — zero regression surface for healthy runs.
+- HONEST SCOPE NOTES: (1) this widens the BROWSER-direct + relay chain; the SERVER lane's executor (tab closed) has its own dial path — the 0✓ 2✗ server failures 7.4h ago predate today's fixes and their 429 taxonomy was r309's; a server-lane chain audit is queued, not claimed fixed. (2) The physical limit stands: 3 hourly schedules with deep passes on one paid key WILL saturate at peak — rotation now spreads the load across ~free lanes, but quota is arithmetic. User levers: stagger schedules, keep the tab open (browser lane rotates best), top up Vyce, or save one more key of any kind.
+- ANSWER TO THE USER (recorded for the handoff): no handoff needed — the pipeline itself works (step 1 produced a full grounded report in 245.5s; tools fell back to arXiv/HN when web search 429'd, exactly as designed); the failure is pure quota+rotation, which is what r305-r318 have been building. This round closes the last empty-rotation hole.
+- Verification: npx tsc --noEmit 0 (unmasked — validates RelayHop optional apiKey + noKey flag shapes); bun run lint 0/33; scripts/cdp-qa-chat-interactions.mjs 8/8.
+- Budget: 6 tool rounds.
+
+Stage Summary:
+- The 429 doctrine is end-to-end for the browser lane: write (chat r315-r317 + workflows r306/r307), read (r316 cooling status), rotate (nextRotation), and now the per-call relay chain finally has real alternate lanes for single-key vaults.
+
+Round Handoff:
+Round ID: r319
+Task owner: main (platform dev agent)
+Scope completed: relay chain + noKey free lanes (relay.ts), receipt r318.
+User-visible changes: a 429'd step now rotates onto registry free lanes instead of parking on an empty chain; whats-fixed r318 card.
+Verification steps: node scripts/cdp-qa-chat-interactions.mjs (8/8); npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted. New: (1) server-lane executor (tab-closed runs) chain audit owed — does the /api/chat lane build the same widened chain, or does its own rotation need the noKey lanes too? (2) free-lane quality unknown until first live rotation — health memory will demote bad ones, but the FIRST run after this ships may show slower/weaker fallback answers (honest tradeoff vs parking).
+Blockers: none
+Next recommended action: r319 — (1) FIRST read any user report — especially whether the next parked run's card shows ⇄ relay > 0. (2) Verify HEAD lineage (expect the r318 snapshot or successor). (3) ONE small item: (a) server-lane chain audit (automation-executor /api/chat path: does it share buildRelayChain, and do noKey lanes reach it?); (b) vault-epic increment; (c) docs pass. (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog BEFORE snapshot; receipts for user-visible changes; SMALL commands.

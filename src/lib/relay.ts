@@ -19,7 +19,7 @@
 //    quality steps (writing/review) prefer flagships first. The chain order
 //    adapts to the task instead of one static ranking.
 
-import { providerBaseUrl, providerById } from "./providers";
+import { FREE_PROVIDERS, providerBaseUrl, providerById } from "./providers";
 import { loadLiveCatalog } from "./providers";
 import type { Settings } from "./types";
 
@@ -551,6 +551,30 @@ export function buildRelayChain(
         note: "live roster",
       });
     }
+  }
+
+  // r318: no-key FREE registry lanes join the chain. With ONE saved key the
+  // chain used to degenerate to the saturated provider's own models + AUTO —
+  // witnessed live (r318 user report: "⇄0 relay", a 429'd step had nowhere
+  // to rotate but its own quota bucket, park 1/4). nextRotation already
+  // treats noKey lanes as valid rotation targets (provider-rotation r306);
+  // the per-call relay chain now agrees. Health memory self-corrects if a
+  // free lane misbehaves — sick hops sink in the sort below.
+  for (const reg of FREE_PROVIDERS) {
+    if (reg.noKey !== true) continue;
+    if (hops.some((h) => h.providerId === reg.id)) continue; // keyed pass covered it
+    const model = reg.models[0]?.id;
+    if (!model) continue;
+    hops.push({
+      key: hopKey(reg.id, model),
+      providerId: reg.id,
+      model,
+      label: `${reg.name} · ${model}`,
+      baseUrl: providerBaseUrl(reg, undefined),
+      tier: 2,
+      elo: 0.7,
+      note: "no-key free lane",
+    });
   }
 
   // Generation-Era doctrine: health first (don't queue recently-dead hops),
