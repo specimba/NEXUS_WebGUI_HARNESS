@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
+import { truncate } from "@/lib/helpers";
 import { angleOfProposal } from "@/lib/spawn-proposal-engine";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -412,20 +413,48 @@ function RunRecoveryCard({
   // a stale bundle that never rotated. Failed calls already record the exact
   // engine label they dialed; group them so the card answers "did rotation
   // run, and onto which lanes?" at a glance. Pure UI — no store shape change.
+  const laneOf = (raw: string): string => {
+    // rotation/demotion dials label as "A → B (…)" — the dialed lane is the
+    // last arrow segment; a plain dial is already the lane itself. Trailing
+    // parentheticals ("(registry rotation)", "(primary demoted)") are ladder
+    // mechanics, not lane identity — strip before grouping.
+    const seg = (raw.includes("→") ? raw.split("→").pop()! : raw).trim();
+    return seg.replace(/\s*\([^)]*\)\s*$/, "").trim() || "unknown lane";
+  };
   const failedLanes = new Map<string, number>();
   let failedDials = 0;
   for (const c of run.callLog ?? []) {
     if (c.ok !== false) continue;
     failedDials += 1;
-    const raw = (c.engine ?? "").trim();
-    // rotation/demotion dials label as "A → B (…}" — the dialed lane is the
-    // last arrow segment; a plain dial is already the lane itself. Trailing
-    // parentheticals ("(registry rotation)", "(primary demoted)") are ladder
-    // mechanics, not lane identity — strip before grouping.
-    const seg = (raw.includes("→") ? raw.split("→").pop()! : raw).trim();
-    const lane = seg.replace(/\s*\([^)]*\)\s*$/, "").trim() || "unknown lane";
+    const lane = laneOf(c.engine ?? "");
     failedLanes.set(lane, (failedLanes.get(lane) ?? 0) + 1);
   }
+  // r342 (user report "so this is not matching I have lots of credits ready
+  // to use"): a multi-lane failure showed ONE lane's error as the whole
+  // verdict — the user's funded Vyce key ($236.40, webgui1, checked live
+  // minutes after) sat next to "Please recharge" that actually came from
+  // AIHubMix three lanes deep in the rotation. Each callLog entry carries
+  // its OWN error text; when more than one distinct lane refused the run,
+  // attribute every message to its lane before the generic hint. A
+  // single-lane failure needs no strip — err.message IS that lane's message.
+  const laneFailures = (() => {
+    const map = new Map<string, { lane: string; message: string; count: number }>();
+    for (const c of run.callLog ?? []) {
+      if (c.ok !== false) continue;
+      const lane = laneOf(c.engine ?? "");
+      const message = (c.error ?? "").trim();
+      const prev = map.get(lane);
+      if (!prev) map.set(lane, { lane, message, count: 1 });
+      else {
+        prev.count += 1;
+        // keep the most informative message seen for this lane
+        if (message.length > prev.message.length) prev.message = message;
+      }
+    }
+    return [...map.values()];
+  })();
+  // "auto" is the built-in gateway lane — name it as such in attribution.
+  const laneLabel = (l: string) => (l === "auto" ? "built-in gateway" : l);
   const failedChip =
     failedDials > 0
       ? ` · ✗${failedDials} failed dials (${[...failedLanes.entries()]
@@ -555,6 +584,25 @@ function RunRecoveryCard({
               </button>
             ) : null}
           </div>
+          {laneFailures.length >= 2 ? (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
+              <p className="mb-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                All {failedDials} dials failed across {laneFailures.length} lanes — each lane reported its own error:
+              </p>
+              <ul className="space-y-0.5">
+                {laneFailures.map((f) => (
+                  <li
+                    key={f.lane}
+                    className="break-words font-mono text-[10.5px] leading-relaxed text-muted-foreground"
+                  >
+                    <span className="font-sans font-medium text-foreground">{laneLabel(f.lane)}</span>
+                    {f.count > 1 ? ` ×${f.count}` : ""}
+                    {f.message ? ` — ${truncate(f.message, 110)}` : " — (no message recorded)"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <p className="flex items-start gap-2 rounded-lg border border-violet-500/25 bg-violet-500/5 p-2.5 text-xs leading-relaxed">
             <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-400" aria-hidden />
             <span>{err.hint}</span>
