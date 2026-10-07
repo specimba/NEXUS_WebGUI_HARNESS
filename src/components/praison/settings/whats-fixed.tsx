@@ -295,6 +295,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows → open the Continuous Research run: one amber note above the step list instead of a chip on every row; the pipeline card shows the same one-liner under the step chain",
   },
+  {
+    round: "r313",
+    title: "A schedule you stopped yourself is no longer invisible on its card",
+    detail:
+      "Disabled schedules with a self-heal path (backoff) or a breaker trip (auto-paused) had chips — but a schedule YOU stopped rendered nothing, indistinguishable from a rendering gap, and resuming meant Edit → toggle. The card now shows a neutral “stopped · click to resume” chip (slate, not amber/red — it is an intentional human state, not a malfunction); one click re-enables it and it fires on the next tick.",
+    lookFor:
+      "Workflows → a schedule card you stopped shows the slate “stopped · click to resume” chip; clicking it re-enables the schedule with a toast",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

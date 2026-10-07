@@ -1990,6 +1990,29 @@ export function WorkflowsView() {
                           auto-paused · click to resume
                         </button>
                       )}
+                      {wf.schedule && !wf.schedule.enabled && wf.schedule.autoResumeAt == null && (wf.schedule.failStreak ?? 0) < 2 && (
+                        // r313: the USER-stopped state — disabled with no
+                        // self-heal path and no breaker trip. Before this chip
+                        // the card was silent here: nothing distinguished
+                        // "stopped on purpose" from "is this broken?", and
+                        // resuming meant Edit → toggle. Same one-click resume
+                        // handler as the backoff/auto-paused chips; neutral
+                        // slate tone = intentional human state, not a
+                        // malfunction (amber self-heals, red is the breaker).
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            resumeSchedule(wf);
+                          }}
+                          title="Stopped — this schedule is disabled and nothing fires until you resume it. Click to resume: it re-enables and fires on the next 10s tick while the tab is open."
+                          data-testid="stopped-schedule-chip"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-500/40 bg-zinc-500/10 px-2 py-0.5 text-[10px] font-medium text-zinc-600 transition-colors hover:bg-zinc-500/20 dark:text-zinc-300"
+                        >
+                          <PauseCircle className="h-3 w-3" />
+                          stopped · click to resume
+                        </button>
+                      )}
                       <Button size="sm" onClick={() => openRun(wf)}>
                         <Play className="h-3.5 w-3.5" />
                         Run

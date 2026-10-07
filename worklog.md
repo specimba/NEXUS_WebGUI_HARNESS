@@ -8333,3 +8333,31 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key). New: regenerate/edit-resend/answer-as INTERACTION paths have no dedicated suite — the dep change is identity-only and tsc-clean, but a manual click-through is cheap insurance; UserBubble remains unmemoized (now measurable with the probe if ever worth it).
 Blockers: none
 Next recommended action: r313 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r312 snapshot or successor). (3) If a run failed, confirm the recovery card names its real class (billing/timeout/network). (4) Otherwise ONE small item, rotate surface: (a) Morning Briefing card stopped-vs-failed resume affordance (carried twice); (b) r293 perf instrumentation follow-up if user reports chat jank (probe now exists); (c) docs pass on a non-LOCAL_AUTOMATION doc. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.
+
+## r313 — stopped-schedule affordance: the "you stopped this yourself" card is no longer silent (2026-10-07, Job 424432)
+
+Task ID: r313
+Agent: main (platform dev agent)
+Task: Handoff option (a), carried twice — Morning Briefing-style schedule cards: the stopped-vs-failed resume affordance. No user report this round; health 200 in 0.04s; HEAD d6197732b = r312 snapshot successor (data-only backup), tree clean.
+
+Work Log:
+- DIAGNOSIS: the schedule card's pause-family chips cover backoff (amber, self-heals, autoResumeAt set), auto-paused (red, breaker, failStreak ≥ 2) and enabled (emerald next-fire) — but a USER-stopped schedule (disabled, no autoResumeAt, failStreak < 2) rendered NOTHING: indistinguishable from a rendering gap, and resuming meant Edit → toggle. scheduleEvidence already returns null for disabled schedules, so nothing lied — the card just said nothing.
+- SHIPPED (workflows-view.tsx): slate "stopped · click to resume" chip for exactly that state, wired to the SAME one-click resumeSchedule handler as the other two chips (re-enable + failStreak 0 + autoResumeAt cleared + toast). Tone doctrine now complete: amber = self-heals, red = breaker tripped, slate = intentional human state. Conditions are mutually exclusive with the auto-paused chip (failStreak < 2 vs ≥ 2) and the backoff chip (autoResumeAt null vs set).
+- Receipt r313 appended to whats-fixed.tsx FIXES (chronological append; derived range label auto-updates).
+- SHIPPED scripts/cdp-qa-stopped-chip.mjs: seeds a stopped schedule by CLONING a real persisted workflow for render fidelity (fallback minimal shape; DIAG printed — this QA profile had none, fallback rendered fine), reloads the board, and witnesses: S2 chip renders AND chip count === store-derived stopped count (mutual exclusivity / no over-render), S3 ONE CLICK → store truth enabled+streak0+noAutoResume AND "Schedule resumed" toast, S4 chip count tracks the store after resume, S5 byte-for-byte snapshot restore.
+- Verification: npx tsc --noEmit 0; canonical bun run lint 0 errors / 33 baseline warnings; cdp-qa-stopped-chip 6/6; cdp-qa-deep-pause-chip 6/6 (chip-family regression, read-only sweep); cdp-qa-whatsfixed-order 4/4 (newest r313, derived range 186-r313 intact).
+- No chat files touched (r312 surface left alone per rotation doctrine).
+
+Stage Summary:
+- Every disabled schedule card now names its state and offers the matching one-click action: backoff (auto-resumes, click to hurry it), auto-paused (breaker, click to reset), stopped (you did this, click to undo). No silent cards left in the pause family.
+
+Round Handoff:
+Round ID: r314
+Task owner: main (platform dev agent)
+Scope completed: stopped-schedule chip + one-click resume (card affordance parity across the whole pause family), r313 receipt, dedicated 6-leg in-vivo suite.
+User-visible changes: a schedule you stopped shows a slate "stopped · click to resume" chip on its Workflows card; one click re-enables it with a toast. Previously: nothing.
+Verification steps: node scripts/cdp-qa-stopped-chip.mjs (6/6); node scripts/cdp-qa-deep-pause-chip.mjs (6/6); node scripts/cdp-qa-whatsfixed-order.mjs (4/4); npx tsc --noEmit (0); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key); regenerate/edit-resend/answer-as interaction click-through still owed since r312's dep change (tsc-clean, identity-only). New: none this round (one chip + suite).
+Blockers: none
+Next recommended action: r314 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r313 snapshot or successor). (3) If a run failed, confirm the recovery card names its real class and the board chip matches reality. (4) Otherwise ONE small item, rotate surface (workflows got r311+r313 — prefer elsewhere): (a) manual click-through of regenerate/edit-resend/answer-as to retire the r312 interaction risk; (b) UserBubble memo micro-pass measured with the r312 probe (only if chat jank ever reported); (c) docs pass on a non-LOCAL_AUTOMATION doc; (d) vault-epic increment (r123+). (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.
