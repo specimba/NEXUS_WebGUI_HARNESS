@@ -97,12 +97,22 @@ export async function POST(req: NextRequest) {
       // r334: classify on the BODY first (any status) — a 403 with billing
       // phrasing is an empty wallet, not a broken key. Bare 401/403 (no
       // billing language in the body) stays a genuine key/region problem.
+      // r336 (user rebuke): REPORT what happened, never assert facts the
+      // platform cannot know — Vyce's wallet read $236.57 funded while stale
+      // memory still said "insufficient balance". Billing copy is now
+      // observed-truth and points at the r335 pardon path ("Check account"
+      // → recheck clears stale marks); 5xx gets its own honest classes
+      // (503 maintenance witnessed live in r334; other 5xx = their side).
       if (res.status === 402 || BILLING_BODY_RE.test(text) || BILLING_BODY_RE.test(msg)) {
-        msg = `Out of credits: the provider's balance is exhausted — top up the account (daily credit windows reset at 00:00 UTC) or point Image Studio at a second provider, then try again.`;
+        msg = `The provider reported an empty wallet at this call (insufficient balance). If you've topped up since, run "Check account" on the provider card — it re-checks live and clears stale marks. Otherwise top up or point Image Studio at a second provider. Daily credit windows reset at 00:00 UTC.`;
       } else if (res.status === 401 || res.status === 403) {
         msg = `Invalid or unauthorized key (${res.status}). Check it in Settings → Providers.`;
       } else if (res.status === 429) {
         msg = `Rate limited (HTTP 429) — wait a moment and try again.`;
+      } else if (res.status === 503) {
+        msg = `The provider is temporarily unavailable (HTTP 503 — maintenance or outage on their side; failover may be active). Your key is untouched — try again in a bit.`;
+      } else if (res.status >= 500) {
+        msg = `The provider failed on their side (HTTP ${res.status}) — not your key and not this app. Try again shortly.`;
       }
       return NextResponse.json({ error: msg }, { status: 502 });
     }

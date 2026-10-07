@@ -5,11 +5,13 @@
 const BILLING_BODY_RE =
   /\b402\b|out of credits|insufficient (?:credits?|balance|funds)|(?:credits?|balance|funds) (?:is|are) insufficient|please recharge|credit.?gate|add credits|payment required/i;
 
-// Mirror of route.ts post-r334 classification (the else-if chain).
+// Mirror of route.ts post-r336 classification (the else-if chain).
 function classify(status, text, msg) {
   if (status === 402 || BILLING_BODY_RE.test(text) || BILLING_BODY_RE.test(msg)) return "billing";
   if (status === 401 || status === 403) return "auth";
   if (status === 429) return "rate-limit";
+  if (status === 503) return "maintenance"; // r334 live witness: Vyce 503 maintenance HTML
+  if (status >= 500) return "provider-error"; // r336: their side, honest class
   return "other";
 }
 
@@ -46,8 +48,10 @@ const cases = [
   [403, "Access forbidden (check key/region): upstream refused the call", "auth"], // bare forbidden stays auth (no over-reach)
   [403, `{"code":403,"error":"forbidden","tid":"2026100716101581673504700234608"}`, "auth"], // tid digit-run must NOT trip \b402\b
   [429, JSON.stringify({ error: { message: "too many requests" } }), "rate-limit"],
-  [500, "internal server error", "other"],
-  [502, "<html>cloudflare 502</html>", "other"],
+  [503, `<!DOCTYPE html>\n<html lang="en"><head><title>vyce.ai — Maintenance</title></head></html>`, "maintenance"], // r334 witnessed shape
+  [500, "internal server error", "provider-error"],
+  [502, "<html>cloudflare 502</html>", "provider-error"],
+  [404, "model endpoint not found", "other"],
 ];
 
 let fail = 0;
