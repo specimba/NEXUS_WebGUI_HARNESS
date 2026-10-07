@@ -24,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { runAgentChat } from "@/lib/chat-client";
+import { resetProvider429 } from "@/lib/provider-rotation";
 import {
   FREELLM_SH_URL,
   FREE_PROVIDERS,
@@ -236,6 +237,36 @@ export function ProviderGallery() {
       };
       if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
       setCredits((c) => ({ ...c, [p.id]: { ...data, at: Date.now() } }));
+      // r335: a proven account answer is also the QUARANTINE PARDON. Until
+      // now, rotation memories (browser tab + server executor) outlived the
+      // truth: a wallet topped up after a billing 403 stayed skipped for up
+      // to 6h because only a successful WORKFLOW dial (which the quarantine
+      // itself blocks) could clear it. /v1/me 200 = the lane is alive, so:
+      // (1) clear THIS tab's rotation memory immediately; (2) ask the server
+      // lane to re-check + clear its own memory the same way (its map lives
+      // in server-process memory a browser click can't reach).
+      resetProvider429(p.id);
+      try {
+        const rec = await fetch("/api/providers/recheck", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ providerId: p.id }),
+        });
+        const rd = (await rec.json()) as {
+          ok?: boolean;
+          cleared?: { billingLeftMs: number; cooldownLeftMs: number };
+        };
+        const hadServerQuarantine =
+          rd.ok && rd.cleared && (rd.cleared.billingLeftMs > 0 || rd.cleared.cooldownLeftMs > 0);
+        if (hadServerQuarantine) {
+          toast.success(`${p.name} lanes un-quarantined`, {
+            description:
+              "The server lane had this provider marked unavailable (stale billing/congestion memory) — cleared for the next scheduled run.",
+          });
+        }
+      } catch {
+        /* cosmetic server-lane heal — never block or fail the account result */
+      }
       // Honesty first: some providers (Vyce) apply daily free credits at request
       // time and report a $0.00 key-level balance — surface USAGE instead of a
       // misleading "balance $0.00".
