@@ -167,6 +167,18 @@ export function ProviderGallery() {
       model: entryFor(p).model || p.models[0]?.id,
     };
     update({ providerKeys: { ...(settings.providerKeys ?? {}), [p.id]: next } });
+    // r341 (user report): a credential REPLACEMENT is itself a lane-change
+    // signal. Until now only a proven dial (r315: runAgentChat success) and
+    // "Check account" (r335) pardoned stale rotation memory — so in a
+    // long-lived tab this loop stayed broken: a billing 403 quarantines the
+    // lane for 6h → the user pastes a fresh key → Save → Retry … and the
+    // relay STILL skips the lane until the 6h mark. (Witnessed 2026-10-07:
+    // the run failed on the OLD Vyce key at 21:41; the new webgui1 key with
+    // a $236.57 wallet was saved ~2h later, same tab.) A save is stronger
+    // user intent than a balance probe — clear congestion + billing memory
+    // for this lane now. (A tab reload wipes the in-memory map anyway; this
+    // closes the no-reload variant.)
+    resetProvider429(p.id);
     toast.success(`${p.name} key saved`, {
       description: "Stored only in this browser's localStorage — never sent anywhere but the provider.",
     });

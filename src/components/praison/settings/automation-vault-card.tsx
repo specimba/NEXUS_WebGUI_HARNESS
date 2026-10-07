@@ -288,8 +288,35 @@ export function AutomationVaultCard() {
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       await load();
+      // r341: the mirror just REPLACED the server slot's credential — but the
+      // executor's server-process rotation map still skips this provider for
+      // up to 6h after an old billing 403 (its memory heals only on a proven
+      // dial FROM that lane, which the skip itself prevents — the r332
+      // chicken-and-egg). Fire the r335 recheck now: it probes the FRESH slot
+      // key for free (account endpoint / models liveness) and clears the
+      // server lane on any HTTP 200, so a rotated key works for closed-tab
+      // runs immediately instead of after the quarantine expires. Never
+      // blocks or fails the mirror; failure just means the server lane heals
+      // on its next proven dial or a later recheck.
+      let healNote = "";
+      try {
+        const rec = await fetch("/api/providers/recheck", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ providerId }),
+        });
+        const rd = (await rec.json()) as {
+          ok?: boolean;
+          cleared?: { billingLeftMs: number; cooldownLeftMs: number };
+        };
+        if (rd.ok && rd.cleared && (rd.cleared.billingLeftMs > 0 || rd.cleared.cooldownLeftMs > 0)) {
+          healNote = " The server lane was quarantined from an older failure — cleared just now.";
+        }
+      } catch {
+        /* cosmetic server-lane heal — the mirror itself already succeeded */
+      }
       toast.success("Key mirrored to the server lane", {
-        description: `${providerById(providerId)?.name ?? providerId} · closed-tab schedules can dial with it now. Local SQLite only, nothing leaves this machine.`,
+        description: `${providerById(providerId)?.name ?? providerId} · closed-tab schedules can dial with it now. Local SQLite only, nothing leaves this machine.${healNote}`,
       });
     } catch (e) {
       toast.error("Mirror failed", {
