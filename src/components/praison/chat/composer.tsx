@@ -586,6 +586,32 @@ export function Composer({
   );
   const setModelOverride = useConversationsStore((s) => s.setModelOverride);
 
+  // ─── r338 per-conversation drafts ────────────────────────────────────────
+  // Defect: the draft + attachments were ONE global useState shared by every
+  // conversation — switching threads carried the typed text (and attached
+  // files!) into the WRONG conversation, where a stray Enter sent another
+  // thread's words. Standard chat behavior now: on a switch, the outgoing
+  // conversation's draft parks keyed by its id and the incoming one's is
+  // restored (a fresh thread starts clean). Session-scoped (component
+  // lifetime) — leaving the chat view still drops unsent drafts, unchanged.
+  const draftBinRef = React.useRef(
+    new Map<string, { value: string; attachments: MessageAttachment[] }>()
+  );
+  const prevConvRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (prevConvRef.current === activeConvId) return;
+    const prev = prevConvRef.current;
+    if (prev) {
+      if (value.trim() || attachments.length > 0)
+        draftBinRef.current.set(prev, { value, attachments });
+      else draftBinRef.current.delete(prev);
+    }
+    const restored = activeConvId ? draftBinRef.current.get(activeConvId) : undefined;
+    setValue(restored?.value ?? "");
+    setAttachments(restored?.attachments ?? []);
+    prevConvRef.current = activeConvId;
+  }, [activeConvId, value, attachments]);
+
   const modelOptions = React.useMemo<PickerOption[]>(() => {
     // r73: relay health memory → live per-model badges. Snapshot read ONCE per
     // rebuild; a health verdict overrides static row badges (actionable beats
