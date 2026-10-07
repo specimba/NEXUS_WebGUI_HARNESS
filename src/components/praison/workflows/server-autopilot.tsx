@@ -381,7 +381,9 @@ export function ServerAutopilot() {
                 ? `Closed-tab runs dial ${lane.providerLabel} with your stored key ${lane.maskedKey} (Automation vault). Click to manage.`
                 : lane.reason === "no-vault-key"
                   ? "The server executor dials ONLY with a key you store in the Automation vault (BYOK-preserving). No key: due schedules stay queued while the tab is closed. Click to store one."
-                  : `No vault slot pairs with a server-side endpoint (${lane.slotCount} slot${lane.slotCount === 1 ? "" : "s"} scanned — the built-in gateway is client-side knowledge and unresolvable slots are skipped). Store a registry provider key so closed-tab runs can dial. Click to manage.`
+                  : lane.reason === "billing-quarantined"
+                    ? "Your stored key's provider is billing-quarantined (the wallet is drained — the rotation memory skips it so runs stop dying on the same lane). Recharge at the provider or store a second key; the quarantine lifts on the first successful dial. Click to manage."
+                    : `No vault slot pairs with a server-side endpoint (${lane.slotCount} slot${lane.slotCount === 1 ? "" : "s"} scanned — the built-in gateway is client-side knowledge and unresolvable slots are skipped). Store a registry provider key so closed-tab runs can dial. Click to manage.`
             }
             aria-label="Headless lane key status"
             className={cn(
@@ -396,7 +398,9 @@ export function ServerAutopilot() {
               ? `server lane: ${lane.providerLabel} ${lane.maskedKey}`
               : lane.reason === "no-vault-key"
                 ? "server lane: no key — closed-tab runs wait"
-                : "server lane: needs a registry provider key"}
+                : lane.reason === "billing-quarantined"
+                  ? "server lane: key quarantined (wallet drained) — runs wait"
+                  : "server lane: needs a registry provider key"}
           </button>
         ) : null}
         <Button

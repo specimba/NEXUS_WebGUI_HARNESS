@@ -6,7 +6,10 @@
 // reading so the sync route, the ServerAutopilot panel, and the QA share
 // one definition of "what would the executor actually do right now".
 
-export type ExecutorLaneReason = "no-vault-key" | "no-resolvable-provider";
+export type ExecutorLaneReason =
+  | "no-vault-key"
+  | "no-resolvable-provider"
+  | "billing-quarantined";
 
 export interface ExecutorLaneState {
   /** True when a due closed-tab run would dial immediately. */
@@ -65,7 +68,9 @@ export function computeStaleRegistry(
 export function humanizeLaneReason(reason: ExecutorLaneReason): string {
   return reason === "no-vault-key"
     ? "no vault key is stored"
-    : "no stored vault slot pairs with a registry provider endpoint (the built-in engine slot's gateway is client-side knowledge, and it is skipped, never guessed)";
+    : reason === "billing-quarantined"
+      ? "every stored vault slot's provider is billing-quarantined (wallet drained — the r332 rotation memory); runs wait rather than dial a known-dead lane, and the quarantine lifts on a successful dial after a top-up"
+      : "no stored vault slot pairs with a registry provider endpoint (the built-in engine slot's gateway is client-side knowledge, and it is skipped, never guessed)";
 }
 
 // ─── r210: vault-slot dial truth (card ⇄ executor parity) ───────────────────

@@ -32,7 +32,9 @@ import {
 } from "@/lib/providers";
 import {
   noteProvider429,
+  noteProviderBilling,
   provider429CooldownLeftMs,
+  providerBillingDeadLeftMs,
   resetProvider429,
 } from "@/lib/provider-rotation";
 
@@ -51,7 +53,12 @@ interface VaultStep {
 export interface TickResult {
   claimed: number;
   /** Why nothing was claimed (only when claimed === 0). */
-  reason?: "client-alive" | "no-vault-key" | "no-resolvable-provider" | "idle";
+  reason?:
+    | "client-alive"
+    | "no-vault-key"
+    | "no-resolvable-provider"
+    | "billing-quarantined"
+    | "idle";
   workflowIds: string[];
   /** Present when claimed === 1 — the run outcome for QA/panel reads. */
   outcome?: { runId: string; status: "done" | "error" };
@@ -62,6 +69,10 @@ interface ResolvedDial {
   key: string;
   model: string;
   providerLabel: string;
+  /** r333: the machine id the rotation memories key on — without it the
+   * server lane could not mirror the r332 billing quarantine (the browser
+   * runner has had this since r305's rotation work). */
+  providerId: string;
 }
 
 /**
@@ -94,6 +105,7 @@ function probeSlotDial(
       key: vaultEntry.key.trim(),
       model,
       providerLabel: reg.name,
+      providerId: reg.id,
     },
   };
 }
@@ -111,22 +123,44 @@ function probeSlotDial(
  * Reason aggregation stays honest:
  *   • no slots, or every key empty            → "no-vault-key"
  *   • keys exist but none pairs with registry → "no-resolvable-provider"
+ *   • keys pair but every provider is billing-quarantined → "billing-quarantined"
  * The chosen slot is returned with the dial so the sync-GET lane mirror can
  * mask exactly the key the executor would use (no index guessing).
  */
 export type SlotRef = { provider: string; key: string };
 export function resolveServerDialFromSlots(
   slots: SlotRef[] | null,
-): { dial: ResolvedDial; slot: SlotRef } | { dial: null; why: "no-vault-key" | "no-resolvable-provider" } {
+):
+  | { dial: ResolvedDial; slot: SlotRef }
+  | {
+      dial: null;
+      why: "no-vault-key" | "no-resolvable-provider" | "billing-quarantined";
+    } {
   const list = Array.isArray(slots) ? slots : [];
   let sawKey = false;
+  let sawQuarantined = false;
   for (const slot of list) {
     if (!slot.key.trim()) continue; // empty slot: skip, keep scanning
     sawKey = true;
     const resolved = probeSlotDial(slot);
-    if (resolved.dial) return { dial: resolved.dial, slot };
+    if (!resolved.dial) continue; // unresolvable: skip, keep scanning
+    // r333: a billing-quarantined provider (wallet drained — the r332
+    // memory) is a known corpse: scan past it exactly like an unresolvable
+    // slot instead of dialing it once per tick. The tick's own dial still
+    // NOTES new billing deaths (dialStep), so the loop is: first billing
+    // failure quarantines, every later tick skips. When EVERY keyed slot
+    // is a corpse the reason says so honestly — the key exists, its lane
+    // is just known-dead.
+    if (providerBillingDeadLeftMs(resolved.dial.providerId) > 0) {
+      sawQuarantined = true;
+      continue;
+    }
+    return { dial: resolved.dial, slot };
   }
-  return { dial: null, why: sawKey ? "no-resolvable-provider" : "no-vault-key" };
+  return {
+    dial: null,
+    why: sawKey ? (sawQuarantined ? "billing-quarantined" : "no-resolvable-provider") : "no-vault-key",
+  };
 }
 
 /** r319: server-side mirror of the browser lane's free-lane rotation (r318).
@@ -212,6 +246,12 @@ async function dialNoKeyFallback(
 }
 
 /** One non-streaming OpenAI-compatible chat completion for a single step. */
+// r333: billing-body signatures — the server mirror of the r332 runner/
+// engine patterns (402 status handled separately above). Vyce's 403-wrapped
+// "balance is insufficient" + "please recharge" phrasing is the witnessed shape.
+const BILLING_BODY_RE =
+  /out of credits|insufficient (?:credits?|balance|funds)|(?:credits?|balance|funds) (?:is|are) insufficient|please recharge|credit.?gate|add credits|payment required/i;
+
 export async function dialStep(dial: ResolvedDial, prompt: string): Promise<string> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), DIAL_TIMEOUT_MS);
@@ -243,8 +283,25 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
       // lane had NO rotation (witnessed: tab-closed server runs 0✓ 2✗ on a
       // saturated provider). Try the no-key free lanes before throwing.
       if (res.status === 429) {
+        // r333: note the vault provider's own congestion BEFORE rotating —
+        // the browser runner has noted its pre-stream 429s since r306; the
+        // server lane fed only the FALLBACK lanes' memory, so a saturated
+        // vault provider was re-dialed first every tick.
+        if (dial.providerId) noteProvider429(dial.providerId);
         const fallback = await dialNoKeyFallback(prompt, dial.url);
         if (fallback !== null) return fallback;
+      }
+      // r333: mirror the r332 browser-side billing quarantine — Vyce
+      // phrases a drained wallet on a 403 ("Your account balance is
+      // insufficient. Please recharge…"); a 402 is the classic shape.
+      // Without this the server lane corpse-dialed the empty wallet once
+      // per tick until the breaker parked the schedule.
+      if (
+        dial.providerId &&
+        (res.status === 402 ||
+          BILLING_BODY_RE.test(body))
+      ) {
+        noteProviderBilling(dial.providerId);
       }
       throw new Error(`dial ${res.status}: ${body.slice(0, 200)}`);
     }
@@ -253,6 +310,10 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
     };
     const text = j.choices?.[0]?.message?.content?.trim();
     if (!text) throw new Error("dial returned empty completion");
+    // r333: a proven-healthy vault dial clears the lane's memories — the
+    // top-up self-heal (billing quarantine lifted on first success), same
+    // semantics as the browser runner's resetProvider429.
+    if (dial.providerId) resetProvider429(dial.providerId);
     return text;
   } finally {
     clearTimeout(timer);
