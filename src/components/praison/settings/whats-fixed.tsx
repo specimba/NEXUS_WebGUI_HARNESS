@@ -351,6 +351,15 @@ const FIXES: FixNote[] = [
     lookFor:
       "Settings → provider gallery shows Pollinations as “No key needed — start chatting”; after a Vyce 429 (post-reload), the parked card's failed-dial witness should show a Pollinations dial among the lanes",
   },
+  {
+    round: "r325",
+    title:
+      "The vault route is uniformly CSRF-gated — upsert and delete included, not just the raw-key handoff",
+    detail:
+      "The r321 gate covered POST /api/vault/consume, but POST /api/vault (upsert) and DELETE /api/vault were still open to a drive-by page: a preflight-free simple request could overwrite a stored slot or plant an attacker-chosen provider+key pair the closed-tab executor would then dial. The house double-gate now guards GET, POST, and DELETE; every in-app caller sends the header; non-browser callers (scheduler, CLI, QA scripts) pass unchanged.",
+    lookFor:
+      "No visible change for you (headers are automatic) — Settings → Automation vault behaves exactly as before; foreign pages now get a 403 on every vault operation.",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

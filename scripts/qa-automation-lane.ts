@@ -160,6 +160,21 @@ try {
   ok(s1.vaultLane?.hasKey === false, "legacy vaultLane still reported (compat)");
 
   // Shape 2: builtin-only slot → the executor skips it, and the route says so.
+  // r326 incident guard (inline — bun/TS): refuse to seed+destroy vault
+  // slots when a real user vault is populated. The 2026-10-07 wipe of the
+  // user's live Vyce slot happened exactly this way (upsert overwrote it).
+  const guardRes = await fetch(`${BASE}/api/vault`);
+  const guardJson = (await guardRes.json().catch(() => null)) as { vault?: unknown[] } | null;
+  const slotCount = Array.isArray(guardJson?.vault) ? guardJson.vault.length : -1;
+  if (slotCount !== 0) {
+    console.error(
+      `[qa-guard] qa-automation-lane: ABORT — /api/vault holds ` +
+        `${slotCount >= 0 ? slotCount : "an unreadable number of"} slot(s); ` +
+        `seeding would DESTROY user keys (the r326 incident).`
+    );
+    process.exit(2);
+  }
+  ok(true, "qa-guard: vault empty — safe to seed");
   const postRes = await fetch(`${BASE}/api/vault`, {
     method: "POST",
     headers: { "content-type": "application/json" },

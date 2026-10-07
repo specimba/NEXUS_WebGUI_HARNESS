@@ -139,6 +139,10 @@ async function gotoSettings(ws) {
 }
 
 async function main() {
+  // r326 incident guard: a populated user vault means REAL keys — abort
+  // instead of upserting/deleting over them (the 2026-10-07 Vyce wipe).
+  await (await import("./lib/qa-vault-guard.mjs")).assertVaultEmptyOrAbort(BASE, "vault-slot-affordances");
+
   // E0 — idempotent pre-clean (builtin too: keep the slate identical to the
   // round-start state, which was an empty vault)
   await fetch(`${BASE}/api/vault?provider=builtin`, { method: "DELETE" });

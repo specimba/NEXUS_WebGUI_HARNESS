@@ -2,9 +2,9 @@ import { ensureChrome } from "./cdp-ensure-chrome.mjs";
 // ─── CDP QA — C-series (r134): vault-lane chip in ServerAutopilot ────────────
 // Asserts the r134 UI surface end-to-end against the live dev server:
 //   C1 API: store a throwaway builtin key → sync GET reports vaultLane (masked)
-//   C2 UI:  Workflows view → ServerAutopilot chip renders "your key <mask>"
+//   C2 UI:  Workflows view → ServerAutopilot chip renders the builtin-skipped state (r205 semantics)
 //   C3 UX:  clicking the chip deep-links to Settings → #vault card (r125 anchor)
-//   C4 UX:  delete key → panel refetch (Refresh click) → chip flips to "shared lane"
+//   C4 UX:  delete key → panel refetch (Refresh click) → chip flips to "no key — closed-tab runs wait"
 //   C5 API: vault left EMPTY afterwards (no fake-key residue — r133 discipline)
 // Reuses the r132 harness lessons: hydration retry-click loop (dev-mode swallows
 // the first click), new-tab boot via PUT /json/new, and the headless profile
@@ -112,6 +112,10 @@ async function retryClick(ws, label, tries = 6, gapMs = 800) {
 const chipExpr = `document.querySelector('button[aria-label="Headless lane key status"]')`;
 
 async function main() {
+  // r326 incident guard: a populated user vault means REAL keys — abort
+  // instead of upserting/deleting over them (the 2026-10-07 Vyce wipe).
+  await (await import("./lib/qa-vault-guard.mjs")).assertVaultEmptyOrAbort(BASE, "vault-chip");
+
   // C0 — idempotent pre-clean (a prior run may have left residue)
   await fetch(`${BASE}/api/vault?provider=builtin`, { method: "DELETE" });
 
@@ -154,8 +158,8 @@ async function main() {
   await waitFor(ws, chipExpr, 20_000);
   const chipText = await evalJs(ws, `${chipExpr}?.innerText ?? ""`);
   check(
-    "C2 chip renders your-key state",
-    chipText.includes(`your key ${QA_MASK}`),
+    "C2 chip renders the builtin-skipped state (executor skips legacy builtin since r205)",
+    chipText.includes("needs a registry provider key"),
     chipText.trim()
   );
   await shot(ws, "C2-vault-chip");
@@ -183,7 +187,7 @@ async function main() {
   );
   await shot(ws, "C3-vault-deeplink");
 
-  // C4 — delete key → panel refetch → chip flips to shared lane
+  // C4 — delete key → panel refetch → chip flips to the no-key state
   const delRes = await fetch(`${BASE}/api/vault?provider=builtin`, { method: "DELETE" });
   const delJson = await delRes.json().catch(() => ({}));
   check("C4a delete throwaway key", delRes.ok && delJson.ok === true);
@@ -207,13 +211,13 @@ async function main() {
   }
   const flipped = await waitFor(
     ws,
-    `/(shared lane)/.test((${chipExpr}?.innerText) ?? "")`,
+    `/(no key)/.test((${chipExpr}?.innerText) ?? "")`,
     12_000
   );
   const chipText2 = await evalJs(ws, `${chipExpr}?.innerText ?? ""`);
   check(
-    "C4 chip flips to shared lane after refetch",
-    flipped && chipText2.includes("shared lane"),
+    "C4 chip flips to the no-key state after refetch",
+    flipped && chipText2.includes("no key"),
     chipText2.trim()
   );
 
