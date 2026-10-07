@@ -8390,3 +8390,30 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint. New: (1) runAgentChat's DIRECT provider lane bypasses the server-side relay taxonomy/rotation — one audit round should map when it goes direct vs /api/chat and whether the r310 billing class + 6h corpse cooldown apply there; (2) answerAs popover still unwitnessed live; (3) one escaped QA-tab provider request occurred before the origin stub existed (severity likely trivial, recorded honestly).
 Blockers: none
 Next recommended action: r315 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r314 snapshot or successor). (3) Otherwise pick ONE SMALL item (two consecutive budget overruns — strictly cap discipline): (a) the direct-lane audit (finding 1): read chat-client.ts runAgentChat and pin when it dials providers directly; ensure billing/429 classification covers that path or file the gap; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) vault-epic increment. (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts only for user-visible changes; SMALL commands.
+
+## r315 — chat lane wired into the shared 429 exhaustion memory; direct-lane audit closed (2026-10-07, Job 424432)
+
+Task ID: r315
+Agent: main (platform dev agent)
+Task: Handoff option (a) — the direct-lane audit (r314 finding 1). No user report; health 200; HEAD c707dad38 (r314-lineage successor), tree clean.
+
+Work Log:
+- AUDIT RESULT (chat-client.ts runAgentChat): browser-direct engages whenever provider==="custom" && baseUrl && !forceServer (line ~161); server relay is the pre-stream-failure fallback. Classification COVERAGE CONFIRMED on the direct lane — classifyUpstreamError + the engine's structured `kind` run in the shared engine (agent-engine.ts), which "runs identically server-side and browser-direct"; 402→billing, 429→rate-limit both covered there.
+- REAL GAP FOUND AND FIXED: the per-provider 429 exhaustion memory (provider-rotation.ts — exponential cooldown 60s→15m, feeding nextRotation + lane demotion) was fed ONLY by workflow-runner (r306/r307). Interactive chat 429s left ZERO trace: a chat-side rate-limit never cooled the provider for scheduled steps, and workflows kept re-dialing a provider chat had just proven saturated. FIXED in chat-client.ts (browser-direct lane only): success → resetProvider429(providerId); pre-stream fallback failure with kind==="rate-limit" (engine kind, classifyUpstreamError fallback) → noteProvider429(providerId, Date.now()). Billing/auth/model deliberately NOT noted — mirrors r307 (proven saturation only). "auto"/undefined providerId guarded. Module memory is tab-wide and SHARED between chat-client and workflow-runner (workflow-runner is client-side: imported by scheduler/run-panel/views) — one map, two surfaces.
+- Deliberately NOT wired (documented, not hidden): (1) the server-relay lane of chat — a server-lane failure may be the app server's own death (connect timeout), and relay-lane hop attribution is murky (any hop could have thrown); mis-noting would cool a healthy provider. (2) chat does not yet CONSULT cooldown before dialing (e.g. "provider cooling 90s" status) — the memory feed has a real consumer today (workflow rotation); chat-side consultation is the natural r316 UX increment.
+- Verification: npx tsc --noEmit exit 0 (unmasked); bun run lint 0 errors / 33 baseline warnings; scripts/cdp-qa-chat-interactions.mjs 7/7 post-edit (I3 Retry + I5 edit-resend drive runAgentChat end-to-end, snapshots restored).
+- Budget: ~11 tool rounds — inside the 12 cap for the first time in three rounds.
+
+Stage Summary:
+- The 429 doctrine is now surface-complete: workflow steps AND interactive chat both write the shared per-provider exhaustion memory; either surface's 429 cools the provider for the other. The r314 audit question ("does billing/429 classification cover the direct lane?") is answered in code, not prose.
+
+Round Handoff:
+Round ID: r316
+Task owner: main (platform dev agent)
+Scope completed: direct-lane audit + chat→shared-429-memory wiring (success reset + rate-limit note), header doctrine note, 7/7 regression.
+User-visible changes: none directly (rotation memory is behavioral); over time scheduled steps avoid providers the user just got 429'd on in chat.
+Verification steps: node scripts/cdp-qa-chat-interactions.mjs (7/7); npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key); answerAs popover still unwitnessed live. New: (1) chat does not consult the cooldown map before dialing — a cooling provider gets dialed by chat with no status hint (r316 candidate); (2) server-relay chat failures still un-noted (attribution murky — by design).
+Blockers: none
+Next recommended action: r316 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r315 snapshot or successor). (3) Otherwise ONE small item, rotate surface (chat-client got r312+r314+r315 — prefer elsewhere): (a) chat-side cooldown consultation: when params.providerId has provider429CooldownLeftMs>0, surface a one-line status ("provider cooling Ns — still trying") before dialing — tiny, measurable, uses the map chat now shares; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) vault-epic increment (r123+). (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog append BEFORE snapshot; receipts only for user-visible changes; SMALL commands.

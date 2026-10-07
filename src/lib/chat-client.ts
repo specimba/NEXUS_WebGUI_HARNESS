@@ -1,8 +1,14 @@
 "use client";
 
 import type { RouteReceipt, ToolCallInfo, ToolId } from "./types";
-import { runRelayedCustom, type EngineBody, type RelayWireHop } from "./agent-engine";
+import {
+  classifyUpstreamError,
+  runRelayedCustom,
+  type EngineBody,
+  type RelayWireHop,
+} from "./agent-engine";
 import { buildToolDefs, httpToolExecutor } from "./tools-defs";
+import { noteProvider429, resetProvider429 } from "./provider-rotation";
 
 // ─── Client agent runner ─────────────────────────────────────────────────────
 // TWO transports, tried in order (r23):
@@ -21,6 +27,13 @@ import { buildToolDefs, httpToolExecutor } from "./tools-defs";
 // r25 watchdogs: the /api/chat fetch gets a 20s connect deadline, and the SSE
 // read loop fails honestly when NO bytes (server keep-alive pings count) have
 // arrived for 90s — a dead stream used to spin forever.
+//
+// r315: the browser-direct lane now feeds the SHARED per-provider 429
+// exhaustion memory (provider-rotation.ts) — a pre-stream rate-limit on this
+// lane notes the provider with the same exponential cooldown workflow steps
+// use, and a successful dial clears it. Chat and scheduled workflows finally
+// share one saturation map (tab-wide module memory); before this, a chat 429
+// left zero trace in the memory that gates registry rotation.
 
 export interface RunAgentParams {
   provider?: "auto" | "custom";
@@ -151,9 +164,15 @@ export async function runAgentChat(
   if (canDirect) {
     let sawTokens = false;
     try {
-      return await runBrowserDirect(params, h, () => {
+      const direct = await runBrowserDirect(params, h, () => {
         sawTokens = true;
       });
+      // r315: a successful direct dial clears the provider's cooldown —
+      // mirrors the workflow runner's post-success reset (workflow-runner).
+      if (params.providerId && params.providerId !== "auto") {
+        resetProvider429(params.providerId);
+      }
+      return direct;
     } catch (err) {
       // v10: signal.aborted alone is NOT user intent — a caller watchdog
       // (runner stall abort) aborts the same signal with a stall reason.
@@ -162,6 +181,22 @@ export async function runAgentChat(
         !isWatchdogAbortReason(params.signal?.reason);
       const action = classifyDirectLaneFailure(userAborted, sawTokens);
       if (action === "rethrow") throw err;
+      // r315: a pre-stream 429 on the chat lane feeds the SAME per-provider
+      // exhaustion memory the workflow runner notes (r306 doctrine) —
+      // nextRotation and lane demotion read this map tab-wide, so a chat 429
+      // keeps scheduled steps off the saturated provider for the cooldown
+      // window instead of re-learning it per run. The engine ships a
+      // structured kind (r25); the message regex is the fallback for native
+      // browser-direct failures (CORS/network TypeErrors carry no kind).
+      // Billing/auth/model kinds are deliberately NOT noted — mirrors r307,
+      // which reserves the memory for proven saturation only.
+      if (params.providerId && params.providerId !== "auto") {
+        const failKind =
+          (err as { kind?: string }).kind ?? classifyUpstreamError(err);
+        if (failKind === "rate-limit") {
+          noteProvider429(params.providerId, Date.now());
+        }
+      }
       h.onStatus?.(
         isAbortError(err)
           ? `Browser-direct timed out (${short(err)}) — routing through the app relay…`
