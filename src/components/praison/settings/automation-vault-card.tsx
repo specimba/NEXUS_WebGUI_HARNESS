@@ -12,6 +12,7 @@
 
 import * as React from "react";
 import {
+  ArrowDownToLine,
   Eye,
   EyeOff,
   FlaskConical,
@@ -34,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FREE_PROVIDERS, providerById } from "@/lib/providers";
 import { fmtSlotAge, pickExecutorSlot } from "@/lib/automation-lane";
+import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
 
 interface VaultSlot {
@@ -148,6 +150,19 @@ export function AutomationVaultCard() {
     () => pickExecutorSlot(slots, (p) => !!providerById(p)),
     [slots],
   );
+  // r337: browser-saved provider keys NOT yet mirrored to the server vault —
+  // the r335 recheck round witnessed this exact gap (the user's Vyce key
+  // lived in the browser vault only; the recheck answered "no-server-key"
+  // and every closed-tab schedule ran keyless). The mirror is EXPLICIT
+  // opt-in — the vault's doctrine is opt-in storage, so nothing ever
+  // copies silently — but it removes the re-paste friction entirely.
+  const settings = useSettingsStore((s) => s.settings);
+  const [mirroringProvider, setMirroringProvider] = React.useState<string | null>(null);
+  const mirrorCandidates = FREE_PROVIDERS.filter(
+    (p) =>
+      settings.providerKeys?.[p.id]?.key?.trim() &&
+      !slots.some((s) => s.provider === p.id),
+  );
 
   async function save() {
     if (!key.trim()) {
@@ -233,6 +248,38 @@ export function AutomationVaultCard() {
       });
     } finally {
       setLaneSaving(false);
+    }
+  }
+
+  // r337: one-click mirror of a BROWSER-saved key into the server vault —
+  // same POST contract as saveLane (upsert by provider id, CSRF-gated),
+  // labeled honestly so the slot's provenance shows in the card.
+  async function mirrorProvider(providerId: string) {
+    const savedKey = settings.providerKeys?.[providerId]?.key?.trim();
+    if (!savedKey) return;
+    setMirroringProvider(providerId);
+    try {
+      const res = await fetch("/api/vault", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-praison-csrf": "1" },
+        body: JSON.stringify({
+          provider: providerId,
+          key: savedKey,
+          label: "mirrored from saved provider keys",
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      await load();
+      toast.success("Key mirrored to the server lane", {
+        description: `${providerById(providerId)?.name ?? providerId} · closed-tab schedules can dial with it now. Local SQLite only, nothing leaves this machine.`,
+      });
+    } catch (e) {
+      toast.error("Mirror failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setMirroringProvider(null);
     }
   }
 
@@ -415,6 +462,35 @@ export function AutomationVaultCard() {
               Store
             </Button>
           </div>
+          {mirrorCandidates.length > 0 && (
+            <div className="space-y-1.5 rounded-md border border-dashed border-violet-500/30 bg-violet-500/5 px-2.5 py-2">
+              <p className="text-[10.5px] text-muted-foreground">
+                Saved in this browser, not mirrored yet — one click stores it for
+                closed-tab runs (no re-paste; local SQLite only):
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {mirrorCandidates.map((p) => (
+                  <Button
+                    key={p.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void mirrorProvider(p.id)}
+                    disabled={mirroringProvider !== null}
+                    className="h-7 px-2 text-[11px]"
+                    title={`Store the ${p.name} key you already saved in Providers here — the server lane (tab closed) dials with it.`}
+                  >
+                    {mirroringProvider === p.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                    ) : (
+                      <ArrowDownToLine className="h-3 w-3" aria-hidden />
+                    )}
+                    Mirror {p.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           {laneSlots.length > 0 ? (
             <ul className="space-y-1.5">
               {laneSlots.map((s) => {
