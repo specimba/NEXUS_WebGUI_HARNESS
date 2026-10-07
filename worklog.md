@@ -8361,3 +8361,32 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key); regenerate/edit-resend/answer-as interaction click-through still owed since r312's dep change (tsc-clean, identity-only). New: none this round (one chip + suite).
 Blockers: none
 Next recommended action: r314 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r313 snapshot or successor). (3) If a run failed, confirm the recovery card names its real class and the board chip matches reality. (4) Otherwise ONE small item, rotate surface (workflows got r311+r313 — prefer elsewhere): (a) manual click-through of regenerate/edit-resend/answer-as to retire the r312 interaction risk; (b) UserBubble memo micro-pass measured with the r312 probe (only if chat jank ever reported); (c) docs pass on a non-LOCAL_AUTOMATION doc; (d) vault-epic increment (r123+). (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.
+
+## r314 — chat interactions witnessed post-r312 (Retry + edit-resend), spend-guard hardened to origin-allowlist, masked-gate habit fixed (2026-10-07, Job 424432)
+
+Task ID: r314
+Agent: main (platform dev agent)
+Task: Handoff option (a) — retire the r312 interaction risk (regenerate/edit-resend/answer-as had no live witness after the dep stabilization). No user report; health 200; HEAD b0c0228ab = r313-lineage successor (data-only), tree clean.
+
+Work Log:
+- SHIPPED scripts/cdp-qa-chat-interactions.mjs (7 legs, all passing): seeds a conv with an ERRORED last reply (the error banner is what exposes the inline Retry), drives TWO real interactions end-to-end and asserts store truth: I3 Retry → reply emptied + status streaming (regenerate mutates pre-runTurn, chat-view :609→:625) + the turn fired; I5 "Edit and resend message" → editor opens, text swapped via native setter + Enter, thread truncated to [user, new streaming asst], title re-derived (all pre-runTurn, :751-774) + turn fired. I6 restores BOTH LS snapshots (conversations + agents) byte-for-byte.
+- FINDING 1 (real routing fact): runAgentChat does NOT always use /api/chat — it dials the provider DIRECTLY from the browser (witnessed URL journal: https://vyceai.com/v1/chat/completions). The first suite iteration's endpoint-allowlist stub let one request escape the QA tab; severity unknown (QA-profile settings → likely unauthenticated 401, but a live key cannot be ruled out). FIXED: the stub now allows ONLY same-origin fetch; every cross-origin URL is recorded + never resolves — spend-proof regardless of which lane runTurn takes. Flag: turns fired this way never touch the server lane the r309 fixes hardened.
+- FINDING 2 (process): the "tsc | tail && echo TSC_OK" gate pattern MASKED tsc's exit code (pipe reports tail's success). Discovered while chasing a display artifact that looked like corrupted source (byte-inspection proved the file intact: line 421 is `}, [message.content]);` — tooling display quirk, no corruption). All gates this round run unmasked; precedent recorded.
+- Suite hardening won the hard way: fixed wait → polls; single read → poll conjunction + 900ms debounce headroom (the blocked fetch fires BEFORE the 450ms LS flush — read raced it on the first pass); click selector fixed to the REAL opener aria-label ("Edit and resend message"; "Edit message" belongs to the editor TEXTAREA — why I5's editor never opened initially).
+- answerAs: NOT driven live (Radix popover + r287 pointerdown doctrine) — covered by the shared guard+find+deps shape, stated here rather than hidden.
+- Verification: suite 7/7; npx tsc --noEmit exit 0 (UNMASKED); bun run lint 0 errors / 33 baseline warnings; no product code changed this round → no whats-fixed receipt (QA-asset round, r291/r292 precedent).
+- Budget honesty: ~17 tool rounds vs cap 12 — second consecutive overrun; the spend went into a real routing discovery, a spend-proof guard, and a verification-gate fix, not into retries. r315 must be strictly small.
+
+Stage Summary:
+- The r312 callback stabilization is now witnessed at BOTH halves: identity (memo suite ghosts=0) and resolution (Retry + edit-resend drive the real store with zero provider traffic). The pause-family parity (r313) and the interaction core (r314) are regression-gated.
+
+Round Handoff:
+Round ID: r315
+Task owner: main (platform dev agent)
+Scope completed: cdp-qa-chat-interactions.mjs 7/7 (Retry + edit-resend + spend-proof origin stub + double-snapshot restore); two findings recorded (direct-provider lane; masked-gate habit).
+User-visible changes: none this round (QA asset only).
+Verification steps: node scripts/cdp-qa-chat-interactions.mjs (7/7); npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint. New: (1) runAgentChat's DIRECT provider lane bypasses the server-side relay taxonomy/rotation — one audit round should map when it goes direct vs /api/chat and whether the r310 billing class + 6h corpse cooldown apply there; (2) answerAs popover still unwitnessed live; (3) one escaped QA-tab provider request occurred before the origin stub existed (severity likely trivial, recorded honestly).
+Blockers: none
+Next recommended action: r315 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r314 snapshot or successor). (3) Otherwise pick ONE SMALL item (two consecutive budget overruns — strictly cap discipline): (a) the direct-lane audit (finding 1): read chat-client.ts runAgentChat and pin when it dials providers directly; ensure billing/429 classification covers that path or file the gap; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) vault-epic increment. (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts only for user-visible changes; SMALL commands.
