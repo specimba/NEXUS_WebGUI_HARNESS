@@ -390,6 +390,14 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     tagline: "OpenAI-compatible text API with a live model roster — free keys, no card.",
     baseUrl: "https://text.pollinations.ai/openai",
     keyPrefix: "sk_",
+    // r323: the flag every noKey consumer was reading (relay chain r318 tier-2
+    // pass, server executor r319 dialNoKeyFallback, provider-rotation nextRota-
+    // tion, llm-config usability) had ZERO setters — pollinations, the documented
+    // keyless provider, never set it, so both rotation passes iterated an EMPTY
+    // lane list (the real root cause of the live "⇄0 relay" even after r318).
+    // Keyless anonymous tier is real but shares a global IP budget; when it
+    // saturates, the shared 429 cooldown memory sinks the lane like any other.
+    noKey: true,
     signupUrl: "https://enter.pollinations.ai",
     liveCatalog: "pollinations",
     limits:

@@ -343,6 +343,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Settings → Automation vault → Test key still verifies as before (200 path); a cross-site caller now gets a 403 “consume rejects cross-site browser calls (CSRF gate)” instead of the key",
   },
+  {
+    round: "r323",
+    title: "The free-lane rotation actually works now — the noKey flag it read had never been set",
+    detail:
+      "Honest root-cause confession: the r318 relay-chain widening and the r319 server fallback both filtered the provider registry by a “noKey” flag that ZERO providers ever set — pollinations, the documented keyless provider, included. Both passes silently rotated an empty lane list, so “⇄0 relay” would have persisted even after a reload. Pollinations now carries the flag: a runnable probe proves the chain grows the tier-2 no-key hop (keyless dial, apiKey undefined) and registry rotation reaches it, and the header picker gains Pollinations as a ready keyless pick (anonymous tier is real but shares a global IP budget — the 429 cooldown memory sinks the lane when it saturates).",
+    lookFor:
+      "Settings → provider gallery shows Pollinations as “No key needed — start chatting”; after a Vyce 429 (post-reload), the parked card's failed-dial witness should show a Pollinations dial among the lanes",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

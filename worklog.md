@@ -8614,3 +8614,32 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified (user's Test key button is the witness); git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); free-lane quality unknown until first live rotation; USER OWES the one hard reload (Ctrl+Shift+R) — r318/319/320 client fixes stay inert in a stale bundle. New: docs/free-provider-matrix.md may also predate the r318 noKey-lane chain widening (not audited this round — next docs candidate).
 Blockers: none
 Next recommended action: r323 — (1) FIRST read any user report: the parked card's "✗N failed dials (lane ×count)" list after the user's reload is the verdict on the rotation family. (2) Verify HEAD lineage (expect the r322 snapshot or successor). (3) ONE small item: (a) docs/free-provider-matrix.md drift audit vs the r318 chain widening; (b) perf or UI polish away from workflows/vault; (c) ResolvedDial providerId threading (rotation family — last resort).
+
+## r323 — THE rotation-family root cause: noKey flag had zero setters (2026-10-07, Job 424432)
+
+Task ID: r323
+Agent: main (platform dev agent)
+Task: r322 handoff (a) — free-provider-matrix.md drift audit. Deviated honestly: while grepping the registry for the doc audit, found the flag the matrix described does not exist in code. The app being visibly broken-in-a-new-way outranks the doc queue.
+
+Work Log:
+- CRITICAL FIND: `noKey` is READ in 14+ places (relay.ts:564 r318 chain pass, automation-executor.ts:152 r319 dialNoKeyFallback, provider-rotation.ts:104 nextRotation, llm-config.ts usability, gallery/wizard/shell readiness) but SET by ZERO providers — the FreeProvider interface declared it (line 28) and nothing ever assigned it. Both rotation passes therefore iterated an EMPTY lane list since ship: r318 and r319 were silent no-ops, and "⇄0 relay" would have persisted even after the user's hard reload. The r318/r319 verification gaps that hid this: tsc validates shapes not presence; the executor suite is DB-driven; the CDP suite seeds the cooling line, not chain contents.
+- SHIPPED: `noKey: true` on pollinations — the documented keyless provider (its own guide: "Keyless anonymous access works"; matrix doc line 226 calls it the keyless entry) — with the honest caveat in-code: the anonymous tier shares a global IP budget and the shared 429 cooldown memory sinks the lane when it saturates. OrcaRouter deliberately NOT flagged: the matrix calls its free pool keyless too, but the user's live orca-credit constraint makes that surface sensitive — flagged only after a live keyless probe (queued, not guessed).
+- PROOF (the thing r318 lacked): new scripts/qa-nokey-chain.ts (bun) — with an empty vault: chain_len=2 (was effectively 1), pollinations:openai-fast:tier2 present with apiKey undefined, nextRotation(vyce) → pollinations. PASS. Kept as a standing assertion.
+- User-visible side effects (all previously-designed-but-dead UI now live for pollinations): gallery "No key needed — start chatting", picker readiness without a key, wizard keyless activate.
+- Receipt r323 appended (confession wording — the r318 card promised behavior that the flag gap made inert; this receipt is the correction).
+- Verification: npx tsc --noEmit 0 (unmasked); bun run lint 0 errors/33 warnings (exact baseline); bun scripts/qa-automation-executor.ts 26/26; node scripts/cdp-qa-chat-interactions.mjs 8/8; qa-nokey-chain PASS.
+- Budget: 10 tool rounds.
+
+Stage Summary:
+- The rotation family (r305–r323) is now genuinely end-to-end: cooldown memory, cooling status lines, registry rotation, relay chain no-key hop, and server-lane fallback all share a registry whose noKey lanes actually exist. The user's post-reload parked card is now a fair test: the ✗N failed-dials witness should show a Pollinations dial among the lanes.
+
+Round Handoff:
+Round ID: r324
+Task owner: main (platform dev agent)
+Scope completed: noKey flag wired to pollinations + qa-nokey-chain.ts standing probe + receipt r323.
+User-visible changes: pollinations is a ready keyless pick everywhere; the relay chain and server fallback finally have a real free lane; whats-fixed r323 card.
+Verification steps: bun scripts/qa-nokey-chain.ts (PASS); bun scripts/qa-automation-executor.ts (26/26); node scripts/cdp-qa-chat-interactions.mjs (8/8); npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); USER OWES the one hard reload (Ctrl+Shift+R) — now doubly important: r318/319/320/323 all ship client/registry code. New: (1) pollinations anonymous tier is globally budgeted — expect it to 429 sometimes; that is the memory sinking it, not a regression; (2) orcarouter noKey status needs a live keyless probe before flagging; (3) free-provider-matrix.md audit still owed (this round's original task, superseded by the fix).
+Blockers: none
+Next recommended action: r324 — (1) FIRST read any user report: post-reload parked card with a Pollinations dial in the ✗N witness = the family works; no Pollinations anywhere = report immediately. (2) Verify HEAD lineage (expect the r323 snapshot or successor). (3) ONE small item: (a) live keyless probe of orcarouter's free pool (one curl) → flag or not, with the evidence recorded in free-provider-matrix.md (folds the owed doc audit in); (b) else vault-epic/ResolvedDial per prior handoffs.
