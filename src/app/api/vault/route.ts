@@ -9,12 +9,41 @@ export const dynamic = "force-dynamic";
 // touches this. Local-first: the key lives only in this machine's SQLite DB,
 // nothing is telemetered, and GET never returns the raw key — only a masked
 // preview. POST upserts a slot; DELETE removes it.
+//
+// r325: the whole route now sits behind the house r26.1 CSRF double-gate
+// (same local copy as consume r321, tools/execute, tracker). POST/DELETE are
+// state-changing — a drive-by page could overwrite or sabotage stored slots
+// with a preflight-free simple request — and GET joins the gate for family
+// symmetry (masked previews are not for foreign pages either). Non-browser
+// callers (headless scheduler, CLI, QA scripts — no Origin/Sec-Fetch-Site
+// headers) pass unchanged.
 
 const MASK_MIN = 12;
 const maskKey = (k: string) =>
   k.length > MASK_MIN ? `${k.slice(0, 4)}••••${k.slice(-4)}` : "••••••••";
 
-export async function GET() {
+// r321 double-gate applied route-wide (r325; consume/tools-execute/tracker
+// carry the same local copy): (1) custom-header gate — foreign pages cannot
+// attach "x-praison-csrf" without a granted preflight (never granted), so a
+// text/plain simple-request bypass dies here; (2) fetch-metadata gate —
+// Sec-Fetch-Site "cross-site" rejected. No browser headers at all = CLI /
+// scheduler pass.
+function csrfOk(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  const origin = req.headers.get("origin");
+  if (site === null && origin === null) return true; // CLI / server-to-server
+  if (req.headers.get("x-praison-csrf") !== "1") return false; // preflight gate
+  return site !== "cross-site";
+}
+
+const csrfReject = () =>
+  NextResponse.json(
+    { ok: false, error: "vault rejects cross-site browser calls (CSRF gate)" },
+    { status: 403 },
+  );
+
+export async function GET(req: Request) {
+  if (!csrfOk(req)) return csrfReject();
   try {
     const rows = await db.automationVault.findMany({ orderBy: { provider: "asc" } });
     return NextResponse.json({
@@ -37,6 +66,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!csrfOk(req)) return csrfReject();
   try {
     const body = (await req.json()) as { provider?: string; key?: string; label?: string };
     const provider = (body.provider ?? "builtin").trim();
@@ -67,6 +97,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  if (!csrfOk(req)) return csrfReject();
   try {
     const provider = new URL(req.url).searchParams.get("provider") ?? "builtin";
     await db.automationVault.deleteMany({ where: { provider } });

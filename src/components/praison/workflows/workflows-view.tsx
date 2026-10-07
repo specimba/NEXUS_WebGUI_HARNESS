@@ -966,7 +966,7 @@ export function WorkflowsView() {
   React.useEffect(() => {
     if (activeSchedules === 0) return;
     let alive = true;
-    fetch("/api/vault")
+    fetch("/api/vault", { headers: { "x-praison-csrf": "1" } })
       .then((r) => r.json())
       .then((j: { vault?: { provider: string }[] }) => {
         if (alive)

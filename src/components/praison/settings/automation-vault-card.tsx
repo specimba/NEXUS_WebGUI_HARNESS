@@ -87,7 +87,10 @@ export function AutomationVaultCard() {
       // cache:"no-store" (r218): this endpoint's answer must never come from
       // the browser's HTTP cache — a cached empty vault rendered a LIE
       // ("no key stored") while the DB held the row.
-      const res = await fetch("/api/vault", { cache: "no-store" });
+      const res = await fetch("/api/vault", {
+        cache: "no-store",
+        headers: { "x-praison-csrf": "1" },
+      });
       const json = (await res.json()) as { vault?: VaultSlot[] };
       setSlots(Array.isArray(json.vault) ? json.vault : []);
     } catch {
@@ -155,7 +158,7 @@ export function AutomationVaultCard() {
     try {
       const res = await fetch("/api/vault", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-praison-csrf": "1" },
         body: JSON.stringify({ provider: "builtin", key: key.trim() }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
@@ -184,7 +187,10 @@ export function AutomationVaultCard() {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/vault?provider=builtin", { method: "DELETE" });
+      const res = await fetch("/api/vault?provider=builtin", {
+        method: "DELETE",
+        headers: { "x-praison-csrf": "1" },
+      });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       maskNow();
@@ -211,7 +217,7 @@ export function AutomationVaultCard() {
     try {
       const res = await fetch("/api/vault", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-praison-csrf": "1" },
         body: JSON.stringify({ provider: laneProvider, key: laneKey.trim() }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
@@ -234,6 +240,7 @@ export function AutomationVaultCard() {
     try {
       const res = await fetch(`/api/vault?provider=${encodeURIComponent(provider)}`, {
         method: "DELETE",
+        headers: { "x-praison-csrf": "1" },
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
