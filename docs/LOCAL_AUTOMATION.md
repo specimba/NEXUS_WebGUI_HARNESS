@@ -107,7 +107,7 @@ and closed-tab runs dial with your quota instead of the shared lane.
 | `POST /api/automation/run-now` | UI ("Run on server") | Sets `nextRunAt = now` and re-enables the row; the claim loop claims it within ~30s when it is driving. |
 | `POST /api/vault` | Settings UI | Upsert `{ provider, key, label }` → masked ack. **CSRF double-gate (r325):** browser callers need `x-praison-csrf: 1` + non-cross-site `Sec-Fetch-Site`, else `403` "vault rejects cross-site browser calls (CSRF gate)" — without the gate a drive-by page could overwrite a stored slot with a preflight-free simple request. Non-browser callers (scheduler, CLI, QA scripts) pass unchanged. |
 | `GET /api/vault` | Settings UI + Workflows lane chip | Masked slots only — raw key never leaves the DB except through `consume`. **CSRF double-gate (r325)** — same contract as the `POST` row: in-app callers (vault card load, Workflows readiness poll) send the header; foreign pages get `403`. |
-| `DELETE /api/vault?provider=…` | Settings UI | Removes the slot; headless runs fall back to the shared lane automatically. **CSRF double-gate (r325)** — same contract as the `POST` row (a drive-by DELETE is slot sabotage). |
+| `DELETE /api/vault?provider=…` | Settings UI | Removes the slot; with no resolvable slot left, closed-tab runs stay honestly queued (`no-vault-key` — there is **no** shared-lane fallback, see the server-lane section above; r328 corrected the stale r109-era "falls back to the shared lane" wording in this row). **CSRF double-gate (r325)** — same contract as the `POST` row (a drive-by DELETE is slot sabotage). |
 | `POST /api/vault/consume` | claim loop (and the Test key button) | `{ provider }` → `{ key, updatedAt }` — the raw key. **Localhost-only guard (enforced since r138):** non-local `Host`, non-local `x-forwarded-host`, non-loopback `x-forwarded-for` / `x-real-ip`, or any `forwarded` header ⇒ `403` before any key lookup — both legit callers dial localhost, so both pass. **Browser drive-by gate (r321):** browser callers must also pass the house CSRF double-gate — `x-praison-csrf: 1` (a foreign page cannot attach it without a preflight that is never granted) and `Sec-Fetch-Site: cross-site` rejected ⇒ `403` with the reason "consume rejects cross-site browser calls (CSRF gate)"; a `text/plain` body that skips preflight is caught by the header gate. The claim loop and CLI send no browser headers and pass untouched. **Trust model:** the key is already plaintext in this machine's SQLite DB, so localhost HTTP adds no exposure while giving the service a stable, DB-agnostic contract. Never logged, never telemetered. The header guard is defense-in-depth, not auth — a LAN client can still spoof `Host`, so if this app is ever deliberately exposed beyond localhost, it **must** gain real auth first. |
 
 - **Cache discipline (r218):** every `/api/*` response ships `Cache-Control: no-store, max-age=0, must-revalidate` (blanket header via `next.config.ts`) — none of these endpoints is cacheable-by-design. Browsers heuristically caching an empty vault answer was observed rendering a false "No registry-provider key stored" state while the DB held the row (r218 QA); the vault card also refetches whenever it becomes visible (r218), so tab panels that are CSS-hidden rather than unmounted can never show a stale vault.
@@ -153,9 +153,44 @@ and closed-tab runs dial with your quota instead of the shared lane.
   claiming it renders the amber strip in the autopilot panel (re-enable the
   schedule, store a vault key, or use "Run on server").
 
+## QA suite contract (vault surfaces, r326/r327)
+
+The vault-touching CDP/bun suites (`scripts/cdp-qa-vault-*.mjs`,
+`scripts/qa-automation-lane.ts`) run on a schedule, so their contract with
+real user data is explicit and enforced by `scripts/lib/qa-vault-guard.mjs`:
+
+- **The incident (r326, 2026-10-07):** a suite upserted a throwaway key over
+  the user's real slot (POST is an upsert) and deleted the slot in cleanup —
+  the vault held real data while the suite assumed an empty vault. The guard
+  was born from that wipe.
+- **Coexistence mode (`initQaIsolation` / `finishQaIsolation`):** a suite
+  that seeds slots writes ONLY providers prefixed `qa-` — a QA-reserved
+  namespace. The API makes this airtight: POST upserts keyed by the exact
+  provider string, DELETE is an exact-provider match, so a `qa-*` slot can
+  never overwrite or remove a real slot; `consume` resolves any stored
+  provider, so per-slot Test/Reveal still round-trip end-to-end. The init
+  fail-closes (exit 2) if the masked vault GET is unreadable, reaps stale
+  `qa-*` slots from crashed runs, and proceeds alongside real slots
+  (logging them honestly). Converted so far: `vault-slot-affordances`
+  (proven live r327 — 6/6 with a real slot present, real slot
+  byte-identical after the run).
+- **Strict mode (`assertVaultEmptyOrAbort`):** suites whose assertions read
+  GLOBAL vault state (the Workflows lane-chip suite) or that still seed
+  un-namespaced slots (the builtin-box suites, `qa-automation-lane`) abort
+  with exit 2 before any browser boot when any
+  slot exists — they skip rather than risk a wipe. Converted r328:
+  `vault-slot-residue`. `qa-automation-lane`'s live section needs a REAL
+  resolvable registry slot by design (a `qa-*` slot is unresolvable and
+  would change what it tests) — it keeps the strict abort until a
+  snapshot-restore design is proven. The builtin suites need namespace
+  conversion or an honest builtin-only abort.
+- **Never assert "vault left empty" in coexistence mode** — the honest
+  post-run assertion is "no `qa-*` residue"; real slots are counted and
+  reported untouched.
+
 ---
 
-Fact-checked against code as of r322 (2026-10-07), re-stamped after the
+Fact-checked against code as of r328 (2026-10-07; previously r322), re-stamped after the
 r300–r321 drift window (the 429-rotation doctrine rounds). Re-verified this pass: `SYNC_INTERVAL_MS = 60_000`
 (bridge), `HEARTBEAT_STALE_MS = 120_000` (executor + sync route),
 `GET /api/automation/sync` shape **verified live** (`serverDriving` /
@@ -181,7 +216,11 @@ r320 failed-dial lane witness, and the r321 browser drive-by gate are now
 documented; the sync GET shape was re-verified live
 (`serverDriving` / `lastSeenAt` / `registry` / `runs` / `executorLane` with
 `ready, reason, providerLabel, maskedKey, slotProvider, slotCount` /
-`vaultLane`). Not re-verified live this pass: the vault
+`vaultLane`). Corrected this pass (r328): the DELETE /api/vault row's stale
+r109-era "headless runs fall back to the shared lane" claim (the fallback is
+gone — no-slot runs stay honestly queued), plus a new QA-suite contract
+section documenting the r326 incident and the r327 two-mode guard
+(strict vs `qa-*` coexistence). Not re-verified live this pass: the vault
 `consume` round-trip against a stored key (the keyless dev profile can only
 witness the no-key lane) and the prune-on-push registry path (no enabled
 schedules in the dev registry). Future rounds changing these endpoints

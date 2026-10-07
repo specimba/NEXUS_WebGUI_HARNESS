@@ -9,9 +9,9 @@ import { ensureChrome } from "./cdp-ensure-chrome.mjs";
 //   F1  plant a throwaway LANE key via POST /api/vault (API lane)
 //   F2  reload → Settings → Vault tab → the row RENDERS (positive control —
 //       without it, any later "row gone" is vacuous)
-//   F3  DELETE the slot → reload → row GONE from the card + vault GET == []
-//       (no residue, both sides verified)
-//   F4  final API clean (builtin too) → vault left byte-clean
+//   F3  DELETE the qa slot → reload → row GONE from the card
+//   F4  final API clean — no qa-* residue (r328: the suite seeds ONLY a
+//       qa-* namespaced slot; real user slots coexist untouched)
 // Compile-tolerance: 90s CDP eval budget, 60s gotoSettings loop, 30s render
 // waits — the settings view cold-compiles in >20s after any code edit, which
 // is exactly what killed the old E6.
@@ -131,12 +131,15 @@ async function reloadAndOpenVault(ws) {
 }
 
 async function main() {
-  // r326 incident guard: a populated user vault means REAL keys — abort
-  // instead of upserting/deleting over them (the 2026-10-07 Vyce wipe).
-  await (await import("./lib/qa-vault-guard.mjs")).assertVaultEmptyOrAbort(BASE, "vault-slot-residue");
+  // r328 namespace isolation (upgrades the r326 abort guard): this suite
+  // writes/deletes ONLY "qa-*" slots — real user slots coexist untouched.
+  // Fail-closed if the vault is unreadable; stale qa-* slots are reaped.
+  const qaGuard = await import("./lib/qa-vault-guard.mjs");
+  await qaGuard.initQaIsolation(BASE, "vault-slot-residue");
 
-  // F0 — idempotent pre-clean (both providers the suite touches)
-  await fetch(`${BASE}/api/vault?provider=builtin`, { method: "DELETE" });
+  // F0 (r328 rewrite): the old builtin pre-clean deleted any REAL builtin
+  // slot to "keep the slate clean" — a wipe vector, removed. Namespace
+  // isolation replaces it: initQaIsolation above already reaped stale qa-*.
 
   // Browser boot (r132 pattern)
   await ensureChrome();
@@ -160,12 +163,13 @@ async function main() {
         `(() => { const s = document.querySelector('#lane-provider');
            return s ? s.value : ""; })()`
       )) || "vyce";
+    const qaProvider = `qa-${providerId}`; // r328: namespaced — never a real slot id
     const storeRes = await fetch(`${BASE}/api/vault`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ provider: providerId, key: QA_KEY }),
+      body: JSON.stringify({ provider: qaProvider, key: QA_KEY }),
     });
-    check("F1 plant throwaway lane key (API)", storeRes.ok, `provider=${providerId}`);
+    check("F1 plant throwaway lane key (API)", storeRes.ok, `provider=${qaProvider}`);
 
     // F2 — POSITIVE CONTROL: after reload the row RENDERS while the key exists
     const mountedAgain = await reloadAndOpenVault(ws);
@@ -176,26 +180,27 @@ async function main() {
     check("F2 row renders while key exists (positive control)", rowVisible, `name=${rowName}`);
     if (rowVisible) await shot(ws, "F2-residue-row-visible");
 
-    // F3 — DELETE → reload → row GONE + vault API empty (both sides)
-    const delRes = await fetch(`${BASE}/api/vault?provider=${encodeURIComponent(providerId)}`, {
+    // F3 — DELETE → reload → row GONE (the qa slot is gone from card + API)
+    const delRes = await fetch(`${BASE}/api/vault?provider=${encodeURIComponent(qaProvider)}`, {
       method: "DELETE",
     });
     const goneMounted = await reloadAndOpenVault(ws);
     const rowGone = goneMounted && (await waitFor(ws, `!Boolean(${rowExpr})`, 30_000));
-    const finalVault = await (await fetch(`${BASE}/api/vault`)).json();
-    const vaultEmpty = Array.isArray(finalVault?.vault) && finalVault.vault.length === 0;
     check(
-      "F3 delete → row gone from card + vault API empty",
-      delRes.ok && goneMounted && rowGone && vaultEmpty,
-      `del=${delRes.ok} mounted=${goneMounted} rowGone=${rowGone} vaultEmpty=${vaultEmpty}`
+      "F3 delete → row gone from card + qa slot deleted",
+      delRes.ok && goneMounted && rowGone,
+      `del=${delRes.ok} mounted=${goneMounted} rowGone=${rowGone}`
     );
     if (goneMounted) await shot(ws, "F3-residue-row-gone");
 
-    // F4 — leave the slate byte-clean (builtin too, round-start state)
-    await fetch(`${BASE}/api/vault?provider=builtin`, { method: "DELETE" });
-    const final2 = await (await fetch(`${BASE}/api/vault`)).json();
-    const clean = Array.isArray(final2?.vault) && final2.vault.length === 0;
-    check("F4 slate byte-clean at exit", clean, `vaultEmpty=${clean}`);
+    // F4 (r328) — final API clean: reap any surviving qa-* slot and assert
+    // the NAMESPACE is clean; the vault may hold the user's real slots.
+    const fin = await qaGuard.finishQaIsolation(BASE, "vault-slot-residue");
+    check(
+      "F4 no qa-* residue at exit (real slots untouched)",
+      fin.ok,
+      `qaResidue=${fin.residue} realSlots=${fin.realCount}`
+    );
   } finally {
     await wsSend(ws, "Page.close").catch(() => {});
   }
