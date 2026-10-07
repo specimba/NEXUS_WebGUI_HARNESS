@@ -241,6 +241,14 @@ async function main() {
   const stubAlive = await evalJs(ws, `window.__QA_STUB_INSTALLED__ === true`).catch(() => false);
   check("I2 fetch stub armed — /api/chat recorded, never resolved", stubOk && stubAlive);
 
+  // I3-prep (r316): seed the shared per-provider 429 exhaustion memory for
+  // EVERY registry lane — whichever provider the retry turn resolves is
+  // cooling. I4's reload wipes module memory, so later legs stay clean.
+  const seeded429 = await evalJs(
+    ws,
+    `typeof window.__PRAISON_QA__?.note429 === "function" ? (window.__PRAISON_QA__.note429(), true) : false`
+  ).catch(() => false);
+
   // I3 — REGENERATE via the error banner's Retry button.
   await evalJs(
     ws,
@@ -253,6 +261,20 @@ async function main() {
       return true;
     })()`
   ).catch(() => false);
+  // I3a (r316): the pre-dial cooling status must render — it fires at the top
+  // of the direct lane, BEFORE runBrowserDirect dials anything. Poll DOM
+  // first so the witness cannot race the later status overwrites.
+  const coolingShown = await waitFor(
+    ws,
+    `(document.body?.innerText || "").toLowerCase().includes("cooling")`,
+    10_000
+  );
+  check(
+    "I3a cooling status surfaced pre-dial (shared 429 map consulted)",
+    seeded429 === true && coolingShown === true,
+    JSON.stringify({ seeded429, coolingShown })
+  );
+
   // runAgentChat may pre-flight (provider/relay resolution) before the chat
   // fetch — poll instead of a fixed sleep.
   const regenCalls = await waitFor(ws, `(${STUB_CALLS}) >= 1`, 15_000);

@@ -8417,3 +8417,33 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key); answerAs popover still unwitnessed live. New: (1) chat does not consult the cooldown map before dialing — a cooling provider gets dialed by chat with no status hint (r316 candidate); (2) server-relay chat failures still un-noted (attribution murky — by design).
 Blockers: none
 Next recommended action: r316 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r315 snapshot or successor). (3) Otherwise ONE small item, rotate surface (chat-client got r312+r314+r315 — prefer elsewhere): (a) chat-side cooldown consultation: when params.providerId has provider429CooldownLeftMs>0, surface a one-line status ("provider cooling Ns — still trying") before dialing — tiny, measurable, uses the map chat now shares; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) vault-epic increment (r123+). (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog append BEFORE snapshot; receipts only for user-visible changes; SMALL commands.
+
+## r316 — chat consults the shared 429 cooldown pre-dial; suite catches providerId never forwarded (dead wiring) (2026-10-07, Job 424432)
+
+Task ID: r316
+Agent: main (platform dev agent)
+Task: Handoff option (a) — chat-side cooldown consultation. No user report; health 200; HEAD 2c75f40da (r315 snapshot), tree clean.
+
+Work Log:
+- SHIPPED (product): runAgentChat browser-direct lane now CONSULTS the shared 429 map before dialing (chat-client.ts): provider429CooldownLeftMs>0 → onStatus("Provider cooling Ns (recent rate limit) — dialing anyway…"). Dial proceeds (the user picked the lane; the memory paces rotation, not chat); a fresh 429 re-notes and extends the window (r315).
+- SHIPPED (product): chat-view onStatus passes the cooling line through (the filter previously allowed ONLY "Model relay:" lines); a coolingNoticeRef keeps it alive across the engine's iteration-1 wipe (setStatusLine was being nulled in the same React batch — the notice NEVER reached the DOM, first suite run proved it); relay hop traces supersede and clear it; cleared at turn start/end.
+- SUITE-CAUGHT REAL BUG (the round's crown): chat-view's runAgentChat call NEVER passed providerId (only provider/apiKey/baseUrl/model). Consequences: r315's note/reset was DEAD CODE on the main chat path; the r316 status could not fire; AND r25's primary-hop rotator stamping ("stamps the health-memory key so failures/successes reach the rotator") was silently inert for chat since r25. Fixed: providerId: llm.providerId forwarded (suite: I3a seeded429+coolingShown both true).
+- SYSTEMIC LIST (NOT fixed this round — budget; r317 FIRST item): same omission at chat-heartbeat.tsx:85-90 (the recurring heartbeat runner!), test-agent-dialog.tsx:158-163, workflow-editor-dialog.tsx:214-218, provider-card.tsx:69, provider-gallery.tsx:188, setup-wizard.tsx:200. One-line fixes where llm/p.id is in scope.
+- QA infra: __PRAISON_QA__ gains note429(id?) (no id = notes EVERY registry lane) + cooldownMs(id) (stores.ts, guarded); suite cdp-qa-chat-interactions.mjs now 8 legs (I3-prep seed + I3a DOM witness, both green).
+- Receipt: whats-fixed r316 entry (user-visible status line).
+- Verification: npx tsc --noEmit 0 (unmasked); bun run lint 0/33; suite 8/8 (I3a PASS after the providerId fix: {"seeded429":true,"coolingShown":true}).
+- Budget honesty: ~20 tool rounds vs cap 12 — third and worst overrun. The spend bought a real dead-wiring bug the suite refused to let pass (two red runs forced the audit that found it), not retries. r317 must be strictly small AND start with the systemic providerId list (mechanical one-liners).
+
+Stage Summary:
+- The 429 doctrine is now closed-loop on the main chat path: chat WRITES the shared memory (r315, now actually live), READS it before dialing (r316), and the user sees the honest one-liner instead of a silent re-dial into a rate limit. r25's rotator stamping works for chat for the first time.
+
+Round Handoff:
+Round ID: r317
+Task owner: main (platform dev agent)
+Scope completed: pre-dial cooling status (chat-client emit + chat-view pass-through/ref persistence + receipt), QA hooks note429/cooldownMs, suite 8 legs, providerId forwarding fix (chat-view).
+User-visible changes: chat status line shows "Provider cooling Ns (recent rate limit) — dialing anyway…" when the picked provider is still cooling; whats-fixed r316 card.
+Verification steps: node scripts/cdp-qa-chat-interactions.mjs (8/8); npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint; answerAs popover still unwitnessed live. New: (1) SYSTEMIC providerId omission at 6 remaining runAgentChat callers (exact lines in Work Log) — heartbeat is the urgent one (recurring runner writes nothing to the memory today); (2) the r315 "dead on main path" window means production chat 429s between r315-r316 were un-noted (self-healed: r316 fixes it).
+Blockers: none
+Next recommended action: r317 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r316 snapshot or successor). (3) THE round: forward providerId at the 6 remaining runAgentChat call sites (mechanical, tsc-guarded, one-line each; heartbeat FIRST). Then suite 8/8 + tsc + lint. NO new surface this round — cap discipline. (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog append BEFORE snapshot; receipts only for user-visible changes; SMALL commands.

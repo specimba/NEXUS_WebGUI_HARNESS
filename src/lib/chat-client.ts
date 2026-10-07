@@ -8,7 +8,11 @@ import {
   type RelayWireHop,
 } from "./agent-engine";
 import { buildToolDefs, httpToolExecutor } from "./tools-defs";
-import { noteProvider429, resetProvider429 } from "./provider-rotation";
+import {
+  noteProvider429,
+  provider429CooldownLeftMs,
+  resetProvider429,
+} from "./provider-rotation";
 
 // ─── Client agent runner ─────────────────────────────────────────────────────
 // TWO transports, tried in order (r23):
@@ -162,6 +166,19 @@ export async function runAgentChat(
     !params.forceServer && params.provider === "custom" && !!params.baseUrl?.trim();
 
   if (canDirect) {
+    // r316: consult the shared 429 cooldown BEFORE dialing. The user picked
+    // this provider, so the dial proceeds — but the status line says
+    // honestly, once, that the lane is cooling from a proven recent rate
+    // limit (scheduled workflow steps rotate off it meanwhile; a fresh 429
+    // here re-notes the lane and extends the window, r315).
+    if (params.providerId && params.providerId !== "auto") {
+      const coolingMs = provider429CooldownLeftMs(params.providerId);
+      if (coolingMs > 0) {
+        h.onStatus?.(
+          `Provider cooling ${Math.ceil(coolingMs / 1000)}s (recent rate limit) — dialing anyway…`
+        );
+      }
+    }
     let sawTokens = false;
     try {
       const direct = await runBrowserDirect(params, h, () => {

@@ -103,6 +103,11 @@ export function ChatView() {
   /** Sync mirror of `streaming` — readable inside async callbacks without stale closures. */
   const streamingRef = React.useRef(false);
   const [statusLine, setStatusLine] = React.useState<string | null>(null);
+  // r316: the pre-dial cooling notice survives the engine's iteration-1 wipe
+  // (onIteration used to null the shared slot in the same React batch, so the
+  // notice never reached the DOM). Cleared at turn start/end; a relay hop
+  // trace supersedes it.
+  const coolingNoticeRef = React.useRef<string | null>(null);
   const [showJump, setShowJump] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [scrolledDown, setScrolledDown] = React.useState(false);
@@ -247,6 +252,7 @@ export function ChatView() {
       streamingRef.current = true;
       useUiStore.getState().setBusy(true);
       setStatusLine(null);
+      coolingNoticeRef.current = null;
       setShowJump(false);
       isNearBottomRef.current = true;
       draftRef.current = "";
@@ -279,6 +285,11 @@ export function ChatView() {
             apiKey: llm.apiKey,
             baseUrl: llm.baseUrl,
             model: llm.model,
+            // r316 fix: providerId was never forwarded from the chat view —
+            // the r315 shared-429 note/reset, the r316 pre-dial cooling
+            // status, AND the r25 primary-hop rotator stamping were all
+            // silently dead on the main chat path (suite-caught).
+            providerId: llm.providerId,
             temperature: selectedAgent.temperature,
             maxIterations: selectedAgent.maxIterations,
             system:
@@ -317,7 +328,8 @@ export function ChatView() {
                 ms: r.ms,
               });
             },
-            onIteration: (n) => setStatusLine(n > 1 ? `iteration ${n}` : null),
+            onIteration: (n) =>
+              setStatusLine(n > 1 ? `iteration ${n}` : coolingNoticeRef.current),
             onReceipt: (r) => {
               receipt = r;
             },
@@ -328,8 +340,15 @@ export function ChatView() {
               // classified from the FULL upstream error) overrides the
               // 90-char display-text guess.
               if (/Model relay:/i.test(m)) {
+                coolingNoticeRef.current = null;
                 recordRelayStatusLine(m);
                 setStatusLine(stripRelayMarkers(m));
+              } else if (/^provider cooling/i.test(m)) {
+                // r316: the shared-429-map verdict from runAgentChat — the
+                // one transport status that is honest BEFORE the dial (the
+                // lane is provably cooling from a recent rate limit).
+                coolingNoticeRef.current = m;
+                setStatusLine(m);
               }
             },
           }
@@ -413,6 +432,7 @@ export function ChatView() {
         useUiStore.getState().setBusy(false);
         setStreaming(false);
         setStatusLine(null);
+        coolingNoticeRef.current = null;
       }
     },
     []

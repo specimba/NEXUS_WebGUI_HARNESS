@@ -303,6 +303,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows → a schedule card you stopped shows the slate “stopped · click to resume” chip; clicking it re-enables the schedule with a toast",
   },
+  {
+    round: "r316",
+    title: "Chat now tells you when a provider is still cooling from a 429",
+    detail:
+      "A 429 anywhere in the app puts that provider on a growing cooldown (60s doubling up to 15m) so scheduled workflow steps rotate off it — but chat dialed the same provider silently, so you re-hit the exact same rate limit with no hint why. The chat status line now reads the same shared cooldown map BEFORE dialing: “Provider cooling 90s (recent rate limit) — dialing anyway…”. Your pick still dials (it may succeed; the memory paces rotation, not your chat), and a fresh 429 extends the window.",
+    lookFor:
+      "Chat → send a message right after a 429: the status line above the reply shows “Provider cooling Ns …” before the provider is dialed",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

@@ -20,6 +20,8 @@ import type {
 } from "./types";
 import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS, TOOL_IDS } from "./constants";
 import { uid } from "./helpers";
+import { noteProvider429, provider429CooldownLeftMs } from "./provider-rotation";
+import { FREE_PROVIDERS } from "./providers";
 
 // ─── Debounced localStorage (avoid writing on every streamed token) ─────────
 function debouncedStorage(delay = 500): StateStorage {
@@ -399,10 +401,25 @@ if (typeof window !== "undefined") {
         times: number,
         gapMs?: number
       ) => Promise<void>;
+      note429: (providerId?: string) => boolean;
+      cooldownMs: (providerId: string) => number;
     };
   };
   if (!w.__PRAISON_QA__) {
     w.__PRAISON_QA__ = {
+      // r316: seed + read the shared per-provider 429 exhaustion memory
+      // (provider-rotation.ts) from the QA harness. note429() with no id
+      // notes EVERY registry lane, so a seeded tab is cooling no matter
+      // which provider a turn resolves. Page reloads wipe module memory.
+      note429: (providerId) => {
+        if (providerId) {
+          noteProvider429(providerId);
+          return true;
+        }
+        for (const reg of FREE_PROVIDERS) noteProvider429(reg.id);
+        return true;
+      },
+      cooldownMs: (providerId) => provider429CooldownLeftMs(providerId),
       patchBurst: (convId, msgId, times, gapMs = 10) =>
         new Promise<void>((resolve) => {
           const store = useConversationsStore;
