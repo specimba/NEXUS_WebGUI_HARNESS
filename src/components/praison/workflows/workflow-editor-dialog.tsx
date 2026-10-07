@@ -216,6 +216,8 @@ export function WorkflowEditorDialog({
         apiKey: llm.apiKey,
         baseUrl: llm.baseUrl,
         model: llm.model,
+        // r317: registry id for the shared 429 memory + rotator stamping.
+        providerId: llm.providerId,
         temperature: 0.2,
         maxIterations: 1,
         signal: controller.signal,

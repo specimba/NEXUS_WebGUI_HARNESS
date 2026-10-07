@@ -8447,3 +8447,30 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint; answerAs popover still unwitnessed live. New: (1) SYSTEMIC providerId omission at 6 remaining runAgentChat callers (exact lines in Work Log) — heartbeat is the urgent one (recurring runner writes nothing to the memory today); (2) the r315 "dead on main path" window means production chat 429s between r315-r316 were un-noted (self-healed: r316 fixes it).
 Blockers: none
 Next recommended action: r317 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r316 snapshot or successor). (3) THE round: forward providerId at the 6 remaining runAgentChat call sites (mechanical, tsc-guarded, one-line each; heartbeat FIRST). Then suite 8/8 + tsc + lint. NO new surface this round — cap discipline. (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog append BEFORE snapshot; receipts only for user-visible changes; SMALL commands.
+
+## r317 — providerId forwarded at every remaining runAgentChat caller; shared 429 memory fully live (2026-10-07, Job 424432)
+
+Task ID: r317
+Agent: main (platform dev agent)
+Task: r316 handoff — the mechanical providerId forwarding at the 6 remaining call sites. No user report; health 200; HEAD a6cf37018 (r316 snapshot), tree clean.
+
+Work Log:
+- FIXED 5 of 6 (one line each, r317 comment attached): chat-heartbeat.tsx:94 (llm.providerId — THE recurring runner; its 429s/successes now feed the shared memory and r25 stamping works for heartbeat turns for the first time), test-agent-dialog.tsx:165 (llm.providerId), workflow-editor-dialog.tsx:220 (llm.providerId — plan generation dials), provider-gallery.tsx:194 (p.id — validate() test dials), setup-wizard.tsx:206 (p.id — validateAndFinish test dials). All resolveLlm/registry objects already carried the id — it was purely a forwarding omission at the call boundary.
+- HONEST SKIP 1 of 6: provider-card.tsx:69 — the raw custom card dials settings.apiKey/baseUrl with NO registry id in scope (it is not a registry lane; nothing meaningful to note). Documented, not hidden. If raw-custom lanes ever join the memory, it needs an id scheme first (r318+ decision, not a one-liner).
+- Semantics note: test dials (gallery/wizard) now engage note/reset like any dial — a 429 from a saved-key test cools the lane (correct: proven saturation), a success clears it (correct: proven healthy); cooling status is a no-op there (no onStatus handler passed), which is fine for a dialog test button.
+- Verification: npx tsc --noEmit 0 (unmasked — also proves resolveLlm's return carries providerId); bun run lint 0 errors / 33 baseline warnings; scripts/cdp-qa-chat-interactions.mjs 8/8.
+- Budget: 5 tool rounds — cleanest round of the week (r316's overrun bought the map; this round just wired the rest).
+
+Stage Summary:
+- Every runAgentChat caller that dials a registry lane now forwards its id: chat, heartbeat, agent test dialog, workflow plan generation, gallery + wizard test dials. The r305/r306/r307 exhaustion memory and the r25 rotator stamping have no silent caller left.
+
+Round Handoff:
+Round ID: r318
+Task owner: main (platform dev agent)
+Scope completed: providerId forwarding x5 (heartbeat, test-agent-dialog, workflow-editor-dialog, provider-gallery, setup-wizard); provider-card honestly skipped (no id in scope).
+User-visible changes: none directly (memory is behavioral); heartbeat and test dials now cool/clear lanes like chat and workflows do.
+Verification steps: node scripts/cdp-qa-chat-interactions.mjs (8/8); npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key); answerAs popover still unwitnessed live; provider-card raw-custom lane un-noted (no id scheme). New: none this round.
+Blockers: none
+Next recommended action: r318 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r317 snapshot or successor). (3) Otherwise ONE small item, rotate surface (chat/rotation family got r312-r317 — prefer elsewhere): (a) vault-epic increment (r123+, untouched since before r305); (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) UserBubble memo micro-pass ONLY if chat jank is ever reported (probe exists to measure). (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog append BEFORE snapshot; receipts only for user-visible changes; SMALL commands.

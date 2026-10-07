@@ -88,6 +88,10 @@ async function fireBeat(conv: Conversation): Promise<void> {
         apiKey: llm.apiKey,
         baseUrl: llm.baseUrl,
         model: llm.model,
+        // r317: forward the registry id — heartbeat is a RECURRING runner;
+        // without it its 429s/successes never reached the shared exhaustion
+        // memory (note/reset) and r25 primary-hop stamping stayed inert.
+        providerId: llm.providerId,
         temperature: agent.temperature,
         maxIterations: agent.maxIterations,
         system: agent.instructions + buildMemoryBlock(conv.memory) + "\n\n" + HEARTBEAT_SYSTEM,

@@ -202,6 +202,8 @@ export function SetupWizard() {
         apiKey: key || undefined,
         baseUrl: providerBaseUrl(p, draftAccount.trim() || undefined),
         model,
+        // r317: registry id for the shared 429 memory + rotator stamping.
+        providerId: p.id,
         maxIterations: 1,
         messages: [{ role: "user", content: "Reply with the single word: OK" }],
       });

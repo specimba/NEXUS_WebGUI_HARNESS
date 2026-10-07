@@ -161,6 +161,8 @@ export function TestAgentDialog({
           apiKey: llm.apiKey,
           baseUrl: llm.baseUrl,
           model: llm.model,
+          // r317: registry id for the shared 429 memory + rotator stamping.
+          providerId: llm.providerId,
           temperature: agent.temperature,
           maxIterations: agent.maxIterations,
           system: agent.instructions || undefined,
