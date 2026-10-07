@@ -380,6 +380,16 @@ function RunRecoveryCard({
     run.status === "stopped" || run.status === "partial" || run.status === "blocked";
   const settings = useSettingsStore((s) => s.settings);
   const preferRelay = settings.preferRelay === true;
+  // r330 (user paste: a resumed run re-dialed Vyce/auto with ⇄0 relay): the
+  // park message promises "resume rotates to the relay lane", but the plain
+  // resume button only rotated when the global preferRelay SETTING was on —
+  // a promise the default settings broke. When the run's CURRENT failure is
+  // a transient lane death (the parkable classes), the plain resume now
+  // honors the promise and dials the relay first — the same forceServer
+  // rotation the r171 auto park-resume already applies.
+  const parkedTransient =
+    err?.kind === "rate-limit" || err?.kind === "network" || err?.kind === "timeout";
+  const resumeRotates = preferRelay || parkedTransient;
   // r84: live recovery math. The frozen err.stepsDone/err.stepIndex snapshot was
   // built at failure time with the resumed loop's LOCAL index (the resume tail
   // restarts at 0), so an auto-resumed run displayed "0/11 steps done" while
@@ -579,11 +589,17 @@ function RunRecoveryCard({
           type="button"
           size="sm"
           disabled={busy || firstPending === -1}
-          onClick={() => onResume(firstPending, preferRelay ? { forceServer: true } : undefined)}
-          title={preferRelay ? "Lane preference is ON — this resume dials through the server relay first" : undefined}
+          onClick={() => onResume(firstPending, resumeRotates ? { forceServer: true } : undefined)}
+          title={
+            resumeRotates
+              ? preferRelay
+                ? "Lane preference is ON — this resume dials through the server relay first"
+                : `Parked on a ${err?.kind === "rate-limit" ? "rate-limit" : "network/timeout"} failure — this resume rotates to the relay lane first (the park's promise), same as the auto-resume`
+              : undefined
+          }
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-          {preferRelay ? <Server className="h-3.5 w-3.5 text-sky-300" aria-hidden /> : null}
+          {resumeRotates ? <Server className="h-3.5 w-3.5 text-sky-300" aria-hidden /> : null}
           {stopped
             ? `Resume from step ${firstPending + 1}`
             : firstPending === err?.stepIndex

@@ -442,7 +442,14 @@ const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
   { kind: "timeout", re: /timeout|timed? ?out|etimedout|deadline|did not respond|no first token|upstream deadline|stream stalled/i },
   {
     kind: "network",
-    re: /network|fetch failed|failed to fetch|could not reach|socket|econn|enotfound|eai_again|dns|connection (refused|reset|closed|error)|load failed|premature close|stream ended without|upstream|http 5\d\d|bad gateway|service unavailable/i,
+    // r330: a BARE 5xx status ("Request failed (502)" — the fetch wrapper's
+    // phrasing: no "http " prefix, no "bad gateway" text) used to fall through
+    // to kind "unknown" = terminal card with NO park and NO relay rotation.
+    // A gateway 5xx is the same transient server-side death the r158/r178
+    // doctrine parks and rotates — classify it network (self-heal +
+    // park-eligible) instead. Word-boundary + exact-3-digits keeps it off
+    // numbers embedded in larger tokens.
+    re: /network|fetch failed|failed to fetch|could not reach|socket|econn|enotfound|eai_again|dns|connection (refused|reset|closed|error)|load failed|premature close|stream ended without|upstream|http 5\d\d|\b5\d\d\b|bad gateway|service unavailable/i,
   },
 ];
 
