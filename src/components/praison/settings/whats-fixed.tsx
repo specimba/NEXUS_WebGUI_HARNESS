@@ -311,6 +311,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Chat → send a message right after a 429: the status line above the reply shows “Provider cooling Ns …” before the provider is dialed",
   },
+  {
+    round: "r318",
+    title: "Keyless free lanes now join the relay chain — a 429'd step finally has somewhere to rotate",
+    detail:
+      "With one saved key the fallback chain contained only that provider's own models (+ the built-in engine), so when its quota tripped, the step rotated inside the SAME quota bucket and parked (live: “⇄0 relay”, 13 gateway 429s in 24h). The chain now includes the registry's no-key free lanes; health memory sinks any that misbehave.",
+    lookFor:
+      "Workflows → after a 429, a run card's LLM calls row shows relay hops (⇄) > 0; steps survive single-provider quota trips instead of parking",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
