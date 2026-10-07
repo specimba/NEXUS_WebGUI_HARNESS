@@ -11,7 +11,10 @@ import { ensureChrome } from "./cdp-ensure-chrome.mjs";
 //   E4  click the eye again → immediate re-mask (raw gone from the whole DOM)
 //   E5  click the row's Test → toast "<name> key verified" carrying the MASKED
 //       key only (raw never shown by the test path)
-//   E6  cleanup, API-verified only — vault left EMPTY (no DB residue).
+//   E6  cleanup, API-verified only — NO qa-* residue (r327: the suite seeds
+//       ONLY a qa-* namespaced slot, so real user slots coexist untouched;
+//       the old "vault left empty" assertion is gone with the empty-vault
+//       precondition).
 //       (r220: the old E6 UI re-verify — reload + "row gone" — moved to the
 //       F-series, scripts/cdp-qa-vault-slot-residue.mjs: a compile-stalled
 //       card made rowGone vacuously true, and the leg was the suite's one
@@ -139,13 +142,18 @@ async function gotoSettings(ws) {
 }
 
 async function main() {
-  // r326 incident guard: a populated user vault means REAL keys — abort
-  // instead of upserting/deleting over them (the 2026-10-07 Vyce wipe).
-  await (await import("./lib/qa-vault-guard.mjs")).assertVaultEmptyOrAbort(BASE, "vault-slot-affordances");
+  // r327 namespace isolation (upgrades the r326 abort guard): this suite
+  // writes/deletes ONLY "qa-*" slots, so REAL user slots coexist untouched —
+  // the 2026-10-07 Vyce wipe is impossible by construction. Fail-closed if
+  // the vault is unreadable; stale qa-* slots from crashed runs are reaped.
+  const qaGuard = await import("./lib/qa-vault-guard.mjs");
+  await qaGuard.initQaIsolation(BASE, "vault-slot-affordances");
 
-  // E0 — idempotent pre-clean (builtin too: keep the slate identical to the
-  // round-start state, which was an empty vault)
-  await fetch(`${BASE}/api/vault?provider=builtin`, { method: "DELETE" });
+  // E0 (r327 rewrite): the old builtin pre-clean ("keep the slate identical
+  // to an empty vault") was ITSELF a wipe vector — it DELETED any real
+  // builtin slot before the run. Namespace isolation replaces it:
+  // initQaIsolation above already reaped stale qa-* slots; nothing else is
+  // touched, before or after the run.
 
   // Browser boot (r132 pattern)
   await ensureChrome();
@@ -172,12 +180,13 @@ async function main() {
          return s ? s.value : ""; })()`
     )) || "vyce";
   void provs; // lane select's own default is the honest choice — use it
+  const qaProvider = `qa-${providerId}`; // r327: namespaced — never a real slot id
   const storeRes = await fetch(`${BASE}/api/vault`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ provider: providerId, key: QA_KEY }),
+    body: JSON.stringify({ provider: qaProvider, key: QA_KEY }),
   });
-  check("E1 store throwaway lane key", storeRes.ok, `provider=${providerId}`);
+  check("E1 store throwaway lane key", storeRes.ok, `provider=${qaProvider}`);
 
   await gotoSettings(ws);
   await waitFor(ws, `Boolean(document.querySelector('#vault'))`, 45_000);
@@ -276,12 +285,17 @@ async function main() {
   // row VISIBLE (positive control) → delete → row GONE, compile-tolerant —
   // lives in scripts/cdp-qa-vault-slot-residue.mjs (F-series, r220). This
   // suite only guarantees it leaves no DB residue behind.
-  await fetch(`${BASE}/api/vault?provider=${encodeURIComponent(providerId)}`, {
+  await fetch(`${BASE}/api/vault?provider=${encodeURIComponent(qaProvider)}`, {
     method: "DELETE",
   });
-  const finalVault = await (await fetch(`${BASE}/api/vault`)).json();
-  const vaultEmpty = Array.isArray(finalVault?.vault) && finalVault.vault.length === 0;
-  check("E6 cleanup API-verified — vault left empty (no residue)", vaultEmpty, `vaultEmpty=${vaultEmpty}`);
+  // r327: assert the QA NAMESPACE is clean — the vault may (and should)
+  // still hold the user's real slots, untouched.
+  const fin = await qaGuard.finishQaIsolation(BASE, "vault-slot-affordances");
+  check(
+    "E6 cleanup API-verified — no qa-* residue (real slots untouched)",
+    fin.ok,
+    `qaResidue=${fin.residue} realSlots=${fin.realCount}`
+  );
 
   await wsSend(ws, "Page.close").catch(() => {});
   const fails = results.filter((r) => !r.ok);
