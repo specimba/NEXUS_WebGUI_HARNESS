@@ -17,6 +17,7 @@ import type {
   WorkflowRunStep,
   WorkflowStep,
   SpawnProposal,
+  StepKind,
 } from "./types";
 import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS, TOOL_IDS } from "./constants";
 import { uid } from "./helpers";
@@ -892,6 +893,76 @@ export function ensureSeeded(): void {
               "a-writer",
               "Write the dossier",
               "Write the dossier: executive summary (max 5 lines), findings organized by section with inline citations, then Open Questions at the end. Synthesize in your own words — never paste raw research notes."
+            ),
+          ],
+        });
+      }
+    }
+  }
+  // r331 (user ask): Continuous Research & Evaluation — the resilient
+  // counterpart to the deep-dossier sample. The user's own pasted pipeline
+  // (deep, 11 steps) kept dying at "Deep research pass 2 — verify & broaden":
+  // a cloned deep pass dialing the congested gateway for minutes at a time.
+  // This template is the fixed design contract, stated in the description so
+  // the user can see it before running: standard depth (no cloned deep
+  // passes — the death spot), tool-light steps (explicit search caps so a
+  // fire stays a short dial), one evaluation review gate (the runner's
+  // bounded rework loop, REWORK_LIMIT = 1), and honest quiet-cycle stops
+  // instead of padding. The schedule is intentionally NOT seeded — the user
+  // opts into the hourly cadence via the Schedule popover (Morning Briefing
+  // precedent); each scheduled fire is one bounded cycle, so "continuous"
+  // comes from the cadence, never from an unbounded loop inside a run.
+  {
+    const wfStore = useWorkflowsStore.getState();
+    if (!wfStore.workflows.some((w) => w.id === "wf-continuous-research")) {
+      const researcher = useAgentsStore.getState().getById("a-researcher");
+      const planner = useAgentsStore.getState().getById("a-planner");
+      const writer = useAgentsStore.getState().getById("a-writer");
+      if (researcher && planner && writer) {
+        const mkStep = (
+          agentId: string,
+          label: string,
+          instruction: string,
+          kind?: StepKind
+        ): WorkflowStep => ({
+          id: uid("step"),
+          agentId,
+          label,
+          instruction,
+          ...(kind ? { kind } : {}),
+        });
+        wfStore.add({
+          id: "wf-continuous-research",
+          name: "Continuous Research & Evaluation",
+          description:
+            "One tool-light research-and-evaluate cycle per run (default topic: AI agents & workflow automation — put your topic in the run task). Built to survive congested gateways: standard depth with NO deep passes, at most 2 searches per step, an evaluation gate, honest quiet-cycle stops. Make it continuous via the Schedule popover — hourly works; each fire is one short cycle, not a marathon.",
+          depth: "standard",
+          steps: [
+            mkStep(
+              "a-researcher",
+              "Scan for what changed",
+              "One tool-light scan on the cycle's topic (from the run task; default: AI agents & workflow automation). At most 2 web searches, then read at most 2 of the most substantive pages — no further searches or reads. Report 3-6 findings, each with its publication date and a source link; prefer what changed in the last few days. If nothing genuinely new surfaced, output exactly 'Quiet cycle — nothing new worth reporting' and stop; never pad with old material."
+            ),
+            mkStep(
+              "a-planner",
+              "Evaluate the evidence",
+              "Audit the scan as a strict reviewer: is every claim dated and source-linked? are contradictions or stale rehashes flagged as such? is there padding or unsupported inference? Accept a scan that is thin but honest over one that looks full but is not.",
+              "review"
+            ),
+            mkStep(
+              "a-planner",
+              "Pick what matters",
+              "From the evaluated scan, pick at most 2 findings that genuinely deserve a deeper look and write a one-paragraph research brief for each (the exact question, why it matters now). Explicitly mark the rest 'noted, not actionable this cycle'. If the scan reported a quiet cycle, say so and name nothing — the next step must not search."
+            ),
+            mkStep(
+              "a-researcher",
+              "Fill only that gap",
+              "Execute the briefs from the previous step: at most 2 searches TOTAL, one per brief. Report only what the new searches actually found; mark anything still unresolved as an explicit open question and stop — do not chase it with more searches. If the previous step reported a quiet cycle, output 'Nothing to add — quiet cycle' without any searches."
+            ),
+            mkStep(
+              "a-writer",
+              "Publish the cycle digest",
+              "Write the cycle digest in your own words — never paste raw research notes: a header line with today's date, then at most 6 lines covering what changed, why it matters, and one thing to watch next cycle, with inline source links kept. If the cycle was quiet, the digest is one honest line saying so plus the watch item — a short true digest beats a long padded one."
             ),
           ],
         });
