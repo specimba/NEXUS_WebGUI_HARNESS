@@ -576,9 +576,9 @@ export function ChatView() {
   const regenerate = React.useCallback(async () => {
     // r176: sync-ref guard (parity with send) — a fast double-activation must
     // not re-enter runTurn before the streaming state has re-rendered.
-    if (streamingRef.current || streaming || !conversation) return;
+    if (streamingRef.current || streaming || !activeId) return;
     const store = useConversationsStore.getState();
-    const conv = store.conversations.find((c) => c.id === conversation.id);
+    const conv = store.conversations.find((c) => c.id === activeId);
     if (!conv) return;
 
     let lastAsstIdx = -1;
@@ -630,7 +630,7 @@ export function ChatView() {
       useSettingsStore.getState().settings,
       images.length > 0 ? images : undefined
     );
-  }, [streaming, conversation, runTurn]);
+  }, [streaming, activeId, runTurn]);
 
   const stop = React.useCallback(() => {
     abortRef.current?.abort();
@@ -719,9 +719,9 @@ export function ChatView() {
   // ─── Edit a user message and resend the turn from that point ─────────────
   const editAndResend = React.useCallback(
     async (msgId: string, newText: string) => {
-      if (streamingRef.current || streaming || !conversation) return;
+      if (streamingRef.current || streaming || !activeId) return;
       const store = useConversationsStore.getState();
-      const conv = store.conversations.find((c) => c.id === conversation.id);
+      const conv = store.conversations.find((c) => c.id === activeId);
       if (!conv) return;
       const idx = conv.messages.findIndex((m) => m.id === msgId);
       if (idx === -1) return;
@@ -782,7 +782,7 @@ export function ChatView() {
         images.length > 0 ? images : undefined
       );
     },
-    [streaming, conversation, runTurn]
+    [streaming, activeId, runTurn]
   );
 
   const handleAgentChange = React.useCallback(
@@ -796,9 +796,9 @@ export function ChatView() {
   // ─── Re-run a past turn with a different agent ("Answer as …") ────────────
   const answerAs = React.useCallback(
     async (msgId: string, agentId: string) => {
-      if (streamingRef.current || streaming || !conversation) return;
+      if (streamingRef.current || streaming || !activeId) return;
       const store = useConversationsStore.getState();
-      const conv = store.conversations.find((c) => c.id === conversation.id);
+      const conv = store.conversations.find((c) => c.id === activeId);
       if (!conv) return;
       const idx = conv.messages.findIndex((m) => m.id === msgId);
       if (idx === -1) return;
@@ -847,7 +847,7 @@ export function ChatView() {
         images.length > 0 ? images : undefined
       );
     },
-    [streaming, conversation, runTurn]
+    [streaming, activeId, runTurn]
   );
 
   // ─── Export the active conversation as a Markdown download ──────────────

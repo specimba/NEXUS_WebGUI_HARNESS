@@ -681,6 +681,20 @@ export const MessageItem = React.memo(function MessageItem({
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const deleteTimerRef = React.useRef<number | null>(null);
 
+  // r312 render probe: counts COMMITS per message id, but ONLY when a QA
+  // harness opted in by planting window.__MSG_RENDER_PROBE__ first — for the
+  // product this is one property read per commit. Lives in an effect (never
+  // mutates during render); no dep array = runs after every commit, which for
+  // a memo'd child is exactly "this message re-rendered". This is the
+  // measurement r293 deliberately skipped: it turns "the memo engages during
+  // token streams" from a structural claim into a witnessed, gated fact.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const probe = (window as { __MSG_RENDER_PROBE__?: { counts: Record<string, number> } })
+      .__MSG_RENDER_PROBE__;
+    if (probe) probe.counts[message.id] = (probe.counts[message.id] ?? 0) + 1;
+  });
+
   const isUser = message.role === "user";
   const isStreamingNow = message.status === "streaming" && streaming;
   const showTypingBubble =

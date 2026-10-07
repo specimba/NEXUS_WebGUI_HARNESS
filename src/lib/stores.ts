@@ -385,6 +385,45 @@ export const useConversationsStore = create<ConversationsState>()(
   )
 );
 
+// ─── r312 QA-only render-probe driver ────────────────────────────────────────
+// Inert for the product. Registered so CDP harnesses can drive REAL
+// patchMessage token bursts from page context (window.__PRAISON_QA__.patchBurst)
+// to witness memo engagement without a live provider. Pacing mirrors token
+// streaming: one macrotask gap per patch so React flushes between updates.
+if (typeof window !== "undefined") {
+  const w = window as unknown as {
+    __PRAISON_QA__?: {
+      patchBurst: (
+        convId: string,
+        msgId: string,
+        times: number,
+        gapMs?: number
+      ) => Promise<void>;
+    };
+  };
+  if (!w.__PRAISON_QA__) {
+    w.__PRAISON_QA__ = {
+      patchBurst: (convId, msgId, times, gapMs = 10) =>
+        new Promise<void>((resolve) => {
+          const store = useConversationsStore;
+          let i = 0;
+          const tick = () => {
+            if (i >= times) {
+              resolve();
+              return;
+            }
+            store
+              .getState()
+              .patchMessage(convId, msgId, { content: `render-probe token ${i}` });
+            i += 1;
+            window.setTimeout(tick, gapMs);
+          };
+          window.setTimeout(tick, gapMs);
+        }),
+    };
+  }
+}
+
 // ─── Workflows ───────────────────────────────────────────────────────────────
 interface WorkflowsState {
   workflows: Workflow[];

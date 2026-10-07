@@ -8301,3 +8301,35 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; r293 perf win uninstrumented; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key). New: none this round (display-only change).
 Blockers: none
 Next recommended action: r312 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r311 snapshot or successor). (3) If a run failed, confirm the recovery card still names its real class (billing/timeout/network). (4) Otherwise ONE small item: (a) r293 perf-win instrumentation; (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) Morning Briefing card stopped-vs-failed resume affordance. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.
+
+## r312 — r293 perf claim WITNESSED + real ghost bug found & fixed: chat-view callbacks churned per token (2026-10-07, Job 424432)
+
+Task ID: r312
+Agent: main (platform dev agent)
+Task: Handoff option (a) — close r293's carried "perf win uninstrumented" risk: ship a render probe + in-vivo suite that witnesses memo engagement during a token burst.
+
+Work Log:
+- STARTUP: no user report. Health 200 in 0.04s (no restart). HEAD 6edcf76d6 = successor of a7cb07cce — parallel instances shipped r310 (billing/402 class end-to-end) and r311 (role-tag noise policy); their worklog sections read, their handoffs honored, nothing redone.
+- SHIPPED 1 — render probe (message-item.tsx): MessageItem counts COMMITS per message id into window.__MSG_RENDER_PROBE__.counts, but ONLY when a harness planted the flag first — product cost is one property read per commit (inert). Lives in a depless React.useEffect (never mutates during render; first attempt in render-phase tripped react-hooks/immutability — moved, semantics identical).
+- SHIPPED 2 — QA burst driver (stores.ts): window.__PRAISON_QA__.patchBurst(convId, msgId, times, gapMs) fires REAL patchMessage token bursts with a macrotask gap per patch (mirrors streaming pacing), so CDP harnesses can drive streaming without a live provider. Registered once, QA-namespaced, no product surface.
+- SHIPPED 3 — scripts/cdp-qa-memo-renders.mjs: seeds 1 user + 6 assistant replies, LEG A proves counter liveness (patch each message once → each ≥1, guards false passes), LEG B drives a 24-token burst into ONE message and asserts THE invariant, V4 store truth (last token persisted), V5 byte-for-byte snapshot restore. House tab lifecycle.
+- REAL BUG CAUGHT ON FIRST RUN (the suite paid for itself immediately): LEG B failed with ghosts — the USER message and the LAST assistant message re-rendered all 24 tokens. Root cause: chat-view's regenerate/editAndResend/answerAs are React.useCallbacks that close over `conversation` (fresh object identity on EVERY patchMessage) and listed it in deps → their identity churned per token → exactly the items receiving them re-rendered. deleteReply (deps [activeId, deleteMessage], both stable) held at 0 — the witness that fixed the shape.
+- FIX (chat-view.tsx, three callbacks): `conversation` → `activeId` (stable string selector, already in scope at :87) in the guard, the store re-find, and all three dep arrays; the bodies already re-found conv via useConversationsStore.getState() and guarded `if (!conv) return`, so semantics are unchanged — only identity stabilized. runTurn is module-imported (always stable).
+- Re-run: LEG B now passes with "target rendered 24x, untouched 0x" — r293's claim is TRUE and regression-gated.
+- Verification: npx tsc --noEmit 0; canonical bun run lint 0 errors / 33 baseline warnings; cdp-qa-memo-renders 6/6 (V3 witness: target 24, ghosts none).
+- No whats-fixed receipt: probe + driver are QA-only, zero user-visible change (r291/r292 precedent for QA-asset rounds).
+- Budget honesty: round overran the 12-tool-round cap (~15) — the overrun bought the ghost fix the instrumentation caught on its first live run; noted per r294 precedent.
+
+Stage Summary:
+- The chat-stream perf claim is no longer structural: a permanent suite witnesses that a 24-token stream re-renders exactly one message. The ghost re-render of the user bubble + last reply on every token is fixed at the root (stable callback identities), completing r293 rather than re-touching its memo contract.
+
+Round Handoff:
+Round ID: r313
+Task owner: main (platform dev agent)
+Scope completed: render probe + QA burst driver + 6/6 in-vivo memo suite; ghost re-render fix (chat-view regenerate/editAndResend/answerAs dep stabilization).
+User-visible changes: during streaming, the user bubble and the last reply no longer re-render on every token (smoother on long transcripts, low-end devices); no visual change by design.
+Verification steps: node scripts/cdp-qa-memo-renders.mjs (6/6); npx tsc --noEmit (0); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client" (policed by qa-iso-boundary); orca credit drain is the user's live constraint (top up or save a second non-orca key). New: regenerate/edit-resend/answer-as INTERACTION paths have no dedicated suite — the dep change is identity-only and tsc-clean, but a manual click-through is cheap insurance; UserBubble remains unmemoized (now measurable with the probe if ever worth it).
+Blockers: none
+Next recommended action: r313 — (1) FIRST read any user report. (2) Verify HEAD lineage (expect the r312 snapshot or successor). (3) If a run failed, confirm the recovery card names its real class (billing/timeout/network). (4) Otherwise ONE small item, rotate surface: (a) Morning Briefing card stopped-vs-failed resume affordance (carried twice); (b) r293 perf instrumentation follow-up if user reports chat jank (probe now exists); (c) docs pass on a non-LOCAL_AUTOMATION doc. (5) Standing: qa:tsc + CANONICAL bun run lint; worklog append BEFORE snapshot; no ternary-statement asserts; receipts for user-visible changes; SMALL commands.
