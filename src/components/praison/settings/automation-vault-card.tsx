@@ -164,6 +164,23 @@ export function AutomationVaultCard() {
       !slots.some((s) => s.provider === p.id),
   );
 
+  // r340: KEY DRIFT — a mirrored slot whose provider ALSO has a browser-saved
+  // key can silently fall behind: the user rotates the key in Providers,
+  // mirrorCandidates excludes the provider (a slot already exists), the r337
+  // strip disappears, and closed-tab runs keep dialing with the OLD key —
+  // with no hint anywhere in the card. Detectable without exposing anything:
+  // mask the browser key with the exact server algorithm (maskOf above — the
+  // same function the r135/r218 Test round-trip is verified against) and
+  // compare with the slot's masked preview. Mismatch = drift; the fix is one
+  // click (mirrorProvider re-upserts by provider id, idempotent). No browser
+  // key → nothing to compare → no drift claim (the slot may be intentionally
+  // manual; a deleted browser key must not nag). Short keys (≤12 chars) mask
+  // to all dots on BOTH sides, so they can never false-positive drift.
+  const slotDrifted = (s: VaultSlot): boolean => {
+    const browserKey = settings.providerKeys?.[s.provider]?.key?.trim();
+    return !!browserKey && maskOf(browserKey) !== s.maskedKey;
+  };
+
   async function save() {
     if (!key.trim()) {
       toast.error("Paste a key first — the vault stores exactly what you paste.");
@@ -524,6 +541,17 @@ export function AutomationVaultCard() {
                       queued
                     </span>
                   )}
+                  {resolvable && slotDrifted(s) ? (
+                    <button
+                      type="button"
+                      onClick={() => void mirrorProvider(s.provider)}
+                      disabled={mirroringProvider !== null}
+                      title="The key saved in Providers no longer matches this stored slot — the browser key was rotated after mirroring, so closed-tab runs still dial with the OLD one. Click to re-mirror: this slot updates to the current browser key (local SQLite only)."
+                      className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0 text-[10px] font-semibold text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400"
+                    >
+                      {mirroringProvider === s.provider ? "re-mirroring\u2026" : "key drifted \u2014 re-mirror"}
+                    </button>
+                  ) : null}
                   <span className="font-mono tabular-nums text-muted-foreground">
                     {isRevealed ? revealed.key : s.maskedKey}
                   </span>
