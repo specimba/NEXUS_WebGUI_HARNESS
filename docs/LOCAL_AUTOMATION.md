@@ -43,7 +43,11 @@ dial anything implicit; the run is skipped and the reason reported
 "server lane: no key — closed-tab runs wait" state). The early r109-era
 fallback of dialing the shared built-in gateway is gone — the legacy
 `builtin` slot is skipped by the executor entirely (see below) — so a stored
-vault key is what turns closed-tab schedules from "queued" into "runs".
+vault key is what turns closed-tab schedules from "queued" into "runs". Since r319 the server dial also rotates on a 429: a saturated
+vault-provider dial falls back to up to two registry no-key free lanes
+(keyless by doctrine — no credential is invented), sharing the same
+cooldown-memory shape as the browser lane; if every lane fails, the ORIGINAL
+error is thrown honestly (no fabricated output).
 
 ## The Automation Vault
 
@@ -79,8 +83,10 @@ and closed-tab runs dial with your quota instead of the shared lane.
   re-masks itself — immediate re-mask on second click / unmount / re-store,
   no auto-copy, and a reload re-masks (reveal state is never persisted).
   Threat model unchanged: the key is already plaintext in this machine's
-  SQLite and `consume` is already reachable by any same-machine caller — the
-  reveal changes who can *see* the key on screen, not who can programmatically
+  SQLite and `consume` is reachable by any same-machine **non-browser**
+  caller (foreign browser pages have been rejected by the r321 CSRF gate;
+  same-LAN `Host` spoofing remains the documented limit) — the reveal
+  changes who can *see* the key on screen, not who can programmatically
   *get* it.
 - **Status at a glance:** the *Server autopilot* panel (top of the Workflows
   view) shows a lane chip — when the tab drives, "browser driving — schedules
@@ -102,7 +108,7 @@ and closed-tab runs dial with your quota instead of the shared lane.
 | `POST /api/vault` | Settings UI | Upsert `{ provider, key, label }` → masked ack. |
 | `GET /api/vault` | Settings UI | Masked slots only — raw key never leaves the DB except through `consume`. |
 | `DELETE /api/vault?provider=…` | Settings UI | Removes the slot; headless runs fall back to the shared lane automatically. |
-| `POST /api/vault/consume` | claim loop (and the Test key button) | `{ provider }` → `{ key, updatedAt }` — the raw key. **Localhost-only guard (enforced since r138):** non-local `Host`, non-local `x-forwarded-host`, non-loopback `x-forwarded-for` / `x-real-ip`, or any `forwarded` header ⇒ `403` before any key lookup — both legit callers dial localhost, so both pass. **Trust model:** the key is already plaintext in this machine's SQLite DB, so localhost HTTP adds no exposure while giving the service a stable, DB-agnostic contract. Never logged, never telemetered. The header guard is defense-in-depth, not auth — a LAN client can still spoof `Host`, so if this app is ever deliberately exposed beyond localhost, it **must** gain real auth first. |
+| `POST /api/vault/consume` | claim loop (and the Test key button) | `{ provider }` → `{ key, updatedAt }` — the raw key. **Localhost-only guard (enforced since r138):** non-local `Host`, non-local `x-forwarded-host`, non-loopback `x-forwarded-for` / `x-real-ip`, or any `forwarded` header ⇒ `403` before any key lookup — both legit callers dial localhost, so both pass. **Browser drive-by gate (r321):** browser callers must also pass the house CSRF double-gate — `x-praison-csrf: 1` (a foreign page cannot attach it without a preflight that is never granted) and `Sec-Fetch-Site: cross-site` rejected ⇒ `403` with the reason "consume rejects cross-site browser calls (CSRF gate)"; a `text/plain` body that skips preflight is caught by the header gate. The claim loop and CLI send no browser headers and pass untouched. **Trust model:** the key is already plaintext in this machine's SQLite DB, so localhost HTTP adds no exposure while giving the service a stable, DB-agnostic contract. Never logged, never telemetered. The header guard is defense-in-depth, not auth — a LAN client can still spoof `Host`, so if this app is ever deliberately exposed beyond localhost, it **must** gain real auth first. |
 
 - **Cache discipline (r218):** every `/api/*` response ships `Cache-Control: no-store, max-age=0, must-revalidate` (blanket header via `next.config.ts`) — none of these endpoints is cacheable-by-design. Browsers heuristically caching an empty vault answer was observed rendering a false "No registry-provider key stored" state while the DB held the row (r218 QA); the vault card also refetches whenever it becomes visible (r218), so tab panels that are CSS-hidden rather than unmounted can never show a stale vault.
 - **Test key / Reveal (per slot, r218):** every registry-provider row — not just the legacy builtin box — carries its own eye (reveal-once, ~8s auto re-mask) and Test button; both dial `POST /api/vault/consume` with that row's provider. The builtin "Vault key verified" toast text is preserved verbatim (D-series CDP contract).
@@ -115,7 +121,10 @@ and closed-tab runs dial with your quota instead of the shared lane.
   terminal "✗ error".
 - Run history rows with recorded LLM calls expose an "N calls" expander: the
   grouped per-step call log with global numbering and a counted resilience
-  digest (`↻ primary skipped ×N · ⇄ model substitution ×N · ⇄ relay rotation ×N`).
+  digest (`↻ primary skipped ×N · ⇄ model substitution ×N · ⇄ relay rotation ×N`);
+  since r320 the run card's LLM-calls row also witnesses FAILED dials by
+  lane (`✗N failed dials (lane ×count, …)`) — a parked run answers "did
+  rotation run, and onto which lanes?" at a glance.
 - **Failure breaker (server side):** three straight failed closed-tab runs
   park a registry row (`enabled: false, failStreak ≥ 3`) instead of burning
   more quota. Parked rows render in the autopilot panel's red strip (r216)
@@ -132,20 +141,30 @@ and closed-tab runs dial with your quota instead of the shared lane.
   run panel's "Run parked — auto-resume scheduled" state), and a parked run
   resumes via relay rotation when the network or gateway recovers; the next
   `done` run resets streak and trips to zero.
+- **429 rotation ladder (browser lane, r305–r318):** an in-tab run's dial
+  ladder is primary → demoted primary (sick-window) → built-in engine →
+  registry rotation (the final attempt leaves a saturated provider family
+  entirely), with congestion rotation reordering the relay wire and — since
+  r318 — the relay chain including the registry's no-key free lanes, so a
+  single-key vault still has somewhere to rotate instead of parking on an
+  empty chain. Chat dials the same shared cooldown memory: a cooling
+  provider announces "Provider cooling Ns" before dialing (r316).
 - **Stale registry:** an enabled schedule overdue >24h with neither lane
   claiming it renders the amber strip in the autopilot panel (re-enable the
   schedule, store a vault key, or use "Run on server").
 
 ---
 
-Fact-checked against code as of r299 (2026-10-06), re-stamped after the
-r218–r298 drift window. Re-verified this pass: `SYNC_INTERVAL_MS = 60_000`
+Fact-checked against code as of r322 (2026-10-07), re-stamped after the
+r300–r321 drift window (the 429-rotation doctrine rounds). Re-verified this pass: `SYNC_INTERVAL_MS = 60_000`
 (bridge), `HEARTBEAT_STALE_MS = 120_000` (executor + sync route),
 `GET /api/automation/sync` shape **verified live** (`serverDriving` /
 `lastSeenAt` / `registry` / `runs` [take: 25] / `executorLane` /
 `vaultLane`, with `executorLane.reason = "no-vault-key"` observed on the
-keyless dev profile), `MASK_MIN = 12` mask shape, the r138 consume-guard
-header list, the r154 reveal-once path (~8s auto re-mask, per slot), the
+keyless dev profile), `MASK_MIN = 12` mask shape, the r138+r321 consume-guard
+header list (the CSRF double-gate re-proven live this pass: CLI pass /
+cross-site 403 / UI+header pass / Host spoof 403 — and the text/plain
+preflight-bypass cell in the r321 round's 5/5 matrix), the r154 reveal-once path (~8s auto re-mask, per slot), the
 vault card's per-slot Test-key round-trip, `run-now`'s
 `nextRunAt + enabled: true`, the `TRANSIENT_RE` coverage, the digest strings
 in `workflow-run-panel.tsx`, the r212/r216 attention deep-link targets
@@ -156,7 +175,13 @@ pass: the claim loop is no longer described as external (r204 moved it
 in-repo; the r217 stamp missed this), the "shared gateway by default"
 wording is replaced by the honest queue-until-key semantics, the autopilot
 panel's no-key / next-fire states are documented, and the client-lane breaker
-got its own reliability note. Not re-verified live this pass: the vault
+got its own reliability note. Corrected this pass (r322): the server lane's
+r319 no-key fallback, the browser lane's r305–r318 rotation ladder, the
+r320 failed-dial lane witness, and the r321 browser drive-by gate are now
+documented; the sync GET shape was re-verified live
+(`serverDriving` / `lastSeenAt` / `registry` / `runs` / `executorLane` with
+`ready, reason, providerLabel, maskedKey, slotProvider, slotCount` /
+`vaultLane`). Not re-verified live this pass: the vault
 `consume` round-trip against a stored key (the keyless dev profile can only
 witness the no-key lane) and the prune-on-push registry path (no enabled
 schedules in the dev registry). Future rounds changing these endpoints

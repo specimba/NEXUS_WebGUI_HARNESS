@@ -8586,3 +8586,31 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified (the curl matrix exercised the guard, not a real slot round-trip — the user's Test key button remains the live witness); git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); free-lane quality unknown until first live rotation. New: (1) user still owes the ONE hard reload (Ctrl+Shift+R) — r318/r319/r320 client fixes stay inert in a stale bundle; (2) same-LAN Host-spoof limit remains documented-deliberate (real auth = only closure, out of local-first scope for now).
 Blockers: none
 Next recommended action: r322 — (1) FIRST read any user report: the parked card's "✗N failed dials (lane ×count)" list is the verdict on the r318-r320 rotation family. (2) Verify HEAD lineage (expect the r321 snapshot or successor). (3) ONE small item, keep rotating: (a) docs pass — LOCAL_AUTOMATION.md drift check against r305-r321 lane-semantics changes (r149 stamp is stale by ~16 rounds of 429 doctrine); (b) vault-epic: teach the GET /api/vault masked route the same csrf gate for symmetry (small); (c) perf or UI polish away from workflows. Avoid the rotation family (r305-r321 saturated) unless the user's paste shows a NEW defect.
+
+## r322 — LOCAL_AUTOMATION.md re-stamped to r321 truth (docs pass, 2026-10-07, Job 424432)
+
+Task ID: r322
+Agent: main (platform dev agent)
+Task: r321 handoff (a) — docs pass. No new user report this fire; health 200; HEAD lineage 5278d6111 (r321 snapshot), tree clean (runtime db/gateway-pulse.json churn only).
+
+Work Log:
+- DRIFT AUDIT: the doc's fact-check stamp was r299 — r305–r321 (the 429-rotation doctrine rounds) changed four things the doc describes and did not say: (1) the HTTP contract row for POST /api/vault/consume lacked the r321 CSRF double-gate entirely (security-relevant contract row); (2) the server-lane section had no 429 behavior (r319 no-key fallback); (3) the browser lane's rotation ladder (r305–r318) was undocumented; (4) the r320 failed-dial lane witness was missing from the digest bullet.
+- CORRECTED all four + the Reveal threat-model sentence ("reachable by any same-machine caller" → "any same-machine non-browser caller; foreign pages r321-rejected; same-LAN Host spoof remains the documented limit").
+- LIVE RE-VERIFICATION (server up, honest stamp): GET /api/automation/sync shape re-confirmed live (serverDriving/lastSeenAt/registry/runs/executorLane[ready,reason,providerLabel,maskedKey,slotProvider,slotCount]/vaultLane[hasKey,maskedKey,updatedAt]); consume guard subset re-proven (CLI 404-lookup pass, cross-site 403); the text/plain preflight-bypass cell credited to the r321 round's 5/5 matrix rather than re-run.
+- Stamp header advanced r299→r322 with the drift window named (r300–r321, the 429-rotation rounds); "Not re-verified live" list kept honest (consume round-trip vs a real stored key; prune-on-push path).
+- Verification: docs-only change — npx tsc --noEmit 0 (unmasked) + bun run lint 0 errors/33 warnings (exact baseline) as tree sanity; no client bundle touched so the CDP suite adds nothing this round (honest skip).
+- Budget: 5 tool rounds.
+
+Stage Summary:
+- The automation doc now tells the truth about the whole r305–r321 rotation family and the r321 gate, with every claim it re-stamps either live-verified this pass or explicitly carried as unverified. Future rounds changing sync/vault/consume semantics still own this file (blast-radius note intact).
+
+Round Handoff:
+Round ID: r323
+Task owner: main (platform dev agent)
+Scope completed: LOCAL_AUTOMATION.md drift corrections (8 edits) + re-stamp r322.
+User-visible changes: docs only (docs/LOCAL_AUTOMATION.md); no app surface changed.
+Verification steps: live sync GET shape + guard subset; npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified (user's Test key button is the witness); git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); free-lane quality unknown until first live rotation; USER OWES the one hard reload (Ctrl+Shift+R) — r318/319/320 client fixes stay inert in a stale bundle. New: docs/free-provider-matrix.md may also predate the r318 noKey-lane chain widening (not audited this round — next docs candidate).
+Blockers: none
+Next recommended action: r323 — (1) FIRST read any user report: the parked card's "✗N failed dials (lane ×count)" list after the user's reload is the verdict on the rotation family. (2) Verify HEAD lineage (expect the r322 snapshot or successor). (3) ONE small item: (a) docs/free-provider-matrix.md drift audit vs the r318 chain widening; (b) perf or UI polish away from workflows/vault; (c) ResolvedDial providerId threading (rotation family — last resort).
