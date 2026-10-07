@@ -8530,3 +8530,30 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted. New: (1) ResolvedDial lacks providerId — vault-lane 429s are un-noted server-side (fallback lanes ARE noted); (2) free-lane fallback quality unknown until first live server 429 (executor suite is DB-driven, not provider-driven).
 Blockers: none
 Next recommended action: r320 — (1) FIRST read any user report — watch for the first tab-closed run surviving a 429. (2) Verify HEAD lineage (expect the r319 snapshot or successor; parallel receipt commits like ba62e37f4 are normal). (3) ONE small item, rotate surface (rotation family r305-r319 is saturated — prefer elsewhere): (a) vault-epic increment (r123+); (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) ResolvedDial providerId threading (only if nothing better — it is the rotation family again). (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog BEFORE snapshot; receipts for user-visible changes; SMALL commands.
+
+## r320 — failed dials become lane-witnessed: a parked card answers "did rotation run?" (2026-10-07, Job 424432)
+
+Task ID: r320
+Agent: main (platform dev agent)
+Task: r319 handoff said prefer non-rotation surfaces — OVERRIDDEN by fresh user evidence: a paste of a run parked AFTER r318's commit still reading "LLM calls · 6 recorded · 5 failed · ⇄0 relay / ⊙1 direct". The user's live report always wins over the rotation plan.
+
+Work Log:
+- LIVE-EVIDENCE AUDIT (the paste): the parked run fired ~30-60min after the r318 commit. Traced the entire browser-lane path in CURRENT code: workflow-runner.ts:1213 builds relayHops via buildRelayWire (r318 noKey lanes included); agent-engine.ts:427 walks primary→hops; runCustomEngine (agent-engine.ts:578) builds authHeaders as `apiKey ? Bearer : {}` — keyless dials are correct, no born-dead "Bearer undefined" lane. Conclusion: the chain is sound in the current bundle; the run almost certainly executed the PRE-r318 tab bundle (stale page, HMR never applied). No code bug found in the rotation path itself.
+- SHIPPED (the durable gap the paste exposed): failed dials carry no lane witness — the v13 tally counts only successful note-prefixed calls, so "5 failed" hid WHICH lanes were tried. workflow-run-panel.tsx now groups failed calls' engine labels (last "→" segment, parenthetical mechanics stripped, top-3 by count): the row reads e.g. "· ✗5 failed dials (Vyce · gemini-x ×3, Pollinations · openai-fast ×2)". Next paste proves or disproves rotation at a glance. Pure UI, zero store shape change.
+- Receipt r320 appended to whats-fixed.tsx (includes the hard-reload instruction — the stale-bundle lesson written where the user reads).
+- Verification: npx tsc --noEmit 0 (unmasked); bun run lint 0 errors/33 warnings (exact baseline); scripts/cdp-qa-chat-interactions.mjs 8 passed, 0 failed.
+- Budget: 13 tool rounds (1 over — the live-evidence audit of three call-path files took 5 read/grep rounds; overage bought the certainty that no rotation bug exists in the current bundle).
+
+Stage Summary:
+- The "⇄0 relay" ambiguity is dead: from r320 every failed dial is lane-attributed on the card. Combined with r318 (browser noKey lanes), r319 (server noKey fallback), and a tab reload, the next parked run either shows the free lane being dialed (rotation works, lanes saturated too) or its absence is instantly visible.
+
+Round Handoff:
+Round ID: r321
+Task owner: main (platform dev agent)
+Scope completed: failed-dial lane witness (workflow-run-panel.tsx) + receipt r320.
+User-visible changes: parked run cards end the LLM-calls row with "✗N failed dials (lane ×count, …)"; whats-fixed r320 card tells the user to hard-reload once.
+Verification steps: npx tsc --noEmit (0, unmasked); bun run lint (0/33); node scripts/cdp-qa-chat-interactions.mjs (8/8).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted; ResolvedDial lacks providerId (vault-lane 429s un-noted server-side); free-lane quality unknown until first live rotation. New: (1) CRITICAL USER ACTION — the tab must be hard-reloaded (Ctrl+Shift+R) once; r318/r319/r320 client fixes are all inert in a stale bundle, and gateway 429s climbed 13→20/24h while it ran; (2) if the post-reload card shows the free lane dialed AND failed, the next lever is schedule staggering / a second key, not more code.
+Blockers: none
+Next recommended action: r321 — (1) FIRST read any user report: after the reload, the parked card's failed-dial lane list is the verdict on the whole r318-r320 family. (2) Verify HEAD lineage (expect the r320 snapshot or successor). (3) ONE small item, prefer non-rotation surfaces: (a) vault-epic increment (r123+, untouched since r304); (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) ResolvedDial providerId threading (rotation family again — last resort). (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog BEFORE snapshot; receipts for user-visible changes; SMALL commands.

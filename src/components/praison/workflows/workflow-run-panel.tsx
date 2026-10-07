@@ -396,6 +396,34 @@ function RunRecoveryCard({
     laneRelay + laneDirect > 0
       ? ` · ⇄${laneRelay} relay / ⊙${laneDirect} direct`
       : "";
+  // r320 failed-dial lane witness: the headline tally counts only SUCCESSFUL
+  // lanes (note prefixes), so a run where every dial 429'd read "⇄0 relay"
+  // even when the rotator HAD walked the free lanes — indistinguishable from
+  // a stale bundle that never rotated. Failed calls already record the exact
+  // engine label they dialed; group them so the card answers "did rotation
+  // run, and onto which lanes?" at a glance. Pure UI — no store shape change.
+  const failedLanes = new Map<string, number>();
+  let failedDials = 0;
+  for (const c of run.callLog ?? []) {
+    if (c.ok !== false) continue;
+    failedDials += 1;
+    const raw = (c.engine ?? "").trim();
+    // rotation/demotion dials label as "A → B (…}" — the dialed lane is the
+    // last arrow segment; a plain dial is already the lane itself. Trailing
+    // parentheticals ("(registry rotation)", "(primary demoted)") are ladder
+    // mechanics, not lane identity — strip before grouping.
+    const seg = (raw.includes("→") ? raw.split("→").pop()! : raw).trim();
+    const lane = seg.replace(/\s*\([^)]*\)\s*$/, "").trim() || "unknown lane";
+    failedLanes.set(lane, (failedLanes.get(lane) ?? 0) + 1);
+  }
+  const failedChip =
+    failedDials > 0
+      ? ` · ✗${failedDials} failed dials (${[...failedLanes.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([lane, n]) => `${lane} ×${n}`)
+          .join(", ")}${failedLanes.size > 3 ? ", …" : ""})`
+      : "";
 
   if (dismissed) return null;
 
@@ -532,7 +560,7 @@ function RunRecoveryCard({
                 <span>
                   LLM calls · {run.callLog.length} recorded
                   {run.callLog.some((c) => !c.ok) ? ` · ${run.callLog.filter((c) => !c.ok).length} failed` : " · all ok"}
-                  {laneChip}
+                  {laneChip}{failedChip}
                 </span>
                 <span>{callsOpen ? "hide" : "show"}</span>
               </button>

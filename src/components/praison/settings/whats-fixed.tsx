@@ -327,6 +327,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Server runs · 24h — after a Vyce 429, runs complete via a no-key free lane instead of ✗ error",
   },
+  {
+    round: "r320",
+    title: "Run cards now witness failed dials by lane — “did rotation run?” is answerable at a glance",
+    detail:
+      "The LLM-calls tally counted only successful lanes (note prefixes), so an all-429 run read “⇄0 relay” even when the rotator HAD walked the free lanes — indistinguishable from a stale page that never rotated. Failed dials already record the exact engine they dialed; the card now groups them: “✗5 failed dials (Vyce · … ×3, Pollinations · openai-fast ×2)”. Pure UI — no store shape change.",
+    lookFor:
+      "Workflows → a parked run card's LLM calls row ends with ✗N failed dials (lane ×count, …); hard-reload the tab (Ctrl+Shift+R) so the newest engine bundle is live, and the free lane should appear among the failed (or successful) lanes",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
