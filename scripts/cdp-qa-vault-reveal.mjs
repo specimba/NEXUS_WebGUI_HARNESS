@@ -152,7 +152,9 @@ const cardText = () => `(document.querySelector('#vault')?.innerText ?? "")`;
 async function main() {
   // r326 incident guard: a populated user vault means REAL keys — abort
   // instead of upserting/deleting over them (the 2026-10-07 Vyce wipe).
-  await (await import("./lib/qa-vault-guard.mjs")).assertVaultEmptyOrAbort(BASE, "vault-reveal");
+  // r329: builtin-only mode — aborts only if a REAL builtin slot exists;
+  // registry-provider slots (e.g. the user's Vyce key) coexist untouched.
+  await (await import("./lib/qa-vault-guard.mjs")).assertBuiltinFreeOrAbort(BASE, "vault-reveal");
 
   // V0 — idempotent pre-clean
   await fetch(`${BASE}/api/vault?provider=builtin`, { method: "DELETE" });

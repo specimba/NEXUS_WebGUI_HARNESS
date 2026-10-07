@@ -131,3 +131,44 @@ export async function finishQaIsolation(base, suite) {
   );
   return { ok: residue === 0, residue, realCount };
 }
+
+// BUILTIN-ONLY mode (r329): for the suites that seed ONLY the legacy
+// `builtin` slot (vault-test / vault-reveal / vault-guard). Their every
+// assertion is builtin-scoped or response-shape-only (r329 census), so
+// registry-provider slots are irrelevant to them — they proceed when only
+// registry slots exist and abort (exit 2) ONLY when a REAL `builtin` slot
+// is stored (their builtin upsert would clobber it — the r326 wipe shape).
+// Fail-closed on an unreadable vault, as always.
+// Honest residual race: a builtin key stored by the user DURING a run would
+// be taken by the suite's post-run builtin DELETE — one ~60s window, and
+// the executor skips builtin slots entirely (r205), but it is exactly why
+// this mode aborts on an occupied builtin slot rather than snapshotting.
+export async function assertBuiltinFreeOrAbort(base, suite) {
+  const slots = await listVaultSlots(base);
+  if (slots === null) {
+    console.error(
+      `[qa-guard] ${suite}: ABORT — /api/vault unreadable; refusing to ` +
+        `write into an unverifiable vault (fail-closed, r326 doctrine).`
+    );
+    process.exit(2);
+  }
+  const builtin = slots.find((s) => s.provider === "builtin");
+  if (builtin) {
+    console.error(
+      `[qa-guard] ${suite}: ABORT — a REAL "builtin" slot exists ` +
+        `(${builtin.maskedKey}). These suites upsert+delete the builtin ` +
+        `slot itself; running would DESTROY it (the r326 wipe shape). ` +
+        `Remove it for the duration of QA.`
+    );
+    process.exit(2);
+  }
+  if (slots.length > 0) {
+    console.log(
+      `[qa-guard] ${suite}: builtin-only mode — ${slots.length} registry ` +
+        `slot(s) present (${slots.map((s) => s.provider).join(", ")}); ` +
+        `this suite writes/deletes ONLY "builtin", which is currently free.`
+    );
+  } else {
+    console.log(`[qa-guard] ${suite}: vault empty — safe to proceed`);
+  }
+}

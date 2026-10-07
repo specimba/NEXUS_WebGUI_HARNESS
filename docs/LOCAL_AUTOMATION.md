@@ -172,18 +172,23 @@ real user data is explicit and enforced by `scripts/lib/qa-vault-guard.mjs`:
   fail-closes (exit 2) if the masked vault GET is unreadable, reaps stale
   `qa-*` slots from crashed runs, and proceeds alongside real slots
   (logging them honestly). Converted so far: `vault-slot-affordances`
-  (proven live r327 — 6/6 with a real slot present, real slot
-  byte-identical after the run).
+  (r327) and `vault-slot-residue` (r328) — both proven live with a real
+  slot present, byte-identical after the run.
+- **Builtin-only mode (`assertBuiltinFreeOrAbort`, r329):** the builtin-box
+  suites (`vault-test` / `vault-reveal` / `vault-guard`) seed and assert
+  ONLY the legacy `builtin` slot, so registry-provider slots are irrelevant
+  to them: they proceed when only registry slots exist and abort (exit 2)
+  only when a REAL `builtin` slot is stored. Honest residual race: a
+  builtin key stored by the user DURING a run would be taken by the suite's
+  post-run builtin DELETE — one ~60s window, and the executor skips builtin
+  slots entirely (r205), but it is why this mode aborts rather than
+  snapshots.
 - **Strict mode (`assertVaultEmptyOrAbort`):** suites whose assertions read
-  GLOBAL vault state (the Workflows lane-chip suite) or that still seed
-  un-namespaced slots (the builtin-box suites, `qa-automation-lane`) abort
-  with exit 2 before any browser boot when any
-  slot exists — they skip rather than risk a wipe. Converted r328:
-  `vault-slot-residue`. `qa-automation-lane`'s live section needs a REAL
-  resolvable registry slot by design (a `qa-*` slot is unresolvable and
-  would change what it tests) — it keeps the strict abort until a
-  snapshot-restore design is proven. The builtin suites need namespace
-  conversion or an honest builtin-only abort.
+  GLOBAL vault state (the Workflows lane-chip suite) abort with exit 2
+  before any browser boot when any slot exists — they skip rather than lie.
+  `qa-automation-lane`'s live section needs a REAL resolvable registry slot
+  by design (a `qa-*` slot is unresolvable and would change what it tests) —
+  it keeps the strict abort until a snapshot-restore design is proven.
 - **Never assert "vault left empty" in coexistence mode** — the honest
   post-run assertion is "no `qa-*` residue"; real slots are counted and
   reported untouched.
@@ -220,7 +225,7 @@ documented; the sync GET shape was re-verified live
 r109-era "headless runs fall back to the shared lane" claim (the fallback is
 gone — no-slot runs stay honestly queued), plus a new QA-suite contract
 section documenting the r326 incident and the r327 two-mode guard
-(strict vs `qa-*` coexistence). Not re-verified live this pass: the vault
+(strict vs `qa-*` coexistence; r329 added the builtin-only mode). Not re-verified live this pass: the vault
 `consume` round-trip against a stored key (the keyless dev profile can only
 witness the no-key lane) and the prune-on-push registry path (no enabled
 schedules in the dev registry). Future rounds changing these endpoints
