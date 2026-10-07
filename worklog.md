@@ -8502,3 +8502,31 @@ Verification result: PASS
 Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted. New: (1) server-lane executor (tab-closed runs) chain audit owed — does the /api/chat lane build the same widened chain, or does its own rotation need the noKey lanes too? (2) free-lane quality unknown until first live rotation — health memory will demote bad ones, but the FIRST run after this ships may show slower/weaker fallback answers (honest tradeoff vs parking).
 Blockers: none
 Next recommended action: r319 — (1) FIRST read any user report — especially whether the next parked run's card shows ⇄ relay > 0. (2) Verify HEAD lineage (expect the r318 snapshot or successor). (3) ONE small item: (a) server-lane chain audit (automation-executor /api/chat path: does it share buildRelayChain, and do noKey lanes reach it?); (b) vault-epic increment; (c) docs pass. (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog BEFORE snapshot; receipts for user-visible changes; SMALL commands.
+
+## r319 — server lane (tab-closed runs) gets 429 rotation: no-key free-lane fallback in automation-executor (2026-10-07, Job 424432)
+
+Task ID: r319
+Agent: main (platform dev agent)
+Task: r318 handoff (a) — server-lane chain audit. No new user paste; health 200; HEAD lineage: 041052f3e (r318 snapshot) + ba62e37f4 (parallel instance's receipt-only commit, 8 lines whats-fixed.tsx — no collision, tree clean).
+
+Work Log:
+- AUDIT RESULT (src/lib/server/automation-executor.ts): the tab-closed lane dials via dialStep — ONE raw fetch to the vault slot's provider (r211/r207 single resolver, vault slots oldest-first), NO relay chain, NO rotation, NO 429 handling (generic `dial ${res.status}` throw). Confirms the r318 hypothesis: the widened browser chain never reaches server runs (the pasted 0✓ 2✗).
+- SHIPPED: on a 429 from the vault dial, dialStep now calls dialNoKeyFallback — up to TWO registry noKey lanes (skip: cooling lanes via provider429CooldownLeftMs, lanes whose endpoint origin matches the failed dial, model-less lanes; provider-rotation memory is isomorphic so the server process gets its own Map), same body shape + DIAL_TIMEOUT_MS, NO authorization header (keyless by doctrine — no credential invented). Success → resetProvider429 + return text; failure → noteProvider429 + next lane; none answer → the ORIGINAL 429 error throws (honest failure, never fabricated output). Non-429 failures keep the old path untouched.
+- Deliberately NOT done: ResolvedDial still lacks providerId (the r317 lesson repeats) — noting the VAULT lane's own 429s into the cooldown map needs the id threaded through probeSlotDial/resolveServerDialFromSlots/sync-GET masking; a bigger surface than this round. Queued, not hidden.
+- Doctrine note recorded in the module header: the no-key fallback is a deliberate amendment to "dials exclusively with an OPT-IN key" — keyless lanes involve no credential, so the BYOK guarantee holds.
+- Verification: npx tsc --noEmit 0 (unmasked); bun run lint 0/33; cdp-qa-chat-interactions 8/8; **bun scripts/qa-automation-executor.ts 26/26** (the canonical runner is bun, per r2xx precedents — plain tsx transform-fails, noted for future rounds).
+- Budget: 7 tool rounds.
+
+Stage Summary:
+- Both lanes now rotate on 429: browser (r318 relay chain) and server (r319 executor fallback), sharing the same isomorphic cooldown memory doctrine. The single-key vault no longer means a dead end when the tab is closed.
+
+Round Handoff:
+Round ID: r320
+Task owner: main (platform dev agent)
+Scope completed: server-lane 429 fallback (dialNoKeyFallback + dialStep wiring + header doctrine note + receipt r319).
+User-visible changes: tab-closed scheduled runs survive a vault-provider 429 via keyless free lanes; whats-fixed r319 card.
+Verification steps: bun scripts/qa-automation-executor.ts (26/26); node scripts/cdp-qa-chat-interactions.mjs (8/8); npx tsc --noEmit (0, unmasked); bun run lint (0/33).
+Verification result: PASS
+Open risks: carried: clipboard SUCCESS toast inferred; r241 markdown external-image CSP; Chrome Ctrl+1-8; ZAI abort gap (r251); vault consume round-trip live-unverified; git push fork 128 environmental; 8 lib modules still "use client"; orca credit drain is the user's live constraint; answerAs popover unwitnessed; provider-card raw-custom lane un-noted. New: (1) ResolvedDial lacks providerId — vault-lane 429s are un-noted server-side (fallback lanes ARE noted); (2) free-lane fallback quality unknown until first live server 429 (executor suite is DB-driven, not provider-driven).
+Blockers: none
+Next recommended action: r320 — (1) FIRST read any user report — watch for the first tab-closed run surviving a 429. (2) Verify HEAD lineage (expect the r319 snapshot or successor; parallel receipt commits like ba62e37f4 are normal). (3) ONE small item, rotate surface (rotation family r305-r319 is saturated — prefer elsewhere): (a) vault-epic increment (r123+); (b) docs pass on a non-LOCAL_AUTOMATION doc; (c) ResolvedDial providerId threading (only if nothing better — it is the rotation family again). (4) Standing: qa:tsc UNMASKED + CANONICAL bun run lint; worklog BEFORE snapshot; receipts for user-visible changes; SMALL commands.

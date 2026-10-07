@@ -15,12 +15,26 @@
 //     built-in SDK's gateway is client-side knowledge), so the executor v1
 //     dials only through a REAL registry provider (providerById) — the
 //     builtin slot is skipped with an explicit reason, not guessed.
+//   • r319: on a 429 from the vault dial, a step may fall back to a REGISTRY
+//     no-key free lane (keyless by doctrine — no credential involved; the
+//     server-side mirror of the browser lane's r318 rotation). Before this
+//     the server lane had NO rotation at all: a saturated vault provider
+//     meant every tab-closed run died on the same quota bucket.
 //
 // Everything here is exported so scripts/qa-automation-executor.ts can drive
 // tickOnce() directly against the real database — the loop is just wiring.
 
 import { db } from "@/lib/db";
-import { providerById, providerBaseUrl } from "@/lib/providers";
+import {
+  FREE_PROVIDERS,
+  providerById,
+  providerBaseUrl,
+} from "@/lib/providers";
+import {
+  noteProvider429,
+  provider429CooldownLeftMs,
+  resetProvider429,
+} from "@/lib/provider-rotation";
 
 export const CLAIM_INTERVAL_MS = 15_000;
 export const HEARTBEAT_STALE_MS = 120_000;
@@ -115,6 +129,88 @@ export function resolveServerDialFromSlots(
   return { dial: null, why: sawKey ? "no-resolvable-provider" : "no-vault-key" };
 }
 
+/** r319: server-side mirror of the browser lane's free-lane rotation (r318).
+ * Tries up to two no-key registry lanes that are not in their 429 cooldown
+ * and whose endpoint differs from the dial that just got rate-limited. A
+ * failed fallback is noted (exponential cooldown, this process's memory)
+ * and the scan continues; null = no lane answered (caller throws the
+ * ORIGINAL 429 error — honest failure, never a fabricated result). */
+const FREE_LANE_FALLBACKS = 2;
+async function dialNoKeyFallback(
+  prompt: string,
+  failedUrl: string,
+): Promise<string | null> {
+  let failedOrigin = "";
+  try {
+    failedOrigin = new URL(failedUrl).origin;
+  } catch {
+    /* malformed url — skip the origin guard */
+  }
+  let tried = 0;
+  for (const reg of FREE_PROVIDERS) {
+    if (tried >= FREE_LANE_FALLBACKS) break;
+    if (reg.noKey !== true) continue;
+    if (provider429CooldownLeftMs(reg.id) > 0) continue;
+    const baseUrl = providerBaseUrl(reg);
+    if (!baseUrl) continue;
+    try {
+      if (failedOrigin && new URL(baseUrl).origin === failedOrigin) continue;
+    } catch {
+      continue;
+    }
+    const firstModel = Array.isArray(reg.models) ? reg.models[0] : undefined;
+    const model =
+      typeof firstModel === "string"
+        ? firstModel
+        : ((firstModel as { id?: string } | undefined)?.id ?? "");
+    if (!model) continue;
+    tried += 1;
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), DIAL_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are executing one step of a scheduled automation pipeline. Answer the step prompt directly and concisely.",
+            },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 2000,
+          temperature: 0.7,
+        }),
+        signal: ac.signal,
+      });
+      if (!res.ok) {
+        await res.text().catch(() => "");
+        noteProvider429(reg.id);
+        continue;
+      }
+      const j = (await res.json()) as {
+        choices?: { message?: { content?: string } }[];
+      };
+      const text = j.choices?.[0]?.message?.content?.trim() ?? "";
+      if (!text) {
+        noteProvider429(reg.id);
+        continue;
+      }
+      resetProvider429(reg.id);
+      return text;
+    } catch {
+      noteProvider429(reg.id);
+      continue;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
 /** One non-streaming OpenAI-compatible chat completion for a single step. */
 export async function dialStep(dial: ResolvedDial, prompt: string): Promise<string> {
   const ac = new AbortController();
@@ -143,6 +239,13 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
+      // r319: a 429 on the vault dial used to be a dead end — the server
+      // lane had NO rotation (witnessed: tab-closed server runs 0✓ 2✗ on a
+      // saturated provider). Try the no-key free lanes before throwing.
+      if (res.status === 429) {
+        const fallback = await dialNoKeyFallback(prompt, dial.url);
+        if (fallback !== null) return fallback;
+      }
       throw new Error(`dial ${res.status}: ${body.slice(0, 200)}`);
     }
     const j = (await res.json()) as {

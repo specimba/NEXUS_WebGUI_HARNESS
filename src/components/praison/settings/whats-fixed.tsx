@@ -319,6 +319,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflows → after a 429, a run card's LLM calls row shows relay hops (⇄) > 0; steps survive single-provider quota trips instead of parking",
   },
+  {
+    round: "r319",
+    title: "Tab-closed (server) runs now survive a 429 by rotating onto keyless free lanes",
+    detail:
+      "When the tab is closed the local server claims schedules and dialed the vault provider exactly once — a 429 was a dead end, so runs died on a saturated quota bucket (witnessed: server runs 0✓ 2✗). On a 429 the step now falls back to up to two registry no-key free lanes (never a credential — keyless by doctrine); failed lanes cool for later steps.",
+    lookFor:
+      "Server runs · 24h — after a Vyce 429, runs complete via a no-key free lane instead of ✗ error",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
