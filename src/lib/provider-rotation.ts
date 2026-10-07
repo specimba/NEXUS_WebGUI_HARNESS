@@ -24,6 +24,37 @@ export const ROTATION_COOLDOWN_BASE_MS = 60_000;
 export const ROTATION_COOLDOWN_CAP_MS = 15 * 60_000;
 /** A lane silent this long is treated as recovered — its streak resets. */
 export const ROTATION_RECOVERY_MS = 30 * 60_000;
+/**
+ * r332 (user report): a BILLING death is not congestion — the wallet sits at
+ * $0.00 until a HUMAN tops it up, so re-dialing inside any 15-minute window
+ * is corpse-dialing. The quarantine matches the r310 relay doctrine (hard
+ * lane death = 6h) so a direct BYOK lane and a relay lane get the SAME
+ * memory: rotation skips it, every dial path sees it via the same cooldown
+ * getter. Cleared by a proven-healthy call (the wallet got topped up).
+ */
+export const BILLING_DEAD_MS = 6 * 60 * 60_000;
+
+const billingDeadUntil = new Map<string, number>();
+
+/** Quarantine a provider whose wallet is drained (billing-class failure). */
+export function noteProviderBilling(providerId: string, now: number = Date.now()): void {
+  billingDeadUntil.set(providerId, now + BILLING_DEAD_MS);
+}
+
+/** Remaining ms the billing quarantine has left (0 = free to dial). */
+export function providerBillingDeadLeftMs(
+  providerId: string,
+  now: number = Date.now()
+): number {
+  const until = billingDeadUntil.get(providerId);
+  if (!until) return 0;
+  const left = until - now;
+  if (left <= 0) {
+    billingDeadUntil.delete(providerId);
+    return 0;
+  }
+  return left;
+}
 
 interface Lane429 {
   streak: number;
@@ -59,6 +90,9 @@ export const noteProviderFailure = noteProvider429;
 /** A lane that just served a full successful call is healthy again. */
 export function resetProvider429(providerId: string): void {
   lanes.delete(providerId);
+  // r332: a successful call also disproves a billing death (the wallet was
+  // topped up) — clear the quarantine with the congestion streak.
+  billingDeadUntil.delete(providerId);
 }
 
 /** Remaining ms the lane should not be dialed for (0 = free to dial). */
@@ -66,13 +100,24 @@ export function provider429CooldownLeftMs(
   providerId: string,
   now: number = Date.now()
 ): number {
+  // r332: the lane's cooldown is the WORSE of its two memories — congestion
+  // (15m cap) and billing death (6h). nextRotation reads this, so a
+  // wallet-dead provider is only ever dialed when the ENTIRE roster is
+  // cooling and it happens to be the soonest — exactly the semantics a
+  // corpse lane deserves.
   const lane = lanes.get(providerId);
-  if (!lane) return 0;
-  const window = Math.min(
-    ROTATION_COOLDOWN_BASE_MS * 2 ** (lane.streak - 1),
-    ROTATION_COOLDOWN_CAP_MS
-  );
-  return Math.max(0, lane.last429At + window - now);
+  const congestion = lane
+    ? Math.max(
+        0,
+        lane.last429At +
+          Math.min(
+            ROTATION_COOLDOWN_BASE_MS * 2 ** (lane.streak - 1),
+            ROTATION_COOLDOWN_CAP_MS
+          ) -
+          now
+      )
+    : 0;
+  return Math.max(congestion, providerBillingDeadLeftMs(providerId, now));
 }
 
 export interface RotationPick {

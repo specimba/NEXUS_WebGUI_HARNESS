@@ -356,7 +356,16 @@ export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
   if (/blocked this network|region\/?IP block|datacenter|server-region|\b451\b/i.test(msg)) {
     return "region";
   }
-  if (/\b402\b|out of credits|insufficient (?:credits?|balance|funds)|credit.?gate|add credits|payment required/i.test(msg)) {
+  // r332 (user report): Vyce phrases a drained wallet on a 403 — "Your
+  // account balance is insufficient. Please recharge…" — reversed word order
+  // plus recharge phrasing; both used to fall through to "auth" (fix-your-key
+  // advice for a healthy key). Kept BEFORE rate-limit/auth, same as the
+  // runner's ERROR_PATTERNS ordering.
+  if (
+    /\b402\b|out of credits|insufficient (?:credits?|balance|funds)|(?:credits?|balance|funds) (?:is|are) insufficient|please recharge|credit.?gate|add credits|payment required/i.test(
+      msg
+    )
+  ) {
     return "billing";
   }
   if (/\b429\b|rate.?limit|quota|too many requests/i.test(msg)) {

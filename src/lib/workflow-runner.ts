@@ -21,8 +21,10 @@ import { maxParks, parkDelayMs, resolvePark, type ParkKind } from "@/lib/park-po
 import {
   nextRotation,
   noteProvider429,
+  noteProviderBilling,
   noteProviderFailure,
   resetProvider429,
+  BILLING_DEAD_MS,
 } from "@/lib/provider-rotation";
 import {
   congestionCooldownMs,
@@ -406,7 +408,7 @@ const ERROR_KIND_META: Record<RunErrorKind, { label: string; hint: string }> = {
   },
   billing: {
     label: "Out of credits",
-    hint: "The provider's credit balance is drained (HTTP 402) — re-dialing cannot fix a wallet at $0.00. Add credits on the provider's billing console, or save a second provider key so the rotation has another lane to dial; the relay already skipped past this lane for 6 hours.",
+    hint: "The provider's credit balance is drained — re-dialing cannot fix a wallet at $0.00 (HTTP 402, or a 403 whose body says the balance is insufficient). Add credits on the provider's billing console, or save a second provider key so the rotation has another lane to dial; this lane is quarantined for 6 hours and the relay already skips it.",
   },
   timeout: {
     label: "Timeout",
@@ -428,8 +430,13 @@ const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
     // r310: prepaid credit gates (HTTP 402) are billing deaths — the wallet
     // needs a HUMAN top-up, so the lane is a corpse until then (r187 DEAD,
     // not the 5-minute hard window that kept re-dialing it all run long).
+    // r332 (user report): Vyce phrases the same death on a 403 — "Your
+    // account balance is insufficient. Please recharge…" — REVERSED word
+    // order plus recharge phrasing. Both were invisible to this pattern,
+    // so the message fell through to kind "auth" ("fix your key" advice
+    // for a healthy key) with no rotation memory fed.
     kind: "billing",
-    re: /\b402\b|out of credits|insufficient (?:credits?|balance|funds)|credit.?gate|add credits|payment required/i,
+    re: /\b402\b|out of credits|insufficient (?:credits?|balance|funds)|(?:credits?|balance|funds) (?:is|are) insufficient|please recharge|credit.?gate|add credits|payment required/i,
   },
   {
     // BEFORE auth: a 403 with block-page signatures is a location block, not
@@ -1286,8 +1293,8 @@ export async function executeWorkflowRun(
           );
           relayNotes.push(
             attempt === 1
-              ? `primary skipped — sick window active (${sickLeft}s left; mid-stream drop or recent 429 saturation)`
-              : `primary demoted — built-in engine dialed first, ${llm.label} parked as last hop (mid-stream drop or recent 429)`
+              ? `primary skipped — sick window active (${sickLeft}s left; mid-stream drop, 429 saturation or billing quarantine)`
+              : `primary demoted — built-in engine dialed first, ${llm.label} parked as last hop (mid-stream drop, 429 saturation or billing quarantine)`
           );
         }
         const res = await runAgentChat(
@@ -1441,6 +1448,23 @@ export async function executeWorkflowRun(
             noteLaneFailure(laneSaturation, droppedFamily, Date.now());
             noteProviderFailure(dialLlm.providerId, Date.now());
           }
+        }
+        // r332 (user report): a billing death — "Your account balance is
+        // insufficient. Please recharge…", Vyce's 403-phrased wallet-empty —
+        // fed NO rotation memory before: every later step and every scheduled
+        // fire re-dialed the corpse first. Quarantine the provider for 6h
+        // (the r310 relay doctrine — same memory the relay side uses), demote
+        // the primary for the rest of this run (later attempts/steps lead
+        // with the built-in engine), and the final-attempt registry rotation
+        // lands on a live lane because nextRotation reads the quarantine.
+        if (
+          kind === "billing" &&
+          dialLlm.providerId &&
+          dialLlm.providerId !== "auto"
+        ) {
+          noteProviderBilling(dialLlm.providerId, Date.now());
+          demotePrimary = true;
+          primarySickUntil = Date.now() + BILLING_DEAD_MS;
         }
         if (attempt < MAX_STEP_ATTEMPTS && SELF_HEAL_KINDS.includes(kind) && !signal.aborted) {
           // v23: a 429 is congestion, not flakiness — re-dialing within seconds
