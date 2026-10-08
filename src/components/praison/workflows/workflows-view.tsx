@@ -67,7 +67,7 @@ import {
 import type { SpawnProposal, Workflow, WorkflowStep } from "@/lib/types";
 import { buildAngleHistory, buildVariationProposal, latestScoredNovelty, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
 import { useSettingsStore } from "@/lib/stores";
-import { downloadJson, fmtIn, fmtIntervalShort, fmtRel, resolveStepRole, roleMatchesAgent, summarizeRoleTagMismatches, uid } from "@/lib/helpers";
+import { downloadJson, fmtIn, fmtIntervalShort, fmtRel, resolveStepRole, roleMatchesAgent, stripUiChipArtifacts, summarizeRoleTagMismatches, truncateAtWord, uid } from "@/lib/helpers";
 import { resolveLlm } from "@/lib/llm-config";
 import { isWorkflowRunning } from "@/lib/workflow-runner";
 import { deepPauseChip } from "@/lib/depth-chip";
@@ -128,8 +128,11 @@ function sanitizeWorkflow(raw: unknown, validAgentIds: Set<string>): Workflow | 
     steps.push({
       id: uid("step"),
       agentId,
-      label: str(s.label, "Step").slice(0, 200) || "Step",
-      instruction: s.instruction ? str(s.instruction).slice(0, 2000) : undefined,
+      // r343: file-import text keeps the caps but never tears mid-word.
+      label: truncateAtWord(stripUiChipArtifacts(str(s.label, "Step")), 200) || "Step",
+      instruction: s.instruction
+        ? truncateAtWord(stripUiChipArtifacts(str(s.instruction)), 2000)
+        : undefined,
       kind: s.kind === "review" ? ("review" as const) : ("generate" as const),
     });
   }
@@ -138,8 +141,8 @@ function sanitizeWorkflow(raw: unknown, validAgentIds: Set<string>): Workflow | 
   const now = Date.now();
   return {
     id: uid("wf"),
-    name: name.slice(0, 80),
-    description: str(r.description).slice(0, 300),
+    name: truncateAtWord(stripUiChipArtifacts(name), 80),
+    description: truncateAtWord(stripUiChipArtifacts(str(r.description)), 300),
     steps,
     runs: [],
     createdAt: now,
@@ -364,14 +367,19 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
 
 // ─── Plan → Pipeline · one-click composer (paste a plan, get a workflow) ─────
 
-/** First line = goal; the rest = steps (bullet/numbered markers stripped). */
+/**
+ * First line = goal; the rest = steps (bullet/numbered markers stripped).
+ * r343: every line passes stripUiChipArtifacts (text copied back from our own
+ * run panel carries "tag [X] ≠ worker" chips inline) and the goal is
+ * word-truncated — persisted text is never torn mid-word.
+ */
 function parsePlan(text: string): { goal: string; steps: string[] } {
   const lines = text
     .split("\n")
-    .map((l) => l.trim())
+    .map((l) => stripUiChipArtifacts(l.trim()))
     .filter(Boolean);
   if (lines.length === 0) return { goal: "", steps: [] };
-  const goal = lines[0].replace(/^#+\s*/, "").slice(0, 200);
+  const goal = truncateAtWord(lines[0].replace(/^#+\s*/, ""), 200);
   const steps = lines
     .slice(1)
     .map((l) =>
@@ -420,7 +428,7 @@ function PlanPipelineDialog({
     const steps: WorkflowStep[] = stepLines.map((label, i) => ({
       id: uid("step"),
       agentId: selected[i % selected.length],
-      label: label.slice(0, 120) || `Step ${i + 1}`,
+      label: truncateAtWord(label, 120) || `Step ${i + 1}`,
       instruction: goal,
       kind: "generate" as const,
     }));
@@ -434,7 +442,7 @@ function PlanPipelineDialog({
       });
     }
     addWf({
-      name: goal.slice(0, 80),
+      name: truncateAtWord(goal, 80),
       description: scaffold
         ? `Auto-composed scaffold · ${steps.length} steps`
         : `From pasted plan · ${steps.length} steps`,
@@ -736,7 +744,7 @@ function EvolutionInbox() {
     const steps: WorkflowStep[] = stepLines.map((label, i) => ({
       id: uid("step"),
       agentId: roster[i % roster.length],
-      label: label.slice(0, 120) || `Step ${i + 1}`,
+      label: truncateAtWord(label, 120) || `Step ${i + 1}`,
       instruction: parsed.goal,
       kind: "generate" as const,
     }));
@@ -748,9 +756,10 @@ function EvolutionInbox() {
       kind: "review" as const,
     });
     const spawnedId = uid("wf");
+    // (parsed.goal is already chip-stripped and word-truncated by parsePlan.)
     addWf({
       id: spawnedId,
-      name: parsed.goal.slice(0, 80),
+      name: truncateAtWord(parsed.goal, 80),
       description: `Evolution spawn · from "${p.sourceWorkflowName}" · ${p.reason}`,
       steps,
       depth: "standard",

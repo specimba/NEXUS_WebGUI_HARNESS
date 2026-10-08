@@ -224,6 +224,50 @@ export function parseReviewVerdict(text: string): "pass" | "rework" {
 // an amber mismatch chip when it does not. Display-only: labels stay
 // authoring freedom, routing stays step.agentId (unchanged by design).
 
+// ─── r343: plan-import text integrity (no mid-word amputation, no UI-chip fusion) ──
+// The user's pasted plan arrived with step texts torn mid-word ("bounded
+// recursive self-i…", "…delegation, memory, con") and fused with the run
+// panel's own amber chip text ("tag [Strategic Planner] ≠ worker"). Two
+// mechanical causes, both ours to fix at the border:
+//  (1) import paths hard-slice label/name/goal at fixed widths (.slice(0, N))
+//      — a >N line is amputated mid-word into PERSISTED text. Display may
+//      truncate; storage must not tear words.
+//  (2) text copied back out of our own UI interleaves the chip's rendered
+//      text ("tag [X] ≠ worker", `role tag "X" ≠ worker "Y" (routing …)`)
+//      into the copied plan; re-pasting that imports the chip as content.
+
+/**
+ * Word-boundary truncation: never returns a torn token. Text at or below
+ * `max` passes through untouched; longer text is cut at the last space that
+ * fits and gets an ellipsis. A single token longer than `max` (URLs, hashes)
+ * cannot be word-split — it hard-slices with the ellipsis, still honest.
+ */
+export function truncateAtWord(text: string, max: number): string {
+  const s = (text ?? "").trim();
+  if (s.length <= max) return s;
+  // lastIndexOf(" ", max - 1): the boundary space itself must fit inside the
+  // cap, or slice(0, cut) + "…" lands one char OVER max (probe-caught).
+  const cut = s.lastIndexOf(" ", max - 1);
+  if (cut <= 0) return s.slice(0, Math.max(1, max - 1)) + "…";
+  return s.slice(0, cut) + "…";
+}
+
+/**
+ * Strip run-panel chip artifacts fused into copied plan text. Anchored on
+ * the literal "≠ worker" — no legitimate plan line contains it. Handles the
+ * two render shapes (bracket tag and quoted role) plus the summary suffix.
+ */
+export function stripUiChipArtifacts(text: string): string {
+  return (text ?? "")
+    .replace(
+      /[ \t]*(?:role[ \t]tag|[ \t]?role|tag)?[ \t]*(?:\[[^\][\n]{0,80}\]|["“”][^"“”\n]{0,80}["“”])?[ \t]*≠[ \t]*worker(?:[ \t]*(?:["“”][^"“”\n]{0,80}["“”]|\([^)\n]{0,140}\)))*/g,
+      ""
+    )
+    .replace(/[ \t]*⚠[ \t]*/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 /** Extract a leading "[Role]" tag from a step label (tolerant: null when absent). */
 export function parseRolePrefix(label: string): { role: string | null; cleanLabel: string } {
   const m = /^\s*\[([^\][\n]{1,80})\]\s*/.exec(label ?? "");
