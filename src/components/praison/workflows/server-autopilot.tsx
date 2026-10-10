@@ -21,11 +21,16 @@ import {
   type ExecutorLaneState,
 } from "@/lib/automation-lane";
 import { cn } from "@/lib/utils";
+import { classifyRunError, runErrorKindLabel, SELF_HEAL_KINDS } from "@/lib/workflow-runner";
 
-// r116: transient = environmental noise (429 congestion, socket blips, the app
-// restarting mid-dial). Mirrors the scheduler's TRANSIENT_RE + RATE_LIMIT_RE —
-// these render as amber "↻ retried", NOT the terminal red "✗ error".
-const TRANSIENT_RE = /\b(429|too many requests|rate.?limit|socket connection|econnreset|econnrefused|fetch failed|network|premature close|terminated|etimeout|timeout)\b/i;
+// r397: transient = classified self-healable (network / timeout / rate-limit)
+// via the production classifier — replacing the r116 TRANSIENT_RE mirror so
+// runner, run panel and this surface share ONE "retrying helps" definition.
+// These render as amber "↻ retried", NOT the terminal red "✗ error".
+function isTransientRunError(error: string | null | undefined): boolean {
+  if (!error) return false;
+  return SELF_HEAL_KINDS.includes(classifyRunError(error).kind);
+}
 
 // ─── v20: Server autopilot panel (Workflow Studio) ───────────────────────────
 // Surfaces the headless layer: whether the local server or the open browser
@@ -220,8 +225,8 @@ export function ServerAutopilot() {
   const runs24 = (state?.runs ?? []).filter((r) => new Date(r.startedAt).getTime() >= dayAgo);
   const done24 = runs24.filter((r) => r.status === "done").length;
   const running24 = runs24.filter((r) => r.status === "running").length;
-  const transient24 = runs24.filter((r) => r.status === "error" && TRANSIENT_RE.test(r.error ?? "")).length;
-  const failed24 = runs24.filter((r) => r.status === "error" && !TRANSIENT_RE.test(r.error ?? "")).length;
+  const transient24 = runs24.filter((r) => r.status === "error" && isTransientRunError(r.error)).length;
+  const failed24 = runs24.filter((r) => r.status === "error" && !isTransientRunError(r.error)).length;
   // Attention = the amber conditions the strips below already render, counted.
   const attention: string[] = [];
   if (staleRows.length > 0)
@@ -512,11 +517,12 @@ export function ServerAutopilot() {
           <ul className="mt-1.5 max-h-64 space-y-1.5 overflow-y-auto pr-1">
             {state.runs.map((r) => {
               const expanded = openRun === r.id;
-              // r116: mirror of the scheduler's TRANSIENT_RE — infra blips
-              // (429/socket/restart-window noise) render as an amber
+              // r397: production classifier (was the r116 TRANSIENT_RE
+              // mirror) — self-healable kinds render as an amber
               // "↻ retried" (schedule survived, backoff armed) instead of
               // the red terminal "✗ error" reserved for hard failures.
-              const transient = r.status === "error" && TRANSIENT_RE.test(r.error ?? "");
+              const cls = r.status === "error" && r.error ? classifyRunError(r.error) : null;
+              const transient = cls != null && SELF_HEAL_KINDS.includes(cls.kind);
               return (
                 <li key={r.id} className="text-xs">
                   <button
@@ -552,10 +558,14 @@ export function ServerAutopilot() {
                   </button>
                   {expanded ? (
                     <div className="mx-1.5 mt-1 rounded-md border bg-background/60 p-2">
-                      {transient ? (
-                        <p className="mb-1 text-[10.5px] font-medium text-amber-400">
-                          Transient infra error — schedule stays enabled, retry backoff armed.
+                      {cls ? (
+                        <p className={cn("mb-1 text-[10.5px] font-semibold", transient ? "text-amber-400" : "text-red-400")}>
+                          {runErrorKindLabel(cls.kind)}
+                          {transient ? " — transient infra error; schedule stays enabled, retry backoff armed." : ""}
                         </p>
+                      ) : null}
+                      {cls?.hint ? (
+                        <p className="mb-1 text-[10.5px] leading-snug text-muted-foreground">→ {cls.hint}</p>
                       ) : null}
                       {r.error ? (
                         <p className={cn("break-words font-mono text-[10.5px]", transient ? "text-amber-400/80" : "text-red-400")}>{r.error}</p>

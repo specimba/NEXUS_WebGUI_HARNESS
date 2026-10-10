@@ -460,8 +460,9 @@ const ERROR_PATTERNS: { kind: RunErrorKind; re: RegExp }[] = [
   },
 ];
 
-/** Failure kinds the runner heals by itself (one automatic step retry). */
-const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout", "rate-limit"];
+/** Failure kinds the runner heals by itself (one automatic step retry).
+ * Exported so UI surfaces share the exact same "retrying helps" envelope. */
+export const SELF_HEAL_KINDS: RunErrorKind[] = ["network", "timeout", "rate-limit"];
 
 /**
  * r126: how long a mid-stream-dropped primary stays demoted for the REST of
