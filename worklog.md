@@ -9461,3 +9461,25 @@ Scope committed: deep-link-share.tsx (new), automation-vault-card.tsx (header bu
 Open risks: success-path toast/check swap unwitnessed in headless (clipboard-write denied; fine in real browsers per r270 helper heritage); vault EMPTY in this DB; r397/r398 receipts still data-unwitnessed; rollback-lost r344–r396 code still absent.
 Blockers: none
 Next recommended action: r406 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface — settings has been touched 3 rounds straight (r403 router, r404 receipts, r405 share buttons): candidates — (a) agents-view survey (untouched this lineage); (b) usage-dashboard detail polish (survey first); (c) opportunistic witnesses when real failure/proposal data exists; (d) a NEW user-facing feature in a FRESH view beats more settings polish. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (44th); batch greps; land on budget — an early exit IS a success.
+---
+Task ID: r406
+Agent: main (platform dev agent)
+Task: Rotate off settings per r405 handoff — shipped the #/chat/<id> conversation deep link (param route) plus its in-product copy affordance ("Copy link" in each conversation's kebab menu).
+
+Work Log:
+- Verified HEAD c634062c0 (r405 snapshot), health 200. No user replies.
+- SURVEY REFUTATIONS (44th/45th): agents-view re-surveyed — mature (sanitizeAgent import/export, r162 honest usage chips, r221 same-source delete warning, r287 silent-failure toasts); chat per-message copy already exists (r270/r275 honest failure). Workflows #/workflows/<id> REFUTED on feasibility — no selection state in the store, would need new store concepts.
+- SHIPPED (two halves, r405's lesson applied): (1) page.tsx applyHashRoute — new `head === "chat" && param` branch BEFORE the bare-view branch (which previously swallowed param'd chat routes, ignoring the id): dismisses wizard, setView("chat"), setActive(decodeURIComponent(param)). Stale/unknown ids safe BY DESIGN — chat-view resolves activeId with `?? null` (same no-selection state as a fresh session); route-time validation would race zustand persist hydration. (2) conversation-list.tsx — "Copy link" kebab item copying origin/#/chat/<id> via shared copyText, direct in onSelect (NO defer — clipboard needs user activation), honest success/blocked toasts matching the r405 pattern.
+- VERIFICATION: unmasked tsc --noEmit exit 0; bun run lint 0 errors / 33 warnings (baseline). LIVE witnesses: (a) valid route — persisted store activeId flipped conv_27fd24e8dddf → conv_31e4d7137965 after navigating #/chat/conv_31e4d7137965 (localStorage persist = direct store evidence, no DOM guessing); (b) stale id — #/chat/conv_stale999 and #/chat/EMPTYSTORE both land on a rendered chat, app alive, zero page errors; (c) console clean throughout.
+- COST: ~18 tool calls — well over budget; 10 spent on refute-first surveys of untouched surfaces (agents-view, chat copy, workflows feasibility) before a shippable target emerged. The feature itself is small; the survey tax is the honest cost of rotating to unfamiliar views.
+
+Stage Summary:
+- Every conversation is now addressable and shareable: #/chat/<id> routes (r406) join the settings anchors (r403) and guide/<provider> param pattern. The route's one known limitation — ids are opaque, so links rot silently into a usable no-selection Chat — is documented in the router comment and witnessed.
+
+Round Handoff:
+Round ID: r407
+Task owner: main (platform dev agent)
+Scope committed: page.tsx (chat param route + docs + conversations-store import), conversation-list.tsx (Copy link item + Link2/copyText imports).
+Open risks: deep links are copy-only discoverable (no QR/preview surface — fine for a local-first app); vault EMPTY in this DB; r397/r398 receipts still data-unwitnessed; settings-anchor share buttons (r405) success path headless-unwitnessable; rollback-lost r344–r396 code still absent.
+Blockers: none
+Next recommended action: r407 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Candidates: (a) usage-dashboard detail polish (STILL untouched, survey first); (b) radar-view survey if a fresh surface is wanted; (c) global-search dialog survey (⌘⇧F — does it find conversations/agents equally well?); (d) opportunistic witnesses when real data exists. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (46th); batch greps; land on budget — an early exit IS a success. LESSON: survey untouched views with greps FIRST and only deep-read the file whose gap-marker fired.

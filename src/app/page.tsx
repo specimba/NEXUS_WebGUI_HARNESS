@@ -17,7 +17,7 @@ import { StaleBuildGuard } from "@/components/praison/stale-build-guard";
 import { RadarView } from "@/components/praison/radar/radar-view";
 import { ModelTicker } from "@/components/praison/tracker/model-ticker";
 import { SettingsView } from "@/components/praison/settings/settings-view";
-import { ensureSeeded, useSettingsStore, useUiStore } from "@/lib/stores";
+import { ensureSeeded, useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import { useKeyboardShortcuts } from "@/lib/use-shortcuts";
 import { DEFAULT_UI_THEME } from "@/lib/constants";
 
@@ -35,6 +35,7 @@ function useIsClient(): boolean {
 // ─── In-app hash routes (single-page app; linkable/bookmarkable) ────────────
 // #/setup            → guided free-key wizard
 // #/guide/<provider> → wizard pre-opened at that provider's registration step
+// #/chat/<id>        → Chat opened on that conversation (stale ids degrade to no-selection)
 // #/providers        → Settings scrolled to the free provider gallery
 // #/local-models     → Settings scrolled to the WebGPU local-model panel
 // #/vault            → Settings scrolled to the Automation vault (server-lane keys)
@@ -67,6 +68,15 @@ function applyHashRoute(): void {
   } else if (head === "radar") {
     ui.setSetupWizardOpen(false);
     ui.setView("radar");
+  } else if (head === "chat" && param) {
+    // r406: shareable/bookmarkable conversation link — the chat analog of
+    // guide/<provider>. An unknown/stale id is safe BY DESIGN: chat-view
+    // resolves activeId with `?? null` (the same no-selection state a fresh
+    // session has), so a rotted bookmark still lands on a usable Chat.
+    // Route-time validation would instead race zustand persist hydration.
+    ui.setSetupWizardOpen(false);
+    ui.setView("chat");
+    useConversationsStore.getState().setActive(decodeURIComponent(param));
   } else if (head === "chat" || head === "agents" || head === "workflows" || head === "settings") {
     // r272: every view is linkable/bookmarkable, not just radar. Navigational
     // anchors imply leaving the wizard — dismiss it if open.

@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   Download,
+  Link2,
   MessageSquarePlus,
   MoreVertical,
   PanelLeftClose,
@@ -44,7 +45,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { conversationToMarkdown, downloadText, fmtListTime, slugify } from "@/lib/helpers";
+import { conversationToMarkdown, copyText, downloadText, fmtListTime, slugify } from "@/lib/helpers";
 import { useAgentsStore, useConversationsStore, useUiStore } from "@/lib/stores";
 import type { Conversation } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -407,6 +408,26 @@ export function ConversationList({ onNavigate, className }: ConversationListProp
                             >
                               <Pencil className="h-3.5 w-3.5" aria-hidden />
                               Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => {
+                                // r406: copies the #/chat/<id> deep link (page.tsx
+                                // router). copyText runs DIRECTLY in onSelect — no
+                                // defer — so clipboard write keeps user activation.
+                                void copyText(`${location.origin}/#/chat/${c.id}`).then((ok) => {
+                                  if (ok)
+                                    toast.success("Chat link copied", {
+                                      description: `Paste it anywhere — it opens this app on "${c.title}".`,
+                                    });
+                                  else
+                                    toast.error("Clipboard blocked", {
+                                      description: `Copy this manually: ${location.origin}/#/chat/${c.id}`,
+                                    });
+                                });
+                              }}
+                            >
+                              <Link2 className="h-3.5 w-3.5" aria-hidden />
+                              Copy link
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
