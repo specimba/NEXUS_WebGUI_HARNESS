@@ -9369,3 +9369,26 @@ Scope committed: command-palette.tsx (Keyboard shortcuts palette action).
 Open risks: rollback-lost r344–r396 code still absent; r397 kind+hint lines + r398 truncateAtWord goal remain live but unwitnessed with real data (DB zero error runs); agents/tracker detail polish untouched.
 Blockers: none
 Next recommended action: r402 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface (chat + command-palette + workflows-autopilot touched recently): candidates — (a) agents/ or tracker/ detail polish after a survey (both untouched in this lineage), (b) settings surface detail (r343-era settings has provider gallery + local models + vault), (c) opportunistic witnesses when real failure/proposal data exists. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (40th); batch greps; land on budget — an early exit IS a success.
+---
+Task ID: r402
+Agent: main (platform dev agent)
+Task: Rotate to settings/vault surface per r401 handoff — found the rolled-back vault EMPTY and landed an actionable CTA on the autopilot's blocked strip.
+
+Work Log:
+- Verified HEAD 2a1c1ee18 (r401 snapshot), health 200. No user replies. DB: zero error runs AND **VAULT table EMPTY** — in this rolled-back DB the server lane can never dial; the vault-epic state of the lost era (4 invalid keys) is gone, replaced by "no keys at all".
+- Survey refutations: tracker (r210-era corruption handling), radar (aria labels, stale-cache messaging), agents (no markers) — all mature; no detail gap worth a round.
+- SHIPPED: the autopilot's lane-blocked strip ("⏸ N schedules due while this tab is quiet, but the server lane can't dial …store a registry provider key in the Automation vault") is now ACTIONABLE — a "Open the Automation vault" button (KeyRound icon, amber outline) calls setView("settings") + setSettingsAnchor("vault"), landing the user on the vault card via the EXISTING production anchor mechanism (settings-view.tsx:264-272 scroll effect → id="vault" at :542, scroll-mt-14). Previously the fix the message named had no affordance — users had to know the path themselves.
+- REFUTE-FIRST (40th): "New chat" already in palette (r401 scope trimmed); vault anchor + id + scroll machinery all pre-existed (only the CTA was missing); KeyRound/useUiStore already imported in server-autopilot.tsx.
+- VERIFICATION: unmasked tsc exit 0; lint exit 0. LIVE QA: the strip did NOT render this session — it is transient BY DESIGN (requires due-quiet queues; with the QA tab open the client lane drains them via user keys, so dueQuietCount returns to 0 — correct behavior, r397's surface presence confirmed ServerAutopilot renders directly in the workflows view at workflows-view.tsx:1387). The strip + button will first render after a tab-closed quiet window with due schedules. Click mechanism = the same setter pair the #/providers deep link uses (production-proven path). Honest partial QA: gates green, live witness deferred to when the transient condition naturally occurs.
+- COST: ~13 tool calls, slightly over budget (strip transitivity cost 3 QA rounds before the honest stop).
+
+Stage Summary:
+- The blocked-lane journey is one click long now: blocked strip → vault card. The vault being EMPTY in this DB makes that journey the product's single most valuable automation onboarding path.
+
+Round Handoff:
+Round ID: r403
+Task owner: main (platform dev agent)
+Scope committed: server-autopilot.tsx (vault CTA on the lane-blocked strip).
+Open risks: vault is EMPTY in this DB (server lane permanently undialable until a key is stored — by design, but it means server-lane witnesses stay impossible); the vault CTA is unwitnessed-live (transient strip; first tab-open after a quiet window should show it — opportunistic check); rollback-lost r344–r396 code still absent; applyHashRoute handles providers/local-models anchors but NOT vault/evolution (store union includes both — potential 2-line consistency follow-up, refute-first: confirm no hash-link consumer expects them).
+Blockers: none
+Next recommended action: r403 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Candidates: (a) opportunistic vault-CTA witness on the first tab open (check the strip before anything else — it costs one eval); (b) the #/vault + #/evolution hash routes IF the 2-line consistency case survives refute-first; (c) settings detail polish (usage-dashboard / whats-fixed untouched); (d) agents-view survey. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (41st); batch greps; land on budget — an early exit IS a success.

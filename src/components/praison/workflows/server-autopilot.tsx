@@ -433,6 +433,24 @@ export function ServerAutopilot() {
             {dueQuietCount === 1 ? "It stays" : "They stay"} queued — store a registry
             provider key in the Automation vault to let closed-tab runs fire.
           </p>
+          {/* r402: the blocked strip used to be text-only — the fix it names
+              (a vault key) had no affordance, so users had to know the path
+              themselves. The anchor mechanism (settingsAnchor "vault",
+              settings-view id="vault") already existed for #/providers-style
+              links; this is the same journey, one click long. */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 h-6 gap-1 border-amber-500/40 px-2 text-[10px] font-medium text-amber-200 transition-colors hover:bg-amber-500/10 hover:text-amber-100"
+            onClick={() => {
+              const ui = useUiStore.getState();
+              ui.setView("settings");
+              ui.setSettingsAnchor("vault");
+            }}
+          >
+            <KeyRound className="h-3 w-3" aria-hidden />
+            Open the Automation vault
+          </Button>
         </div>
       ) : null}
 
