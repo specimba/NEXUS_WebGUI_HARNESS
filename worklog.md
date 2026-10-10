@@ -9392,3 +9392,26 @@ Scope committed: server-autopilot.tsx (vault CTA on the lane-blocked strip).
 Open risks: vault is EMPTY in this DB (server lane permanently undialable until a key is stored — by design, but it means server-lane witnesses stay impossible); the vault CTA is unwitnessed-live (transient strip; first tab-open after a quiet window should show it — opportunistic check); rollback-lost r344–r396 code still absent; applyHashRoute handles providers/local-models anchors but NOT vault/evolution (store union includes both — potential 2-line consistency follow-up, refute-first: confirm no hash-link consumer expects them).
 Blockers: none
 Next recommended action: r403 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Candidates: (a) opportunistic vault-CTA witness on the first tab open (check the strip before anything else — it costs one eval); (b) the #/vault + #/evolution hash routes IF the 2-line consistency case survives refute-first; (c) settings detail polish (usage-dashboard / whats-fixed untouched); (d) agents-view survey. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (41st); batch greps; land on budget — an early exit IS a success.
+---
+Task ID: r403
+Agent: main (platform dev agent)
+Task: Per r402 handoff — opportunistic vault-CTA witness + the #/vault + #/evolution hash-route consistency fix (2-line case, survived refute-first).
+
+Work Log:
+- Verified HEAD 4b939392e (r402 snapshot), health 200. No user replies. No error runs.
+- REFUTE-FIRST (41st) survived: settingsAnchor union (stores.ts:613) already included vault|evolution; settings-view consumes ANY anchor generically (getElementById + scroll-mt-14, ids at :533/:536/:542/:675); zero href consumers of #/vault or #/evolution anywhere; whats-fixed's deep-link bullet covers bare VIEW links, not section anchors — no conflicting expectations. The hash router was the only surface that couldn't reach those two sections.
+- SHIPPED: applyHashRoute (page.tsx) anchor branch extended providers|local-models → + vault + evolution (same wizard-dismiss + setView("settings") + setSettingsAnchor(head) path the proven routes use); route doc block updated to list all four section anchors.
+- Opportunistic witness (a): lane-blocked strip honestly ABSENT this session (transient by design — requires a tab-closed quiet window; with the QA tab open the client lane drains due queues). Stays opportunistic.
+- VERIFICATION: unmasked tsc --noEmit exit 0; bun run lint 0 errors / 33 warnings (baseline). LIVE witnesses: fresh load of /#/vault → settings view mounted, vault card scrolled in-viewport (top 144px of 577vh); location.hash="#/evolution" → hashchange routed, evolution panel in-viewport (top 144px). agent-browser page errors: none.
+- COST: ~8 tool calls — on budget, clean early exit.
+
+Stage Summary:
+- Every section the settingsAnchor union can name is now reachable by URL: #/providers, #/local-models, #/vault, #/evolution. r402's vault journey is bookmarkable/shareable — a user hitting the blocked-lane strip can link a teammate straight to #/vault.
+
+Round Handoff:
+Round ID: r404
+Task owner: main (platform dev agent)
+Scope committed: page.tsx (applyHashRoute vault/evolution anchors + route docs).
+Open risks: vault EMPTY in this DB (server lane undialable until a key is stored — witnesses stay impossible/opportunistic); lane-blocked strip CTA (r402) still unwitnessed-live (transient); rollback-lost r344–r396 code still absent.
+Blockers: none
+Next recommended action: r404 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface: candidates — (a) add in-product links to the new anchors (e.g. whats-fixed deep-link bullet or autopilot copy mentioning #/vault) ONLY if a real discovery gap survives refute-first; (b) settings usage-dashboard / whats-fixed detail polish (untouched); (c) agents-view survey if settings feels ground; (d) opportunistic witnesses (strip, error-run kind+hint, truncateAtWord goal) when real data exists. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (42nd); batch greps; land on budget — an early exit IS a success.

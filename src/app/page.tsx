@@ -37,6 +37,8 @@ function useIsClient(): boolean {
 // #/guide/<provider> → wizard pre-opened at that provider's registration step
 // #/providers        → Settings scrolled to the free provider gallery
 // #/local-models     → Settings scrolled to the WebGPU local-model panel
+// #/vault            → Settings scrolled to the Automation vault (server-lane keys)
+// #/evolution        → Settings scrolled to the Evolution proposals panel
 // #/radar            → Trend Radar view (GitHub stars / HF trending / papers)
 // #/chat | #/agents | #/workflows | #/settings → bare view deep-links (r272)
 
@@ -49,8 +51,16 @@ function applyHashRoute(): void {
     ui.openSetupWizard();
   } else if (head === "guide" && param) {
     ui.openSetupWizard(decodeURIComponent(param));
-  } else if (head === "providers" || head === "local-models") {
+  } else if (
+    head === "providers" ||
+    head === "local-models" ||
+    head === "vault" ||
+    head === "evolution"
+  ) {
     // Navigational anchors imply leaving the wizard — dismiss it if open.
+    // vault/evolution complete the anchor set: the store union already had them
+    // and r402's lane-blocked CTA scrolls via the same setter — the hash
+    // router was the only surface that couldn't reach those two sections.
     ui.setSetupWizardOpen(false);
     ui.setView("settings");
     ui.setSettingsAnchor(head);
