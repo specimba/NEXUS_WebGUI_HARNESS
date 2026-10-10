@@ -1,5 +1,3 @@
-"use client";
-
 // ─── Shared workflow run engine (used by the run panel AND the scheduler) ────
 
 import { toast } from "sonner";

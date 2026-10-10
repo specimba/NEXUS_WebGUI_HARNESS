@@ -1,5 +1,3 @@
-"use client";
-
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import type {

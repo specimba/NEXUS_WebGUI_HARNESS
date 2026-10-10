@@ -1,5 +1,3 @@
-"use client";
-
 // ─── Schedule deferral audit (r77) ───────────────────────────────────────────
 // The scheduler deliberately SKIPS a due fire while the same workflow has an
 // active run (no double-fire; the first tick after the run ends fires — r76

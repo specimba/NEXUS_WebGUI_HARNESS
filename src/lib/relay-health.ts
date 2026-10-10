@@ -1,5 +1,3 @@
-"use client";
-
 // ─── Relay health → badge application (r75 consolidation) ────────────────────
 // ONE shared implementation of "apply the rotator's verdict to a picker/row
 // object". This closure lived copy-pasted in the chat composer and the agent

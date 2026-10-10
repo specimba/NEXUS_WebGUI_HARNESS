@@ -1,5 +1,3 @@
-"use client";
-
 import type { RouteReceipt, ToolCallInfo, ToolId } from "./types";
 import {
   classifyUpstreamError,

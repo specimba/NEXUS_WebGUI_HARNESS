@@ -1,5 +1,3 @@
-"use client";
-
 // ─── System-One decision tier (r27 — Jev grounding, elvis/omarsar0 doctrine) ─
 // "Not everything requires a frontier model." Classification, judging and
 // routing decisions inside the harness are System-One jobs: fast, cheap,

@@ -1,5 +1,3 @@
-"use client";
-
 import type { Agent, Conversation, Settings } from "./types";
 import {
   MEMORY_CONSOLIDATE_EVERY,

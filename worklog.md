@@ -9301,3 +9301,26 @@ Scope committed: src/lib/spawn-proposal-engine.ts (truncateAtWord on the goal ba
 Open risks: r344–r396 product code remains rollback-lost — perf-notes lib, server-lane history section, Fix-key witness script, chat SSE harness all absent from this tree; candidates referencing them need prerequisite checks first (r398 refuted two such). The new kind+hint lines on the autopilot surface (r397) are still unwitnessed live (DB has zero error runs). Vault keys / schedules state is the OLD DB's — re-establish facts before data-dependent work.
 Blockers: none
 Next recommended action: r399 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage (expect r398 snapshot on top of 223541f36). (3) Rotate surface (spawn-proposal-engine just touched): candidates — (a) a fresh user-facing polish in a different area (chat detail, agent cards, settings — survey what EXISTS in this tree first), (b) re-create a minimal perf-notes seam IF the r394 Profiler re-land is wanted (lib is gone; scope it before committing), (c) witness r397's kind+hint lines when the DB accumulates a real error run. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (35th); batch greps; land on budget — an early exit IS a success.
+---
+Task ID: r399
+Agent: main (platform dev agent)
+Task: Rotate surface per r398 handoff — surveyed chat/agents for polish, then landed the r343 handoff's standing candidate: stale "use client" directives on pure-logic lib modules.
+
+Work Log:
+- Verified HEAD f54a68d4a (r398 snapshot), health 200. No user replies. Witness candidate refuted again: DB still has ZERO error runs — r397's kind+hint lines remain unwitnessed-live (3rd consecutive round with no failure data; stop re-checking every round, check opportunistically).
+- Chat polish survey REFUTED as a target: message-item.tsx already has honest-failure copy (r275), conversation-list has humanized timestamps + verbatim tooltips — the r270-era polish EXISTS in this tree; nothing obvious left at the detail level. Agents/tracker/radar surfaces left for future rounds.
+- SHIPPED — client-directive hygiene (the r343 handoff's "8 use client lib modules"): enumerated all 9 directive-carrying lib modules; use-shortcuts.ts legitimately uses hooks (KEPT). Refute-first per module: all 8 others (relay-health, relay, stores, systemone, workflow-runner, chat-client, memory, schedule-skips) have ZERO hook usage and every localStorage/window/document reference is function-scoped/lazy (verified line-by-line — the module-scope-looking hits were comments). Removed the stale "use client"; line from all 8.
+- WHY IT MATTERS: "use client" on a lib module makes it un-importable from server contexts (imports become client-reference stubs — exported functions unusable server-side). No API route or lib/server file imports these today (verified), so nothing was broken — but the directive was a landmine for the next server-side feature that wants, say, classifyRunError or a schedule-skips helper. Client bundle behavior is unchanged: every current consumer is already a client component.
+- VERIFICATION: unmasked npx tsc --noEmit exit 0; bun run lint exit 0 (baseline kept); browser smoke: app boots, nav renders, console clean — client graph unaffected.
+- COST: ~10 tool calls, on budget.
+
+Stage Summary:
+- The lib layer is now server-importable: 8 stale client directives gone, hooks-using module correctly retained. The "8 use client lib modules" standing candidate from the r343 handoff is CLOSED.
+
+Round Handoff:
+Round ID: r400
+Task owner: main (platform dev agent)
+Scope committed: src/lib/{relay-health,relay,stores,systemone,workflow-runner,chat-client,memory,schedule-skips}.ts (stale "use client" removed).
+Open risks: rollback-lost r344–r396 code still absent (perf-notes lib, server-lane history, witness scripts); r397's kind+hint lines still unwitnessed-live (check opportunistically when the DB shows an error run — stop dedicating rounds to it); vault keys / schedules state is the OLD DB's.
+Blockers: none
+Next recommended action: r400 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface again (lib layer just touched): candidates — (a) agents/ or radar/ or tracker/ detail polish (survey first — chat was already polished; look for missing empty states / affordances), (b) a small new user-facing feature (something the r343-era product visibly lacks), (c) opportunistic witness of r397/r398 strings when real failure/proposal data exists. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (36th); batch greps; land on budget — an early exit IS a success.

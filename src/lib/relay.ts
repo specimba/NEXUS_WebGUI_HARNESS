@@ -1,5 +1,3 @@
-"use client";
-
 // ─── Model Relay — automatic fallback chain across your free-frontier vault ──
 // Doctrine ported from the local ModelRelay/"Genius rotator": models are ranked
 // by Generation-Era tier (1 frontier > 2 modern > 3 legacy), then arena Elo,
