@@ -1,4 +1,5 @@
 import type { SpawnProposal } from "@/lib/types";
+import { truncateAtWord } from "@/lib/helpers";
 
 /**
  * Evolution spawn-proposal engine — pure decision logic (no store imports)
@@ -227,8 +228,11 @@ export interface BuildVariationProposalInput {
 export function buildVariationProposal(
   input: BuildVariationProposalInput
 ): SpawnProposal {
+  // r398: word-boundary truncation (truncateAtWord) replaces the hard
+  // slice(0, 220) — a goal cut mid-word ("...continuous impro") seeded
+  // broken variation angles and read broken on the Evolution card.
   const base =
-    input.taskExcerpt.trim().replace(/\s+/g, " ").slice(0, 220) ||
+    truncateAtWord(input.taskExcerpt.trim().replace(/\s+/g, " "), 220) ||
     input.sourceWorkflowName;
   const threshold = input.threshold ?? NOVELTY_SPAWN_THRESHOLD;
   // r199: the reason names the router's DECISION, not just the rotation count.

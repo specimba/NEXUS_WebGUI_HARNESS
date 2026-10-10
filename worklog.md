@@ -9278,3 +9278,26 @@ Scope committed: server-autopilot.tsx (classifyRunError replaces TRANSIENT_RE; k
 Open risks: r344–r396 product code is GONE from the tree — any round referencing it must first verify the surface exists here; the lost r394 (kanban Profiler) and r395 (Fix-key witness script) are candidates for faithful re-landing IF their r343-era prerequisites exist; vault keys / schedules state is the OLD DB's — re-establish facts before data-dependent work; live render of the new kind+hint lines not yet witnessed (needs a real error run in the DB or the Workflow Studio sub-view).
 Blockers: none
 Next recommended action: r398 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage (post-rollback paranoia: expect r397's snapshot on top of 3ffabdd9e). (3) Candidates: (a) re-land the r394 kanban Profiler pattern IF src/lib/perf-notes.ts exists in this tree (check first — the r387 pattern it mirrored may predate r343); (b) Evolution/inbox detail polish (the r343 handoff's own candidate: spawn-proposal 220-char goal slice truncateAtWord); (c) witness the new kind+hint lines when the DB accumulates a real error run. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (34th); batch greps; land on budget.
+---
+Task ID: r398
+Agent: main (platform dev agent)
+Task: Re-land candidate triage from the r397 handoff — (a) kanban Profiler re-land, (b) Evolution spawn-proposal goal slice polish, (c) witness kind+hint lines.
+
+Work Log:
+- Verified HEAD 223541f36 (r397 snapshot on top of the rolled-back 3ffabdd9e — lineage correct post-rollback), health 200. No user replies.
+- Candidate (a) REFUTED cheaply: src/lib/perf-notes.ts does NOT exist in the r343-era tree — the whole r387 perf-notes lib is rollback-lost; re-landing the kanban Profiler means re-creating the lib, not a round-sized increment. Deferred.
+- Candidate (c) REFUTED by data: DB has ZERO error runs (rolled-back DB) — nothing to classify, no live witness possible. Deferred until a real failure accumulates.
+- SHIPPED — candidate (b), the r343 handoff's own item: buildVariationProposal's goal base now truncates with the production truncateAtWord helper (src/lib/helpers.ts:245, probe-hardened word-boundary logic already used by workflows-view.tsx) instead of a hard slice(0, 220) that cut mid-word. The goal string seeds the variation-angle hash AND renders on the Evolution card, so mid-word cuts ("...continuous impro") produced broken-looking proposals. Whitespace collapse preserved; empty-excerpt fallback to sourceWorkflowName preserved (truncateAtWord("") === ""); determinism kept (same task → same truncated seed, the seed VALUE shifts once for >220-char excerpts, which is acceptable — angles rotate regardless).
+- VERIFICATION: unmasked npx tsc --noEmit exit 0; bun run lint exit 0 (baseline kept). Browser QA: the change only manifests when a proposal is BUILT (a run finishing below the 35% novelty threshold) — not triggerable without provider dials; the render path (Evolution card) is unchanged, only the string content differs. Honest partial QA: gates green, pure-function change, helper pre-existing and production-proven.
+- COST: ~7 tool calls — clean early exit, on budget.
+
+Stage Summary:
+- Evolution proposals now read clean at the 220-char cap: word-boundary truncation with "…" from the shared production helper, one less hand-rolled string slice in the engine.
+
+Round Handoff:
+Round ID: r399
+Task owner: main (platform dev agent)
+Scope committed: src/lib/spawn-proposal-engine.ts (truncateAtWord on the goal base).
+Open risks: r344–r396 product code remains rollback-lost — perf-notes lib, server-lane history section, Fix-key witness script, chat SSE harness all absent from this tree; candidates referencing them need prerequisite checks first (r398 refuted two such). The new kind+hint lines on the autopilot surface (r397) are still unwitnessed live (DB has zero error runs). Vault keys / schedules state is the OLD DB's — re-establish facts before data-dependent work.
+Blockers: none
+Next recommended action: r399 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage (expect r398 snapshot on top of 223541f36). (3) Rotate surface (spawn-proposal-engine just touched): candidates — (a) a fresh user-facing polish in a different area (chat detail, agent cards, settings — survey what EXISTS in this tree first), (b) re-create a minimal perf-notes seam IF the r394 Profiler re-land is wanted (lib is gone; scope it before committing), (c) witness r397's kind+hint lines when the DB accumulates a real error run. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (35th); batch greps; land on budget — an early exit IS a success.
