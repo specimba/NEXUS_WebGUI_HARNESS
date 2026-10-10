@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { PageHeader, ThemeToggle } from "@/components/praison/atoms";
 import { ThemePicker } from "@/components/praison/settings/theme-picker";
 import { AutomationVaultCard } from "@/components/praison/settings/automation-vault-card";
+import { DeepLinkShare } from "@/components/praison/settings/deep-link-share";
 import { LocalModelsPanel } from "@/components/praison/settings/local-models";
 import { ModelRelayCard } from "@/components/praison/settings/model-relay";
 import { ProviderCard } from "@/components/praison/settings/provider-card";
@@ -675,7 +676,10 @@ export function SettingsView() {
           <div id="evolution" className="scroll-mt-14">
           <Card className="gap-4">
             <CardHeader className="pb-3">
-              <CardTitle>Evolution</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle>Evolution</CardTitle>
+                <DeepLinkShare anchor="evolution" label="the Evolution proposals panel" />
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">

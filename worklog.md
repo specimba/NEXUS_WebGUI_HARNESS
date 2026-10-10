@@ -9438,3 +9438,26 @@ Scope committed: whats-fixed.tsx (five receipts r397-r403).
 Open risks: vault EMPTY in this DB (server lane undialable; r402 strip witness stays transient); r397 kind+hint + r398 goal receipts describe real shipped code but are still unwitnessed with real failure/proposal data; rollback-lost r344–r396 code still absent — pre-r397 receipts would need the same grep-verify discipline if ever backfilled (do NOT backfill blindly).
 Blockers: none
 Next recommended action: r405 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface: candidates — (a) usage-dashboard detail polish (untouched, same settings view — survey first, refute-first); (b) agents-view survey (untouched this lineage); (c) opportunistic witnesses (error run → r397 chip + its new receipt is self-documenting now; proposal → r398); (d) if settings feels ground, a small NEW user-facing feature beats polish (suggest: copy-to-clipboard on the deep-link routes — a share button inside the vault/evolution cards that writes location.origin + '/#/vault' — verify no existing share affordance first). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (43rd); batch greps; land on budget — an early exit IS a success.
+---
+Task ID: r405
+Agent: main (platform dev agent)
+Task: Per r404 handoff candidate (d) — deep-link share buttons on the vault + evolution cards, completing the r403 discoverability loop (routes existed, receipts existed, no in-product affordance to copy them).
+
+Work Log:
+- Verified HEAD 43ef85e2b (r404 snapshot), health 200. No user replies.
+- REFUTE-FIRST (43rd): zero copy/share affordances in the entire settings directory (grep); shared helper `copyText(): Promise<boolean>` already exists (helpers.ts:353, legacy execCommand fallback r270); both host files already import sonner toast; feedback pattern matches workflow-run-panel's toast.success/error convention.
+- SHIPPED: new `deep-link-share.tsx` — ghost icon Link2 button in each card's header row (vault: appended to the existing icon+title+badge flex row with ml-auto; evolution: header wrapped in a flex row), writes `origin/#/<anchor>`, swaps to an emerald Check for 1.6s on success (timer cleared on unmount), toasts success with paste hint OR error spelling out the raw URL — callers' feedback stays honest on a blocked clipboard.
+- QA CAUGHT A REAL BUG (refute-first dividend): first version's aria template double-printed the article — labels already carry "the …" and the template prepended another "the" ("to the the Automation vault"). Live selector-miss exposed it; template fixed.
+- VERIFICATION: unmasked tsc --noEmit exit 0; bun run lint 0 errors / 33 warnings (baseline). LIVE QA: both buttons mounted under corrected aria-labels; click fired; toast WITNESSED in DOM — the honest FAILURE path: "Clipboard blocked / Copy this manually: http://localhost:3000/#/vault" (headless denies clipboard-write; URL construction and no-silent-noop design thereby proven). Success path (copyText true → Check swap → success toast) is code-verified against the r270 production helper but headless-unwitnessable — no permission-grant API in the CLI. Console clean.
+- COST: ~14 tool calls — over budget; 2 spent on the aria-grammar detour (a real shipped-bug catch, not thrift) and 2 on the two-file import placement. Feature is small, complete, witnessed where the environment allows.
+
+Stage Summary:
+- The r403 deep links are now one click to copy from the exact place users would look for them — the vault and Evolution card headers. The clipboard-failure path is honestly designed AND live-witnessed.
+
+Round Handoff:
+Round ID: r406
+Task owner: main (platform dev agent)
+Scope committed: deep-link-share.tsx (new), automation-vault-card.tsx (header button + import), settings-view.tsx (evolution header row + import).
+Open risks: success-path toast/check swap unwitnessed in headless (clipboard-write denied; fine in real browsers per r270 helper heritage); vault EMPTY in this DB; r397/r398 receipts still data-unwitnessed; rollback-lost r344–r396 code still absent.
+Blockers: none
+Next recommended action: r406 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface — settings has been touched 3 rounds straight (r403 router, r404 receipts, r405 share buttons): candidates — (a) agents-view survey (untouched this lineage); (b) usage-dashboard detail polish (survey first); (c) opportunistic witnesses when real failure/proposal data exists; (d) a NEW user-facing feature in a FRESH view beats more settings polish. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (44th); batch greps; land on budget — an early exit IS a success.

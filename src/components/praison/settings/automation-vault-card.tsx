@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DeepLinkShare } from "@/components/praison/settings/deep-link-share";
 import { FREE_PROVIDERS, providerById } from "@/lib/providers";
 import { fmtSlotAge, pickExecutorSlot } from "@/lib/automation-lane";
 import { useSettingsStore } from "@/lib/stores";
@@ -461,6 +462,7 @@ export function AutomationVaultCard() {
           <Badge variant="outline" className="border-cyan-500/40 text-cyan-600 dark:text-cyan-400">
             local-only
           </Badge>
+          <DeepLinkShare anchor="vault" label="the Automation vault" />
         </div>
         <CardDescription>
           While a tab is open, schedules run in-browser with your own keys — they never
