@@ -19,13 +19,22 @@ const VIEW_ORDER: View[] = ["chat", "agents", "workflows", "radar", "settings"];
 export function useKeyboardShortcuts(): void {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
-
       const target = e.target as HTMLElement | null;
       const inField =
         target?.tagName === "INPUT" ||
         target?.tagName === "TEXTAREA" ||
         target?.isContentEditable;
+
+      // r400: "?" is checked BEFORE the ⌘/Ctrl gate below — the cheat-sheet
+      // key carries no modifier (GitHub/Gmail convention). In fields, "?"
+      // must type a question mark, not open the sheet.
+      if (e.key === "?" && !inField) {
+        e.preventDefault();
+        useUiStore.getState().setShortcutsOpen(true);
+        return;
+      }
+
+      if (!(e.metaKey || e.ctrlKey)) return;
 
       const ui = useUiStore.getState();
 

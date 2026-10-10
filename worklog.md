@@ -9324,3 +9324,26 @@ Scope committed: src/lib/{relay-health,relay,stores,systemone,workflow-runner,ch
 Open risks: rollback-lost r344–r396 code still absent (perf-notes lib, server-lane history, witness scripts); r397's kind+hint lines still unwitnessed-live (check opportunistically when the DB shows an error run — stop dedicating rounds to it); vault keys / schedules state is the OLD DB's.
 Blockers: none
 Next recommended action: r400 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface again (lib layer just touched): candidates — (a) agents/ or radar/ or tracker/ detail polish (survey first — chat was already polished; look for missing empty states / affordances), (b) a small new user-facing feature (something the r343-era product visibly lacks), (c) opportunistic witness of r397/r398 strings when real failure/proposal data exists. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (36th); batch greps; land on budget — an early exit IS a success.
+---
+Task ID: r400
+Agent: main (platform dev agent)
+Task: Rotate surface per r399 handoff — surveyed radar/tracker/agents for polish, refuted a phantom deep-link bug, then shipped a NEW small user-facing feature: the keyboard-shortcut cheat sheet.
+
+Work Log:
+- Verified HEAD e24ca6f27 (r399 snapshot), health 200. No user replies. DB still zero error runs (witness stays opportunistic).
+- Survey refutations: radar-view/tracker already carry aria labels, stale-cache messaging, humanized times — no detail gap worth a round. Phantom bug REFUTED: r396's "deep link didn't navigate" conclusion was MY QA artifact — the eval read the shell sidebar text, which is identical DOM across views; page.tsx's applyHashRoute handles #/chat|agents|workflows|radar|settings on load (r272) and shell has no mount-time view override (shell.tsx:98 is the New Chat click handler). No fix needed — recorded so nobody re-fixes it.
+- SHIPPED — keyboard-shortcut cheat sheet (the five global shortcuts r249/r272 existed but NO surface listed them): (1) new src/components/praison/shortcut-sheet.tsx — shadcn Dialog listing ⌘⇧N / ⌘⇧F / ⌘1…5 / ? with kbd styling and a Ctrl note; (2) use-shortcuts.ts — "?" opens it, checked BEFORE the ⌘/Ctrl gate (modifier-less, GitHub/Gmail convention), skipped in input fields so "?" still types a question mark; (3) useUiStore — shortcutsOpen + setShortcutsOpen mirroring globalSearchOpen; (4) mounted in page.tsx next to GlobalSearchDialog.
+- REFUTE-FIRST caught my own wiring (38th): first version placed the "?" case AFTER the handler's `if (!(metaKey||ctrlKey)) return;` gate — live QA dispatched a real keydown and the sheet did NOT open (sheetOpen:false). Moved the check before the gate; re-QA witnessed sheetOpen:true + dialog mounted + console clean.
+- VERIFICATION: unmasked npx tsc --noEmit exit 0 (twice); bun run lint exit 0 both runs (baseline kept); browser QA live-witnessed the open path. Escape-close assumed via Radix Dialog (dialogMounted data-state check passed); field-guard is code-verified (inField check), not typed-QA'd.
+- COST: ~16 tool calls — over the 12 budget (feature scope: store+component+wiring+mount across 4 files, plus one live-QA-caused refactor). The complete, witnessed feature beat a thinner half.
+
+Stage Summary:
+- The product now has a discoverable keyboard layer: "?" opens the cheat sheet anywhere outside input fields. The five previously-invisible shortcuts are documented in-product.
+
+Round Handoff:
+Round ID: r401
+Task owner: main (platform dev agent)
+Scope committed: shortcut-sheet.tsx (new), use-shortcuts.ts ("?" case before the modifier gate), stores.ts (shortcutsOpen flag), page.tsx (mount).
+Open risks: rollback-lost r344–r396 code still absent; r397's kind+hint lines + the cheat sheet are live but the sheet has no pointer/tap entry point yet (hotkey-only — a settings or sidebar trigger is the natural completion); DB still has zero error runs (witnesses stay opportunistic).
+Blockers: none
+Next recommended action: r401 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Candidates: (a) add a visible entry point for the cheat sheet (command-palette action "Keyboard shortcuts" — palette exists and is mounted; one-file change) completing r400's discoverability loop; (b) agents/tracker detail polish; (c) opportunistic witnesses (error run → kind+hint lines; any proposal → truncateAtWord goal). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (39th); batch greps; land on budget — an early exit IS a success.

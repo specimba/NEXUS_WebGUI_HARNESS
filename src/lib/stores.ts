@@ -595,6 +595,7 @@ interface UiState {
   highlightWorkflowId: string | null;
   /** Global search dialog (⌘⇧F) visibility. */
   globalSearchOpen: boolean;
+  shortcutsOpen: boolean;
   /** Message to scroll+flash after the chat view mounts the conversation. */
   pendingFocus: PendingMessageFocus | null;
   /** True while any agent stream (chat turn or workflow run) is in flight. */
@@ -618,6 +619,7 @@ interface UiState {
   requestRunWorkflow: (workflowId: string) => void;
   clearPendingRunWorkflow: () => void;
   setGlobalSearchOpen: (v: boolean) => void;
+  setShortcutsOpen: (v: boolean) => void;
   setImageStudioOpen: (v: boolean) => void;
   requestFocusMessage: (convId: string, msgId: string) => void;
   clearPendingFocus: () => void;
@@ -643,6 +645,7 @@ export const useUiStore = create<UiState>()(
       pendingRunWorkflowId: null,
       highlightWorkflowId: null,
       globalSearchOpen: false,
+      shortcutsOpen: false,
       pendingFocus: null,
       busy: false,
       workflowBoardOpen: false,
@@ -664,6 +667,7 @@ export const useUiStore = create<UiState>()(
         set({ highlightWorkflowId, view: "workflows", mobileNavOpen: false }),
       clearHighlightWorkflow: () => set({ highlightWorkflowId: null }),
       setGlobalSearchOpen: (globalSearchOpen) => set({ globalSearchOpen }),
+      setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
       requestFocusMessage: (convId, msgId) =>
         set({ pendingFocus: { convId, msgId }, view: "chat", mobileNavOpen: false }),
       clearPendingFocus: () => set({ pendingFocus: null }),

@@ -5,6 +5,7 @@ import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { AppSidebar, MobileNav, Splash, TopBar } from "@/components/praison/shell";
 import { CommandPalette } from "@/components/praison/command-palette";
 import { GlobalSearchDialog } from "@/components/praison/global-search-dialog";
+import { ShortcutSheet } from "@/components/praison/shortcut-sheet";
 import { ImageStudioDialog } from "@/components/praison/chat/image-studio";
 import { ChatView } from "@/components/praison/chat/chat-view";
 import { HeartbeatEngine } from "@/components/praison/chat/chat-heartbeat";
@@ -127,6 +128,7 @@ export default function Page() {
       <MobileNav />
       <CommandPalette />
       <GlobalSearchDialog />
+      <ShortcutSheet />
       {/* Image Studio — global BYOK image generation dialog. r247: moved here
           from chat-view — the command palette's "Open Image Studio…" action
           flipped the store flag on every view, but the dialog only existed in
