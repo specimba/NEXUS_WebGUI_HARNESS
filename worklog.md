@@ -9347,3 +9347,25 @@ Scope committed: shortcut-sheet.tsx (new), use-shortcuts.ts ("?" case before the
 Open risks: rollback-lost r344–r396 code still absent; r397's kind+hint lines + the cheat sheet are live but the sheet has no pointer/tap entry point yet (hotkey-only — a settings or sidebar trigger is the natural completion); DB still has zero error runs (witnesses stay opportunistic).
 Blockers: none
 Next recommended action: r401 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Candidates: (a) add a visible entry point for the cheat sheet (command-palette action "Keyboard shortcuts" — palette exists and is mounted; one-file change) completing r400's discoverability loop; (b) agents/tracker detail polish; (c) opportunistic witnesses (error run → kind+hint lines; any proposal → truncateAtWord goal). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (39th); batch greps; land on budget — an early exit IS a success.
+---
+Task ID: r401
+Agent: main (platform dev agent)
+Task: Complete r400's discoverability loop — a visible entry point for the keyboard-shortcut cheat sheet via the command palette.
+
+Work Log:
+- Verified HEAD 0eba3962c (r400 snapshot), health 200. No user replies. No error runs (witnesses stay opportunistic).
+- Palette recon refuted one scope item: "New chat" ALREADY exists in Quick actions (MessageSquarePlus row) — only the shortcuts entry was missing. Palette structure: NAV group + Quick actions (new chat, theme cycle) + Providers & models + agents/recent chats/run-a-workflow groups.
+- SHIPPED: "Keyboard shortcuts" CommandItem in Quick actions (Keyboard icon, "?" shortcut hint, searchable value "keyboard shortcuts keys help hotkeys") → closes the palette and opens the r400 sheet via setShortcutsOpen. One-file change + Keyboard icon import.
+- VERIFICATION: unmasked tsc exit 0; lint exit 0 (baseline kept); LIVE full-loop witness — dispatched ⌘K, found the item among cmdk-items, clicked it, asserted sheetOpen:true. Console clean.
+- COST: ~7 tool calls — clean early exit, on budget.
+
+Stage Summary:
+- The keyboard layer is now fully discoverable three ways: "?" hotkey, ⌘K palette item, and the sheet itself. r400's open risk (hotkey-only entry) is closed.
+
+Round Handoff:
+Round ID: r402
+Task owner: main (platform dev agent)
+Scope committed: command-palette.tsx (Keyboard shortcuts palette action).
+Open risks: rollback-lost r344–r396 code still absent; r397 kind+hint lines + r398 truncateAtWord goal remain live but unwitnessed with real data (DB zero error runs); agents/tracker detail polish untouched.
+Blockers: none
+Next recommended action: r402 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface (chat + command-palette + workflows-autopilot touched recently): candidates — (a) agents/ or tracker/ detail polish after a survey (both untouched in this lineage), (b) settings surface detail (r343-era settings has provider gallery + local models + vault), (c) opportunistic witnesses when real failure/proposal data exists. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (40th); batch greps; land on budget — an early exit IS a success.

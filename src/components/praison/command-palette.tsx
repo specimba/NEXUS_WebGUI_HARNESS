@@ -6,6 +6,7 @@ import {
   Cog,
   Gpu,
   ImagePlus,
+  Keyboard,
   MessagesSquare,
   Moon,
   MessageSquarePlus,
@@ -191,6 +192,18 @@ export function CommandPalette() {
             <Palette className="text-fuchsia-500" />
             Cycle accent theme
             <CommandShortcut>↺</CommandShortcut>
+          </CommandItem>
+          {/* r401: the cheat sheet (r400) was hotkey-only — every surface
+              needs a pointer/tap path. Palette = the app's universal
+              "what can I do" surface. */}
+          <CommandItem
+            key="shortcuts"
+            value="keyboard shortcuts keys help hotkeys"
+            onSelect={() => run(() => useUiStore.getState().setShortcutsOpen(true))}
+          >
+            <Keyboard className="text-sky-400" />
+            Keyboard shortcuts
+            <CommandShortcut>?</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 
