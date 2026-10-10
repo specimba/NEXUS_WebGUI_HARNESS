@@ -9415,3 +9415,26 @@ Scope committed: page.tsx (applyHashRoute vault/evolution anchors + route docs).
 Open risks: vault EMPTY in this DB (server lane undialable until a key is stored — witnesses stay impossible/opportunistic); lane-blocked strip CTA (r402) still unwitnessed-live (transient); rollback-lost r344–r396 code still absent.
 Blockers: none
 Next recommended action: r404 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface: candidates — (a) add in-product links to the new anchors (e.g. whats-fixed deep-link bullet or autopilot copy mentioning #/vault) ONLY if a real discovery gap survives refute-first; (b) settings usage-dashboard / whats-fixed detail polish (untouched); (c) agents-view survey if settings feels ground; (d) opportunistic witnesses (strip, error-run kind+hint, truncateAtWord goal) when real data exists. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (42nd); batch greps; land on budget — an early exit IS a success.
+---
+Task ID: r404
+Agent: main (platform dev agent)
+Task: Rotate to the untouched settings surface per r403 handoff — closed the changelog invisibility gap: the in-product "What's fixed recently" panel stopped at r325 while the product shipped through r403.
+
+Work Log:
+- Verified HEAD 6220eedd5 (r403 snapshot), health 200. No user replies. No error runs; vault still empty (witnesses stay opportunistic).
+- REFUTE-FIRST (42nd): the gap is real and cheap to prove — newest FIXES entry was r325, HEAD was r403 (~78 rounds of receipts missing, including four r400+ user-facing features). Panel's own r195 docstring names exactly this failure mode ("a changelog living only in git is invisible"). RANGE_LABEL is DERIVED (r294 mechanism) so the header updates itself — no other file touched.
+- Honesty gate before writing receipts: every claimed feature grep-verified in THIS tree first (SELF_HEAL_KINDS in workflow-runner + server-autopilot kind labels; truncateAtWord in spawn-proposal-engine.ts:235; shortcutsOpen + shortcut-sheet.tsx; r402 CTA in server-autopilot; r403 anchors in page.tsx). Nothing receipted from memory or from lost-era summaries.
+- SHIPPED: five receipts appended chronologically (render reversed, newest first) — r397 (autopilot error chips carry kind label + hint, amber retried vs red fatal), r398 (proposal goals end on word boundaries), r400-r401 (? cheat sheet + ⌘K palette entry), r402 (lane-blocked strip's vault button), r403 (#/vault + #/evolution deep links). Each with a concrete lookFor; data-dependent ones honestly caveated ("needs a real failed run", "transient by design").
+- VERIFICATION: unmasked tsc --noEmit exit 0; bun run lint 0 errors / 33 warnings (baseline). LIVE QA on /#/settings: range label "r186-r403" renders; all five receipt titles present in innerText; newest-first order witnessed (r403 indexOf < r397 indexOf). agent-browser page errors: none.
+- COST: ~9 tool calls — on budget, clean early exit.
+
+Stage Summary:
+- The changelog covers the shipped product again (r186-r403): the four-round keyboard/discoverability/vault arc now has in-product receipts a returning user actually sees. Receipt-writing discipline established: grep-verify the code marker in this tree before receipting it.
+
+Round Handoff:
+Round ID: r405
+Task owner: main (platform dev agent)
+Scope committed: whats-fixed.tsx (five receipts r397-r403).
+Open risks: vault EMPTY in this DB (server lane undialable; r402 strip witness stays transient); r397 kind+hint + r398 goal receipts describe real shipped code but are still unwitnessed with real failure/proposal data; rollback-lost r344–r396 code still absent — pre-r397 receipts would need the same grep-verify discipline if ever backfilled (do NOT backfill blindly).
+Blockers: none
+Next recommended action: r405 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage. (3) Rotate surface: candidates — (a) usage-dashboard detail polish (untouched, same settings view — survey first, refute-first); (b) agents-view survey (untouched this lineage); (c) opportunistic witnesses (error run → r397 chip + its new receipt is self-documenting now; proposal → r398); (d) if settings feels ground, a small NEW user-facing feature beats polish (suggest: copy-to-clipboard on the deep-link routes — a share button inside the vault/evolution cards that writes location.origin + '/#/vault' — verify no existing share affordance first). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot on its OWN tool call; refute-first (43rd); batch greps; land on budget — an early exit IS a success.

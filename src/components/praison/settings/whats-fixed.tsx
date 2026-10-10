@@ -360,6 +360,46 @@ const FIXES: FixNote[] = [
     lookFor:
       "No visible change for you (headers are automatic) — Settings → Automation vault behaves exactly as before; foreign pages now get a 403 on every vault operation.",
   },
+  {
+    round: "r397",
+    title: "Autopilot error chips now say WHAT failed, not just that something did",
+    detail:
+      "A failed run in the 24-hour history used to be an undifferentiated red ✗. Failures are now classified with the same production classifier the runner self-heals with: transient kinds (network / timeout / rate-limit) show an amber “↻ retried” chip with the kind label and an actionable hint, while fatal errors stay red “✗ error”. The chip row and the expanded line finally speak the same language.",
+    lookFor:
+      "Workflows → autopilot 24h history — the next failed run’s chip carries a kind label and hint instead of a bare ✗ (needs a real failed run to show; none existed at ship time)",
+  },
+  {
+    round: "r398",
+    title: "Evolution proposal goals no longer cut off mid-word",
+    detail:
+      "Proposal goals were truncated with a hard 220-character slice, so a goal could end “...continuous impro” and that fragment then seeded the whole proposal card. Word-boundary truncation replaces the slice: the goal ends on the last complete word inside the budget instead of amputating one.",
+    lookFor:
+      "Workflows → Evolution — any long proposal goal now ends on a whole word (visible on the next generated proposal)",
+  },
+  {
+    round: "r400-r401",
+    title: "The keyboard shortcuts are documented in the product — press ? anywhere",
+    detail:
+      "Five global shortcuts (⌘⇧N new chat, ⌘⇧F search, ⌘1–5 views, ? this sheet) existed for months with no surface listing them. Pressing ? outside a text field now opens a cheat-sheet dialog, and ⌘K’s Quick actions gained a searchable “Keyboard shortcuts” entry for pointer/touch users. The ? hotkey is deliberately modifier-less (GitHub/Gmail convention) and skips input fields, so typing a question mark still types a question mark.",
+    lookFor:
+      "Press ? on any view outside an input — the cheat sheet dialog opens; or ⌘K → “Keyboard shortcuts”",
+  },
+  {
+    round: "r402",
+    title: "The “server lane can’t dial” advice is now a button, not homework",
+    detail:
+      "When schedules are due while this tab is quiet, the autopilot’s blocked strip told you to go store a registry provider key in the Automation vault — then left you to find the path yourself. The strip now carries an “Open the Automation vault” button that switches to Settings and scrolls straight to the vault card via the same anchor mechanism as the deep links.",
+    lookFor:
+      "Workflows → autopilot strip after a tab-closed quiet window with due schedules — amber “Open the Automation vault” button lands on the vault card (transient by design: with the tab open the client lane drains due queues, so the strip may not appear)",
+  },
+  {
+    round: "r403",
+    title: "#/vault and #/evolution deep links — every Settings section is linkable now",
+    detail:
+      "The address-bar routes #/providers and #/local-models scrolled Settings to their sections, but #/vault and #/evolution were silently dead even though the app’s internal state supported both. The hash router now routes all four anchors (wizard dismissed, view switched, section scrolled into place). Share a teammate the exact vault or Evolution panel instead of “go to Settings and scroll”.",
+    lookFor:
+      "Open /#/vault (or /#/evolution) in the address bar — Settings opens scrolled to the Automation vault (or Evolution proposals) card",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
