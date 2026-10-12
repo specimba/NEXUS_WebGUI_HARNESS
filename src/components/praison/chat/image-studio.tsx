@@ -45,6 +45,20 @@ const IDEAS = [
   "minimal dashboard hero art, abstract flowing data streams, dark background",
 ];
 
+// r458: raw-byte budget for embedding a generated image into chat history —
+// ≈400KB as base64 in the conversations store (the r455 byte-budget ladder
+// trims beyond that). Bigger images stay provider-hosted with an honest toast.
+const EMBED_BUDGET = 300_000;
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result));
+    fr.onerror = () => reject(fr.error ?? new Error("blob read failed"));
+    fr.readAsDataURL(blob);
+  });
+}
+
 export function ImageStudioDialog() {
   const open = useUiStore((s) => s.imageStudioOpen);
   const setOpen = useUiStore((s) => s.setImageStudioOpen);
@@ -53,6 +67,7 @@ export function ImageStudioDialog() {
   const [size, setSize] = React.useState<string>("1024x1024");
   const [busy, setBusy] = React.useState(false);
   const [downloading, setDownloading] = React.useState(false);
+  const [adding, setAdding] = React.useState(false);
   const [elapsed, setElapsed] = React.useState(0);
   const [error, setError] = React.useState("");
   const [result, setResult] = React.useState<GenResult | null>(null);
@@ -101,7 +116,52 @@ export function ImageStudioDialog() {
   }
 
   function handleAddToChat() {
-    if (!result) return;
+    void addToChat();
+  }
+
+  // r458: the chat attachment is the DURABLE artifact — but https results
+  // carry provider-hosted URLs that typically EXPIRE, which left a dead image
+  // in history (plus fabricated metadata: a base64-length "size" computed on
+  // a URL string, hardcoded .jpg/.jpeg mime). Now https results are fetched
+  // to a blob first: real bytes + real mime → honest name/size/mime, and the
+  // image embeds as a data URL when it fits the budget, so it survives expiry
+  // and the agent's vision keeps working later. Over-budget or CORS-blocked
+  // results stay hosted — with an honest toast instead of silent rot.
+  async function addToChat() {
+    if (!result || adding) return;
+    let content = result.imageUrl;
+    let ext = "jpg";
+    let mime = "image/jpeg";
+    let bytes = 0;
+    let embedded = false;
+    const dataM = /^data:image\/(\w+);base64,/.exec(result.imageUrl);
+    if (dataM) {
+      ext = dataM[1] === "jpeg" ? "jpg" : (dataM[1] ?? "jpg");
+      mime = `image/${dataM[1] ?? "jpeg"}`;
+      // honest byte count: base64 payload only, not the data: header
+      bytes = Math.floor(((result.imageUrl.length - dataM[0].length) * 3) / 4);
+      embedded = true;
+    } else if (/^https:/i.test(result.imageUrl)) {
+      setAdding(true);
+      try {
+        const res = await fetch(result.imageUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        bytes = blob.size;
+        mime = blob.type || "image/jpeg";
+        ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+        if (blob.size <= EMBED_BUDGET) {
+          content = await blobToDataUrl(blob);
+          embedded = true;
+        } else {
+          toast.info("Image stays provider-hosted (too large to embed) — the host link may expire; download it to keep it.", { icon: "🖼️" });
+        }
+      } catch {
+        toast.info("Couldn't fetch the image to embed — the provider link may expire; download it to keep it.", { icon: "🖼️" });
+      } finally {
+        setAdding(false);
+      }
+    }
     const store = useConversationsStore.getState();
     let convId = store.activeId;
     if (!convId) convId = store.create(undefined, undefined, "🎨 Image Studio");
@@ -114,18 +174,23 @@ export function ImageStudioDialog() {
       status: "done",
       attachments: [
         {
-          name: `grok-imagine-${new Date().toISOString().slice(0, 10)}-${result.size}.jpg`,
-          size: Math.round((result.imageUrl.length * 3) / 4),
-          content: result.imageUrl,
+          name: `grok-imagine-${new Date().toISOString().slice(0, 10)}-${result.size}.${ext}`,
+          size: bytes,
+          content,
           kind: "image",
-          mime: "image/jpeg",
+          mime,
         },
       ],
     };
     store.appendMessage(convId, msg);
     useUiStore.getState().setView("chat");
     setOpen(false);
-    toast.success("Image added to the chat", { icon: "🖼️", description: "Click it to enlarge · the agent can see it too" });
+    toast.success("Image added to the chat", {
+      icon: "🖼️",
+      description: embedded
+        ? "Embedded in chat — survives provider link expiry · the agent can see it too"
+        : "Click it to enlarge · the agent can see it too",
+    });
   }
 
   async function handleDownload() {
@@ -284,8 +349,9 @@ export function ImageStudioDialog() {
                 </p>
               )}
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={handleAddToChat} className="bg-violet-600 text-white hover:bg-violet-700">
-                  <MessageSquarePlus className="h-3.5 w-3.5" /> Add to chat
+                <Button size="sm" onClick={handleAddToChat} disabled={adding} className="bg-violet-600 text-white hover:bg-violet-700">
+                  {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquarePlus className="h-3.5 w-3.5" />}
+                  {adding ? "Embedding…" : "Add to chat"}
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
                   {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Download
