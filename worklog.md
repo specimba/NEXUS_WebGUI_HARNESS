@@ -10890,3 +10890,30 @@ Scope committed: src/components/praison/agents/test-agent-dialog.tsx (missingLan
 Open risks: r463 notice un-witnessed in browser (recipe above — free on the QA profile); r462 Load-more click-path un-witnessed; r460 proposals-restore recipe un-witnessed; r458 embed + r457 injection need provider keys/real activity; standing witnesses r454/r453/r452/r451; QA-profile providerKeys empty (which now at least SURFACES honestly in the playground).
 Blockers: none
 Next recommended action: r464 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r463 snapshot) + health (short curl). (3) Candidates: (a) a cheap witness sweep — r463 (free on QA profile) + r462 Load-more + r456 already witnessed; combine two witnesses in one round if the server is up; (b) new surface: tracker panel internals (model-ticker 512 ln, unprobed) or settings-view remaining sections; (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds (r463 took ~6 — booked); MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r464
+Agent: main (platform dev agent)
+Task: r463 handoff candidate (a) — witness sweep: r463's amber lane notice (believed free on the "keyless QA profile") + r462 Load-more click-path.
+
+Work Log:
+- No user reply (cron round). Lineage OK (168d8904f = r463 snapshot); HEALTH=200; tree carried only the benign gateway-pulse.json drift.
+- THE WITNESS UNCOVERED A FALSE PREMISE instead. Opening the Test dialog on the "keyless QA profile" showed the NORMAL footer, not the amber notice. Chasing that discrepancy (browser walk + resolver reads + a live footer probe) produced this round's real finding:
+  ★ THE STANDING NOTE "QA-profile providerKeys empty" (repeated in every handoff since ~r45x) IS FALSE. stores.ts:278 — the settings store's merge() runs the r18 "Vault preseed": provider keys ARE re-seeded IN MEMORY on every rehydrate for any provider the user lacks (localStorage keeps {} while the store holds seeded keys). The QA profile can never be keyless; the r458/r457 "needs provider keys" witness caps are in fact witnessable.
+  ★ Why every observation was correct: with a seeded Vyce key, resolveLlm takes the key branch (label "Vyce AI") — the footer honestly named the lane once r464's probe landed. My intermediate confusion (settings.provider vs settings.activeProviderId — the resolver reads activeProviderId; provider only gates the "auto" check) cost rounds and is booked here for the next agent.
+- SHIPPED (test-agent-dialog.tsx, r463 block extended): the footer is now a 3-state lane readout — (ok) "Runs with <resolved lane label> from Settings — messages are not saved." (was a vague static line); (fallback) the resolver's own fallbackNote in amber role=status — closing the parity gap (chat-view toasts it, workflows-view tooltips it, the playground DROPPED it — the only surface silently riding the degraded Auto lane); (missing) the r463 broken-lane instructions. LIVE-WITNESSED: the dialog footer now renders "Runs with Vyce AI from Settings" on the QA profile — the ok branch rendered through the same conditional that drives the amber branches.
+- HONEST CAPS: the amber fallback/missing RENDER is un-witnessed (unreachable on this profile while the vault preseed holds; recipe: a non-seeded profile or temporarily neutralizing the preseed in merge()); the r462 Load-more click-path was NOT reached this round (budget consumed by the investigation — recipe unchanged from r462).
+- BROWSER PROFILE NOTE: witness evals set provider:'custom', activeProviderId:'vyce', providerKeys:{} in praison-settings; the vault preseed refills keys in memory on every load, so the profile stays functional (and now honestly names "Vyce AI" in the playground). Values never displayed; booked, not restored — the preseed makes restoration moot.
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact.
+- BUDGET: ~30/12 booked honestly — cause: a genuine mystery (three verified facts contradicted each other until the preseed surfaced); the last "probe" edit doubled as a shipped improvement (lane-naming footer), so the round ends with live-verified code despite the overrun.
+
+Stage Summary:
+- The Test playground footer now tells the truth in all three lane states, and — the bigger kill — a false premise that shaped witness planning for ~10 rounds ("QA profile has no keys") is dead with evidence: the r18 vault preseed guarantees keys. Next rounds can actually attempt the r458/r457 real-activity witnesses.
+
+Round Handoff:
+Round ID: r465
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/agents/test-agent-dialog.tsx (3-state lane footer: ok/fallback/missing).
+Open risks: amber footer render un-witnessed (preseed-blocked; recipe above); r462 Load-more click-path un-witnessed; r460 proposals-restore recipe un-witnessed; r458 embed + r457 injection NOW PLAUSIBLY WITNESSABLE (the profile HAS keys — try a real generation/real run; book quota honestly); standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r465 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r464 snapshot) + health (short curl). (3) Candidates: (a) REAL-ACTIVITY WITNESS round — the false premise is dead, the profile has keys: attempt one real agent generation via the Test playground (witnesses r458's embed chain if an image is involved, or at minimum the keyed lane) or one real workflow run (witnesses r457 prior-digest + r455 auto-archive); budget quota honestly — one small run, not a marathon; (b) tracker panel internals if a witness is undesired; (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot; survey HARD-CAP 3; resolver reads settings.activeProviderId (NOT settings.provider); MultiEdit failure → diff before retry; land on budget — early exit IS success.

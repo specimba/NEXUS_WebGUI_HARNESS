@@ -105,21 +105,24 @@ export function TestAgentDialog({
   const [running, setRunning] = React.useState(false);
   const [statusText, setStatusText] = React.useState("");
 
-  // r463: honest pre-flight — with ZERO credentials configured (fresh install,
-  // or the QA profile), the playground used to answer the first message with
-  // a late, cryptic provider 401 bubble. The resolved lane is computed BEFORE
-  // the user types; a keyed provider with no key shows an amber notice in the
-  // composer footer. The dial itself still proceeds (r315 doctrine — the
-  // engine's error stays ground truth) because keyless custom engines must
-  // never be locked out by a UI guess.
+  // r463 (extended r464): honest pre-flight for the composer footer. The
+  // resolver NEVER hands back a keyed-provider-without-key lane — it degrades
+  // to the built-in Auto engine with an honest `fallbackNote` — and chat-view
+  // (toast) plus workflows-view (tooltip) both surface that note; the
+  // playground was the only surface silently riding the degraded lane. The
+  // memo now returns: null (keyed, or sanctioned keyless custom+baseUrl),
+  // the resolver's own fallbackNote (degraded lane), or a truly-broken legacy
+  // lane (custom endpoint with neither key nor URL). The dial still proceeds
+  // (r315 doctrine — the engine's error stays ground truth).
   const liveSettings = useSettingsStore((s) => s.settings);
-  const missingLane = React.useMemo(() => {
+  const lane = React.useMemo(() => {
     if (!open || !agent) return null;
     const llm = resolveLlm(liveSettings, agent.model);
-    if (llm.apiKey) return null;
-    // custom + baseUrl is the sanctioned KEYLESS lane (e.g. Pollinations).
-    if (llm.provider === "custom" && llm.baseUrl?.trim()) return null;
-    return `${llm.provider} · ${llm.model}`;
+    if (llm.fallbackNote) return { kind: "fallback" as const, text: llm.fallbackNote };
+    if (!llm.apiKey && !(llm.provider === "custom" && llm.baseUrl?.trim())) {
+      return { kind: "missing" as const, text: `${llm.provider} · ${llm.model ?? "?"}` };
+    }
+    return { kind: "ok" as const, label: llm.label };
   }, [open, agent, liveSettings]);
 
   const abortRef = React.useRef<AbortController | null>(null);
@@ -455,16 +458,20 @@ export function TestAgentDialog({
               </Button>
             )}
           </div>
-          {missingLane ? (
-            <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400" role="status">
-              No API key resolved for this lane ({missingLane}) — add one in Settings → Providers
-              or pick a keyless custom engine. Sending will fail with an auth error.
-            </p>
-          ) : (
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Runs with your current provider from Settings — messages are not saved.
-            </p>
-          )}
+          {lane ? (
+            lane.kind === "ok" ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Runs with <span className="font-medium text-foreground/75">{lane.label}</span> from
+                Settings — messages are not saved.
+              </p>
+            ) : (
+              <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400" role="status">
+                {lane.kind === "fallback"
+                  ? lane.text
+                  : `No API key resolved for this lane (${lane.text}) — add one in Settings → Providers or pick a keyless custom engine. Sending will fail with an auth error.`}
+              </p>
+            )
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
