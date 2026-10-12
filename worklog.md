@@ -10835,3 +10835,31 @@ Scope committed: src/components/praison/workflows/archived-reports.tsx (bounded 
 Open risks: r460 proposals-restore recipe still un-witnessed (localStorage-only; NOTE: agent-browser import-flow needs file upload — the export-side check may be easier); r458 image-studio embed + r457 prior-digest injection still need provider keys/real activity; standing witnesses r454/r453/r452/r451 (+r442/r443 closed-tab fire); QA-profile providerKeys empty.
 Blockers: none
 Next recommended action: r462 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r461 snapshot) + health (short curl). (3) Candidates: (a) NEW surface — three rounds touched the archive arc; rotate: settings/agents-view polish (unprobed), tracker/radar internals (unprobed this window); (b) r460 witness if a cheap window appears (export-side: click Export, assert the downloaded bundle carries proposals — needs download capture, or eval the store's partialize shape directly); (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; ONE route (/) + hash-nav, localStorage is the source of truth for workflows/conversations; MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r462
+Agent: main (platform dev agent)
+Task: r461 handoff candidate (a) — surface rotation to the radar domain (unprobed this window): witness the oldest inherited low-pri item (papers live-network path) and ship a real gap in it.
+
+Work Log:
+- No user reply (cron round). Lineage OK (48ee28d57 = r461 snapshot); HEALTH=200; tree clean.
+- SURVEY (3 rounds): paper-radar-tab + radar-shared + /api/radar/papers route read in full — the r422-425 decomposition held up (guarded caches, per-source timeouts, honest errors, allow-listed params). No defects in the existing code.
+- LIVE WITNESS (oldest inherited item, closed): curl through the route → arXiv → parseArxivFeed → JSON — sandbox egress to export.arxiv.org works; real papers returned (2610.13948 "Can Language Models Play the Wikipedia Game?" et al). The papers live-network path is witnessed end to end.
+- THE GAP (real, user-facing): the route hardcoded `start=0` — every scan of a query returned the SAME newest 12 papers forever; there was no way deeper, and the client had no affordance to ask. arXiv is a firehose; the radar was a peephole.
+- SHIPPED (2 files):
+  (1) route: `start` param accepted, clamped 0–950 (arXiv hard-stops near start+max_results ≈ 1000; 950+20 stays inside), NaN → 0; why-comment r462.
+  (2) paper-radar-tab: `loadMore()` — fetches the next offset for the CACHED query, dedupes by id (the submittedDate feed rotates between calls, so offsets shift; dupes are dropped, not duplicated on the board), appends, persists via the same guarded writeCache; short page or zero-fresh sets `noMore` → button hides + count line says "· end of results" (honest exhaustion, no infinite clicking); explicit-click only (cache-first egress doctrine preserved); separate loadingMore flag so the grid never flashes the skeleton.
+- WITNESS: pagination witnessed LIVE end-to-end — start=0 vs start=12 for cat:cs.AI return DISJOINT real id sets; clamp edges (start=99999 → clamps into a valid deep page, start=abc → 0) both return 200 with 20 papers. UI click-path itself not browser-walked (budget): recipe = open Radar → Paper Radar → Scan → "Load more papers" → assert count grows + no dup ids + one fetch per click.
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact; MultiEdit dup-check clean.
+- BUDGET: ~11/12 — clean round, no detours.
+
+Stage Summary:
+- The paper radar can now page through a query's history instead of showing the same newest dozen forever, with honest exhaustion and id-level dedupe; the live-network path it rides on is witnessed working. Oldest inherited low-pri item: closed with both a witness and a feature.
+
+Round Handoff:
+Round ID: r463
+Task owner: main (platform dev agent)
+Scope committed: src/app/api/radar/papers/route.ts (start param + clamp), src/components/praison/radar/paper-radar-tab.tsx (loadMore + dedupe + honest exhaustion).
+Open risks: r462 Load-more click-path un-witnessed in browser (recipe above); r460 proposals-restore recipe still un-witnessed; r458 image-studio embed + r457 prior-digest injection need provider keys/real activity; standing witnesses r454/r453/r452/r451 (+r442/r443); QA-profile providerKeys empty. Note: loadMore assumes the cached board was fetched with sort=submittedDate (the tab always sends that); if a future tab adds sort options, page offsets must carry the same sort.
+Blockers: none
+Next recommended action: r463 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r462 snapshot) + health (short curl). (3) Candidates: (a) continue rotation — agents-view (560 ln, unprobed) or tracker panel internals (model-ticker 512 ln); (b) quick browser witness of the Load-more click-path if the server is up (3-4 rounds); (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; app is ONE route (/) + hash-nav; localStorage is source of truth; MultiEdit failure → diff before retry; land on budget — early exit IS success.

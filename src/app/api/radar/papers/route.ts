@@ -23,8 +23,14 @@ export async function GET(request: Request): Promise<Response> {
   const query = (url.searchParams.get("query") ?? "").trim().slice(0, 300);
 
   // max clamped to 1–20; sort allow-listed (anything else → submittedDate).
+  // r462: start accepts an absolute offset (clamped 0–950 — arXiv hard-stops
+  // around start+max_results ≈ 1000, and 950+20 stays inside it) so the
+  // radar's "Load more" can page past the newest batch instead of forever
+  // re-fetching the same 12.
   const maxRaw = Number(url.searchParams.get("max") ?? 12) || 12;
   const max = Math.min(Math.max(Math.trunc(maxRaw), 1), 20);
+  const startRaw = Number(url.searchParams.get("start") ?? 0) || 0;
+  const start = Math.min(Math.max(Math.trunc(startRaw), 0), 950);
   const sortRaw = url.searchParams.get("sort") ?? "submittedDate";
   const sort = ["relevance", "submittedDate", "lastUpdatedDate"].includes(sortRaw)
     ? sortRaw
@@ -33,7 +39,7 @@ export async function GET(request: Request): Promise<Response> {
   const effectiveQuery = query || DEFAULT_QUERY;
   const feedUrl =
     `https://export.arxiv.org/api/query?search_query=${encodeURIComponent(effectiveQuery)}` +
-    `&start=0&max_results=${max}&sortBy=${sort}&sortOrder=descending`;
+    `&start=${start}&max_results=${max}&sortBy=${sort}&sortOrder=descending`;
 
   try {
     const res = await fetch(feedUrl, {

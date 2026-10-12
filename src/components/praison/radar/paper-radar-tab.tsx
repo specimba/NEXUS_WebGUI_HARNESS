@@ -64,12 +64,18 @@ export function PaperRadarTab() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const didAuto = React.useRef(false);
+  // r462: pagination — true when the last page came back short (or fully
+  // deduped, i.e. the feed didn't actually advance), so "Load more" hides
+  // instead of promising papers arXiv no longer has.
+  const [noMore, setNoMore] = React.useState(false);
+  const [loadingMore, setLoadingMore] = React.useState(false);
 
   const search = React.useCallback(
     async (rawQuery: string) => {
       if (loading) return;
       setLoading(true);
       setError(null);
+      setNoMore(false);
       try {
         const params = new URLSearchParams({
           query: rawQuery.trim(),
@@ -109,6 +115,56 @@ export function PaperRadarTab() {
     },
     [loading]
   );
+
+  // r462: page past the first batch — fetch the next offset for the CACHED
+  // query, dedupe by id (the submittedDate feed rotates, so offsets can
+  // shift between calls), append what's actually new. Explicit click only —
+  // same cache-first egress doctrine as every other radar tab.
+  const loadMore = React.useCallback(async () => {
+    if (loading || loadingMore || !cache) return;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        query: cache.query,
+        max: String(PAPERS_MAX),
+        sort: "submittedDate",
+        start: String(cache.papers.length),
+      });
+      const res = await fetch(`/api/radar/papers?${params.toString()}`, {
+        signal: AbortSignal.timeout(25_000),
+      });
+      const body: unknown = await res.json();
+      if (!res.ok) {
+        const msg =
+          body && typeof body === "object" && "error" in body
+            ? String((body as { error?: unknown }).error)
+            : `Paper radar failed (HTTP ${res.status}).`;
+        throw new Error(msg);
+      }
+      const incoming = (Array.isArray(body) ? body : []) as ArxivPaper[];
+      const seen = new Set(cache.papers.map((p) => p.id));
+      const fresh = incoming.filter((p) => p.id && !seen.has(p.id));
+      const next: ArxivCache = {
+        fetchedAt: Date.now(),
+        query: cache.query,
+        papers: [...cache.papers, ...fresh],
+      };
+      writeCache(ARXIV_CACHE_KEY, next);
+      setCache(next);
+      // Short page or nothing new → the feed is exhausted for this query.
+      if (incoming.length < PAPERS_MAX || fresh.length === 0) setNoMore(true);
+    } catch (err) {
+      const message = isTimeoutError(err)
+        ? "arXiv did not answer in time — try again."
+        : err instanceof Error
+          ? err.message
+          : "Could not fetch papers.";
+      setError(message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [cache, loading, loadingMore]);
 
   // First open: show the cached radar, or run the default fresh-papers query.
   React.useEffect(() => {
@@ -233,7 +289,21 @@ export function PaperRadarTab() {
             <p className="mt-2 text-[11px] text-muted-foreground">
               {cache.papers.length} papers · query{" "}
               <code className="font-mono">{cache.query}</code>
+              {noMore ? " · end of results" : ""}
             </p>
+          ) : null}
+          {cache && cache.papers.length > 0 && !noMore ? (
+            <div className="mt-1 pb-1 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={loadingMore}
+                onClick={() => void loadMore()}
+              >
+                {loadingMore ? "Fetching more…" : "Load more papers"}
+              </Button>
+            </div>
           ) : null}
         </div>
       )}
