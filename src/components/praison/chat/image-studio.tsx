@@ -52,6 +52,7 @@ export function ImageStudioDialog() {
   const [prompt, setPrompt] = React.useState("");
   const [size, setSize] = React.useState<string>("1024x1024");
   const [busy, setBusy] = React.useState(false);
+  const [downloading, setDownloading] = React.useState(false);
   const [elapsed, setElapsed] = React.useState(0);
   const [error, setError] = React.useState("");
   const [result, setResult] = React.useState<GenResult | null>(null);
@@ -127,11 +128,41 @@ export function ImageStudioDialog() {
     toast.success("Image added to the chat", { icon: "🖼️", description: "Click it to enlarge · the agent can see it too" });
   }
 
-  function handleDownload() {
-    if (!result) return;
+  async function handleDownload() {
+    if (!result || downloading) return;
+    // r432: browsers IGNORE the download attribute for cross-origin URLs — for
+    // provider-hosted https results the button silently navigated to the image
+    // instead of saving a file. Route https results through a blob (extension
+    // from the blob's mime), keep data: URLs on the direct path, and fall back
+    // to an honest "open in a tab" when CORS blocks the fetch.
+    if (/^https:/i.test(result.imageUrl)) {
+      setDownloading(true);
+      try {
+        const res = await fetch(result.imageUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = objUrl;
+        a.download = `praison-image-${Date.now()}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 10_000);
+      } catch {
+        window.open(result.imageUrl, "_blank", "noopener");
+        toast.info("Opened in a new tab — the host blocked a direct save; save it from there.", { icon: "🖼️" });
+      } finally {
+        setDownloading(false);
+      }
+      return;
+    }
+    const m = /^data:image\/(\w+);base64,/.exec(result.imageUrl);
+    const ext = m && m[1] === "jpeg" ? "jpg" : (m?.[1] ?? "jpg");
     const a = document.createElement("a");
     a.href = result.imageUrl;
-    a.download = `praison-image-${Date.now()}.jpg`;
+    a.download = `praison-image-${Date.now()}.${ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -256,8 +287,8 @@ export function ImageStudioDialog() {
                 <Button size="sm" onClick={handleAddToChat} className="bg-violet-600 text-white hover:bg-violet-700">
                   <MessageSquarePlus className="h-3.5 w-3.5" /> Add to chat
                 </Button>
-                <Button size="sm" variant="outline" onClick={handleDownload}>
-                  <Download className="h-3.5 w-3.5" /> Download
+                <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
+                  {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Download
                 </Button>
               </div>
             </div>

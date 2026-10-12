@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://github.com",
+    "name": "QwenLM/Qwen-Agent: Agent framework and applications",
+    "snippet": "Qwen-Agent is a framework for developing LLM applications based on the instruction following, tool usage, planning, and memory capabilities of Qwen.",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://qwen.readthedocs.io",
+    "name": "Function Calling - Qwen",
+    "snippet": "Qwen-Agent can wrap an OpenAI-compatible API that does not support function calling . You can serve such an API with most inference frameworks or obtain one from ... Read more",
+    "host_name": "qwen.readthedocs.io",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://qwen.ai",
+    "name": "Qwen Code is an open-source AI agent",
+    "snippet": "Qwen Code is an open-source AI agent for the terminal, optimized for Qwen series models. It helps you understand large codebases, automate tedious work, and ...",
+    "host_name": "qwen.ai",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.scrapingbee.com",
+    "name": "Your Guide to Qwen-Agent: Build Powerful AI",
+    "snippet": "May 5, 2026 — In this guide, we will walk through Qwen-Agent and how to use the qwen-agent framework to build AI agents with tools, RAG, Code Interpreter ... Read more",
+    "host_name": "www.scrapingbee.com",
+    "rank": 3,
+    "date": "May 5, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://qwenlm.github.io",
+    "name": "QuickStart | Qwen Agent",
+    "snippet": "Mar 4, 2026 — This quickstart will guide you to implement an agent using a few lines of code in just a few minutes. Cloud's DashScope",
+    "host_name": "qwenlm.github.io",
+    "rank": 4,
+    "date": "Mar 4, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://dev.to",
+    "name": "[Qwen Meetup] Function Calling Harness: From 6.75% to",
+    "snippet": "Mar 27, 2026 — It's an open-source AI agent that takes a single natural language conversation and generates a complete backend—requirements analysis, database ... Read more",
+    "host_name": "dev.to",
+    "rank": 5,
+    "date": "Mar 27, 2026",
+    "favicon": ""
+  }
+]

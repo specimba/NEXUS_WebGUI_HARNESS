@@ -120,6 +120,62 @@ export function provider429CooldownLeftMs(
   return Math.max(congestion, providerBillingDeadLeftMs(providerId, now));
 }
 
+// ─── r437: rescue-lane memory (the POSITIVE half of rotation) ────────────────
+// Evidence (run012-20261011-2128 — the user's pasted parked run, failed at
+// step 8/11): attempt-3 registry rotation rescued one dial via AIHubMix
+// (coding-glm-5.3-free, a 512s research pass ✓) — yet the NEXT three dials
+// (#10–#12) led with the saturated built-in engine anyway, 429'd ×4, and the
+// run parked with a proven-healthy lane sitting ready. The engine remembered
+// saturated lanes (negative memory: lane-rotation windows + provider
+// cooldowns) but never the lane that JUST answered. noteRescueLane records a
+// non-primary dial that finished a FULL successful call; the runner's
+// demotion branch and nextRotation then LEAD with that proven lane for
+// RESCUE_LANE_TTL_MS instead of re-learning the same congestion from
+// scratch. Cleared the moment the rescue lane itself fails (the proof spent)
+// and refreshed on each rescue-lane success.
+export const RESCUE_LANE_TTL_MS = 15 * 60_000;
+
+let rescueLane: { providerId: string; until: number } | null = null;
+
+/** A non-primary dial just finished a full successful call — remember it. */
+export function noteRescueLane(providerId: string, now: number = Date.now()): void {
+  if (!providerId || providerId === "auto") return;
+  rescueLane = { providerId, until: now + RESCUE_LANE_TTL_MS };
+}
+
+/**
+ * r438: full observability view of the live rescue lane — id + remaining
+ * TTL — for surfaces like the gateway pulse. Same lazy expiry on read
+ * (no timers — same doctrine as the cooldown maps). Null = none live.
+ */
+export function liveRescueLane(
+  now: number = Date.now()
+): { providerId: string; msLeft: number } | null {
+  if (!rescueLane) return null;
+  const msLeft = rescueLane.until - now;
+  if (msLeft <= 0) {
+    rescueLane = null;
+    return null;
+  }
+  return { providerId: rescueLane.providerId, msLeft };
+}
+
+/**
+ * Provider id of the live rescue lane, or null (thin view over
+ * liveRescueLane — one lazy-expiry path serves both readers).
+ */
+export function liveRescueLaneId(now: number = Date.now()): string | null {
+  return liveRescueLane(now)?.providerId ?? null;
+}
+
+/**
+ * The rescue lane just failed a dial — its "proven healthy" proof is spent.
+ * Matching id clears the entry; a different id's failure leaves it alone.
+ */
+export function clearRescueLane(providerId: string): void {
+  if (rescueLane?.providerId === providerId) rescueLane = null;
+}
+
 export interface RotationPick {
   llm: ResolvedLlm;
   /** ms the picked lane is still cooling (0 = ready now). */
@@ -128,11 +184,14 @@ export interface RotationPick {
 
 /**
  * Pick a rotation lane ≠ failedProviderId: ready registry providers only
- * (key saved, or the provider needs none), skipping cooling lanes — a
- * ready-now lane in registry order wins; if the whole roster is cooling,
- * the soonest-available lane is picked so the retry can wait EXACTLY its
- * remaining window instead of a blind fixed sleep. Null when the profile
- * has no alternative provider at all.
+ * (key saved, or the provider needs none), skipping cooling lanes. r437: a
+ * LIVE rescue lane (a non-primary lane that fully answered a recent dial)
+ * is preferred over registry order when ready — the last lane that worked
+ * beats the first lane in a list. Else a ready-now lane in registry order
+ * wins; if the whole roster is cooling, the soonest-available lane is
+ * picked so the retry can wait EXACTLY its remaining window instead of a
+ * blind fixed sleep. Null when the profile has no alternative provider at
+ * all.
  */
 export function nextRotation(
   settings: Settings,
@@ -158,6 +217,11 @@ export function nextRotation(
         providerId: reg.id,
       },
     });
+  }
+  const rescueId = liveRescueLaneId(now);
+  if (rescueId && rescueId !== failedProviderId) {
+    const rescuePick = picks.find((p) => p.llm.providerId === rescueId);
+    if (rescuePick && rescuePick.waitMs <= 0) return rescuePick;
   }
   const ready = picks.find((p) => p.waitMs <= 0);
   if (ready) return ready;

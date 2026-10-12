@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Activity, ArrowRight, Copy, RefreshCw, Satellite } from "lucide-react";
+import { Activity, ArrowRight, Copy, RefreshCw, Search, Satellite } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,11 +48,25 @@ function bootFromMirror(): TrackerMirrorBoot {
   }
 }
 
+// r416 mirror audit: the mirror exists ONLY for the ticker's boot paint — the
+// radar view fetches /api/tracker live, and the ticker renders at most 60 rows
+// (panel) / 30 (marquee). The old 120-row / 40-event mirror stored double the
+// renderable surface (its own boot trim raced nothing; rows 61+ were never
+// rendered by anything), which made it the largest key in localStorage — the
+// exact budget the r415 storage meter now exposes. Trimmed to 60/12 with the
+// TRUE lane count carried in trackedTotal so "N lanes watched" stays honest
+// while the mirror is trimmed. Live refresh overwrites this seconds later.
 function saveCache(data: TrackerData): void {
   try {
     localStorage.setItem(
       TRACKER_CACHE_KEY,
-      JSON.stringify({ at: Date.now(), tracked: data.tracked.slice(0, 120), events: data.events.slice(0, 40), lastSyncAt: data.status.lastSyncAt })
+      JSON.stringify({
+        at: Date.now(),
+        tracked: data.tracked.slice(0, 60),
+        events: data.events.slice(0, 12),
+        trackedTotal: data.tracked.length,
+        lastSyncAt: data.status.lastSyncAt,
+      })
     );
   } catch {
     /* quota — cache is best-effort */
@@ -75,6 +89,12 @@ export function ModelTicker() {
   // and previously invisible). The r151 retry system owns the failure UX for
   // fetches; this state only reports the healed boot.
   const [syncNote, setSyncNote] = React.useState<string | null>(null);
+  // r434: the panel renders 60 rows, but the live API returns the FULL lane
+  // set (160 at survey time) — and the header says "N lanes watched" right
+  // above a list that silently showed 60 of them. A query searches the FULL
+  // tracked array so lanes 61+ are reachable (and pinnable) from the ticker;
+  // when idle, the cap is stated in the footer instead of hidden.
+  const [query, setQuery] = React.useState("");
 
   const setView = useUiStore((s) => s.setView);
   const activeId = useConversationsStore((s) => s.activeId);
@@ -223,6 +243,20 @@ export function ModelTicker() {
   }, [refresh]);
 
   const feed = data ? tickerFeed(data) : [];
+  // r434: panel search over the FULL lane set (not just the rendered 60).
+  const { panelRows, matchCount, queryActive } = React.useMemo(() => {
+    if (!data) return { panelRows: [], matchCount: 0, queryActive: false };
+    const q = query.trim().toLowerCase();
+    if (!q) return { panelRows: data.tracked.slice(0, 60), matchCount: data.tracked.length, queryActive: false };
+    const matches = data.tracked.filter(
+      (m) =>
+        m.modelId.toLowerCase().includes(q) ||
+        (m.displayName ?? "").toLowerCase().includes(q) ||
+        m.providerId.toLowerCase().includes(q) ||
+        providerMeta(m.providerId).label.toLowerCase().includes(q)
+    );
+    return { panelRows: matches.slice(0, 60), matchCount: matches.length, queryActive: true };
+  }, [data, query]);
   // r74: rotator verdicts inline in the tracker — the ClawLabs/free-ai-models
   // doctrine (their ok/sick/dead column) on OUR hop memory. TrackedModelRow.id
   // IS "providerId::modelId" = the rotator's hopKey, so rows light up with
@@ -334,7 +368,7 @@ export function ModelTicker() {
             <div>
               <p className="text-[13px] font-semibold leading-tight">Free &amp; new model radar</p>
               <p className="text-[10.5px] text-muted-foreground">
-                Watcher polls every 4-8h · synced {syncedRel} · {data.tracked.length} lanes watched
+                Watcher polls every 4-8h · synced {syncedRel} · {data.status.trackedTotal ?? data.tracked.length} lanes watched
                 {syncNote && <span className="text-amber-600 dark:text-amber-400"> · {syncNote}</span>}
               </p>
             </div>
@@ -344,16 +378,50 @@ export function ModelTicker() {
           </Button>
         </div>
 
+        {/* r434: search across every watched lane — the old list hard-capped
+            at 60 rows with no way to reach (or pin) older lanes 61+. */}
+        <div className="border-b px-3 py-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search all lanes…"
+              aria-label="Search tracked models"
+              className="h-7 w-full rounded-md border bg-transparent pl-7 pr-2 text-[12px] outline-none placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+          {queryActive && (
+            <p aria-live="polite" className="mt-1.5 text-[10.5px] text-muted-foreground">
+              {matchCount === 0
+                ? "No lanes match — ids, display names and provider labels all count."
+                : `${matchCount} of ${data.tracked.length} lanes match${matchCount > 60 ? " · showing first 60" : ""}`}
+            </p>
+          )}
+        </div>
+
         <ScrollArea className="max-h-[46vh]">
-          <ul className="divide-y">
-            {data.tracked.slice(0, 60).map((m) => (
-              <TickerRow key={m.id} row={m} onPin={() => pinModel(m)} health={healthMap} />
-            ))}
-          </ul>
+          {panelRows.length === 0 ? (
+            <p className="px-3 py-6 text-center text-[11.5px] text-muted-foreground">
+              No lanes match “{query.trim()}”.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {panelRows.map((m) => (
+                <TickerRow key={m.id} row={m} onPin={() => pinModel(m)} health={healthMap} />
+              ))}
+            </ul>
+          )}
         </ScrollArea>
 
         <div className="flex items-center justify-between border-t px-3 py-2">
-          <span className="text-[10.5px] text-muted-foreground">NEW = caught within the last 48h firsthand window</span>
+          <span className="text-[10.5px] text-muted-foreground">
+            NEW = caught within the last 48h firsthand window
+            {!queryActive && data.tracked.length > 60 && (
+              <> · showing 60 of {data.tracked.length} — search or the full radar reach the rest</>
+            )}
+          </span>
           <Button
             variant="ghost"
             size="sm"

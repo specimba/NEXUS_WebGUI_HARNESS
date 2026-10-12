@@ -37,6 +37,14 @@ import { cn } from "@/lib/utils";
 
 const HEARTBEAT_NOOP = "<noop>";
 
+// r446: first-output budget for a heartbeat dial. The relay lane carries a
+// 60s connect budget, but the browser-direct lane has NO pre-headers budget —
+// a silently-hanging endpoint left a beat's promise unsettled forever, and
+// since beatInFlight is global, ONE hung dial deadlocked every future
+// heartbeat for EVERY conversation (live-witnessed: 83s into a hung dial the
+// placeholder was still streaming and the engine was fully locked).
+const HEARTBEAT_FIRST_OUTPUT_MS = 90_000;
+
 const HEARTBEAT_SYSTEM = `
 HEARTBEAT CHECK-IN: this is a proactive wake-up, not a reply to a user message.
 Review the conversation above. If you have something genuinely valuable to add —
@@ -81,6 +89,16 @@ async function fireBeat(conv: Conversation): Promise<void> {
   };
   store.appendMessage(conv.id, placeholder);
 
+  // r446: arm the budget on our own signal. Past the budget a still-silent
+  // dial aborts bare — user-intent classification, so the direct lane
+  // rethrows instead of rotating to the relay — and the r445 truncation
+  // path removes the placeholder. The first streamed token disarms the
+  // timer so a legitimately long beat is never killed mid-flight.
+  const dialCtl = new AbortController();
+  let sawOutput = false;
+  const dialTimer = window.setTimeout(() => {
+    if (!sawOutput) dialCtl.abort();
+  }, HEARTBEAT_FIRST_OUTPUT_MS);
   try {
     const result = await runAgentChat(
       {
@@ -97,8 +115,13 @@ async function fireBeat(conv: Conversation): Promise<void> {
         system: agent.instructions + buildMemoryBlock(conv.memory) + "\n\n" + HEARTBEAT_SYSTEM,
         tools: agent.tools,
         messages: history,
+        signal: dialCtl.signal,
       },
-      {}
+      {
+        onToken: () => {
+          sawOutput = true;
+        },
+      }
     );
     const text = result.content.trim();
     if (!text || text === HEARTBEAT_NOOP || text.startsWith(HEARTBEAT_NOOP)) {
@@ -118,13 +141,26 @@ async function fireBeat(conv: Conversation): Promise<void> {
       description: `${conv.title} — heartbeat follow-up posted.`,
     });
   } catch (err) {
-    // Silent failure on aborts; surface anything else briefly.
-    if (!isAbortError(err)) {
+    if (isAbortError(err) || dialCtl.signal.aborted) {
+      // r445: isAbortError is a TRANSPORT classifier — it also matches the
+      // engine's own connect/first-token budgets (see chat-client v9/v10
+      // notes), not just user intent. Leaving the placeholder streaming here
+      // would ghost a live bubble AND lock this chat out of every future
+      // beat (the tick skips conversations holding a streaming message).
+      // Remove the placeholder exactly like a silent noop beat.
+      // r446: also honor our OWN first-output budget abort — the direct lane
+      // wraps rejections, so the abort class isn't guaranteed to survive;
+      // a budget-aborted beat is a transport hiccup either way and must
+      // vanish silently (live-witnessed: it landed as an error bubble).
+      useConversationsStore.getState().truncateFrom(conv.id, asstId, true);
+    } else {
       useConversationsStore.getState().patchMessage(conv.id, asstId, {
         status: "error",
         error: err instanceof Error ? err.message : "heartbeat failed",
       });
     }
+  } finally {
+    window.clearTimeout(dialTimer);
   }
 }
 
@@ -190,7 +226,16 @@ export function HeartbeatButton({ conv, disabled }: HeartbeatButtonProps) {
   const agent = resolveAgent(conv);
   const interval = hb?.intervalMs ?? DEFAULT_HEARTBEAT_INTERVAL_MS;
   const last = hb?.lastBeatAt;
-  const nextAt = last ? last + Math.max(interval, HEARTBEAT_MIN_INTERVAL_MS) : undefined;
+  // r445: mirror the ENGINE's real gate — it fires when BOTH (last-beat
+  // baseline + interval) and (updatedAt + idle window) have elapsed, and
+  // falls back to conv.updatedAt as the baseline when no beat has landed
+  // yet. The old "—" for a never-beaten chat hid a schedule the engine
+  // already had; compute the exact implied fire time instead.
+  const baseline = last ?? conv.updatedAt;
+  const nextAt = Math.max(
+    baseline + Math.max(interval, HEARTBEAT_MIN_INTERVAL_MS),
+    conv.updatedAt + HEARTBEAT_IDLE_MS
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

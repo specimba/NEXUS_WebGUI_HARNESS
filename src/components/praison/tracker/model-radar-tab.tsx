@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw, Satellite, Signal } from "lucide-react";
+import { RefreshCw, Satellite, Search, Signal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,15 +39,34 @@ export function ModelRadarTab() {
   const [loading, setLoading] = React.useState(true);
   const [syncing, setSyncing] = React.useState(false);
   const [filter, setFilter] = React.useState<Filter>("all");
+  // r411: a failed FIRST load used to be indistinguishable from an empty
+  // tracker — both rendered "Nothing tracked yet / No sync yet / never synced",
+  // false claims whenever /api/tracker 500'd (r273 honesty doctrine: never
+  // state what you cannot know). loadFailed gates those three strings;
+  // keep-previous on REFRESH failures stays r219 doctrine (no flicker) and
+  // never flips the copy while real data is on screen.
+  const [loadFailed, setLoadFailed] = React.useState(false);
+  // r435: the radar promises "every watched lane" (see the header comment)
+  // but the list body caps at 120 (r273) — with 160 live lanes, 40 were
+  // invisible in the one view meant to be the full picture, and the ticker's
+  // r434 panel search was the only UI that reached them. Search filters the
+  // chip-filtered set BEFORE the render cap, so every lane is reachable here
+  // as well; the caption reports the match set while searching.
+  const [query, setQuery] = React.useState("");
 
   const vyceKey = useSettingsStore((s) => s.settings.providerKeys?.vyce?.key ?? "");
 
   const load = React.useCallback(async () => {
     try {
       const res = await fetch("/api/tracker", { cache: "no-store" });
-      if (res.ok) setData((await res.json()) as TrackerData);
+      if (res.ok) {
+        setData((await res.json()) as TrackerData);
+        setLoadFailed(false);
+      } else {
+        setLoadFailed(true);
+      }
     } catch {
-      /* keep previous */
+      setLoadFailed(true); // first load: say so; refresh: data kept, no flicker
     } finally {
       setLoading(false);
     }
@@ -100,10 +119,25 @@ export function ModelRadarTab() {
   }, [vyceKey, load]);
 
   const tracked = data?.tracked ?? [];
-  const filtered = tracked.filter((m) => (filter === "new" ? m.isNew : filter === "free" ? m.free : true));
+  const chipFiltered = tracked.filter((m) => (filter === "new" ? m.isNew : filter === "free" ? m.free : true));
+  // r435: search composes with the All/New/Free chips and runs over the full
+  // set — the 120-row render cap applies only to what comes back, never to
+  // what the search sees.
+  const q = query.trim().toLowerCase();
+  const searching = q !== "";
+  const filtered = searching
+    ? chipFiltered.filter(
+        (m) =>
+          m.modelId.toLowerCase().includes(q) ||
+          (m.displayName ?? "").toLowerCase().includes(q) ||
+          m.providerId.toLowerCase().includes(q) ||
+          providerMeta(m.providerId).label.toLowerCase().includes(q)
+      )
+    : chipFiltered;
   const newCount = tracked.filter((m) => m.isNew).length;
   const freeCount = tracked.filter((m) => m.free).length;
   const sources: TrackerSourceHealth[] = data?.sources ?? [];
+  const firstLoadFailed = loadFailed && !data;
 
   return (
     <div className="space-y-4">
@@ -153,7 +187,11 @@ export function ModelRadarTab() {
               </button>
             ))}
             <span className="ml-auto text-[10.5px] text-muted-foreground">
-              {data?.status.lastSyncAt ? `last sync ${fmtAge(data.status.lastSyncAt)}` : "never synced"}
+              {data?.status.lastSyncAt
+                ? `last sync ${fmtAge(data.status.lastSyncAt)}`
+                : firstLoadFailed
+                  ? "sync status unknown — fetch failed"
+                  : "never synced"}
             </span>
           </div>
           {/* Source health */}
@@ -171,7 +209,14 @@ export function ModelRadarTab() {
                 {s.id} · {s.modelCount}
               </span>
             ))}
-            {sources.length === 0 && !loading && <span className="text-[11px] text-muted-foreground">No sync yet — hit “Sync now”.</span>}
+            {sources.length === 0 && !loading &&
+              (firstLoadFailed ? (
+                <span className="text-[11px] text-red-600 dark:text-red-400">
+                  Source health unavailable — the tracker API didn’t answer.
+                </span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground">No sync yet — hit “Sync now”.</span>
+              ))}
           </div>
         </CardContent>
       </Card>
@@ -183,12 +228,30 @@ export function ModelRadarTab() {
             Watched lanes{" "}
             <span className="text-[11px] font-normal text-muted-foreground">
               {/* The list body caps at 120 rows — the count must not claim
-                  more than actually render (r273 honesty fix). */}
-              ({filtered.length > 120 ? `first 120 of ${filtered.length} shown` : `${filtered.length} shown`})
+                  more than actually render (r273 honesty fix). r435: while
+                  searching, the caption reports the match set instead. */}
+              ({searching
+                ? `${filtered.length} of ${chipFiltered.length} match${filtered.length > 120 ? " · first 120 shown" : ""}`
+                : filtered.length > 120
+                  ? `first 120 of ${filtered.length} shown`
+                  : `${filtered.length} shown`})
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
+          {/* r435: lane search — lanes 121+ were unreachable in the one view
+              that promises "every watched lane". */}
+          <div className="relative mb-2">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search lanes — ids, display names, providers…"
+              aria-label="Search watched lanes"
+              className="h-8 w-full rounded-md border bg-transparent pl-7 pr-2 text-[12.5px] outline-none placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
           {loading ? (
             <div className="space-y-2" aria-busy>
               {Array.from({ length: 6 }).map((_, i) => (
@@ -196,11 +259,33 @@ export function ModelRadarTab() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <p className="py-6 text-center text-[12.5px] text-muted-foreground">
-              {filter === "new"
-                ? "No brand-new lanes in the current 48h window — the watcher will flag them the moment they appear."
-                : "Nothing tracked yet — hit “Sync now” to take the first snapshot."}
-            </p>
+            searching ? (
+              <p className="py-6 text-center text-[12.5px] text-muted-foreground">
+                No lanes match “{query.trim()}” — ids, display names and provider labels all count.
+              </p>
+            ) : firstLoadFailed ? (
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <p className="text-[12.5px] text-muted-foreground">
+                  Couldn’t reach the tracker — showing nothing rather than
+                  pretending the watch-list is empty.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 text-[12px]"
+                  onClick={() => void load()}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              <p className="py-6 text-center text-[12.5px] text-muted-foreground">
+                {filter === "new"
+                  ? "No brand-new lanes in the current 48h window — the watcher will flag them the moment they appear."
+                  : "Nothing tracked yet — hit “Sync now” to take the first snapshot."}
+              </p>
+            )
           ) : (
             <div className="max-h-[52vh] overflow-y-auto pr-1">
               <ul className="divide-y rounded-md border">

@@ -339,7 +339,14 @@ export function TestAgentDialog({
                     {m.content ? (
                       <MarkdownRenderer content={m.content} className="text-[13.5px]" />
                     ) : m.status === "streaming" ? (
-                      <div className="flex items-center gap-2 py-0.5">
+                      // r418 survey: the status line was visual-only — a live
+                      // region so "Thinking…" / "Using tools…" reaches screen
+                      // readers (parity with r417's radar count-line sweep).
+                      <div
+                        className="flex items-center gap-2 py-0.5"
+                        role="status"
+                        aria-live="polite"
+                      >
                         <TypingDots />
                         {statusText ? (
                           <span className="text-xs text-muted-foreground">{statusText}</span>
@@ -358,7 +365,9 @@ export function TestAgentDialog({
                     ) : null}
                     {m.status === "error" && m.error ? (
                       <div className={m.content ? "mt-1.5" : ""}>
-                        <p className="text-xs text-red-500">{m.error}</p>
+                        {/* r418 survey: role=alert — failures announce on render
+                            instead of being a silent red line for SR users. */}
+                        <p role="alert" className="text-xs text-red-500">{m.error}</p>
                         {m.kind ? <KindChip kind={m.kind} /> : null}
                         {!running && isLast ? (
                           <Button

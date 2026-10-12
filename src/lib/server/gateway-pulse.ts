@@ -1,6 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { liveRescueLane } from "@/lib/provider-rotation";
+
 // ─── Gateway pulse (r161): server-side 429 observability ────────────────────
 // The whole park-and-resume epic (r156–r158) made the CLIENT honest about
 // rate limits, but the server — the one vantage point that sees EVERY
@@ -86,6 +88,11 @@ export interface GatewayPulse {
   count24h: number;
   /** Most recent events, oldest → newest (capped — the ring is the bound). */
   recent: Gateway429Event[];
+  /** r438: the server lane's LIVE rescue lane — a no-key lane that fully
+   * answered a recent congested dial and now leads the fallback walk.
+   * Computed at read time from the in-memory r437 rescue map, NEVER
+   * persisted; null = none live. Browser-tab engines keep their own. */
+  rescueLane: { providerId: string; msLeft: number } | null;
 }
 
 export function gatewayPulse(): GatewayPulse {
@@ -98,5 +105,6 @@ export function gatewayPulse(): GatewayPulse {
     count1h: in1h,
     count24h: in24h,
     recent: list.slice(-8),
+    rescueLane: liveRescueLane(now),
   };
 }

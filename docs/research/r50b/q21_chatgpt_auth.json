@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://help.openai.com",
+    "name": "Developer mode and MCP apps in ChatGPT",
+    "snippet": "The developer mode toggle can be found in Workspace Settings → Permissions & Roles → Connected Data Developer mode / Create custom MCP connectors . See ... Read more",
+    "host_name": "help.openai.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "ChatGPT Developer Mode rejects Exa MCP with 400 \"",
+    "snippet": "Sep 13, 2025 — Open ChatGPT (web), go to Settings > Connectors > Advanced, enable Developer Mode . · Create a new custom connector . · Submit and observe the ... Read more",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "Sep 13, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.blotato.com",
+    "name": "ChatGPT Social Media Connector Setup",
+    "snippet": "ChatGPT Social Media Connector Setup. ChatGPT reaches social media through a custom MCP server added in Developer mode , authenticated over OAuth. Read more",
+    "host_name": "www.blotato.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://docs.customer.io",
+    "name": "ChatGPT setup",
+    "snippet": "Go to Connectors ↗ on the ChatGPT web app. · If your admin limited the connectors you can use, click the custom connector ↗ that represents Customer.io. Read more",
+    "host_name": "docs.customer.io",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://docs.sectors.app",
+    "name": "Connect Sectors to ChatGPT with OAuth",
+    "snippet": "Custom MCP apps in ChatGPT live behind a Developer mode toggle that OpenAI labels Elevated Risk. While developer mode is on, ChatGPT disables Memory and warns ... Read more",
+    "host_name": "docs.sectors.app",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://stytch.com",
+    "name": "Guide to authentication for the OpenAI Apps SDK - Stytch",
+    "snippet": "Oct 8, 2025 — Developer mode : Start by enabling Developer Mode in ChatGPT under Settings → Connectors → Developer Mode . · Playground & Inspector: Use the API ... Read more",
+    "host_name": "stytch.com",
+    "rank": 5,
+    "date": "Oct 8, 2025",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://northflank.com",
+    "name": "How to sandbox AI agents in 2026: MicroVMs, gVisor &",
+    "snippet": "Feb 2, 2026 — Sandboxing AI agents involves isolating code execution in secure environments to prevent unauthorized access, data breaches, and system ... Read more",
+    "host_name": "northflank.com",
+    "rank": 0,
+    "date": "Feb 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://mastra.ai",
+    "name": "The 6 Best AI Agent Sandbox Platforms (August 2026)",
+    "snippet": "Jul 21, 2026 — An AI agent sandbox platform gives agents an isolated environment where they can safely execute code and interact with computing resources.",
+    "host_name": "mastra.ai",
+    "rank": 1,
+    "date": "Jul 21, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.firecrawl.dev",
+    "name": "AI Agent Sandbox: How to Safely Run Autonomous",
+    "snippet": "Mar 18, 2026 — An AI agent sandbox is an isolated execution environment where an agent can take actions without those actions affecting the host system.",
+    "host_name": "www.firecrawl.dev",
+    "rank": 2,
+    "date": "Mar 18, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://modal.com",
+    "name": "Best Code Execution Sandboxes for AI Agents in 2026",
+    "snippet": "This guide examines seven sandbox platforms serving different AI agent needs in 2026, starting with Modal, a serverless AI infrastructure platform",
+    "host_name": "modal.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://cosmonic.com",
+    "name": "The Complete Guide to Sandboxing AI Agents in 2026",
+    "snippet": "May 26, 2026 — This guide covers what an AI sandbox is, why AI agents need one, the four dominant approaches to isolation, and how to choose among them. In ... Read more",
+    "host_name": "cosmonic.com",
+    "rank": 4,
+    "date": "May 26, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://permiso.io",
+    "name": "The First Dynamic Sandbox for AI Agent Skills and Prompts",
+    "snippet": "Apr 2, 2026 — SandyClaw is the first platform to apply dynamic sandbox detonation to AI agent skills. It runs the skill in a controlled environment ... Read more",
+    "host_name": "permiso.io",
+    "rank": 5,
+    "date": "Apr 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.windmill.dev",
+    "name": "AI sandbox",
+    "snippet": "The AI sandbox combines two Windmill features - sandboxing and volumes - to run AI coding agents with process isolation and persistent file storage. Any agent ... Read more",
+    "host_name": "www.windmill.dev",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  }
+]

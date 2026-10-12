@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
+import { toast } from "sonner";
 import type {
   Agent,
   ChatMessage,
@@ -33,7 +34,20 @@ function debouncedStorage(delay = 500): StateStorage {
     try {
       localStorage.setItem(name, v);
     } catch {
-      /* quota — ignore */
+      // r414: quota failures were swallowed silently — the app kept running
+      // while NOTHING it showed was durable, and the user found out only via
+      // a raw QuotaExceededError overlay from the one store that still wrote
+      // synchronously. One honest signal per session instead of silence.
+      console.warn(
+        `[storage] quota exceeded writing ${name} (${Math.round(v.length / 1024)}KB) — change not persisted`
+      );
+      if (!quotaWarned && typeof document !== "undefined") {
+        quotaWarned = true;
+        toast.error("Local storage is full", {
+          description:
+            "Recent changes may not survive a reload. Trim old chats or workflow runs — settings now degrade gracefully instead of throwing.",
+        });
+      }
     }
   };
   const flushAll = () => {
@@ -92,6 +106,57 @@ function debouncedStorage(delay = 500): StateStorage {
   };
 }
 
+// ─── r414: storage trimmers ──────────────────────────────────────────────────
+// localStorage is a ~5MB PER-ORIGIN budget shared by every persisted key.
+// Research pipelines persist FULL step outputs and FULL tool results (one
+// 213-tool-call run alone can clear megabytes), so a few days of scheduled
+// runs fill the budget — and then EVERY store's writes fail. The newest runs
+// stay intact; history keeps its structure (labels, statuses, timings, tool
+// names — the run board and evidence chips read none of the trimmed bulk).
+// quotaWarned above makes the one failure that remains honest.
+let quotaWarned = false;
+const MAX_RUNS_PER_WF = 60; // hard cap on persisted runs per workflow
+const MAX_FULL_RUNS = 4; // newest runs keep full outputs
+const OLD_OUTPUT_CAP = 4_000; // older step outputs truncated
+const OLD_RESULT_CAP = 600; // older tool results truncated
+const OLD_ARGS_CAP = 200; // older tool args truncated
+const TRIM_NOTE = "…[trimmed for storage — recent runs keep full output]";
+const trimToolCalls = (tcs: ToolCallInfo[]): ToolCallInfo[] =>
+  tcs.map((tc) => ({
+    ...tc,
+    args: tc.args && tc.args.length > OLD_ARGS_CAP ? tc.args.slice(0, OLD_ARGS_CAP) : tc.args,
+    result:
+      tc.result && tc.result.length > OLD_RESULT_CAP
+        ? tc.result.slice(0, OLD_RESULT_CAP) + TRIM_NOTE
+        : tc.result,
+  }));
+const trimRuns = (runs: WorkflowRun[]): WorkflowRun[] =>
+  runs.slice(0, MAX_RUNS_PER_WF).map((r, idx) =>
+    idx < MAX_FULL_RUNS
+      ? r
+      : {
+          ...r,
+          steps: r.steps.map((st) => ({
+            ...st,
+            output:
+              st.output.length > OLD_OUTPUT_CAP
+                ? st.output.slice(0, OLD_OUTPUT_CAP) + TRIM_NOTE
+                : st.output,
+            toolCalls: trimToolCalls(st.toolCalls ?? []),
+          })),
+        }
+      );
+const MAX_FULL_MSGS = 10; // newest messages per chat keep full payloads
+const trimConversations = (convs: Conversation[]): Conversation[] =>
+  convs.map((c) => ({
+    ...c,
+    messages: (c.messages ?? []).map((m, idx, arr) =>
+      arr.length - idx <= MAX_FULL_MSGS
+        ? m
+        : { ...m, toolCalls: trimToolCalls(m.toolCalls ?? []) }
+    ),
+  }));
+
 // ─── Settings ────────────────────────────────────────────────────────────────
 interface SettingsState {
   settings: Settings;
@@ -108,7 +173,11 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: "praison-settings",
-      storage: createJSONStorage(() => localStorage),
+      // r414: was raw localStorage — the ONLY unguarded synchronous writer
+      // left, so when the origin hit quota, settings toggles were the one
+      // place that threw a raw QuotaExceededError into the UI (user-reported:
+      // four overlays from relay moves and selects). Debounced + guarded now.
+      storage: createJSONStorage(() => debouncedStorage(300)),
       // Deep-merge so settings added in later versions (providerKeys,
       // activeProviderId, …) exist even for users with older persisted state.
       merge: (persisted, current) => {
@@ -192,7 +261,8 @@ export const useAgentsStore = create<AgentsState>()(
     }),
     {
       name: "praison-agents",
-      storage: createJSONStorage(() => localStorage),
+      // r414: same unguarded-writer fix as praison-settings above.
+      storage: createJSONStorage(() => debouncedStorage(300)),
       // r26.2 tool-expansion migration (v0 → v1): seeded agents gain the new
       // tools (UNION — nothing the user kept is removed) and tool ids that no
       // longer exist in the closed-world registry are dropped. Runs once.
@@ -381,6 +451,12 @@ export const useConversationsStore = create<ConversationsState>()(
     }),
     {
       name: "praison-conversations",
+      // r414: trim bulk payloads (old tool results/args) on the way out —
+      // the newest 10 messages per chat stay intact.
+      partialize: (s) => ({
+        conversations: trimConversations(s.conversations),
+        activeId: s.activeId,
+      }),
       storage: createJSONStorage(() => debouncedStorage(450)),
     }
   )
@@ -570,7 +646,22 @@ export const useWorkflowsStore = create<WorkflowsState>()(
           ),
         })),
     }),
-    { name: "praison-workflows", storage: createJSONStorage(() => debouncedStorage(450)) }
+    {
+      name: "praison-workflows",
+      // r414: the whale. Every run persisted full step outputs + tool results
+      // (research essays × 213 tool calls × dozens of runs) — this key alone
+      // filled the origin quota, and when it did, the unguarded settings
+      // store was what threw. Newest 4 runs per workflow stay full; older
+      // ones keep structure, shed bulk; hard cap 60 runs (oldest dropped).
+      partialize: (s) => ({
+        workflows: s.workflows.map((w) => ({
+          ...w,
+          runs: trimRuns(w.runs ?? []),
+        })),
+        proposals: s.proposals,
+      }),
+      storage: createJSONStorage(() => debouncedStorage(450)),
+    }
   )
 );
 

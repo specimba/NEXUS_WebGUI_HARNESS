@@ -400,12 +400,122 @@ const FIXES: FixNote[] = [
     lookFor:
       "Open /#/vault (or /#/evolution) in the address bar — Settings opens scrolled to the Automation vault (or Evolution proposals) card",
   },
+  {
+    round: "r405-r406",
+    title: "Deep links got completion: share buttons and per-conversation routes",
+    detail:
+      "The #/vault and #/evolution routes existed but nothing in the UI surfaced them — the vault and Evolution cards now carry Share buttons that copy the exact deep link. Conversations got the same treatment: #/chat/<id> opens a specific conversation, and the conversation list has a “Copy link” affordance, so “look at this chat” is a link instead of a treasure hunt.",
+    lookFor:
+      "Automation vault card → Share; conversation list row menu → “Copy link” — the pasted URL opens the same spot",
+  },
+  {
+    round: "r409-r410",
+    title: "⌘⇧F search finds agents now — and its copy tells the truth",
+    detail:
+      "Global search matched conversations and models but returned nothing for agents — the roster was invisible to its own search surface. Agent hits landed, and the search panel’s helper copy was corrected to describe what it actually searches instead of overpromising.",
+    lookFor: "Press ⌘⇧F and type an agent’s name — the agent appears as a hit",
+  },
+  {
+    round: "r414-r415",
+    title: "The storage-quota crash is fixed — and you can see what eats your quota",
+    detail:
+      "Four QuotaExceededError overlays (“setItem on Storage failed” for praison-settings) could bury the app when localStorage filled — writes are guarded now, so a full quota degrades gracefully instead of stacking error toasts. The companion fix is visibility: Settings → Your Data gained an honest Storage meter showing every praison-* key’s size against the ~5 MB browser budget.",
+    lookFor:
+      "Settings → Your Data → Storage card: per-key rows, a Recheck button, and honest over-budget notes instead of silent failures",
+  },
+  {
+    round: "r427",
+    title: "In-app navigation lands in the address bar",
+    detail:
+      "The SPA router was one-way: the hash could take you somewhere, but clicking around never updated the URL — refreshing or sharing the tab always dumped you back at the default view. In-app navigation now reflects into the hash, so refresh, bookmark and share all reopen the view you were actually on.",
+    lookFor: "Switch to Workflows — the address bar follows (#/workflows); a refresh reopens the same view",
+  },
+  {
+    round: "r428",
+    title: "The Agents roster is searchable",
+    detail:
+      "Rosters grow faster than scrolling: the Agents view gained a search box that filters the roster by name as you type, matching the search affordances the conversations and models surfaces already had.",
+    lookFor: "Agents view → type in the roster search — the grid narrows as you type",
+  },
+  {
+    round: "r429-r431",
+    title: "The server-run drawer is keyboard-complete",
+    detail:
+      "Opening a server-run detail drawer dropped keyboard users into the page behind it: focus wasn’t moved in, Tab could escape under the overlay, and closing it left focus wherever it had wandered. The drawer now takes focus on open, traps Tab at both edges, re-captures it if it falls to the page, and Escape restores focus to the card that opened it.",
+    lookFor:
+      "Workflows → a ⇉ server-run card → Enter: Tab cycles inside the drawer, Escape closes and focus returns to the card",
+  },
+  {
+    round: "r432",
+    title: "Download on a generated image actually saves the file",
+    detail:
+      "Image generation returns a provider-hosted https URL, and browsers ignore the anchor download attribute cross-origin — so “Download” silently navigated to the image in the same tab instead of saving anything. The button now fetches the image to a blob and saves a real file (extension from the actual mime type); if the host blocks that fetch, it opens the image in a new tab with a toast explaining why, instead of pretending.",
+    lookFor:
+      "Composer → Open Image Studio → generate → Download: a file lands in your downloads (or an honest new tab + toast, never a silent navigation)",
+  },
+  {
+    round: "r433",
+    title: "The storage meter names every key it counts",
+    detail:
+      "The Storage meter listed raw localStorage key names — “praison-radar-hf” defeats the point of a “where does my budget go” card. Every key the app writes now has a plain-language label (radar caches, provider vault, automation vault, relay health log…); genuinely unknown keys still show raw, honestly.",
+    lookFor: "Settings → Your Data → Storage: rows read “HF trending cache”, “Provider vault”… not raw praison-* names",
+  },
+  {
+    round: "r434-r435",
+    title: "The model tracker reaches every lane it watches",
+    detail:
+      "The tracker watched 160 lanes but the ticker panel listed 60 and the radar table 120 — the rest were invisible in the very views that claimed to show them. Both surfaces gained search over the full lane set (ids, display names, providers) with honest match counts and stated caps, so any watched lane is now findable and pinnable.",
+    lookFor:
+      "Ticker panel or Radar → Models: a search box; footers/captions state “showing 60 of 160” / “N of 160 match” instead of silently truncating",
+  },
+  {
+    round: "r437",
+    title: "A rescued dial is remembered — the next congested step leads with the lane that just worked",
+    detail:
+      "Forensics on a parked hourly run: attempt-3 rotation rescued one step via a free provider (a 512s research pass ✓), yet the next three dials led with the saturated built-in engine anyway and the run parked with a proven-healthy lane sitting ready. The engine now records any substituted dial that finishes a full successful call and — for the next 15 minutes — leads congested dials with that proven lane before the built-in engine, and final-attempt rotation prefers it over registry order. The memory clears the moment the rescue lane itself fails.",
+    lookFor:
+      "Workflows → a parked-then-resumed run's LLM calls: after a “(registry rotation)” success, the next demoted dial reads “(rescue lane leads)” instead of “auto (primary demoted)”",
+  },
+  {
+    round: "r438",
+    title: "The rescue lane works with the tab closed too — and the board can finally see it",
+    detail:
+      "The server scheduler (closed-tab hourly runs — how the parked runs actually fire) walked its fallback ladder in raw registry order: it kept negative memory (saturated lanes ride the back) but never remembered WHICH lane had just answered. The r437 rescue-lane memory now covers the server lane as well: a completed fallback answer leads the next congested dial for 15 minutes, and an unrelated lane's failure never erases another lane's evidence. The gateway pulse exposes that proof live, so it is no longer invisible module state.",
+    lookFor:
+      "Workflows → gateway pulse: when the server lane records a rescue, an emerald “rescue lane · {provider} · Nm left” chip appears beside the amber 429 chip (server lane only; an open browser tab's engine keeps its own memory)",
+  },
+  {
+    round: "r439",
+    title: "Every live model is findable — the composer can no longer shrink the picker's world",
+    detail:
+      "The chat composer capped every provider's live model roster at 20 before handing options to the model picker, so live models 21+ were unsearchable and unselectable even though the picker promises full catalogs. The cap is gone and the picker now owns its search: honest match counts over label/id/note/keywords, a stated 60-row render cap instead of a silent one, and a “No model matches” state kept distinct from an empty catalog. All four picker surfaces (chat composer, provider gallery, setup wizard, agent form) inherit the fix for free.",
+    lookFor:
+      "Chat composer → model picker: searching “glm” shows “3 of 31 match”; a nonsense query shows “No model matches” instead of a silently empty list",
+  },
+  {
+    round: "r442",
+    title: "Same-minute schedules stop colliding — next-fire times drift apart instead of stacking",
+    detail:
+      "Forensics on the parked evening runs found the upstream cause: schedules enabled in the same minute re-armed collinearly forever (next-fire = last-fire + interval, phase locked), so N schedules met the shared gateway at the same minute EVERY interval. A deterministic per-schedule offset (≤90s, capped at 20% of the interval) now spreads the first fire and every re-arm on the closed-tab lane — stable per schedule, never re-randomized mid-life.",
+    lookFor:
+      "Workflows board → next-fire times: after a server-lane fire, same-minute schedules drift apart by up to 90s instead of staying collinear",
+  },
+  {
+    round: "r443",
+    title: "The closed-tab executor can no longer stampede — “one run per tick” is finally true",
+    detail:
+      "The server scheduler's 15s claim loop fired each tick with no overlap guard while a tick awaits the ENTIRE pipeline (runs take minutes): every 15s a new overlapping tick re-claimed the same still-overdue workflow and launched another concurrent copy — a 10-minute pipeline could stampede into ~40 simultaneous runs in the first tab-closed window. An in-flight guard makes overlapping ticks honest no-ops; the next overdue schedule is claimed the moment the current run settles.",
+    lookFor:
+      "after the first real closed-tab fire, the server-run panel shows exactly ONE new run — not a stack of simultaneous copies of the same workflow",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
 // of a hardcoded string — the r274 defect class was exactly this string going
 // stale ("r186-r241" while receipts ran to r273). The range can no longer lie.
-const RANGE_LABEL = `${FIXES[0].round}-${FIXES[FIXES.length - 1].round}`;
+// r437: multi-round keys ("r434-r435") contribute only their TRAILING round —
+// the old join read "r186-r434-r435" (honest but wrong-shaped).
+const RANGE_LABEL = `${FIXES[0].round.split("-")[0]}-${FIXES[FIXES.length - 1].round.split("-").pop()}`;
 
 export function WhatsFixedSection() {
   return (

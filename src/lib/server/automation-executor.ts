@@ -31,8 +31,11 @@ import {
   providerBaseUrl,
 } from "@/lib/providers";
 import {
+  clearRescueLane,
+  liveRescueLaneId,
   noteProvider429,
   noteProviderBilling,
+  noteRescueLane,
   provider429CooldownLeftMs,
   providerBillingDeadLeftMs,
   resetProvider429,
@@ -58,7 +61,9 @@ export interface TickResult {
     | "no-vault-key"
     | "no-resolvable-provider"
     | "billing-quarantined"
-    | "idle";
+    | "idle"
+    /** r443: an overlap guard no-op — the previous tick's pipeline is still running. */
+    | "tick-already-running";
   workflowIds: string[];
   /** Present when claimed === 1 — the run outcome for QA/panel reads. */
   outcome?: { runId: string; status: "done" | "error" };
@@ -168,7 +173,12 @@ export function resolveServerDialFromSlots(
  * and whose endpoint differs from the dial that just got rate-limited. A
  * failed fallback is noted (exponential cooldown, this process's memory)
  * and the scan continues; null = no lane answered (caller throws the
- * ORIGINAL 429 error — honest failure, never a fabricated result). */
+ * ORIGINAL 429 error — honest failure, never a fabricated result).
+ *
+ * r438: the lane that JUST answered (a live rescue lane, r437 memory) leads
+ * the walk — the last lane that worked beats the first lane in a list. A
+ * full successful fallback dial notes the rescue lane; a failed one clears
+ * it (matching id only), so the proof is spent exactly when the lane dies. */
 const FREE_LANE_FALLBACKS = 2;
 async function dialNoKeyFallback(
   prompt: string,
@@ -180,8 +190,18 @@ async function dialNoKeyFallback(
   } catch {
     /* malformed url — skip the origin guard */
   }
+  // r438: a live rescue lane (a no-key lane that fully answered a recent
+  // congested dial) leads the candidate order; everything else keeps
+  // registry order. All guards below apply to it like any other lane.
+  const rescueId = liveRescueLaneId();
+  const ordered = rescueId
+    ? [
+        ...FREE_PROVIDERS.filter((r) => r.id === rescueId),
+        ...FREE_PROVIDERS.filter((r) => r.id !== rescueId),
+      ]
+    : FREE_PROVIDERS;
   let tried = 0;
-  for (const reg of FREE_PROVIDERS) {
+  for (const reg of ordered) {
     if (tried >= FREE_LANE_FALLBACKS) break;
     if (reg.noKey !== true) continue;
     if (provider429CooldownLeftMs(reg.id) > 0) continue;
@@ -223,6 +243,7 @@ async function dialNoKeyFallback(
       if (!res.ok) {
         await res.text().catch(() => "");
         noteProvider429(reg.id);
+        clearRescueLane(reg.id);
         continue;
       }
       const j = (await res.json()) as {
@@ -231,12 +252,18 @@ async function dialNoKeyFallback(
       const text = j.choices?.[0]?.message?.content?.trim() ?? "";
       if (!text) {
         noteProvider429(reg.id);
+        clearRescueLane(reg.id);
         continue;
       }
       resetProvider429(reg.id);
+      // r438: a full successful fallback answer is the rescue-memory trigger
+      // — this lane leads the next congested dial's walk until it fails or
+      // the 15m TTL lapses (server mirror of the runner's r437 success hook).
+      noteRescueLane(reg.id);
       return text;
     } catch {
       noteProvider429(reg.id);
+      clearRescueLane(reg.id);
       continue;
     } finally {
       clearTimeout(timer);
@@ -287,7 +314,13 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
         // the browser runner has noted its pre-stream 429s since r306; the
         // server lane fed only the FALLBACK lanes' memory, so a saturated
         // vault provider was re-dialed first every tick.
-        if (dial.providerId) noteProvider429(dial.providerId);
+        if (dial.providerId) {
+          noteProvider429(dial.providerId);
+          // r438: the dial's lane just failed — if it WAS the rescue lane,
+          // its proof is spent (matching id only; an unrelated lane's
+          // failure never erases another lane's evidence).
+          clearRescueLane(dial.providerId);
+        }
         const fallback = await dialNoKeyFallback(prompt, dial.url);
         if (fallback !== null) return fallback;
       }
@@ -303,13 +336,21 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
       ) {
         noteProviderBilling(dial.providerId);
       }
+      // r438: a non-429 failure of the dial's lane (billing, 5xx, …) spends
+      // a matching rescue proof the same way a 429 does.
+      if (dial.providerId) clearRescueLane(dial.providerId);
       throw new Error(`dial ${res.status}: ${body.slice(0, 200)}`);
     }
     const j = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
     };
     const text = j.choices?.[0]?.message?.content?.trim();
-    if (!text) throw new Error("dial returned empty completion");
+    if (!text) {
+      // r438: an empty completion is a lane failure — spend a matching
+      // rescue proof here too (non-abort failure semantics, r437 parity).
+      if (dial.providerId) clearRescueLane(dial.providerId);
+      throw new Error("dial returned empty completion");
+    }
     // r333: a proven-healthy vault dial clears the lane's memories — the
     // top-up self-heal (billing quarantine lifted on first success), same
     // semantics as the browser runner's resetProvider429.
@@ -384,7 +425,7 @@ export async function executeWorkflow(
       where: { id: wf.id },
       data: {
         lastRunAt: new Date(),
-        nextRunAt: new Date(Date.now() + wf.intervalMs),
+        nextRunAt: new Date(Date.now() + wf.intervalMs + scheduleStaggerMs(wf.id, wf.intervalMs)),
         failStreak: 0,
       },
     });
@@ -403,7 +444,7 @@ export async function executeWorkflow(
       where: { id: wf.id },
       data: {
         lastRunAt: new Date(),
-        nextRunAt: new Date(Date.now() + wf.intervalMs),
+        nextRunAt: new Date(Date.now() + wf.intervalMs + scheduleStaggerMs(wf.id, wf.intervalMs)),
         failStreak: nextStreak,
         ...(nextStreak >= BREAKER_LIMIT ? { enabled: false } : {}),
       },
@@ -412,11 +453,52 @@ export async function executeWorkflow(
   }
 }
 
+// ─── r442: deterministic fire stagger (server lane) ───────────────────────
+// Schedules enabled in the same minute re-arm collinearly forever —
+// `nextRunAt = now + intervalMs` preserves the phase, so N same-minute
+// schedules collide EVERY interval ("4 schedules firing within minutes" is
+// the exact congestion that parked the evening runs, r437 forensics). A
+// stable per-id offset spreads the first fire AND every re-arm across a
+// small window WITHOUT re-randomizing between fires (each workflow's phase
+// stays predictable; the board's next-fire times show it). Capped at 20% of
+// the interval — the r171 browser-lane doctrine ("an unjittered re-fire
+// stays collinear"), server-lane half.
+const STAGGER_WINDOW_MS = 90_000;
+
+export function scheduleStaggerMs(id: string, intervalMs: number): number {
+  let h = 2166136261; // FNV-1a
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const windowMs = Math.min(STAGGER_WINDOW_MS, Math.max(1, Math.floor(intervalMs * 0.2)));
+  return (h >>> 0) % windowMs;
+}
+
 /**
  * One claim tick: stand down on a fresh heartbeat, else claim and execute
  * at most ONE due workflow per tick (bounded latency, no thundering herd).
+ * r443: the "one per tick" contract was fiction under overlap — the loop
+ * fires `void tickOnce()` every 15s while a tick AWAITS THE WHOLE PIPELINE
+ * (runs take minutes), so every 15s a new overlapping tick re-read the same
+ * still-overdue due[0] (nextRunAt only updates at completion) and launched
+ * ANOTHER concurrent copy of the same workflow. The in-flight guard makes
+ * overlapping ticks honest no-ops; the cadence still claims the NEXT
+ * overdue workflow the moment the current run settles.
  */
+let tickInFlight = false;
+
 export async function tickOnce(now = new Date()): Promise<TickResult> {
+  if (tickInFlight) return { claimed: 0, reason: "tick-already-running", workflowIds: [] };
+  tickInFlight = true;
+  try {
+    return await tickOnceInner(now);
+  } finally {
+    tickInFlight = false;
+  }
+}
+
+async function tickOnceInner(now: Date): Promise<TickResult> {
   const state = await db.automationState.findUnique({ where: { id: "singleton" } });
   if (state && now.getTime() - state.lastSeenAt.getTime() < HEARTBEAT_STALE_MS) {
     return { claimed: 0, reason: "client-alive", workflowIds: [] };

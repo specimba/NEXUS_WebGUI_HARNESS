@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/agents/use-deep-research",
+    "name": "Use the Gemini Deep Research Agent",
+    "snippet": "The Gemini Deep Research Agent can reason across various data sources simultaneously . This includes remote MCP servers, internal institutional knowledge,",
+    "host_name": "docs.cloud.google.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ai.google.dev",
+    "name": "Gemini Deep Research agent - Google AI for Developers",
+    "snippet": "New capabilities allow you to collaboratively plan with the agent, connect to external tools using MCP servers , include visualizations (like charts and graphs) ...",
+    "host_name": "ai.google.dev",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.google",
+    "name": "Deep Research Max: a step change for autonomous",
+    "snippet": "Apr 21, 2026 — Model Context Protocol ( MCP ) support: You can now seamlessly connect Deep Research to your custom data and specialized professional data streams ... Read more",
+    "host_name": "blog.google",
+    "rank": 2,
+    "date": "Apr 21, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://aistudio.google.com/learn/deep-research-developer-guide",
+    "name": "How to use Deep Research with the Gemini API",
+    "snippet": "Connect remote MCP servers to give the agent access to external tools. Run code for calculations and data analysis. Connect remote MCP servers.",
+    "host_name": "aistudio.google.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://gemini.google",
+    "name": "Gemini Deep Research — your personal research assistant",
+    "snippet": "Deep Research is designed to tackle your complex research tasks by breaking them down, exploring sources like across the web, and your Workspace content",
+    "host_name": "gemini.google",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.metaveo.ai",
+    "name": "Google Deep Research Max Adds MCP and Custom Data",
+    "snippet": "Apr 24, 2026 — A team can connect public web sources , SEC filings, paid data sources through MCP , internal notes through File Search, and spreadsheet-style ...",
+    "host_name": "www.metaveo.ai",
+    "rank": 5,
+    "date": "Apr 24, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://mcpservers.org",
+    "name": "Gemini DeepSearch MCP",
+    "snippet": "MCP is an automated research agent that leverages Google Gemini models and Google Search to perform deep, multi-step web research.",
+    "host_name": "mcpservers.org",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "ssdeanx/deep-research-mcp-server",
+    "snippet": "Conduct iterative, deep research using Google Gemini 2.5 Flash with Google Search Grounding and URL context. No web-scraping dependency is required.",
+    "host_name": "github.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

@@ -43,6 +43,12 @@ function useIsClient(): boolean {
 // #/radar            → Trend Radar view (GitHub stars / HF trending / papers)
 // #/chat | #/agents | #/workflows | #/settings → bare view deep-links (r272)
 
+// r427: the bare view heads the URL-reflect bridge may rewrite (see the
+// effect in Page). Parameterized heads (chat/<id>, guide/<p>) and wizard
+// heads (setup) are deliberately NOT in this set — the bridge must not
+// erase their parameters.
+const VIEW_KEYS: readonly string[] = ["chat", "agents", "workflows", "settings", "radar"];
+
 function applyHashRoute(): void {
   const hash = window.location.hash.replace(/^#\/?/, "");
   if (!hash) return;
@@ -103,6 +109,23 @@ export default function Page() {
       document.documentElement.setAttribute("data-theme", id);
     }
   }, [uiTheme]);
+
+  // r427: reflect in-app navigation into the URL. The r272 router was
+  // one-way (hash → view): a sidebar / command-palette switch left the hash
+  // stale, so a refresh or a copied link landed on an OLDER view than the
+  // one on screen. Write-only bridge: history.replaceState (no hashchange
+  // event — the listener above stays the sole driver; no history spam).
+  // Guarded so parameterized deep links survive: #/chat/<id> keeps its
+  // conversation id while chat is active, and #/setup | #/guide/<provider>
+  // are never overwritten by this effect.
+  useEffect(() => {
+    if (!mounted) return;
+    const [head] = window.location.hash.replace(/^#\/?/, "").split("/");
+    const known = head === "" || VIEW_KEYS.includes(head);
+    if (known && head !== view) {
+      window.history.replaceState(null, "", `#/${view}`);
+    }
+  }, [mounted, view]);
 
   // Handle hash routes on load and while the app is open (#/setup, #/guide/<id>, …).
   useEffect(() => {

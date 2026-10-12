@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://docs.cloud.google.com/gemini/docs/codeassist/use-agentic-chat-pair-programmer",
+    "name": "Use the Gemini Code Assist agent mode",
+    "snippet": "Ask questions about your code . · Use context and built-in tools to improve generated content. · Configure MCP servers to extend the agent's abilities. Read more",
+    "host_name": "docs.cloud.google.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://developers.google.com/gemini-code-assist/docs/overview",
+    "name": "Gemini Code Assist overview",
+    "snippet": "Gemini Code Assist offers AI-powered assistance to help your development team build, deploy, and operate applications throughout the software development ... Read more",
+    "host_name": "developers.google.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://geminicli.com",
+    "name": "Browse Extensions",
+    "snippet": "Jun 18, 2026 — Google's Security extension for the Gemini CLI that finds vulnerabilities in your code changes and pull requests. database MCP. draft Context. Read more",
+    "host_name": "geminicli.com",
+    "rank": 2,
+    "date": "Jun 18, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://ai.google.dev",
+    "name": "Set up your coding assistant with Gemini MCP and Skills",
+    "snippet": "Sep 1, 2026 — Install Gemini API skills to give your AI coding assistant access to the latest documentation and best practices.",
+    "host_name": "ai.google.dev",
+    "rank": 3,
+    "date": "Sep 1, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://cloud.google.com/blog/products/application-development/gemini-code-assist-launches-developer-early-access-for-tools",
+    "name": "Gemini Code Assist adds tools to aid developer workflows",
+    "snippet": "Dec 18, 2024 — Gemini Code Assist tools lets developers retrieve information from, or act on any part of the engineering system, to access services outside ...",
+    "host_name": "cloud.google.com",
+    "rank": 4,
+    "date": "Dec 18, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "[Gemini Code Assist VSCode Extension] MCP Servers are",
+    "snippet": "Feb 13, 2026 — MCP Servers are not working in the Gemini Code Assist VSCode Extension . After configuration, the server appear stuck in \"Connecting\" state and ... Read more",
+    "host_name": "github.com",
+    "rank": 5,
+    "date": "Feb 13, 2026",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://mimo.xiaomi.com",
+    "name": "MiMo Code: Scaling Coding Agents to Long-Horizon Tasks",
+    "snippet": "Jun 10, 2026 — MiMo Code is a terminal-based coding agent built by Xiaomi's MiMo team on top of OpenCode and open-sourced under the MIT license.",
+    "host_name": "mimo.xiaomi.com",
+    "rank": 0,
+    "date": "Jun 10, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "MiMo Code: Where Models and Agents Co-Evolve",
+    "snippet": "1 day ago — It can read and write code , run commands, manage Git, and use a persistent memory system to keep a deep understanding of your project across ... Read more",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "Sep 23, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://modal.com",
+    "name": "Best Code Execution Sandbox for OpenHands in 2026",
+    "snippet": "Best For: Enterprise teams deploying AI coding agents that need flexible isolation options, BYOC deployment, or unlimited session times for long-running agent ... Read more",
+    "host_name": "modal.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://northflank.com",
+    "name": "What's the best code execution sandbox for AI agents in",
+    "snippet": "Jan 17, 2026 — Session limits of 24 hours (E2B and Vercel) force you to implement complex state serialization and restoration. Platforms with unlimited session ... Read more",
+    "host_name": "northflank.com",
+    "rank": 3,
+    "date": "Jan 17, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://pub.towardsai.net",
+    "name": "Xiaomi's New Coding Agent Dreams Every 7 Days",
+    "snippet": "Jun 11, 2026 — Every 7 days, while you're not looking, Xiaomi's new coding agent goes to sleep and dreams. An independent agent wakes up, reads through ... Read more",
+    "host_name": "pub.towardsai.net",
+    "rank": 4,
+    "date": "Jun 11, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.bunnyshell.com",
+    "name": "Coding Agent Sandbox: Run AI Agents Safely",
+    "snippet": "Mar 17, 2026 — A coding agent sandbox is an isolated, ephemeral execution environment purpose-built for AI agents that write and run code . Read more",
+    "host_name": "www.bunnyshell.com",
+    "rank": 5,
+    "date": "Mar 17, 2026",
+    "favicon": ""
+  }
+]

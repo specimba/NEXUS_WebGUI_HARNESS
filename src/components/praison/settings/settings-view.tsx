@@ -13,6 +13,7 @@ import { ProviderCard } from "@/components/praison/settings/provider-card";
 import { ProviderGallery } from "@/components/praison/settings/provider-gallery";
 import { ReferralCard } from "@/components/praison/settings/referral-card";
 import { SetupWizard } from "@/components/praison/settings/setup-wizard";
+import { StorageUsage } from "@/components/praison/settings/storage-usage";
 import { UsageDashboard } from "@/components/praison/settings/usage-dashboard";
 import {
   AlertDialog,
@@ -810,6 +811,11 @@ export function SettingsView() {
                   </div>
                 ))}
               </div>
+
+              {/* r415: where the ~5 MB goes — the honest companion to the
+                  guarded-storage quota work. Users saw "exceeded the quota"
+                  errors with zero visibility into what filled the budget. */}
+              <StorageUsage />
 
               {/* Export / Import */}
               <div className="flex flex-wrap gap-2">

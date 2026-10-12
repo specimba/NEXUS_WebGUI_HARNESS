@@ -643,7 +643,11 @@ export function Composer({
           keywords: [m.id],
         }));
       }
-      for (const m of (live[p.id] ?? []).slice(0, 20)) {
+      // r439: the WHOLE live roster feeds the picker now — ModelPicker caps
+      // the render (60 rows, honest match counts) and search reaches the
+      // rest. The old slice(0, 20) was a knowledge cap: live models 21+
+      // were unsearchable and unselectable (r434/r435 gap class).
+      for (const m of live[p.id] ?? []) {
         if (seen.has(m.id) || /embed|whisper|tts|image|imagine/i.test(m.id)) continue;
         seen.add(m.id);
         opts.push(withHealth({
@@ -712,10 +716,21 @@ export function Composer({
             aria-label="Queued follow-up message"
             className="queue-in mb-2 flex items-center gap-2 rounded-xl border border-violet-500/40 bg-violet-500/10 py-2 pl-3 pr-2 shadow-sm shadow-violet-500/10"
           >
-            <Clock3 className="h-4 w-4 shrink-0 animate-pulse text-violet-400" aria-hidden />
+            <Clock3
+              className={`h-4 w-4 shrink-0 text-violet-400 ${streaming ? "animate-pulse" : ""}`}
+              aria-hidden
+            />
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-400">
-                Queued · sends when the reply finishes
+                {/* r447: the label must not promise an auto-send that can no
+                    longer happen. While the turn runs it fires at settle
+                    (done); but an errored turn (r176 hold) or a settle that
+                    landed while the user was in another chat (away-skip)
+                    leaves the queue pending with NO turn left to flush it —
+                    it only rides the next reply or a manual "Send now". */}
+                {streaming
+                  ? "Queued · sends when the reply finishes"
+                  : "Queued · held — rides the next reply, or send now"}
               </p>
               <p className="truncate text-xs text-foreground/85">{queuedPreview}</p>
             </div>

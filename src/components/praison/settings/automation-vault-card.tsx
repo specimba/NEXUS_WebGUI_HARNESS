@@ -18,6 +18,7 @@ import {
   FlaskConical,
   KeyRound,
   Loader2,
+  PlugZap,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -66,14 +67,29 @@ export function AutomationVaultCard() {
   const [key, setKey] = React.useState("");
   const [showKey, setShowKey] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  // r413: the GET can FAIL (server down, db error) — the route answers
+  // 500 {vault: [], error} and an empty array is indistinguishable from a
+  // truly empty vault. Rendering "no key stored" over a failed read is the
+  // r411 falsehood class: empty-state claims must be gated on a read that
+  // actually succeeded.
+  const [loadFailed, setLoadFailed] = React.useState(false);
   // r218: per-slot affordances — WHICH slot is under test / on screen, not a
   // single card-wide flag. The executor-facing registry slots get the same
   // verify + reveal machinery the legacy builtin slot always had (the doc
   // already promised "per slot"; the UI now delivers it).
   const [testingProvider, setTestingProvider] = React.useState<string | null>(null);
+  const [dialingProvider, setDialingProvider] = React.useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = React.useState(false);
+  // r420: per-slot Remove now arms the same deliberate two-click confirm the
+  // builtin lane has always had (confirmRemove above). Before this, one
+  // accidental click on a slot's Remove instantly DELETEd the server-lane key
+  // — closed-tab runs then queue silently (honest no-op) until the user
+  // notices and re-stores. Destructive affordances must be deliberate, and
+  // the lanes the executor actually dials with deserve at least the same
+  // guard the legacy builtin box gets.
   const [revealed, setRevealed] = React.useState<{ provider: string; key: string } | null>(null);
   const [revealingProvider, setRevealingProvider] = React.useState<string | null>(null);
+  const [confirmRemoveProvider, setConfirmRemoveProvider] = React.useState<string | null>(null);
   const revealTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   // r218: the settings tab panels are CSS-hidden, NOT unmounted — this card
   // mounts when the settings view mounts (which persisted-view restores can
@@ -94,10 +110,19 @@ export function AutomationVaultCard() {
         cache: "no-store",
         headers: { "x-praison-csrf": "1" },
       });
-      const json = (await res.json()) as { vault?: VaultSlot[] };
+      const json = (await res.json()) as { vault?: VaultSlot[]; error?: string };
+      // r413: a 500 answer carries vault:[] + error — swallowing res.ok would
+      // render "no key stored" over a read that never succeeded (r411 class).
+      // Keep last known slots on screen (r219 no-flicker) but flag the read.
+      if (!res.ok) {
+        setLoadFailed(true);
+        return;
+      }
       setSlots(Array.isArray(json.vault) ? json.vault : []);
+      setLoadFailed(false);
     } catch {
-      /* local server briefly unreachable — keep last known slots */
+      /* local server briefly unreachable — keep last known slots, flag it */
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -329,6 +354,13 @@ export function AutomationVaultCard() {
   }
 
   async function removeSlot(provider: string) {
+    // r420: first click ARMS — the second click is the one that deletes.
+    // Clicking Remove on a different slot re-arms onto that slot (the
+    // previous one's label reverts naturally, one armed slot at a time).
+    if (confirmRemoveProvider !== provider) {
+      setConfirmRemoveProvider(provider);
+      return;
+    }
     try {
       const res = await fetch(`/api/vault?provider=${encodeURIComponent(provider)}`, {
         method: "DELETE",
@@ -336,6 +368,7 @@ export function AutomationVaultCard() {
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      maskNow(); // a revealed key must not linger past its slot's death
       await load();
       toast.success("Server-lane key removed — closed-tab runs stay queued until a key is stored again.", {
         description: "Nothing dials implicitly; the executor never falls back.",
@@ -344,6 +377,8 @@ export function AutomationVaultCard() {
       toast.error("Could not remove the key", {
         description: e instanceof Error ? e.message : String(e),
       });
+    } finally {
+      setConfirmRemoveProvider(null);
     }
   }
 
@@ -400,6 +435,67 @@ export function AutomationVaultCard() {
       });
     } finally {
       setTestingProvider(null);
+    }
+  }
+
+  // r276 finally wired (r413): the LIVE-DIAL verdict the storage Test never
+  // gave. The endpoint loads the slot server-side and dials the provider's
+  // allowlisted models endpoint with the stored raw key — the key never
+  // leaves the server, the response is a verdict + HTTP status only. Four
+  // verdicts (the endpoint's honest vocabulary, r276): verified / rejected /
+  // inconclusive (region-IP block — key unjudged) / unreachable.
+  async function liveDial(provider: string) {
+    setDialingProvider(provider);
+    try {
+      const res = await fetch("/api/vault/test-dial", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-praison-csrf": "1" },
+        body: JSON.stringify({ provider }),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        verdict?: string;
+        httpStatus?: number;
+        error?: string;
+      };
+      if (res.status === 400) {
+        toast.error("No dial target for this provider", {
+          description:
+            json.error ?? "This provider has no allowlisted endpoint the server can dial.",
+        });
+        return;
+      }
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      const name = providerById(provider)?.name ?? provider;
+      const status =
+        typeof json.httpStatus === "number" ? ` (HTTP ${json.httpStatus})` : "";
+      if (json.verdict === "verified") {
+        toast.success(`${name} key accepted by the provider${status}`, {
+          description:
+            "Live dial verified — closed-tab runs can dial with this key.",
+        });
+      } else if (json.verdict === "rejected") {
+        toast.error(`${name} rejected this key${status}`, {
+          description:
+            "The provider refused the stored credential — rotate the key and re-store it.",
+        });
+      } else if (json.verdict === "inconclusive") {
+        toast.warning(`${name} dial inconclusive${status}`, {
+          description:
+            "A region/IP block answered, not the provider's auth — the key itself was NOT judged.",
+        });
+      } else {
+        toast.warning(`${name} unreachable${status}`, {
+          description:
+            "The dial never reached the provider — the key was not exercised. Retry when the network recovers.",
+        });
+      }
+    } catch (e) {
+      toast.error("Live dial failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setDialingProvider(null);
     }
   }
 
@@ -473,6 +569,26 @@ export function AutomationVaultCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {loadFailed && !loading ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-red-500/30 bg-red-500/5 px-2.5 py-2 text-xs text-red-600 dark:text-red-400">
+            <span className="font-medium">
+              Couldn&apos;t read the vault — the server didn&apos;t answer.
+            </span>
+            <span className="text-[10.5px] text-muted-foreground">
+              Slots shown (if any) are the last known state — &ldquo;no key
+              stored&rdquo; below may be false.
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void load()}
+              className="ml-auto h-6 border-red-500/40 px-2 text-[10px] text-red-600 hover:bg-red-500/10 dark:text-red-400"
+            >
+              Retry
+            </Button>
+          </div>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="lane-provider" className="text-xs text-muted-foreground">
             Server lane (closed-tab runs) — store a key for a registry provider
@@ -495,6 +611,9 @@ export function AutomationVaultCard() {
               value={laneKey}
               onChange={(e) => setLaneKey(e.target.value)}
               placeholder="paste the provider key for closed-tab runs"
+              // r419 audit: placeholders are not reliable accessible names —
+              // this password field had no label plumbing at all.
+              aria-label="Lane provider key for closed-tab runs"
               autoComplete="off"
               spellCheck={false}
               className="min-w-0 flex-1 font-mono text-xs"
@@ -631,28 +750,60 @@ export function AutomationVaultCard() {
                     )}
                     Test
                   </Button>
+                  {resolvable ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void liveDial(s.provider)}
+                      disabled={dialingProvider !== null}
+                      title="Asks the PROVIDER about this stored key: the server dials the provider's allowlisted endpoint with it (the raw key never leaves the server) and reports an honest verdict — accepted / rejected / region-blocked / unreachable."
+                      className="h-6 gap-1 px-1.5 text-[10px] text-cyan-600 hover:text-cyan-600 dark:text-cyan-400"
+                    >
+                      {dialingProvider === s.provider ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                      ) : (
+                        <PlugZap className="h-3 w-3" aria-hidden />
+                      )}
+                      Live dial
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => void removeSlot(s.provider)}
-                    className="h-6 gap-1 px-1.5 text-[10px] text-red-500 hover:text-red-500"
+                    aria-label={
+                      confirmRemoveProvider === s.provider
+                        ? `Click again to confirm removing the stored ${slotName} key`
+                        : `Remove the stored ${slotName} key (click twice)`
+                    }
+                    title={
+                      confirmRemoveProvider === s.provider
+                        ? "Click again to delete this slot — closed-tab runs stay queued until a new key is stored (the executor never falls back implicitly)."
+                        : "Arms a deliberate two-click remove: the first click only highlights, the second deletes. No key is removed by a single accidental click."
+                    }
+                    className={cn(
+                      "h-6 gap-1 px-1.5 text-[10px] text-red-500 hover:text-red-500",
+                      confirmRemoveProvider === s.provider &&
+                        "bg-red-500/10 font-semibold",
+                    )}
                   >
                     <Trash2 className="h-3 w-3" aria-hidden />
-                    Remove
+                    {confirmRemoveProvider === s.provider ? "Confirm remove" : "Remove"}
                   </Button>
                 </li>
                 );
               })}
             </ul>
-          ) : (
+          ) : !loadFailed ? (
             <p className="text-[10px] leading-relaxed text-muted-foreground/70">
               No registry-provider key stored — with the tab closed, the executor stands
               down and due schedules stay queued (honest no-op). The executor dials the
               OLDEST slot that pairs with a registry provider; builtin or unresolvable
               slots are skipped, so storing a new key promotes it without deleting old ones.
             </p>
-          )}
+          ) : null}
         </div>
 
         {loading ? (
@@ -660,7 +811,7 @@ export function AutomationVaultCard() {
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             Reading vault…
           </p>
-        ) : (
+        ) : builtin || !loadFailed ? (
           <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
             {builtin ? (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -709,7 +860,7 @@ export function AutomationVaultCard() {
               </p>
             )}
           </div>
-        )}
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="vault-key" className="text-xs text-muted-foreground">

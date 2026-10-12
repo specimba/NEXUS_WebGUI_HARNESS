@@ -46,6 +46,11 @@ export interface TrackerData {
     nextForceEligibleAt: number;
     newWindowHours: number;
     syncTtlHours: number;
+    /** r416: true watcher lane count — present in the trimmed localStorage
+     * mirror (where `tracked` is capped below what the UI can render) and
+     * absent in live server responses (where tracked IS the full set).
+     * Consumers must fall back to tracked.length when absent. */
+    trackedTotal?: number;
   };
 }
 
@@ -54,6 +59,9 @@ export interface TrackerCache {
   at: number;
   tracked: TrackedModelRow[];
   events: TrackerEventRow[];
+  /** r416: full watcher lane count at save time — the mirror trims `tracked`
+   * to what the ticker can render, and this keeps "N lanes watched" honest. */
+  trackedTotal?: number;
   lastSyncAt: string | null;
 }
 
@@ -93,6 +101,9 @@ export function parseTrackerMirror(raw: string | null): TrackerMirrorBoot {
         nextForceEligibleAt: 0,
         newWindowHours: 48,
         syncTtlHours: 4,
+        ...(typeof (c as TrackerCache).trackedTotal === "number"
+          ? { trackedTotal: (c as TrackerCache).trackedTotal }
+          : {}),
       },
     },
   };

@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Copy, Download, FlaskConical, MoreVertical, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { Copy, Download, FlaskConical, MoreVertical, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -171,6 +172,22 @@ export function AgentsView() {
   const [deleteTarget, setDeleteTarget] = React.useState<Agent | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // r428: roster search — the conversation list has had one for ages, but the
+  // agent roster grew up without any way to narrow it (name/role/description,
+  // plus model and tools since those are on the card). Client-side live filter
+  // (no Enter/IME path), mirroring the r287 HF filter; the count line below
+  // is aria-live per the r417 doctrine — it updates as the user types.
+  const [query, setQuery] = React.useState("");
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return agents;
+    return agents.filter((a) =>
+      `${a.name} ${a.role} ${a.description} ${a.model} ${a.tools.join(" ")}`
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [agents, query]);
+
   // r221: the delete dialog used to warn "Workflows that reference it will
   // need to be updated" — a vague warning when the exact consequence is
   // computable from the SAME workflows array this view already holds.
@@ -317,20 +334,49 @@ export function AgentsView() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {agents.map((agent) => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                usage={mergedUsage(agent.id)}
-                onTest={() => openTest(agent)}
-                onEdit={() => openEdit(agent)}
-                onDuplicate={() => handleDuplicate(agent)}
-                onDelete={() => setDeleteTarget(agent)}
-                onExport={() => exportAgents([agent])}
+          <>
+            <div className="relative mb-4 max-w-xs">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
               />
-            ))}
-          </div>
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search agents…"
+                aria-label="Search agents"
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
+            {filtered.length === 0 ? (
+              <EmptyState
+                emoji="🔭"
+                title="Nothing matches"
+                description={`No agent matches “${query.trim()}” — clear the search to see the full roster.`}
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {filtered.map((agent) => (
+                  <AgentCard
+                    key={agent.id}
+                    agent={agent}
+                    usage={mergedUsage(agent.id)}
+                    onTest={() => openTest(agent)}
+                    onEdit={() => openEdit(agent)}
+                    onDuplicate={() => handleDuplicate(agent)}
+                    onDelete={() => setDeleteTarget(agent)}
+                    onExport={() => exportAgents([agent])}
+                  />
+                ))}
+              </div>
+            )}
+            {query.trim() ? (
+              <p className="mt-3 text-[11px] text-muted-foreground" aria-live="polite">
+                {filtered.length} of {agents.length} agent{agents.length === 1 ? "" : "s"} matching
+                “{query.trim()}”
+              </p>
+            ) : null}
+          </>
         )}
       </div>
 

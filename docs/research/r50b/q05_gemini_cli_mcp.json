@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://geminicli.com",
+    "name": "MCP servers with Gemini CLI",
+    "snippet": "Sep 2, 2026 — Gemini CLI supports three MCP transport types : Stdio Transport: Spawns a subprocess and communicates via stdin/stdout. Uses HTTP streaming for ...",
+    "host_name": "geminicli.com",
+    "rank": 0,
+    "date": "Sep 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://codelabs.developers.google.com/cloud-gemini-cli-mcp-go",
+    "name": "How to Build an MCP Server with Gemini CLI and Go",
+    "snippet": "May 26, 2026 — If you want to configure Gemini CLI to use the server via HTTP : Save your session and exit the CLI Edit your . gemini /settings.json file and ...",
+    "host_name": "codelabs.developers.google.com",
+    "rank": 1,
+    "date": "May 26, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "Support command for configuring MCP servers (`gemini",
+    "snippet": "Jul 7, 2025 — This would allow users to configure MCP servers with Gemini CLI programmatically without needing to directly edit setttings.json , streamlining ... Read more",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "Jul 7, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://help.doit.com",
+    "name": "Connect Gemini CLI | DoiT Help Center",
+    "snippet": "Aug 17, 2026 — Gemini CLI supports stdio and Streamable HTTP . Configure with stdio Create or edit the Gemini CLI settings.json. Configure with stdio.",
+    "host_name": "help.doit.com",
+    "rank": 3,
+    "date": "Aug 17, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://gofastmcp.com",
+    "name": "Gemini CLI 🤝 FastMCP",
+    "snippet": "Gemini CLI supports MCP servers through multiple transport methods including STDIO, SSE, and HTTP, allowing you to extend Gemini's capabilities with custom ... Read more",
+    "host_name": "gofastmcp.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://developer.android.com",
+    "name": "Add an MCP server | Android Studio",
+    "snippet": "Aug 31, 2026 — Go to the MCP server settings by clicking File (Android Studio on macOS) > Settings > Tools > AI > MCP Servers. · Select Enable MCP Servers. · Add ... Read more",
+    "host_name": "developer.android.com",
+    "rank": 5,
+    "date": "Aug 31, 2026",
+    "favicon": ""
+  }
+]

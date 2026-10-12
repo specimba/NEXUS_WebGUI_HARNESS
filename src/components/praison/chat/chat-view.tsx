@@ -574,7 +574,11 @@ export function ChatView() {
       setQueued(q);
       toast(replaced ? "Queued message replaced" : "Message queued", {
         icon: "⏭",
-        description: "Sends automatically when the current reply finishes.",
+        // r447: state every reachable future — the flush fires at a done
+        // settle, but an errored turn holds the queue (r176) and a settle
+        // while the user is in another chat leaves it pending too.
+        description:
+          "Sends when the current reply finishes — held if the reply fails or you switch chats.",
       });
     },
     []

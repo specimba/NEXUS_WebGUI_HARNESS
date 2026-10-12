@@ -60,6 +60,79 @@ from worklog.md each attempt and cost budget.
 3. ONLY THEN delete the bak keys.
 4. Re-verify zero `praison-bak-*` keys remain. Never delete baks before verify.
 
+### r446 incident — bak-key contract (PAID IN DATA, read this)
+- Bak key names are `praison-bak-<SHORT>` where SHORT ∈ {settings, agents,
+  workflows, conversations}. NEVER construct them as `praison-bak-<full-key>`
+  (`praison-bak-praison-settings` silently matches nothing).
+- The restore eval's output is a GATE, not a log line: if ANY key reports
+  no-bak/MISSING, ABORT the chain — never run the delete step after a no-op
+  restore. In r446 a mis-named restore no-oped, the chain continued, and only
+  a second naming bug (in the delete) prevented permanent loss; the bak keys
+  then vanished unexplained one round later (no app/script path deletes them —
+  suspect agent-browser daemon state), so the originals became unrecoverable.
+- Recovery that DID work: inject-v8 prints `preReal` (provider fields) before
+  mutating, and its mutation rule is exact (only `model===""| "auto"` agents
+  become `hang-test`, count = agentsTouched) — reconstruction = restore preReal
+  + invert the rule (`hang-test` → `auto`) + remove injected artifacts by id.
+  Unrecoverable by any recipe: `settings.providerKeys` entries wiped by
+  inject-v8 (key material lived only in the QA profile's settings envelope).
+- The agent-injection recipe for r446's heartbeat witness is superseded by
+  this file's rule: conversation injection must be paired with the SAME
+  short-name bak discipline (`praison-bak-conversations` ✓ was correct).
+
 ## QA console scan
 `agent-browser console | grep -iE "error|warn|failed"` — HMR/Fast-Refresh info
 noise is expected and fine; anything else is a finding.
+
+## agent-browser QA doctrine (r417-r425, accumulated + falsified)
+
+Each lesson below was paid for in budget (r420 alone burned 4 rounds re-deriving
+three of them; r424 burned 2 more). Read before ANY interactive QA round.
+**Verify STATE (data-state, aria-checked, DOM delta), never the harness's "✓ Done".**
+
+### Selection & activation
+- `:has-text()` is NOT supported (selector error, r420). Pure CSS only —
+  positional selectors like `[role="tablist"] [role="tab"]:nth-child(3)` work
+  and are the verified path for Radix Tabs.
+- Radix Tabs CANNOT be activated by synthetic PointerEvents dispatched from
+  `eval` — the hand-rolled pointerdown/mousedown/pointerup/click chain leaves
+  `data-state="inactive"` (r425 falsification). Use the native `agent-browser
+  click` (trusted CDP events).
+- Conversely, plain shadcn Buttons can silently NO-OP under native `click`:
+  "✓ Done" is printed while React state stays unchanged (r420). Escape hatch:
+  eval a native `el.click()` inside an IIFE. Either way, assert the resulting
+  state, not the ack.
+- Controlled inputs need a real `type <selector> <text>`. And `type` APPENDS to
+  an existing value (r423): a test string typed into the GH username input
+  produced `specimba` + suffix. Select/clear first for replacement semantics.
+
+### eval discipline
+- eval scope PERSISTS across calls (r420): a top-level `const li` throws
+  "already declared" on the next eval. Wrap EVERY eval body in an IIFE.
+- Guard every `.find()` before dispatching on its result (r424): an unguarded
+  find returns undefined and the TypeError kills the eval — in a chained bash
+  call, the earlier steps' stdout is swallowed with it. Return diagnostics
+  (URL, element counts) from step 1 of any chain, and append `|| echo
+  "STEP-FAIL"` per step so one failure doesn't abort the rest.
+- eval can race `open` and land on chrome-error:// (SecurityError signature,
+  r420): sleep ~2-3s after open and assert `location.pathname` inside the eval
+  before touching DOM.
+- State assertions after a synthetic event must run in a SEPARATE eval/round-trip
+  (r430): dispatchEvent is synchronous, but React's re-render (dialog unmount,
+  effect cleanups like focus-restore) settles a tick LATER — asserting in the
+  same eval reads stale DOM and fails a correct implementation. The async
+  cousin of "verify state, not the ack".
+- Before injecting localStorage state, check the store sanitizer contract —
+  the inject-v8 doctrine above still applies (envelope-root mirror keys are
+  ignored by the store).
+
+## Probe status
+- `probe-r345-vault-mirror.mjs` RETIRED (r426): source-regex probes pin
+  implementation details (function names, code shape) and shatter on every
+  refactor — 9/23 assertions were permanently stale after the r337/r340 mirror
+  rework (refute-first proven: same failures on a clean HEAD, r422). Its
+  one-time mission (the r345 re-land) completed long ago; the surviving
+  replacements are live agent-browser QA (per this file) and the a11y audit,
+  which pins a stable contract (aria-label presence) instead of code shape.
+  Rule of thumb: a probe that greps source text dies with the next refactor —
+  prefer behavior-level assertions.

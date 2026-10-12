@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { resolveServerDialFromSlots } from "@/lib/server/automation-executor";
+import { resolveServerDialFromSlots, scheduleStaggerMs } from "@/lib/server/automation-executor";
 import { type ExecutorLaneState } from "@/lib/automation-lane";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +24,35 @@ type WorkflowPayload = {
 const HEARTBEAT_STALE_MS = 120_000;
 
 export async function POST(req: Request) {
+  // r421: an empty or malformed body is a CLIENT bug, not a server fault —
+  // parse it defensively and answer a structured 400. Before this, `req.json()`
+  // threw on an empty body and the outer 500 catch leaked the raw parser
+  // message ("Unexpected end of JSON input") as the error string; a literal
+  // `null` body skipped the throw but crashed `body.workflows` on the next
+  // line into the same 500. Both now land here, with the heartbeat untouched —
+  // a failed sync must not beat it (a crashed client is not an alive client).
+  let body: unknown;
   try {
-    const body = (await req.json()) as { workflows?: WorkflowPayload[] };
-    const workflows = Array.isArray(body.workflows) ? body.workflows : [];
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "empty or invalid JSON body" },
+      { status: 400 },
+    );
+  }
+  try {
+    const raw = Array.isArray((body as { workflows?: unknown } | null)?.workflows)
+      ? (body as { workflows: unknown[] }).workflows
+      : [];
+    // Tolerance style matches the row loop below (task ?? "", intervalMs
+    // fallback): partial rows are tolerated, but a row without an id is
+    // fatal to findUnique — drop it here instead of 500-ing the whole
+    // heartbeat push for one malformed entry.
+    const workflows = raw.filter(
+      (w): w is WorkflowPayload =>
+        !!w && typeof w === "object" && typeof (w as WorkflowPayload).id === "string" &&
+        (w as WorkflowPayload).id.length > 0,
+    );
 
     // Heartbeat FIRST — a successful sync means the client is alive.
     await db.automationState.upsert({
@@ -50,7 +76,7 @@ export async function POST(req: Request) {
         await db.automationWorkflow.update({ where: { id: w.id }, data });
       } else {
         await db.automationWorkflow.create({
-          data: { id: w.id, ...data, nextRunAt: new Date(Date.now() + data.intervalMs) },
+          data: { id: w.id, ...data, nextRunAt: new Date(Date.now() + data.intervalMs + scheduleStaggerMs(w.id, data.intervalMs)) },
         });
       }
     }

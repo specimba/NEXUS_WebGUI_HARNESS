@@ -142,7 +142,19 @@ export function CommandPalette() {
     >
       <CommandInput placeholder="Type a command or search…" />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        {/* r441: the empty state no longer lies by omission — cmdk filters
+            RENDERED items, so a conversation older than the recent-6 cap
+            produced a bare "No results found" for a chat that EXISTS. The
+            heading states the cap; the empty state teaches the hatch. */}
+        <CommandEmpty>
+          No results found.
+          {conversations.length > recentConversations.length ? (
+            <span className="mt-1 block text-[11px] text-muted-foreground">
+              Only the {recentConversations.length} newest chats live here —
+              “Search all chats…” (⌘⇧F) reaches all {conversations.length}.
+            </span>
+          ) : null}
+        </CommandEmpty>
 
         <CommandGroup heading="Quick actions">
           <CommandItem onSelect={newChat}>
@@ -279,7 +291,13 @@ export function CommandPalette() {
         {recentConversations.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Recent chats">
+            <CommandGroup
+              heading={
+                conversations.length > recentConversations.length
+                  ? `Recent chats — newest ${recentConversations.length} of ${conversations.length}`
+                  : "Recent chats"
+              }
+            >
               {recentConversations.map((c) => (
                 <CommandItem key={c.id} value={`chat ${c.title}`} onSelect={() => openConversation(c.id)}>
                   <Search className="opacity-60" />

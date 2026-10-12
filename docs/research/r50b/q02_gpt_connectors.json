@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://community.openai.com",
+    "name": "MCP server tools now in ChatGPT -- developer mode",
+    "snippet": "Sep 9, 2025 — ChatGPT developer mode is a beta feature that provides full Model Context Protocol (MCP) client support for all tools, both read and write.",
+    "host_name": "community.openai.com",
+    "rank": 0,
+    "date": "Sep 9, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://help.openai.com",
+    "name": "Developer mode and MCP apps in ChatGPT",
+    "snippet": "Using ChatGPT developer mode , your organization can build, test, and deploy MCP-powered apps that let ChatGPT securely take action in your tools.",
+    "host_name": "help.openai.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.usecarly.com",
+    "name": "ChatGPT MCP Servers: The Complete List (2026)",
+    "snippet": "Jul 19, 2026 — How do I add an MCP server to ChatGPT? Enable Developer Mode in Settings — it has lived under Connectors → Advanced and, in recent OpenAI docs, ... Read more",
+    "host_name": "www.usecarly.com",
+    "rank": 2,
+    "date": "Jul 19, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://devops.com",
+    "name": "ChatGPT Developer Mode: Full MCP Access with Serious",
+    "snippet": "Oct 15, 2025 — Go to Settings, then Connectors , then Advanced, and toggle on Developer Mode . From there, you can add remote MCP servers in the Connectors tab. Read more",
+    "host_name": "devops.com",
+    "rank": 3,
+    "date": "Oct 15, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://gist.github.com",
+    "name": "ChatGPT App SDK & MCP Developer Mode MCP",
+    "snippet": "Sep 13, 2025 — This feature enables ChatGPT to interact with custom MCP (Model Context Protocol) servers , providing unprecedented extensibility and real-world ... Read more",
+    "host_name": "gist.github.com",
+    "rank": 4,
+    "date": "Sep 13, 2025",
+    "favicon": ""
+  }
+]

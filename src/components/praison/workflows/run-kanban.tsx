@@ -401,9 +401,52 @@ function ServerRunDrawer({
   onClose: () => void;
   onOpenWorkflow: (workflowId: string) => void;
 }) {
+  // r429 a11y: the overlay used to leave focus wherever it was (behind the
+  // backdrop), and Tab leaked to the page underneath. Move focus in on open,
+  // cycle Tab within the panel, restore focus on close (WCAG 2.4.3 focus order).
+  // r431 hardening: the trap lives on WINDOW, not in a React onKeyDown — React
+  // delegates at the root container, so a keydown whose target is <body> (focus
+  // lost to a click on non-interactive panel text) never reached the handler and
+  // Tab escaped behind the overlay. The window listener catches every target and
+  // re-enters focus into the panel when activeElement has left it.
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    const prev = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeRef.current?.focus();
+    return () => prev?.focus();
+  }, []);
+
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      const inPanel = active instanceof Node && panelRef.current.contains(active);
+      if (!inPanel) {
+        // focus fell out (body / detached) — route it back in instead of
+        // letting the browser Tab to the first focusable BEHIND the overlay.
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+      }
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -421,6 +464,7 @@ function ServerRunDrawer({
       onClick={onClose}
     >
       <div
+        ref={panelRef}
         className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-cyan-500/30 bg-card shadow-2xl shadow-cyan-500/10"
         onClick={(e) => e.stopPropagation()}
       >
@@ -438,6 +482,7 @@ function ServerRunDrawer({
           </span>
           <button
             type="button"
+            ref={closeRef}
             onClick={onClose}
             aria-label="Close server run detail"
             className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

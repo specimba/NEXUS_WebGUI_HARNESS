@@ -110,8 +110,17 @@ function exportWorkflows(workflows: Workflow[]) {
   );
 }
 
-/** Validate an untrusted parsed value as a Workflow; returns null when unusable. */
-function sanitizeWorkflow(raw: unknown, validAgentIds: Set<string>): Workflow | null {
+/** Validate an untrusted parsed value as a Workflow; returns null when unusable.
+ * r448: also reports steps dropped during sanitizing (junk slots + steps whose
+ * agent is not in the local roster). The caller must surface that count —
+ * r270 doctrine: an action that silently dropped data must SAY so. It also
+ * matters mechanically: the import fingerprint includes ordered step
+ * identities, so a silently truncated import would fail to dedupe against
+ * its own export file on re-import and spawn an "(imported)" twin instead. */
+function sanitizeWorkflow(
+  raw: unknown,
+  validAgentIds: Set<string>
+): { wf: Workflow; droppedSteps: number } | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const name = typeof r.name === "string" ? r.name.trim() : "";
@@ -120,11 +129,18 @@ function sanitizeWorkflow(raw: unknown, validAgentIds: Set<string>): Workflow | 
 
   const rawSteps = Array.isArray(r.steps) ? r.steps : [];
   const steps: WorkflowStep[] = [];
+  let droppedSteps = 0;
   for (const rs of rawSteps) {
-    if (!rs || typeof rs !== "object") continue;
+    if (!rs || typeof rs !== "object") {
+      droppedSteps++;
+      continue;
+    }
     const s = rs as Record<string, unknown>;
     const agentId = typeof s.agentId === "string" ? s.agentId : "";
-    if (!agentId || !validAgentIds.has(agentId)) continue; // drop steps w/o a local agent
+    if (!agentId || !validAgentIds.has(agentId)) {
+      droppedSteps++; // r448: no longer silent — the caller reports the count
+      continue;
+    }
     steps.push({
       id: uid("step"),
       agentId,
@@ -140,16 +156,19 @@ function sanitizeWorkflow(raw: unknown, validAgentIds: Set<string>): Workflow | 
 
   const now = Date.now();
   return {
-    id: uid("wf"),
-    name: truncateAtWord(stripUiChipArtifacts(name), 80),
-    description: truncateAtWord(stripUiChipArtifacts(str(r.description)), 300),
-    steps,
-    runs: [],
-    createdAt: now,
-    updatedAt: now,
-    ...(r.depth === "quick" || r.depth === "standard" || r.depth === "deep"
-      ? { depth: r.depth as Workflow["depth"] }
-      : {}),
+    wf: {
+      id: uid("wf"),
+      name: truncateAtWord(stripUiChipArtifacts(name), 80),
+      description: truncateAtWord(stripUiChipArtifacts(str(r.description)), 300),
+      steps,
+      runs: [],
+      createdAt: now,
+      updatedAt: now,
+      ...(r.depth === "quick" || r.depth === "standard" || r.depth === "deep"
+        ? { depth: r.depth as Workflow["depth"] }
+        : {}),
+    },
+    droppedSteps,
   };
 }
 
@@ -1205,9 +1224,14 @@ export function WorkflowsView() {
         return;
       }
       const validAgentIds = new Set(useAgentsStore.getState().agents.map((a) => a.id));
-      const imported = list
-        .map((w) => sanitizeWorkflow(w, validAgentIds))
-        .filter((w): w is Workflow => w !== null);
+      const results = list.map((w) => sanitizeWorkflow(w, validAgentIds));
+      const imported = results.filter(
+        (x): x is { wf: Workflow; droppedSteps: number } => x !== null
+      );
+      const wfs = imported.map((x) => x.wf);
+      // r448: steps dropped inside surviving workflows are part of the import
+      // receipt now — silent truncation also defeated fingerprint dedupe.
+      const droppedSteps = imported.reduce((n, x) => n + x.droppedSteps, 0);
       if (imported.length === 0) {
         toast.error("No usable workflows found", {
           description: "Workflows need a name and at least one step whose agent exists in your roster.",
@@ -1226,7 +1250,7 @@ export function WorkflowsView() {
       let dupes = 0;
       let renamed = 0;
       const toAdd: Workflow[] = [];
-      for (const w of imported) {
+      for (const w of wfs) {
         const fp = workflowFingerprint(w.name, w.steps, w.depth);
         if (seenFingerprints.has(fp)) {
           dupes++;
@@ -1261,7 +1285,10 @@ export function WorkflowsView() {
           `Imported ${toAdd.length} workflow${toAdd.length === 1 ? "" : "s"}` +
             (dupes > 0 ? ` · ${dupes} duplicate${dupes === 1 ? "" : "s"} skipped` : "") +
             (renamed > 0 ? ` · ${renamed} renamed to avoid a clash` : "") +
-            (skipped > 0 ? ` (${skipped} skipped)` : "")
+            (droppedSteps > 0
+              ? ` · ${droppedSteps} step${droppedSteps === 1 ? "" : "s"} skipped (no usable agent)`
+              : "") +
+            (skipped > 0 ? ` (${skipped} skipped — unusable)` : "")
         );
       }
     } catch {

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "updatedAt": "2026-09-24T21:30:00.000Z",
+  "sources": [
+    "https://arena.ai/leaderboard/code/webdev",
+    "https://artificialanalysis.ai/agents/coding-agents"
+  ],
+  "note": "Dated, human-reviewed leaderboard snapshot (r49). Written ONLY by scripts/fetch-leaderboard.ts --apply after a human reviews the printed diff — never auto-pushed. Scores are 0-1 Elo-style, blended 50/50 with the doctrine catalog in src/lib/relay.ts. Matched by 'providerId::modelId' hop key first, then bare model id.",
+  "scores": {},
+  "changelog": [
+    {
+      "date": "2026-09-24",
+      "note": "Baseline created (empty scores — doctrine Elo unblended until the first reviewed fetch lands)."
+    }
+  ]
+}

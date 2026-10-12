@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://developers.openai.com",
+    "name": "Building MCP servers for plugins and API integrations",
+    "snippet": "In this guide, we'll cover how to build a remote MCP server that reads data from a private data source (a vector store) and makes it available through a plugin ... Read more",
+    "host_name": "developers.openai.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.openai.com",
+    "name": "How to set up a remote MCP server and connect it",
+    "snippet": "Jun 4, 2025 — Workspace admins can also now build custom deep research connectors using Model Context Protocol ( MCP ) in beta. ... OpenAI wants to give me more ... Read more",
+    "host_name": "community.openai.com",
+    "rank": 1,
+    "date": "Jun 4, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://embracethered.com",
+    "name": "How Deep Research Agents Can Leak Your Data",
+    "snippet": "Aug 24, 2025 — OpenAI actually seems to have considered threats around custom Connectors and requires a specific implementation pattern (e.g. with search and ... Read more",
+    "host_name": "embracethered.com",
+    "rank": 2,
+    "date": "Aug 24, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "OBannon37/chatgpt-deep-research-connector-example",
+    "snippet": "This project is an example implementation of a ChatGPT Deep Research Connector , demonstrates how custom data sources , like internal sales lists or financial ... Read more",
+    "host_name": "github.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.enree.co",
+    "name": "OpenAI Brings Full MCP Support to ChatGPT - Nerd @ Work",
+    "snippet": "Sep 15, 2025 — Admins can add a custom MCP server in settings; once enabled, users can search or run deep research across proprietary data sources without ... Read more",
+    "host_name": "blog.enree.co",
+    "rank": 4,
+    "date": "Sep 15, 2025",
+    "favicon": ""
+  }
+]

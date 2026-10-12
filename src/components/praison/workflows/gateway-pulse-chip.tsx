@@ -4,6 +4,7 @@ import * as React from "react";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtRel } from "@/lib/helpers";
+import { providerById } from "@/lib/providers";
 
 // ─── Gateway pulse chip (r161) ───────────────────────────────────────────────
 // Ambient answer to "is the shared gateway congesting?" on the workflows
@@ -23,6 +24,7 @@ interface Pulse {
   count1h: number;
   count24h: number;
   recent: { t: number; model: string }[];
+  rescueLane?: { providerId: string; msLeft: number } | null;
 }
 
 /** Fresh enough to warn about — inside this window the chip turns amber
@@ -59,6 +61,15 @@ export function GatewayPulse() {
 
   if (!pulse || !recent || pulse.last429At == null) return null;
 
+  // r438: same single fetch, second signal — the server lane's live rescue
+  // lane (positive rotation memory). Emerald = proven-healthy, the
+  // deliberate contrast to the amber congestion chip beside it.
+  const rescue = pulse.rescueLane ?? null;
+  const rescueLabel = rescue
+    ? (providerById(rescue.providerId)?.name ?? rescue.providerId)
+    : null;
+  const rescueMin = rescue ? Math.max(1, Math.ceil(rescue.msLeft / 60_000)) : 0;
+
   const recentLines = pulse.recent
     .slice()
     .reverse()
@@ -67,30 +78,41 @@ export function GatewayPulse() {
   const title = `Upstream 429s the server observed on completion dials (chat turns, workflow steps, autopilot — server-seen only; browser-direct keys are invisible here).\n\n${recentLines}\n\nClick to refresh.`;
 
   return (
-    <button
-      type="button"
-      onClick={() => void fetchPulse()}
-      aria-label={`Gateway pulse: last rate limit ${fmtRel(pulse.last429At)}, ${pulse.count24h} in the last 24 hours. Click to refresh.`}
-      title={title}
-      className={cn(
-        "inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
-        fresh
-          ? "border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
-          : "border-border bg-muted/40 text-muted-foreground hover:bg-muted/60"
-      )}
-    >
-      <span
-        aria-hidden
+    <>
+      <button
+        type="button"
+        onClick={() => void fetchPulse()}
+        aria-label={`Gateway pulse: last rate limit ${fmtRel(pulse.last429At)}, ${pulse.count24h} in the last 24 hours. Click to refresh.`}
+        title={title}
         className={cn(
-          "h-1.5 w-1.5 rounded-full",
-          fresh ? "animate-pulse bg-amber-500" : "bg-muted-foreground/50"
+          "inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
+          fresh
+            ? "border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
+            : "border-border bg-muted/40 text-muted-foreground hover:bg-muted/60"
         )}
-      />
-      gateway 429 · last {fmtRel(pulse.last429At)} · {pulse.count24h} in 24h
-      <RefreshCw
-        aria-hidden
-        className={cn("h-2.5 w-2.5 opacity-50", busy && "animate-spin")}
-      />
-    </button>
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "h-1.5 w-1.5 rounded-full",
+            fresh ? "animate-pulse bg-amber-500" : "bg-muted-foreground/50"
+          )}
+        />
+        gateway 429 · last {fmtRel(pulse.last429At)} · {pulse.count24h} in 24h
+        <RefreshCw
+          aria-hidden
+          className={cn("h-2.5 w-2.5 opacity-50", busy && "animate-spin")}
+        />
+      </button>
+      {rescue && (
+        <span
+          title={`Rescue lane — the server lane's positive rotation memory (r437/r438): this lane finished a FULL successful call on a recent congested dial, so the next fallback walk LEADS with it while it stays live (15m TTL, refreshed on each success, cleared the moment it fails).\n\nServer lane only — a browser tab's engine keeps its own rescue memory, invisible here.`}
+          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+        >
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          rescue lane · {rescueLabel} · {rescueMin}m left
+        </span>
+      )}
+    </>
   );
 }

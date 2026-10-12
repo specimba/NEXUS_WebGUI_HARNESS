@@ -21,7 +21,11 @@ import {
   noteProvider429,
   noteProviderBilling,
   noteProviderFailure,
+  provider429CooldownLeftMs,
   resetProvider429,
+  clearRescueLane,
+  liveRescueLaneId,
+  noteRescueLane,
   BILLING_DEAD_MS,
 } from "@/lib/provider-rotation";
 import {
@@ -1150,7 +1154,19 @@ export async function executeWorkflowRun(
       // hop" fix.
       // v22: when the PREVIOUS attempt died mid-stream on the primary, stop
       // leading with it — dial the built-in engine instead.
+      // r437: when the demotion fires and a RESCUE lane is live (a
+      // non-primary lane that fully answered a recent dial), THAT lane leads
+      // — before the built-in engine. Forensics (run012-20261011-2128, the
+      // user's pasted parked run): attempt-3 registry rotation rescued step
+      // 7 via AIHubMix (512s pass ✓), then the next step's three dials all
+      // led with the saturated built-in engine (429 ×4, one in 1.2s) and
+      // parked — a proven-healthy lane sat ready while the ladder re-learned
+      // the congestion from scratch. The rescue pick below goes through
+      // nextRotation (which prefers the live rescue lane) and is only
+      // applied when it actually returned the rescue lane — otherwise the
+      // ladder falls through to the plain built-in demotion unchanged.
       let dialLlm = llm;
+      let rotationNote: string | null = null;
       // r126: sick memory lets attempt 1 demote too — a step opening during
       // another step's outage window leads with the built-in engine from the
       // first dial (attempt > 1 alone would still re-dial the dead primary).
@@ -1159,16 +1175,38 @@ export async function executeWorkflowRun(
         (attempt > 1 || Date.now() < primarySickUntil || primaryFamilySick) &&
         !forceServer
       ) {
-        const auto = resolveLlm(settings.settings, "auto");
-        dialLlm = {
-          ...llm,
-          provider: auto.provider,
-          apiKey: undefined,
-          baseUrl: undefined,
-          model: undefined,
-          providerId: "auto",
-          label: `${llm.label} → auto (primary demoted)`,
-        };
+        const rescueId = liveRescueLaneId();
+        if (
+          rescueId &&
+          rescueId !== llm.providerId &&
+          provider429CooldownLeftMs(rescueId) <= 0
+        ) {
+          const pick = nextRotation(settings.settings, llm.providerId);
+          if (pick && pick.llm.providerId === rescueId) {
+            dialLlm = {
+              ...llm,
+              provider: pick.llm.provider,
+              apiKey: pick.llm.apiKey,
+              baseUrl: pick.llm.baseUrl,
+              model: pick.llm.model,
+              providerId: pick.llm.providerId,
+              label: `${llm.label} → ${pick.llm.label} (rescue lane leads)`,
+            };
+            rotationNote = `rescue lane — ${pick.llm.label} led this dial (it answered the last congestion rescue; proven lane preferred over the built-in engine)`;
+          }
+        }
+        if (dialLlm === llm) {
+          const auto = resolveLlm(settings.settings, "auto");
+          dialLlm = {
+            ...llm,
+            provider: auto.provider,
+            apiKey: undefined,
+            baseUrl: undefined,
+            model: undefined,
+            providerId: "auto",
+            label: `${llm.label} → auto (primary demoted)`,
+          };
+        }
       }
       // r306 registry rotation (the reconciliation half): on the FINAL attempt,
       // a still-saturated primary family is left ENTIRELY — the dial switches
@@ -1178,8 +1216,9 @@ export async function executeWorkflowRun(
       // is short and lands on the SAME shared gateway, so leaving the family
       // needs a registry-wide switch. The ladder becomes: primary → built-in
       // engine → registry rotation. The gateway-wide "auto" congestion stays
-      // with gateway-cadence (untracked here by design).
-      let rotationNote: string | null = null;
+      // with gateway-cadence (untracked here by design). r437: nextRotation
+      // prefers the live rescue lane, so this final-attempt escape lands on
+      // the lane that last proved healthy instead of registry order.
       if (
         attempt === MAX_STEP_ATTEMPTS &&
         !forceServer &&
@@ -1379,6 +1418,13 @@ export async function executeWorkflowRun(
           // cautious tail beats flip-flopping demotion.)
           resetProvider429(dialLlm.providerId);
         }
+        if (dialLlm !== llm && dialLlm.providerId && dialLlm.providerId !== "auto") {
+          // r437: a SUBSTITUTED dial that fully succeeded is a PROVEN rescue
+          // lane — remember it so the next congested dial leads with it
+          // instead of re-learning the saturation (the positive half of
+          // rotation memory; run012-2128 lost three dials to exactly this).
+          noteRescueLane(dialLlm.providerId);
+        }
         patchRunStep(runStep.stepId, {
           output: res.content,
           toolCalls: res.toolCalls.length > 0 ? res.toolCalls : localToolCalls,
@@ -1409,6 +1455,12 @@ export async function executeWorkflowRun(
           throw err;
         }
         const message = (err as Error).message ?? "unknown error";
+        // r437: the rescue lane just failed a dial — its "proven healthy"
+        // proof is spent. Only a matching id clears, so an unrelated lane's
+        // failure never erases another lane's evidence.
+        if (dialLlm.providerId) {
+          clearRescueLane(dialLlm.providerId);
+        }
         pushCall({
           stepId: runStep.stepId,
           stepLabel: runStep.label,

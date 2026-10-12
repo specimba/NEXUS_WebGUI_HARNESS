@@ -55,6 +55,11 @@ export interface ModelPickerProps {
   footer?: React.ReactNode;
 }
 
+/** r439: render cap — the list never draws more than this many rows; search
+ * narrows to reach the rest, and the caption states the truncation honestly
+ * instead of callers silently dropping knowledge upstream. */
+const RENDER_CAP = 60;
+
 const BADGE_CLASS: Record<PickerBadgeTone, string> = {
   violet: "border-violet-500/40 bg-violet-500/10 text-violet-400",
   emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
@@ -76,6 +81,14 @@ export function ModelPicker({
   footer,
 }: ModelPickerProps) {
   const [open, setOpen] = React.useState(false);
+  // r439: the picker owns its search now — query state + self-filtering (see
+  // the pool memo below). Cleared on close AND on select so a stale query
+  // never silently narrows the next open.
+  const [query, setQuery] = React.useState("");
+  const handleOpenChange = React.useCallback((next: boolean) => {
+    setOpen(next);
+    if (!next) setQuery("");
+  }, []);
   const selected = options.find((o) => o.id === value);
 
   // r28: when the value is a pin that isn't in the enumerated options (e.g. a
@@ -88,9 +101,37 @@ export function ModelPicker({
       ? (() => {
           const [pid, ...rest] = value.split("::");
           const model = rest.join("::") || value;
-          return { id: value, label: model, note: pid !== "custom" ? `${pid} · exact pin` : "custom endpoint", badge: "pinned", badgeTone: "emerald" as const };
+          return { id: value, label: model, note: pid !== "custom" ? `${pid} · exact pin` : "custom endpoint", group: "Pinned", badge: "pinned", badgeTone: "emerald" as const };
         })()
       : undefined;
+
+  // r439: the search pool is EVERY option passed in — the pinned-row
+  // synthesis plus the full list (the composer now feeds whole live rosters;
+  // its old slice(0, 20) was a KNOWLEDGE cap that made live models 21+
+  // unsearchable and unselectable). Filtering is plain case-insensitive
+  // substring over label, id, note and keywords — the r434/r435 doctrine:
+  // the render cap applies AFTER the filter, never to what search sees.
+  const pool = React.useMemo(
+    () => (fallback ? [fallback, ...options] : options),
+    [fallback, options]
+  );
+  const q = query.trim().toLowerCase();
+  const searching = q !== "";
+  const filtered = React.useMemo(
+    () =>
+      searching
+        ? pool.filter(
+            (o) =>
+              o.label.toLowerCase().includes(q) ||
+              o.id.toLowerCase().includes(q) ||
+              (o.note ?? "").toLowerCase().includes(q) ||
+              (o.keywords ?? []).some((k) => k.toLowerCase().includes(q))
+          )
+        : pool,
+    [pool, searching, q]
+  );
+  const capped = filtered.length > RENDER_CAP;
+  const renderItems = capped ? filtered.slice(0, RENDER_CAP) : filtered;
 
   // Groups in first-seen order (stable across re-renders for a given list).
   const groups = React.useMemo(() => {
@@ -103,13 +144,12 @@ export function ModelPicker({
       }
       map.get(g)!.push(o);
     };
-    if (fallback) push("Pinned", fallback);
-    for (const o of options) push(o.group ?? "Models", o);
+    for (const o of renderItems) push(o.group ?? "Models", o);
     return order.map((g) => ({ name: g, items: map.get(g)! }));
-  }, [options, fallback]);
+  }, [renderItems]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -149,15 +189,43 @@ export function ModelPicker({
         className="w-[min(22rem,calc(100vw-2.5rem))] p-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} className="h-9" />
+        <Command shouldFilter={false}>
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder={searchPlaceholder}
+            className="h-9"
+          />
+          {(searching || capped) && (
+            <p
+              aria-live="polite"
+              className="border-b px-3 py-1.5 text-[10px] text-muted-foreground"
+            >
+              {searching
+                ? `${filtered.length} of ${pool.length} match${capped ? ` · first ${RENDER_CAP} shown` : ""}`
+                : `first ${RENDER_CAP} of ${pool.length} shown — search reaches the rest`}
+            </p>
+          )}
           <CommandList className="max-h-72">
             <CommandEmpty className="py-6 text-center">
               <SearchX className="mx-auto mb-1.5 h-5 w-5 text-muted-foreground/50" aria-hidden />
-              <p className="text-xs font-medium">{emptyTitle}</p>
-              {emptyHint ? (
-                <p className="mt-0.5 px-4 text-[11px] leading-relaxed text-muted-foreground">{emptyHint}</p>
-              ) : null}
+              {searching ? (
+                <>
+                  <p className="text-xs font-medium">
+                    No model matches &ldquo;{query.trim()}&rdquo;
+                  </p>
+                  <p className="mt-0.5 px-4 text-[11px] leading-relaxed text-muted-foreground">
+                    Labels, ids, notes and keywords all count.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs font-medium">{emptyTitle}</p>
+                  {emptyHint ? (
+                    <p className="mt-0.5 px-4 text-[11px] leading-relaxed text-muted-foreground">{emptyHint}</p>
+                  ) : null}
+                </>
+              )}
             </CommandEmpty>
             {groups.map((g, gi) => (
               <React.Fragment key={g.name}>
@@ -173,6 +241,7 @@ export function ModelPicker({
                         onSelect={() => {
                           onSelect(o.id);
                           setOpen(false);
+                          setQuery("");
                         }}
                         className="gap-2"
                       >

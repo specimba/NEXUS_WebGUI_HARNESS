@@ -82,3 +82,8 @@ ops/heartbeat.log
 user-artifacts/**/praison-provider-vault*.json
 user-artifacts/**
 ops/chrome-profile/
+# r449: QA browser profile (Chrome leveldb binaries, hundreds of files) —
+# same class as ops/chrome-profile/ above, created later by the QA harness.
+.chrome-qa-profile/
+# r449: rollback-incident quarantine tarballs — incident artifacts, not source.
+lost-era-quarantine-*.tar.gz
