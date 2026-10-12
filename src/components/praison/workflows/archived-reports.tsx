@@ -185,6 +185,14 @@ export function ArchivedReports({ workflowId }: ArchivedReportsProps) {
                   type="button"
                   onClick={() => void openDetail(r.id)}
                   aria-expanded={detailId === r.id}
+                  // r461 (live witness finding): the accessible name used to
+                  // be the button's full text content — a ~300-char task line
+                  // read verbatim by screen readers for EVERY list row before
+                  // the state/duration. A bounded label keeps the audible
+                  // name scannable; visible content is untouched.
+                  aria-label={`${r.status ?? "unknown"} — ${(r.task || r.workflowName || "untitled").slice(0, 80)}${
+                    (r.task || r.workflowName || "").length > 80 ? "…" : ""
+                  } — ${fmtDur(r.durationMs)} — ${new Date(r.startedAt).toLocaleString()}`}
                   className="w-full rounded-md border border-zinc-800/80 bg-zinc-900/40 px-2.5 py-1.5 text-left transition-colors hover:border-zinc-700"
                 >
                   <span className="flex items-center gap-2">
