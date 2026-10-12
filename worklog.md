@@ -10673,3 +10673,30 @@ Scope committed: prisma/schema.prisma + db push (RunReport), src/app/api/runs/ar
 Open risks: app left DOWN in-session (reap class; next boot = cold compile — use LONG health timeout); archive API unverified live (probe cycle above); agent read-access to archives not yet built; r454/r453/r452/r451 witnesses still pending; QA-profile providerKeys empty; image-studio blob-download carried.
 Blockers: none (the DOWN state is the sandbox's, not a code defect — gates are green and the schema is pushed)
 Next recommended action: r456 — (1) FIRST re-read any user reply. (2) Health with a LONG timeout; if cold-compiling, wait in dev.log tail; ONE restart at most; then run the archive probe cycle (POST→GET→DELETE). (3) If healthy and time allows: build the agent-facing read surface for the archive (smallest honest slice: a workflow-run-panel "past reports (archived)" list from GET /api/runs/archive?workflowId=, or an agent tool) — that is the "proceed further" half of the user request. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; land on budget.
+
+---
+Task ID: r456
+Agent: main (platform dev agent)
+Task: r455 handoff — (1) fresh boot after the .next wipe + witness the archive round-trip live; (2) build the read surface for the durable run-report archive (the "proceed further" half of the user request).
+
+Work Log:
+- No new user reply (cron round). Lineage OK (580cf5dec = r455 snapshot); tree clean.
+- BOOT: app down as handed off (000). Clean boot — kill dev procs, rm -rf .next, restart — HEALTH=200 after ~3 min cold compile. The Prisma client self-healed exactly as predicted in the r455 handoff (undefined-findMany resolved by the regenerated client).
+- WITNESS (r455 archive API, live): POST probe row → ok; GET list shows the metadata row; GET ?runId= returns full stepsJson + parsed steps; DELETE ok; GET after delete → empty. FULL ROUND-TRIP WITNESSED. Cosmetic note: POSTed source:"local" is echoed back as "manual" (route normalizer — harmless).
+- SHIPPED (r456): src/components/praison/workflows/archived-reports.tsx (new ~240 ln) — "Archived reports" section: silent on mount, ONE list fetch per expand + explicit Refresh button (egress doctrine r161); status-toned badges, task/duration/startedAt rows; row click → ONE detail fetch → per-step panes (label/agent/ms + pre-wrap outputs, scroll-capped). Mounted as a sibling of the trimmed Run history in BOTH render sites of workflow-run-panel.tsx (workflowId = liveWorkflow?.id ?? workflow?.id). Why-comments name r456; empty/error/loading states honest.
+- SCARE, resolved byte-level: sed output showed panel line 818 as `const istoryOpen, setHistoryOpen]` in BOTH the worktree and `git show HEAD` — looked like committed corruption from r455 (which had claimed green gates). od -c proved the real bytes are the valid `const [historyOpen, setHistoryOpen]` — a TERMINAL RENDERING ARTIFACT that swallowed `[h` twice. No edit was made; nothing to repair. Lesson: byte-check (od -c) before believing or "fixing" suspicious output.
+- Self-fix mid-round: the new component initially missed its Collapsible import (6× TS2304) — caught by unmasked tsc, fixed, gates re-run green.
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact. The archive probe cycle doubled as the round's live API QA.
+- HONEST CAPS: (a) the new UI section was not browser-walked (HARNESS QA contract + the cold-boot saga spent the budget; tsc+lint green and the consumed API was probe-proven). Witness recipe: open a workflow panel → expand "Archived reports" → assert the list loads on expand (NOT on mount), a row click streams full per-step outputs, Refresh refetches. (b) BUDGET OVERRUN booked honestly: ~16/12 tool rounds — cause: boot verification (4 rounds; the 200s poll window was too short for the post-wipe cold compile) + the false-corruption byte-check. Process care stopped the moment HEALTH=200 (≤2-round discipline held thereafter).
+- Probe residue: none — the probe row was DELETEd; list verified empty.
+
+Stage Summary:
+- The user's archive ask is complete in both halves: reports are durably archived on every run settle (r455) AND now readable — by users via the new in-panel "Archived reports" section, by agents via GET/DELETE /api/runs/archive — with the full POST/GET/DELETE cycle witnessed live this round.
+
+Round Handoff:
+Round ID: r457
+Task owner: main (platform dev agent)
+Scope committed: archived-reports.tsx (new durable-archive read surface), workflow-run-panel.tsx (import + two mounts).
+Open risks: r456 UI un-witnessed in browser (recipe above); r455 runner auto-archive hook un-witnessed with a REAL run — the next real local-lane run should surface in the new list (natural joint witness); standing witnesses r454/r453/r452/r451 (+r442/r443 closed-tab fire); QA-profile providerKeys empty; image-studio blob-download carried. Cosmetic: archive API normalizes source "local"→"manual" (harmless; unify someday).
+Blockers: none
+Next recommended action: r457 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage (expect the r456 snapshot) + health (server was left UP; short curl fine). (3) Candidates: (a) "proceed further" continuation — let AGENTS consume archived reports (smallest honest slice: inject prior archived reports of the same workflow into run/step context in the runner, or an agent-facing GET wrapper doc); (b) rotate surface: user's localStorage-full report is structurally handled by the r455 ladder — verify its warning text only if a trim fires; (c) cheap witness chain if the sandbox restarts anyway (r451 boot line + r456 expand-fetch). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; land on budget — early exit IS success; od -c before trusting corrupted-looking output.

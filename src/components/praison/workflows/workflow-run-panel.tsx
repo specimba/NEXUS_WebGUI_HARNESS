@@ -58,6 +58,8 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+// r456: durable archive read surface — full steps from SQLite via /api/runs/archive
+import { ArchivedReports } from "@/components/praison/workflows/archived-reports";
 import {
   downloadText,
   fmtIn,
@@ -1550,6 +1552,7 @@ export function WorkflowRunPanel({
                 building on the previous output.
               </div>
               {historySection}
+              <ArchivedReports workflowId={liveWorkflow?.id ?? workflow?.id ?? ""} />
             </>
           ) : (
             <>
@@ -1792,6 +1795,7 @@ export function WorkflowRunPanel({
               })}
 
               {historySection}
+              <ArchivedReports workflowId={liveWorkflow?.id ?? workflow?.id ?? ""} />
             </>
           )}
         </div>
