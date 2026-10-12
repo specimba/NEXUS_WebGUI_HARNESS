@@ -10917,3 +10917,28 @@ Scope committed: src/components/praison/agents/test-agent-dialog.tsx (3-state la
 Open risks: amber footer render un-witnessed (preseed-blocked; recipe above); r462 Load-more click-path un-witnessed; r460 proposals-restore recipe un-witnessed; r458 embed + r457 injection NOW PLAUSIBLY WITNESSABLE (the profile HAS keys — try a real generation/real run; book quota honestly); standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r465 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r464 snapshot) + health (short curl). (3) Candidates: (a) REAL-ACTIVITY WITNESS round — the false premise is dead, the profile has keys: attempt one real agent generation via the Test playground (witnesses r458's embed chain if an image is involved, or at minimum the keyed lane) or one real workflow run (witnesses r457 prior-digest + r455 auto-archive); budget quota honestly — one small run, not a marathon; (b) tracker panel internals if a witness is undesired; (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot; survey HARD-CAP 3; resolver reads settings.activeProviderId (NOT settings.provider); MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r465
+Agent: main (platform dev agent)
+Task: r464 handoff candidate (a) — real-activity witness: one small real agent generation through the Test playground's keyed lane (the r464 false-premise kill made this attemptable), plus close the twice-booked db-probe defect.
+
+Work Log:
+- No user reply (cron round). Lineage OK (ee8168e3f = r464 snapshot: test-agent-dialog 3-state footer + worklog); HEALTH=200; tree clean.
+- LINEAGE NOTE: the prior window's handoff summary claimed "r464 code work not started" — FALSE; r464's full round (witness sweep → vault-preseed discovery → 3-state footer) is committed and logged. The worklog, not the summary, is ground truth. Booked so nobody re-runs r464.
+- WITNESS (real activity; quota booked: ONE tiny message): fresh browser profile (empty localStorage → vault preseed re-seeded keys in memory, r464's finding re-confirmed live). Agents view → Test playground for Praison Assistant: footer rendered the OK branch ("Runs with Vyce AI from Settings — messages are not saved.") BEFORE typing; sent "Reply with exactly: pong" → real provider response "pong" rendered in-dialog. The keyed lane chain (dialog → resolveLlm → /api/chat → provider → render) is witnessed END TO END with a real generation. First real-activity witness in the honest-cap ledger.
+- SHIPPED (scripts/db-probe-r461.mjs — defect booked in r461+r462 handoffs, "fix or delete before reuse"): rewritten. Original queried db.workflow (no such model — workflows live in localStorage, Local Automation Vault); it could never run. New probe: RunReport count + 5 newest settled runs (slim select) + header comment encoding the localStorage lesson so the detour cannot repeat.
+- VERIFIED: probe runs clean (PROBE=0): 30 RunReport rows; newest = done/scheduled 315s at 22:23Z — bonus: the r455 auto-archive hook witnessed STILL ALIVE (settles continued past the r461 snapshot). Unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact.
+- HONEST CAPS: amber fallback/missing footer branches still un-witnessed (preseed-blocked; recipe from r464 stands: non-seeded profile or neutralize the preseed in merge()); r460 proposals-restore un-witnessed; r458 image-studio embed now ATTEMPTABLE (keyed lane generates; larger quota — book before attempting); r457 prior-digest injection needs a real workflow run (runs cost 110s–1400s witnessed — budget-heavy, schedule deliberately or skip).
+- BUDGET: ~12/12 — witness 5 rounds (open→navigate→dialog→footer→pong), probe fix+gates 3, bookkeeping 2. No detours.
+
+Stage Summary:
+- The first live real-generation witness landed: the keyed Vyce lane answers real messages through the Test playground, so "needs provider keys/real activity" caps are now attemptable in principle. The twice-booked broken probe is fixed and itself witnessed (30 rows; auto-archive still settling).
+
+Round Handoff:
+Round ID: r466
+Task owner: main (platform dev agent)
+Scope committed: scripts/db-probe-r461.mjs (rewritten: RunReport-only probe, localStorage lesson encoded in-header).
+Open risks: amber footer branches un-witnessed (preseed-blocked); r460 proposals-restore un-witnessed; r458 embed attemptable (quota: book one small generation); r457 prior-digest + r455 auto-archive-via-run need a real workflow run (minutes-long; deliberate round if attempted); standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r466 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r465 snapshot) + health (short curl). (3) Candidates: (a) NEW surface rotation — tracker panel internals (path confirmed: src/components/praison/tracker/model-ticker.tsx, 512 ln, unprobed this window) or settings-view remaining sections; (b) r458 embed witness via one real image-generation message in Chat/Image Studio (book one small generation honestly); (c) a real workflow run for r455/r457 (only if budget allows a multi-minute wait); (d) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth for workflows/conversations; resolver reads settings.activeProviderId; vault preseed re-seeds keys on rehydrate (stores.ts:278) — the QA profile is NEVER keyless; MultiEdit failure → diff before retry; land on budget — early exit IS success.
