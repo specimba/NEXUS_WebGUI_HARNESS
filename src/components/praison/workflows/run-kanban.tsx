@@ -736,7 +736,14 @@ export function RunKanban({
       )}
       {serverDetail ? (
         <ServerRunDrawer
-          row={serverDetail}
+          // r454: the drawer used to render the row snapshot captured at
+          // CLICK time — while the 60s poll kept refreshing the BOARD, an
+          // open drawer on a running run froze at "step 3/9" and its step
+          // detail / final report never appeared even after the poll had
+          // delivered them. Re-resolve the row by id from the latest poll;
+          // the click-time snapshot stays only as the fallback for a run
+          // that has since left the payload (cap, board closed).
+          row={serverRuns.find((r) => r.id === serverDetail.id) ?? serverDetail}
           onClose={() => setServerDetail(null)}
           onOpenWorkflow={(id) => {
             setServerDetail(null);
