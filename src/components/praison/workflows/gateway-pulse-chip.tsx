@@ -35,14 +35,18 @@ const FRESH_MS = 10 * 60_000;
 const HIDE_MS = 24 * 60 * 60_000;
 
 export function GatewayPulse() {
-  const [pulse, setPulse] = React.useState<Pulse | null>(null);
+  // r453: `at` is the fetch timestamp — the snapshot's rescue msLeft is
+  // frozen at that moment, so the live remainder is DERIVED from it instead
+  // of displayed raw (the old Math.max(1,…) floor could read "1m left"
+  // forever after the server's 15m TTL had expired).
+  const [pulse, setPulse] = React.useState<(Pulse & { at: number }) | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   const fetchPulse = React.useCallback(async () => {
     setBusy(true);
     try {
       const res = await fetch("/api/gateway/pulse", { cache: "no-store" });
-      if (res.ok) setPulse((await res.json()) as Pulse);
+      if (res.ok) setPulse({ ...(await res.json()) as Pulse, at: Date.now() });
     } catch {
       /* server briefly down — keep the previous (or empty) state silently */
     } finally {
@@ -55,6 +59,18 @@ export function GatewayPulse() {
     void fetchPulse();
   }, [fetchPulse]);
 
+  // r453: keep the chip's CLOCK honest while its data stays frozen by the
+  // egress doctrine (one fetch per mount + click-to-refresh). The rendered
+  // classifications — fresh amber ≤10m, the 24h hide, the rescue countdown —
+  // are pure functions of time and must not freeze at mount values. A silent
+  // 30s re-render, zero network: same doctrine as the run panel's
+  // scheduleTick keeping the schedule countdown live while open.
+  const [, clockTick] = React.useReducer((n: number) => n + 1, 0);
+  React.useEffect(() => {
+    const t = setInterval(clockTick, 30_000);
+    return () => clearInterval(t);
+  }, [clockTick]);
+
   const fresh =
     pulse?.last429At != null && Date.now() - pulse.last429At < FRESH_MS;
   const recent = pulse?.last429At != null && Date.now() - pulse.last429At < HIDE_MS;
@@ -64,11 +80,18 @@ export function GatewayPulse() {
   // r438: same single fetch, second signal — the server lane's live rescue
   // lane (positive rotation memory). Emerald = proven-healthy, the
   // deliberate contrast to the amber congestion chip beside it.
+  // r453: msLeft is measured from the fetch snapshot — age it by the time
+  // since that fetch, and RETIRE the chip at zero (the server's 15m TTL has
+  // lapsed; the next explicit refresh confirms). No more "1m left" forever.
   const rescue = pulse.rescueLane ?? null;
+  const rescueMsLeft = rescue
+    ? rescue.msLeft - (Date.now() - pulse.at)
+    : 0;
+  const rescueLive = rescue != null && rescueMsLeft > 0;
   const rescueLabel = rescue
     ? (providerById(rescue.providerId)?.name ?? rescue.providerId)
     : null;
-  const rescueMin = rescue ? Math.max(1, Math.ceil(rescue.msLeft / 60_000)) : 0;
+  const rescueMin = rescueLive ? Math.max(1, Math.ceil(rescueMsLeft / 60_000)) : 0;
 
   const recentLines = pulse.recent
     .slice()
@@ -104,7 +127,7 @@ export function GatewayPulse() {
           className={cn("h-2.5 w-2.5 opacity-50", busy && "animate-spin")}
         />
       </button>
-      {rescue && (
+      {rescue && rescueLive && (
         <span
           title={`Rescue lane — the server lane's positive rotation memory (r437/r438): this lane finished a FULL successful call on a recent congested dial, so the next fallback walk LEADS with it while it stays live (15m TTL, refreshed on each success, cleared the moment it fails).\n\nServer lane only — a browser tab's engine keeps its own rescue memory, invisible here.`}
           className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
