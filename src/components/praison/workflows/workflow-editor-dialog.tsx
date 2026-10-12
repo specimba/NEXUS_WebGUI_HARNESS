@@ -236,16 +236,26 @@ export function WorkflowEditorDialog({
         return;
       }
       const validIds = new Set(available.map((a) => a.id));
+      let substituted = 0;
       const mapped: WorkflowStep[] = plan.map((raw, i) => {
         const item = (raw ?? {}) as { label?: unknown; agentId?: unknown; instruction?: unknown };
         const label =
           typeof item.label === "string" && item.label.trim()
             ? item.label.trim()
             : `Step ${i + 1}`;
-        const agentId =
-          typeof item.agentId === "string" && validIds.has(item.agentId)
-            ? item.agentId
-            : available[i % available.length].id;
+        let agentId: string;
+        if (typeof item.agentId === "string" && validIds.has(item.agentId)) {
+          agentId = item.agentId;
+        } else {
+          // r450: the planner named an agent that does not exist here —
+          // hallucinated id, or an agent renamed/deleted since. The step is
+          // still mapped (round-robin keeps the pipeline runnable) but the
+          // substitution is SAID, not silent (r270 class): a hallucinated plan
+          // used to re-assign every step with no word, and the "Generated N
+          // steps" toast made it look faithful.
+          substituted++;
+          agentId = available[i % available.length].id;
+        }
         // r29: auto-planned steps now carry step-specific instructions (v2 planner contract).
         const instruction =
           typeof item.instruction === "string" && item.instruction.trim()
@@ -256,7 +266,12 @@ export function WorkflowEditorDialog({
       setSteps(mapped);
       setPlanOpen(false);
       setPlanTask("");
-      toast.success(`Generated ${mapped.length} steps`);
+      toast.success(
+        `Generated ${mapped.length} steps` +
+          (substituted > 0
+            ? ` · ${substituted} step${substituted === 1 ? "" : "s"} on a fallback agent (planned agent not in roster — re-assign if needed)`
+            : "")
+      );
     } catch (err) {
       // r235: a user cancel lands here as AbortError and stays silent — the
       // Cancel button is the affordance; no toast noise on purpose.
