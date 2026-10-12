@@ -139,3 +139,32 @@ model AutomationVault {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ─── r455: Durable run-report archive (local lane) ───────────────────────────
+// User report "Local storage is full" exposed the flip side of local-first:
+// localStorage holds only a TRIMMED live state (r414), so full research
+// reports lived in RAM and whatever the trim kept. The server lane already
+// lands full runs in AutomationRun; this table is that durable tier for
+// LOCAL-lane runs — every settled run archives its full steps + tool calls
+// here automatically. Agents read/maintain it via /api/runs/archive
+// (GET list/detail, DELETE prune); id = the WorkflowRun id (upsert, so a
+// resumed run re-archives over its earlier partial snapshot).
+model RunReport {
+  id           String    @id
+  workflowId   String
+  workflowName String
+  task         String
+  source       String    @default("manual") // manual | scheduled
+  status       String // done | error | stopped | partial | blocked
+  depth        String?
+  stepsJson    String    @default("[]") // full [{stepId,agentName,label,output,toolCalls,status,ms}]
+  error        String?
+  toolCalls    Int       @default(0)
+  durationMs   Int?
+  startedAt    DateTime
+  finishedAt   DateTime?
+  archivedAt   DateTime  @updatedAt
+
+  @@index([workflowId, startedAt])
+  @@index([archivedAt])
+}

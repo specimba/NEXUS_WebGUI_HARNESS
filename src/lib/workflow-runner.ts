@@ -889,6 +889,57 @@ export async function executeWorkflowRun(
       ...(novelty !== undefined ? { novelty } : {}),
       ...(errorInfo ? { error: errorInfo } : status === "done" ? { error: undefined } : {}),
     });
+    // r455 (user ask: reports "need to be archived, available for agents to
+    // maintain"): every settled LOCAL-lane run archives its full steps to the
+    // durable DB tier (/api/runs/archive → SQLite RunReport). localStorage
+    // keeps only the r414 TRIMMED live state, so without this the full
+    // reports lived in RAM alone. Fire-and-forget, best-effort — the archive
+    // must never affect the run (same doctrine as spawn proposals above).
+    // Upsert by run id: a resumed run re-archives over its earlier snapshot.
+    try {
+      const st0 = useWorkflowsStore.getState();
+      const run0 = st0.workflows.find((w) => w.id === wf.id)?.runs.find((r) => r.id === runId);
+      if (run0 && run0.status !== "running") {
+        const stepsPayload = run0.steps.map((st) => ({
+          stepId: st.stepId,
+          agentName: st.agentName,
+          label: st.label,
+          output: st.output,
+          status: st.status,
+          ms: st.ms,
+          toolCalls: (st.toolCalls ?? []).map((tc) => ({
+            name: tc.name,
+            args: tc.args,
+            result: tc.result,
+            ok: tc.ok,
+            ms: tc.ms,
+          })),
+        }));
+        void fetch("/api/runs/archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: run0.id,
+            workflowId: wf.id,
+            workflowName: wf.name,
+            task: run0.task,
+            source,
+            status: run0.status,
+            depth: run0.depth,
+            error: run0.error ? JSON.stringify(run0.error) : null,
+            steps: stepsPayload,
+            toolCalls: stepsPayload.reduce((n, s) => n + (s.toolCalls?.length ?? 0), 0),
+            durationMs: run0.finishedAt ? run0.finishedAt - run0.startedAt : null,
+            startedAt: run0.startedAt,
+            finishedAt: run0.finishedAt ?? null,
+          }),
+        }).catch(() => {
+          /* archive is best-effort — never affect the run */
+        });
+      }
+    } catch {
+      /* archive is best-effort */
+    }
     if (source === "scheduled") {
       // r29 scheduled-run autonomy (Temporal/Circuit-Breaker doctrine):
       // failures feed a consecutive-fail streak — 1-2 re-arm SOONER than the

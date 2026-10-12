@@ -157,6 +157,57 @@ const trimConversations = (convs: Conversation[]): Conversation[] =>
     ),
   }));
 
+// ─── r455: GLOBAL byte-budget ladder ─────────────────────────────────────────
+// The r414 trimmers cap PER-ITEM bulk, but the aggregate could still blow the
+// ~5MB origin quota (60 runs × steps × 4KB caps ≈ MBs per workflow) — the
+// user hit "Local storage is full" ANYWAY. After the per-item trim, the
+// serialized payload is measured and, when over budget, re-trimmed one level
+// deeper. Bounded by construction: the whale keys can no longer wedge the
+// whole origin. Full-fidelity reports live in the DB archive tier
+// (/api/runs/archive, r455), so the deep cut sheds duplicated bulk, not the
+// only copy.
+const WORKFLOWS_BUDGET = 1_200_000; // serialized bytes for praison-workflows
+const CHATS_BUDGET = 700_000; // serialized bytes for praison-conversations
+const measure = (v: unknown): number => {
+  try {
+    return JSON.stringify(v)?.length ?? 0;
+  } catch {
+    return 0;
+  }
+};
+const DEEP_RUNS_CAP = 24;
+const DEEP_FULL_RUNS = 1;
+const DEEP_OUTPUT_CAP = 1_200;
+const deepTrimRuns = (runs: WorkflowRun[]): WorkflowRun[] =>
+  runs.slice(0, DEEP_RUNS_CAP).map((r, idx) =>
+    idx < DEEP_FULL_RUNS
+      ? r
+      : {
+          ...r,
+          steps: r.steps.map((st) => ({
+            ...st,
+            output:
+              st.output.length > DEEP_OUTPUT_CAP
+                ? st.output.slice(0, DEEP_OUTPUT_CAP) + TRIM_NOTE
+                : st.output,
+            toolCalls: trimToolCalls(st.toolCalls ?? []),
+          })),
+        }
+      );
+function fitToBudget<T>(value: T, budget: number, deepen: (v: T) => T): T {
+  try {
+    const size = measure(value);
+    if (size <= budget) return value;
+    const deep = deepen(value);
+    console.warn(
+      `[storage] payload ${Math.round(size / 1024)}KB over the persisted budget — deep-trimmed to ${Math.round(measure(deep) / 1024)}KB (full run reports are in the DB archive tier, r455)`
+    );
+    return deep;
+  } catch {
+    return value;
+  }
+}
+
 // ─── Settings ────────────────────────────────────────────────────────────────
 interface SettingsState {
   settings: Settings;
@@ -453,10 +504,26 @@ export const useConversationsStore = create<ConversationsState>()(
       name: "praison-conversations",
       // r414: trim bulk payloads (old tool results/args) on the way out —
       // the newest 10 messages per chat stay intact.
-      partialize: (s) => ({
-        conversations: trimConversations(s.conversations),
-        activeId: s.activeId,
-      }),
+      // r455: wrapped in the global byte-budget ladder — deep level keeps the
+      // newest 30 chats × newest 20 messages with every tool result trimmed.
+      partialize: (s) =>
+        fitToBudget(
+          {
+            conversations: trimConversations(s.conversations),
+            activeId: s.activeId,
+          },
+          CHATS_BUDGET,
+          (v) => ({
+            conversations: (v.conversations ?? []).slice(0, 30).map((c) => ({
+              ...c,
+              messages: (c.messages ?? []).slice(-20).map((m) => ({
+                ...m,
+                toolCalls: trimToolCalls(m.toolCalls ?? []),
+              })),
+            })),
+            activeId: v.activeId,
+          })
+        ),
       storage: createJSONStorage(() => debouncedStorage(450)),
     }
   )
@@ -653,13 +720,26 @@ export const useWorkflowsStore = create<WorkflowsState>()(
       // filled the origin quota, and when it did, the unguarded settings
       // store was what threw. Newest 4 runs per workflow stay full; older
       // ones keep structure, shed bulk; hard cap 60 runs (oldest dropped).
-      partialize: (s) => ({
-        workflows: s.workflows.map((w) => ({
-          ...w,
-          runs: trimRuns(w.runs ?? []),
-        })),
-        proposals: s.proposals,
-      }),
+      // r455: wrapped in the global byte-budget ladder — deep level keeps 24
+      // runs per workflow (1 full), 1.2KB output caps, last 20 proposals.
+      partialize: (s) =>
+        fitToBudget(
+          {
+            workflows: s.workflows.map((w) => ({
+              ...w,
+              runs: trimRuns(w.runs ?? []),
+            })),
+            proposals: s.proposals,
+          },
+          WORKFLOWS_BUDGET,
+          (v) => ({
+            workflows: v.workflows.map((w) => ({
+              ...w,
+              runs: deepTrimRuns(w.runs ?? []),
+            })),
+            proposals: (v.proposals ?? []).slice(-20),
+          })
+        ),
       storage: createJSONStorage(() => debouncedStorage(450)),
     }
   )
