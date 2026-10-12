@@ -104,6 +104,7 @@ import type {
   ChatMessage,
   Conversation,
   Framework,
+  SpawnProposal,
   Workflow,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -160,6 +161,20 @@ function sanitizeWorkflow(raw: unknown): Workflow | null {
     steps,
     runs: Array.isArray(w.runs) ? (w.runs as Workflow["runs"]) : [],
   };
+}
+
+// r460: proposals are OPTIONAL in an export (older files lack the field) — a
+// dangling sourceWorkflowId is benign (every consumer filters by id, dismiss
+// still works), so identity + the human-readable fields are the load-bearing
+// checks, mirroring the store's own addProposal invariants.
+function sanitizeProposal(raw: unknown): SpawnProposal | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const p = raw as Record<string, unknown>;
+  if (typeof p.id !== "string" || !p.id.trim()) return null;
+  if (typeof p.goal !== "string" || typeof p.reason !== "string") return null;
+  if (p.status !== "open" && p.status !== "accepted" && p.status !== "dismissed") return null;
+  if (typeof p.createdAt !== "number" || !Number.isFinite(p.createdAt)) return null;
+  return p as unknown as SpawnProposal;
 }
 
 /** Sticky section-nav — ids must match the wrapper elements below. */
@@ -236,6 +251,9 @@ export function SettingsView() {
   const agents = useAgentsStore((s) => s.agents);
   const conversations = useConversationsStore((s) => s.conversations);
   const workflows = useWorkflowsStore((s) => s.workflows);
+  // r460: the spawn-proposal inbox rides the workflows store — export it so a
+  // restore no longer starts from an empty board.
+  const proposals = useWorkflowsStore((s) => s.proposals);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -297,6 +315,7 @@ export function SettingsView() {
     cleanAgents: Agent[];
     cleanConversations: Conversation[];
     cleanWorkflows: Workflow[];
+    cleanProposals: SpawnProposal[] | null;
     importedSettings: typeof DEFAULT_SETTINGS;
     skipped: number;
     // r196: which credential fields the FILE carries — r193 scrubbing makes
@@ -319,6 +338,7 @@ export function SettingsView() {
         agents,
         conversations,
         workflows,
+        proposals,
       });
       toast.success("Export downloaded — credentials excluded", {
         description: "API keys never leave in the full export. Use the provider vault backup to move keys between browsers.",
@@ -367,10 +387,23 @@ export function SettingsView() {
       const cleanWorkflows = workflowsRaw
         .map(sanitizeWorkflow)
         .filter((w): w is Workflow => w !== null);
+      // r460: proposals ride along when present — null for old exports, and
+      // capped at the store's deep-trim tail (last 20) so the bundle can't
+      // smuggle an unbounded board past the pre-flight measure.
+      const proposalsRaw = Array.isArray(bundle.proposals)
+        ? (bundle.proposals as unknown[])
+        : null;
+      const cleanProposals = proposalsRaw
+        ? proposalsRaw
+            .map(sanitizeProposal)
+            .filter((p): p is SpawnProposal => p !== null)
+            .slice(-20)
+        : null;
       const skipped =
         agentsRaw.length - cleanAgents.length +
         (conversationsRaw.length - cleanConversations.length) +
-        (workflowsRaw.length - cleanWorkflows.length);
+        (workflowsRaw.length - cleanWorkflows.length) +
+        (proposalsRaw ? proposalsRaw.length - (cleanProposals?.length ?? 0) : 0);
       // A malformed settings payload must not poison the store — merge only
       // real objects over the defaults.
       const rawSettings =
@@ -386,6 +419,7 @@ export function SettingsView() {
         cleanAgents,
         cleanConversations,
         cleanWorkflows,
+        cleanProposals,
         importedSettings,
         skipped,
         fileCreds,
@@ -402,6 +436,7 @@ export function SettingsView() {
       cleanAgents,
       cleanConversations,
       cleanWorkflows,
+      cleanProposals,
       importedSettings,
       skipped,
       fileCreds,
@@ -440,7 +475,14 @@ export function SettingsView() {
         },
         version: 0,
       }),
-      "praison-workflows": JSON.stringify({ state: { workflows: trimmedWfs }, version: 0 }),
+      // r460: proposals ride INSIDE the existing workflows key — same shape
+      // the live store's partialize persists ({ workflows, proposals }), so a
+      // restore no longer boots the board empty. null (old export) keeps [] —
+      // zustand's merge falls back to the fresh store's initial value.
+      "praison-workflows": JSON.stringify({
+        state: { workflows: trimmedWfs, proposals: cleanProposals ?? [] },
+        version: 0,
+      }),
       "praison-settings": JSON.stringify({ state: { settings: finalSettings }, version: 0 }),
     };
     const totalBytes = Object.values(payloads).reduce((n, s) => n + s.length, 0);
@@ -475,6 +517,10 @@ export function SettingsView() {
     }
     toast.success("Data imported — reloading…", {
       description: `${cleanAgents.length} agents · ${trimmedConvs.length} conversations · ${trimmedWfs.length} workflows${
+        cleanProposals && cleanProposals.length > 0
+          ? ` · ${cleanProposals.length} proposals`
+          : ""
+      }${
         skipped > 0
           ? ` · ${skipped} malformed ${skipped === 1 ? "entry" : "entries"} skipped`
           : ""

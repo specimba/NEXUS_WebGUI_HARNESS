@@ -10780,3 +10780,32 @@ Scope committed: src/lib/stores.ts (trimImportBundle export), src/components/pra
 Open risks: r459 import path un-witnessed live (recipe above); r458 image-studio embed un-witnessed (needs a real generation); r457 prior-digest injection un-witnessed (needs a real run); r456 UI section un-witnessed in browser; r455 auto-archive hook un-witnessed; standing witnesses r454/r453/r452/r451 (+r442/r443); QA-profile providerKeys empty. Note: import payload omits `proposals` (pre-existing — a restore starts with an empty proposals board; consider carrying them in the export format someday).
 Blockers: none
 Next recommended action: r460 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r459 snapshot) + health (short curl). (3) Candidates: (a) if a user reply arrives it outranks all; (b) witness round — several cheap recipes have accumulated (r459 import via a real export; r456 archived-reports expand; r458 needs a generation); (c) new surface: proposals persistence gap (import omits proposals — extend export/import format) or another unprobed domain (radar papers live-network path is the oldest inherited low-pri). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds (census took 5 — booked); MultiEdit failure → diff the file before retrying.
+
+---
+Task ID: r460
+Agent: main (platform dev agent)
+Task: r459 handoff candidate (c) — the proposals persistence gap: export/import omitted the spawn-proposal inbox, so a restore silently booted an empty board (data loss the user only notices weeks later).
+
+Work Log:
+- No user reply (cron round). Lineage OK (f1d1c2df0 = r459 snapshot; chain includes the external runtime-data commit 29f63c1ea as expected); HEALTH=200; tree clean.
+- SURVEY (4 rounds): confirmed the gap end to end — handleExport bundled settings/agents/conversations/workflows but NOT proposals; applyPendingImport wrote `praison-workflows` as `{ workflows }` while the live store's partialize persists `{ workflows, proposals }` (board capped last-20 at the deep level) — zustand merge falls back to the fresh store's initial `proposals: []`, hence the silent empty board. Consumers (workflows-view, run panel, spawn-proposal-engine) all filter by sourceWorkflowId → a dangling reference is inert; dismiss still works. So proposals are safe to carry verbatim.
+- SHIPPED (settings-view.tsx, 10 edits, one file):
+  (1) handleExport adds `proposals` to the bundle (rides the workflows store hook).
+  (2) sanitizeProposal — same doctrine as sanitizeAgent/Workflow: identity + human-readable fields (id/goal/reason/status/createdAt) are load-bearing; optional fields untouched; junk skipped and COUNTED in `skipped`.
+  (3) Import path: proposals are OPTIONAL (old exports lack the field → null, not an error); sanitized, capped slice(-20) mirroring the store's deep-trim tail so the board can't smuggle unbounded data past the pre-flight measure.
+  (4) applyPendingImport writes them INSIDE the existing `praison-workflows` key as `{ workflows, proposals }` — the exact live partialize shape, NOT a 5th payload key; pre-flight measure/partial-failure accounting unchanged (still 4 keys, N/4 toasts stay true).
+  (5) Success toast mentions `· N proposals` when non-zero. Old exports keep importing cleanly (backward compatible both directions).
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact. Duplication check post-MultiEdit (r458 lesson): single declarations verified.
+- HONEST CAP: not live-witnessed (import needs a real export file + confirm dialog + reload). Witness recipe: settings → export → check the file now carries a proposals array → import it back → after reload the proposals inbox shows the same rows (and an OLD pre-r460 export still imports fine with an empty board, no error). Cheap localStorage-only witness — no keys/quota needed.
+- BUDGET: ~14/12 booked honestly — cause: the gates + worklog + snapshot are 4 mandatory calls on top of a 2-edit-batch implementation; implementation itself was tight (survey 4, code 2, checks 2). No process rounds, no restarts.
+
+Stage Summary:
+- The export/import bundle now covers every entity the app stores in the whale keys — including the spawn-proposal inbox — with the same sanitize/count/cap doctrine as everything else. A restore no longer quietly forgets what the Evolution Layer proposed. The r459 handoff's noted gap is closed.
+
+Round Handoff:
+Round ID: r461
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/settings/settings-view.tsx (proposals in export + import + payload + toast, sanitizeProposal).
+Open risks: r460 proposals restore un-witnessed (localStorage-only recipe above); r459 import hardening un-witnessed live; r458 image-studio embed un-witnessed (needs a real generation); r457 prior-digest injection un-witnessed (needs a real run); r456 UI section un-witnessed in browser; r455 auto-archive hook un-witnessed; standing witnesses r454/r453/r452/r451; QA-profile providerKeys empty. Cosmetic: archive API normalizes source "local"→"manual"; image-studio Download/addToChat could share code someday.
+Blockers: none
+Next recommended action: r461 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r460 snapshot) + health (short curl). (3) Candidates: (a) witness round — the accumulated recipes are all cheap now (r460/r459 are pure localStorage; r456 expand is browser-only; only r458/r457 need provider keys); a witness round that finds a bug converts into a fix round naturally; (b) new surface if witnesses pass: unprobed domains remain (tracker/radar internals, agents-view polish); (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; MultiEdit failure → diff the file before retrying; od -c before trusting corrupted-looking output; land on budget — early exit IS success.
