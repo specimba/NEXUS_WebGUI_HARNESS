@@ -10942,3 +10942,28 @@ Scope committed: scripts/db-probe-r461.mjs (rewritten: RunReport-only probe, loc
 Open risks: amber footer branches un-witnessed (preseed-blocked); r460 proposals-restore un-witnessed; r458 embed attemptable (quota: book one small generation); r457 prior-digest + r455 auto-archive-via-run need a real workflow run (minutes-long; deliberate round if attempted); standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r466 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r465 snapshot) + health (short curl). (3) Candidates: (a) NEW surface rotation — tracker panel internals (path confirmed: src/components/praison/tracker/model-ticker.tsx, 512 ln, unprobed this window) or settings-view remaining sections; (b) r458 embed witness via one real image-generation message in Chat/Image Studio (book one small generation honestly); (c) a real workflow run for r455/r457 (only if budget allows a multi-minute wait); (d) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth for workflows/conversations; resolver reads settings.activeProviderId; vault preseed re-seeds keys on rehydrate (stores.ts:278) — the QA profile is NEVER keyless; MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r466
+Agent: main (platform dev agent)
+Task: r465 handoff candidate (a) — new surface rotation to tracker panel internals (model-ticker.tsx 513 ln, unprobed this window): survey, ship the real gap found, live-witness.
+
+Work Log:
+- No user reply (cron round). Lineage OK (d2f941f8f = r465 snapshot); HEALTH=200. Worklog tail verified by arithmetic (+25 lines = the r465 section exactly); handoff taken verbatim.
+- SURVEY (2 rounds, within cap): model-ticker.tsx read in full + tracker-types.ts to verify the r416 mirror contract. Verdict: mature — r210 corrupt-mirror heal, r175 watermark ref, r434 full-set search, r148 measured marquee, BYOK sync, honest caps ("showing 60 of N", aria-live match count). trackedTotal→status.trackedTotal mapping CONFIRMED present in parseTrackerMirror (no bug). Two real gaps found:
+  (1) a11y (shipped): the row's Copy button had a proper bounded name ("Copy model id X") but Pin's accessible name was bare "Pin" — with 60 rows a screen reader hears "Pin, Pin, Pin…" with no lane context. Fixed: aria-label "Pin <modelId> in this chat" — same convention as its Copy sibling.
+  (2) latent hazard (shipped): the last-seen localStorage setItem sat OUTSIDE the finiteness guard protecting the ref — today the reduce seed is always finite so the write cannot be "NaN", but that invariant is accidental (one seed edit from reintroducing the r210 toast-killing bug). One brace now moves ref+persist together under the guard; comment cites r210.
+- WITNESS (live, 2 rounds): panel opened in browser — every Pin button reads "Pin <modelId> in this chat" in the a11y tree (10/10 rows spot-checked); header honesty contract live ("160 lanes watched" above the 60-row list). Clicked a real Pin (meta/muse-wonder): popover closed, view switched to Chat — pinModel's observable contract witnessed. Caps: toast capture + persisted override value not verified (toast faded before snapshot; store write not peeked) — recipe: pin, then read the "Model for this chat" combobox.
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact.
+- BUDGET: ~8/12 — clean round, no detours.
+
+Stage Summary:
+- The tracker surface joins the probed set: its data layer is confirmed honest, and its one row-level a11y gap (the unnamed Pin) is fixed and live-witnessed alongside a hardened r210-class guard. The panel's pin affordance was exercised end-to-end for the first time.
+
+Round Handoff:
+Round ID: r467
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/tracker/model-ticker.tsx (Pin accessible name + last-seen persist guard).
+Open risks: pin-toast + persisted override value unverified (recipe above); amber playground footer branches still un-witnessed (preseed-blocked); r460 proposals-restore un-witnessed; r458 image-studio embed attemptable (one small booked generation); r457 prior-digest needs a real workflow run (minutes — deliberate round); standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r467 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r466 snapshot) + health (short curl). (3) Candidates: (a) continue rotation — settings-view remaining sections (unprobed this window) or the full radar view internals (model radar tab — the paper tab was r462's); (b) r458 embed witness via one small real image-generation (book quota honestly); (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth for workflows/conversations; resolver reads settings.activeProviderId; vault preseed re-seeds keys on rehydrate (stores.ts:278) — QA profile is NEVER keyless; MultiEdit failure → diff before retry; land on budget — early exit IS success.

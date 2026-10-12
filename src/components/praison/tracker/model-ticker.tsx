@@ -149,8 +149,13 @@ export function ModelTicker() {
           const t = new Date(e.createdAt).getTime();
           return Number.isFinite(t) ? Math.max(acc, t) : acc;
         }, Number.isFinite(lastSeen) ? lastSeen : Date.now());
-        if (Number.isFinite(newest)) lastSeenRef.current = newest;
-        localStorage.setItem(TRACKER_LAST_SEEN_KEY, String(newest));
+        // r466: the ref AND the persisted watermark must move together and only
+        // on a finite value — the r210 bug class was exactly a non-finite seed
+        // writing "NaN" here, which then silently killed every future toast.
+        if (Number.isFinite(newest)) {
+          lastSeenRef.current = newest;
+          localStorage.setItem(TRACKER_LAST_SEEN_KEY, String(newest));
+        }
       } catch {
         /* best-effort announcements */
       }
@@ -503,7 +508,13 @@ function TickerRow({
         >
           <Copy className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px]" onClick={onPin}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1 text-[11px]"
+          aria-label={`Pin ${row.modelId} in this chat`}
+          onClick={onPin}
+        >
           Pin
         </Button>
       </div>
