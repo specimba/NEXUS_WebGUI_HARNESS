@@ -10863,3 +10863,30 @@ Scope committed: src/app/api/radar/papers/route.ts (start param + clamp), src/co
 Open risks: r462 Load-more click-path un-witnessed in browser (recipe above); r460 proposals-restore recipe still un-witnessed; r458 image-studio embed + r457 prior-digest injection need provider keys/real activity; standing witnesses r454/r453/r452/r451 (+r442/r443); QA-profile providerKeys empty. Note: loadMore assumes the cached board was fetched with sort=submittedDate (the tab always sends that); if a future tab adds sort options, page offsets must carry the same sort.
 Blockers: none
 Next recommended action: r463 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r462 snapshot) + health (short curl). (3) Candidates: (a) continue rotation — agents-view (560 ln, unprobed) or tracker panel internals (model-ticker 512 ln); (b) quick browser witness of the Load-more click-path if the server is up (3-4 rounds); (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; app is ONE route (/) + hash-nav; localStorage is source of truth; MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r463
+Agent: main (platform dev agent)
+Task: r462 handoff candidate (a) — surface rotation to the agents domain (unprobed): full read of agents-view + the Test playground path.
+
+Work Log:
+- No user reply (cron round). Lineage OK (647e3d7e8 = r462 snapshot); HEALTH=200; tree carried only the benign external db/gateway-pulse.json drift (runtime data, left alone per doctrine).
+- SURVEY (~6 rounds, over the 3-cap — booked): agents-view.tsx read in full — mature (r162 usage, r221 same-source delete warning, r226 id/emoji preservation, r287 honest duplicate, r428 roster search); no defects. The real gap surfaced in the Test playground chain: with ZERO credentials configured (fresh install; the standing QA-profile state), the dialog answered the user's FIRST message with a late, cryptic provider 401 bubble — the key check existed nowhere between the composer and the provider. Verified the guard could NOT live in the engine or /api/chat: the route comment is explicit that apiKey is optional for keyless custom providers (Pollinations et al), so a server-side blanket refusal would break sanctioned lanes.
+- SHIPPED (test-agent-dialog.tsx, 1 hook block + 1 footer conditional):
+  (1) `missingLane` memo — resolves the agent's lane exactly as runTurn will (same resolveLlm call); null when a key exists OR the lane is the sanctioned keyless custom+baseUrl path; otherwise names the lane ("provider · model").
+  (2) The composer footer is now conditional: keyed-without-key shows an amber role=status notice ("No API key resolved for this lane (x · y) — add one in Settings → Providers or pick a keyless custom engine. Sending will fail with an auth error."); the normal muted line stays otherwise. The dial still proceeds (r315 doctrine — the engine's error remains ground truth; the UI never guesses a lane dead). Reactive: adding a key in Settings flips the notice back live via the settings store.
+- Self-caught: my first edit accidentally wrote `useStateSafe("")` (nonexistent helper) — fixed to `React.useState("")` before gates; tsc would have caught it, but fixed on sight.
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact.
+- HONEST CAP: not browser-walked (budget spent on the survey). Witness recipe is cheap and ALWAYS applicable on the QA profile (keys are empty): open any agent → Test → the amber lane notice should be in the footer before typing; Settings → Providers → add a key → reopen → the muted line returns; custom+baseUrl lane should show NO notice.
+- BUDGET: ~15/12 booked honestly — cause: the survey chased the right layer for the guard across four files (dialog → engine → llm-config → chat route) before concluding it belongs in the dialog only. No process rounds.
+
+Stage Summary:
+- A fresh install's first interaction with the Test playground is now an honest, actionable pre-flight notice instead of a dead-end 401 bubble. The agents surface joins the honesty sweep (r270-class): every dead-end tells the user what to do about it.
+
+Round Handoff:
+Round ID: r464
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/agents/test-agent-dialog.tsx (missingLane pre-flight + conditional composer footer).
+Open risks: r463 notice un-witnessed in browser (recipe above — free on the QA profile); r462 Load-more click-path un-witnessed; r460 proposals-restore recipe un-witnessed; r458 embed + r457 injection need provider keys/real activity; standing witnesses r454/r453/r452/r451; QA-profile providerKeys empty (which now at least SURFACES honestly in the playground).
+Blockers: none
+Next recommended action: r464 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r463 snapshot) + health (short curl). (3) Candidates: (a) a cheap witness sweep — r463 (free on QA profile) + r462 Load-more + r456 already witnessed; combine two witnesses in one round if the server is up; (b) new surface: tracker panel internals (model-ticker 512 ln, unprobed) or settings-view remaining sections; (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds (r463 took ~6 — booked); MultiEdit failure → diff before retry; land on budget — early exit IS success.

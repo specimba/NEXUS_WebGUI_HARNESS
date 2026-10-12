@@ -105,6 +105,23 @@ export function TestAgentDialog({
   const [running, setRunning] = React.useState(false);
   const [statusText, setStatusText] = React.useState("");
 
+  // r463: honest pre-flight — with ZERO credentials configured (fresh install,
+  // or the QA profile), the playground used to answer the first message with
+  // a late, cryptic provider 401 bubble. The resolved lane is computed BEFORE
+  // the user types; a keyed provider with no key shows an amber notice in the
+  // composer footer. The dial itself still proceeds (r315 doctrine — the
+  // engine's error stays ground truth) because keyless custom engines must
+  // never be locked out by a UI guess.
+  const liveSettings = useSettingsStore((s) => s.settings);
+  const missingLane = React.useMemo(() => {
+    if (!open || !agent) return null;
+    const llm = resolveLlm(liveSettings, agent.model);
+    if (llm.apiKey) return null;
+    // custom + baseUrl is the sanctioned KEYLESS lane (e.g. Pollinations).
+    if (llm.provider === "custom" && llm.baseUrl?.trim()) return null;
+    return `${llm.provider} · ${llm.model}`;
+  }, [open, agent, liveSettings]);
+
   const abortRef = React.useRef<AbortController | null>(null);
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -438,9 +455,16 @@ export function TestAgentDialog({
               </Button>
             )}
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Runs with your current provider from Settings — messages are not saved.
-          </p>
+          {missingLane ? (
+            <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400" role="status">
+              No API key resolved for this lane ({missingLane}) — add one in Settings → Providers
+              or pick a keyless custom engine. Sending will fail with an auth error.
+            </p>
+          ) : (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Runs with your current provider from Settings — messages are not saved.
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
