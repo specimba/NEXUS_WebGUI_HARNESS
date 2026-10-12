@@ -97,6 +97,7 @@ import {
   useSettingsStore,
   useUiStore,
   useWorkflowsStore,
+  trimImportBundle,
 } from "@/lib/stores";
 import type {
   Agent,
@@ -416,39 +417,68 @@ export function SettingsView() {
       ...(!fileCreds.providerKeys && { providerKeys: settings.providerKeys }),
       ...(!fileCreds.typesafeKey && { typesafeKey: settings.typesafeKey }),
     };
-    try {
-      localStorage.setItem(
-        "praison-agents",
-        JSON.stringify({ state: { agents: cleanAgents }, version: 0 })
-      );
-      localStorage.setItem(
-        "praison-conversations",
-        JSON.stringify({
-          state: {
-            conversations: cleanConversations,
-            activeId: cleanConversations[0]?.id ?? null,
-          },
-          version: 0,
-        })
-      );
-      localStorage.setItem(
-        "praison-workflows",
-        JSON.stringify({ state: { workflows: cleanWorkflows }, version: 0 })
-      );
-      localStorage.setItem(
-        "praison-settings",
-        JSON.stringify({ state: { settings: finalSettings }, version: 0 })
-      );
-    } catch {
-      toast.error("Import failed — could not write to localStorage.");
+    // r459: the SAME ladders the live stores use (r414/r455) run over the
+    // bundle BEFORE any write — a heavy backup can no longer re-create
+    // "Local storage is full" on import, and the trim says so honestly.
+    const {
+      conversations: trimmedConvs,
+      workflows: trimmedWfs,
+      deepTrimmed,
+    } = trimImportBundle({
+      conversations: cleanConversations,
+      workflows: cleanWorkflows,
+    });
+    // Pre-flight: measure the four payloads; localStorage has no transaction,
+    // so an over-budget bundle is refused BEFORE anything is written
+    // (all-or-nothing at the gate instead of a silently mixed state).
+    const payloads = {
+      "praison-agents": JSON.stringify({ state: { agents: cleanAgents }, version: 0 }),
+      "praison-conversations": JSON.stringify({
+        state: {
+          conversations: trimmedConvs,
+          activeId: trimmedConvs[0]?.id ?? null,
+        },
+        version: 0,
+      }),
+      "praison-workflows": JSON.stringify({ state: { workflows: trimmedWfs }, version: 0 }),
+      "praison-settings": JSON.stringify({ state: { settings: finalSettings }, version: 0 }),
+    };
+    const totalBytes = Object.values(payloads).reduce((n, s) => n + s.length, 0);
+    // ~5MB per-origin quota; 4.5MB leaves headroom for the smaller keys
+    // (tracker mirror, radar caches, relay health, intro flags).
+    if (totalBytes > 4_500_000) {
+      toast.error("Import refused — the backup exceeds browser storage even after trimming", {
+        description: `${(totalBytes / 1_000_000).toFixed(1)}MB needed; the origin budget is ~5MB. Nothing was changed.`,
+      });
       return;
     }
+    const failedKeys: string[] = [];
+    for (const [key, payload] of Object.entries(payloads)) {
+      try {
+        localStorage.setItem(key, payload);
+      } catch {
+        failedKeys.push(key.replace("praison-", ""));
+      }
+    }
+    if (failedKeys.length > 0) {
+      // Honest partial-write accounting — the old catch lied ("Import
+      // failed") while some sections had already landed.
+      toast.error("Import partially failed — browser storage refused some sections", {
+        description: `Landed ${4 - failedKeys.length}/4 (${failedKeys.join(", ")} failed). Reload to load what landed, or Clear all and retry.`,
+      });
+      return;
+    }
+    if (deepTrimmed) {
+      toast.info("Oversized backup trimmed to fit the storage budget", {
+        description: "Old run outputs and older chats were deep-trimmed on the way in — full reports stay in the run archive tier.",
+      });
+    }
     toast.success("Data imported — reloading…", {
-      description: `${cleanAgents.length} agents · ${cleanConversations.length} conversations · ${cleanWorkflows.length} workflows${
+      description: `${cleanAgents.length} agents · ${trimmedConvs.length} conversations · ${trimmedWfs.length} workflows${
         skipped > 0
           ? ` · ${skipped} malformed ${skipped === 1 ? "entry" : "entries"} skipped`
           : ""
-      }`,
+      }${deepTrimmed ? " (trimmed to fit)" : ""}`,
     });
     // Reload almost immediately — but when entries were skipped, hold long
     // enough for the honest count to be readable before the toast dies.

@@ -194,6 +194,47 @@ const deepTrimRuns = (runs: WorkflowRun[]): WorkflowRun[] =>
           })),
         }
       );
+// ─── r459: import-path budget gate ───────────────────────────────────────────
+// The settings import wrote the whale keys RAW — a backup exported from a
+// heavy browser state re-created "Local storage is full" in one write, the
+// exact bug the r414/r455 ladders exist to prevent. Applies the SAME ladders
+// (per-item trim, then the r455 deep level) to an imported bundle and reports
+// whether deep-trimming fired, so the import can say so honestly. Mirrors the
+// store partialize calls one-to-one.
+export function trimImportBundle(input: {
+  conversations: Conversation[];
+  workflows: Workflow[];
+}): {
+  conversations: Conversation[];
+  workflows: Workflow[];
+  deepTrimmed: boolean;
+} {
+  let deepTrimmed = false;
+  let conversations = trimConversations(input.conversations);
+  if (measure(conversations) > CHATS_BUDGET) {
+    deepTrimmed = true;
+    conversations = conversations.slice(0, 30).map((c) => ({
+      ...c,
+      messages: (c.messages ?? []).slice(-20).map((m) => ({
+        ...m,
+        toolCalls: trimToolCalls(m.toolCalls ?? []),
+      })),
+    }));
+  }
+  let workflows = input.workflows.map((w) => ({
+    ...w,
+    runs: trimRuns(w.runs ?? []),
+  }));
+  if (measure(workflows) > WORKFLOWS_BUDGET) {
+    deepTrimmed = true;
+    workflows = workflows.map((w) => ({
+      ...w,
+      runs: deepTrimRuns(w.runs ?? []),
+    }));
+  }
+  return { conversations, workflows, deepTrimmed };
+}
+
 function fitToBudget<T>(value: T, budget: number, deepen: (v: T) => T): T {
   try {
     const size = measure(value);

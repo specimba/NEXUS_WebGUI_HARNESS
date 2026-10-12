@@ -10753,3 +10753,30 @@ Scope committed: src/components/praison/chat/image-studio.tsx (durable embed + h
 Open risks: r458 un-witnessed with a real generation (recipe above); r457 prior-digest injection un-witnessed with a real run; r456 UI section un-witnessed in browser; r455 auto-archive hook un-witnessed; standing witnesses r454/r453/r452/r451 (+r442/r443); QA-profile providerKeys empty. Cosmetic: archive API normalizes source "local"→"manual"; image-studio Download button still fabricates nothing but shares no code with addToChat (could unify someday).
 Blockers: none
 Next recommended action: r459 — (1) FIRST re-read any user reply. (2) Verify lineage (expect snapshot on top of 29f63c1ea — note the external runtime-data commit in the chain) + health. (3) Rotation: two rounds off workflows is enough only if a user need doesn't exist — candidates: (a) settings/agents UI polish or perf (unprobed surfaces), (b) tracker/radar domains (unprobed this window), (c) witness round if a restart or real generation/run occurs naturally. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; land on budget — early exit IS success; MultiEdit failure → diff the file before retrying (partial application is real).
+
+---
+Task ID: r459
+Agent: main (platform dev agent)
+Task: r458 handoff — surface rotation continued (localStorage census completion): the user's "Local storage is full" report had one remaining unguarded writer — the settings IMPORT path.
+
+Work Log:
+- No user reply (cron round). Lineage OK (217ff7b85 on top of the external runtime-data commit 29f63c1ea — expectation held); HEALTH=200; tree clean.
+- CENSUS (5 rounds — every localStorage writer accounted for): 5 zustand stores (conversations/workflows laddered r455; settings/agents/ui are bounded by nature); 8 direct writers audited — schedule-skips (capped slice), relay health (≤5 hops), shell flags (tiny), local-models last-model (tiny), tracker mirror (r416-audited 60/12 + trackedTotal — honest), radar caches (replace-writes, catalog-bounded), provider-gallery live catalogs (replace-writes), and → THE GAP: settings-view applyPendingImport wrote the four whale keys RAW.
+- THE GAP (same bug class the user reported): import bypassed the r414/r455 ladders AND had a dishonest catch — "Import failed" while some of the 4 writes may have already landed (no transaction in localStorage → silently mixed state, no reload, no per-section accounting). A backup exported from a heavy browser state re-created "Local storage is full" in ONE write.
+- SHIPPED (2 files):
+  (1) stores.ts `trimImportBundle()` (exported, r459 why-comment): applies the SAME ladders the live stores use — per-item trim (r414), then the r455 deep level when over CHATS_BUDGET/WORKFLOWS_BUDGET (mirrors both partialize calls one-to-one) — returns deepTrimmed so the UI can say so.
+  (2) settings-view applyPendingImport rewritten: trim bundle BEFORE any write → build the 4 payload strings once → PRE-FLIGHT measure (refuse >4.5MB total BEFORE touching anything — all-or-nothing at the gate, since localStorage has no transaction) → per-key writes with honest partial-failure accounting ("Landed N/4 (x, y failed) — reload to load what landed, or Clear all and retry") → deepTrimmed fires an info toast ("trimmed to fit… full reports stay in the run archive tier") → success toast shows the POST-trim counts + "(trimmed to fit)".
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact.
+- HONEST CAP: not live-witnessed (import needs a real export file + confirm dialog; budget spent). Witness recipe: export data (settings → export) → inflate conversations in the file (or use an old heavy backup) → import → assert either the trim toast + post-trim counts, or the 4.5MB refusal with NOTHING changed (check localStorage unchanged), and that a normal small import still lands 4/4 and reloads.
+- BUDGET: 13/12 booked honestly — cause: the census legitimately needed per-writer shape checks (the user's report deserved a full accounting, not a guess). No process rounds; gates passed first try.
+
+Stage Summary:
+- The localStorage census is COMPLETE: every writer is now capped, budgeted, or honestly-refused. The import path — the last raw writer — now runs the same budget ladder as the live stores, refuses oversize bundles before touching anything, and tells the truth about partial failures and trims.
+
+Round Handoff:
+Round ID: r460
+Task owner: main (platform dev agent)
+Scope committed: src/lib/stores.ts (trimImportBundle export), src/components/praison/settings/settings-view.tsx (laddered + pre-flighted + honestly-accounted import).
+Open risks: r459 import path un-witnessed live (recipe above); r458 image-studio embed un-witnessed (needs a real generation); r457 prior-digest injection un-witnessed (needs a real run); r456 UI section un-witnessed in browser; r455 auto-archive hook un-witnessed; standing witnesses r454/r453/r452/r451 (+r442/r443); QA-profile providerKeys empty. Note: import payload omits `proposals` (pre-existing — a restore starts with an empty proposals board; consider carrying them in the export format someday).
+Blockers: none
+Next recommended action: r460 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r459 snapshot) + health (short curl). (3) Candidates: (a) if a user reply arrives it outranks all; (b) witness round — several cheap recipes have accumulated (r459 import via a real export; r456 archived-reports expand; r458 needs a generation); (c) new surface: proposals persistence gap (import omits proposals — extend export/import format) or another unprobed domain (radar papers live-network path is the oldest inherited low-pri). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds (census took 5 — booked); MultiEdit failure → diff the file before retrying.
