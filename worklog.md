@@ -10700,3 +10700,30 @@ Scope committed: archived-reports.tsx (new durable-archive read surface), workfl
 Open risks: r456 UI un-witnessed in browser (recipe above); r455 runner auto-archive hook un-witnessed with a REAL run — the next real local-lane run should surface in the new list (natural joint witness); standing witnesses r454/r453/r452/r451 (+r442/r443 closed-tab fire); QA-profile providerKeys empty; image-studio blob-download carried. Cosmetic: archive API normalizes source "local"→"manual" (harmless; unify someday).
 Blockers: none
 Next recommended action: r457 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage (expect the r456 snapshot) + health (server was left UP; short curl fine). (3) Candidates: (a) "proceed further" continuation — let AGENTS consume archived reports (smallest honest slice: inject prior archived reports of the same workflow into run/step context in the runner, or an agent-facing GET wrapper doc); (b) rotate surface: user's localStorage-full report is structurally handled by the r455 ladder — verify its warning text only if a trim fires; (c) cheap witness chain if the sandbox restarts anyway (r451 boot line + r456 expand-fetch). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; land on budget — early exit IS success; od -c before trusting corrupted-looking output.
+
+---
+Task ID: r457
+Agent: main (platform dev agent)
+Task: r456 handoff candidate (a) — the "proceed further" arc: let new runs CONSUME prior archived reports (user ask r455: reports are for agents to "maintain, proceed further, evaluate, and integrate").
+
+Work Log:
+- No user reply (cron round). Lineage OK (942d98c7b = r456 snapshot); tree clean; HEALTH=200 (server stayed up — short curl sufficed as handed off).
+- SURVEY (3 rounds, within cap): the runner (client-side module — relative fetch, zustand, toast) builds each step's context from `prev: PrevStepOutput[]` (label/agentName/output/degraded), accumulated from the current run's completed steps, then buildSequentialContext/buildConversationalContext(task, prev). Cleanest injection: a synthetic PrevStepOutput prepended to prev at FRESH-run start — zero builder changes, flows into every step's context naturally.
+- SHIPPED (2 files, 3 edits):
+  (1) route.ts GET `latest=1&workflowId=` — one-call latest-report fetch, full row + parsed steps (r457 why-comment). No status filter server-side: agents may want the latest row even if failed; callers filter. 404 when none.
+  (2) workflow-runner.ts `loadPriorReportDigest()` — one best-effort GET at fresh-run start (same doctrine as the r455 archive POST: never affects the run); renders the latest COMPLETED report as a bounded synthetic prior step "Prior run digest (archived report) · durable archive". Bounded by construction: per-step 1200 chars, total 4000, honest "(N more step(s) omitted)" tail. The digest header instructs agents to BUILD ON it, VERIFY load-bearing claims against fresh findings, INTEGRATE what is still relevant, and NOT redo identical work — the evaluate-and-integrate ask, prompt-level.
+  (3) runner injection at prev-init: `if (startIndex === 0 && wf.id)` — fresh runs only; resumes skip (context already rebuilt). The synthetic entry is context-only (never a step row) — no UI/kanban pollution; review gate (i>0) and r27 verify gate read prev[last] = real steps, unaffected.
+- LIVE WITNESS (route): POST probe → GET ?latest=1 returns the full row incl. stepsJson; GET ?latest=1 on empty workflow → 404; DELETE cleanup → verified. The exact shape the runner consumes.
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact. 10 rounds total — back on budget.
+- HONEST CAP: the runner-side injection is not witnessed with a REAL run — a run needs provider keys (QA profile settings.providerKeys still empty) and burning quota for a context-pipe fix is not justified. Witness recipe (natural, zero setup): run any pipeline to completion → run it AGAIN → the second run's first step output/context should reference the PRIOR RUN DIGEST (visible via the run panel's step detail or the r456 Archived reports drawer on the second run); also assert ONE GET ?latest=1 per fresh run start (network tab — no polling).
+
+Stage Summary:
+- The archive is now a memory loop, not just a library: every fresh run bootstraps from the last completed run's archived report (bounded digest, verify-then-integrate instructions), while the r456 section keeps it human-readable and latest=1 keeps it agent-bootstrapable. The user's r455 ask — "maintain, proceed further, evaluate, and integrate" — is fully wired end to end.
+
+Round Handoff:
+Round ID: r458
+Task owner: main (platform dev agent)
+Scope committed: src/app/api/runs/archive/route.ts (latest=1 branch), src/lib/workflow-runner.ts (loadPriorReportDigest + fresh-run injection).
+Open risks: r457 injection un-witnessed with a real run (recipe above; the next real run of a twice-run workflow doubles as witness); r456 UI section un-witnessed in browser; r455 auto-archive hook un-witnessed with a real run; standing witnesses r454/r453/r452/r451 (+r442/r443 closed-tab fire); QA-profile providerKeys empty; image-studio blob-download carried. Cosmetic: archive API normalizes source "local"→"manual".
+Blockers: none
+Next recommended action: r458 — (1) FIRST re-read any user reply. (2) Verify HEAD lineage (expect the r457 snapshot) + health (short curl). (3) Candidates: (a) rotate surface — the workflows domain has had 7 consecutive rounds (r452-r457); per rotation discipline pick a DIFFERENT surface (image-studio blob-download from r432 is the oldest carried item; or settings/agents UI polish; or perf); (b) if a user reply or restart arrives, outranks all; (c) witness chain if sandbox restarts anyway. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3 rounds; land on budget — early exit IS success; od -c before trusting corrupted-looking output.

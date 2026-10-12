@@ -40,6 +40,21 @@ export async function GET(req: NextRequest) {
     }
     const workflowId = req.nextUrl.searchParams.get("workflowId");
     const limit = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get("limit") ?? 100)));
+    // ─── r457: one-call latest-report fetch (full row incl. parsed steps) ───
+    // The runner's prior-knowledge injection calls this at fresh-run start
+    // (user ask r455: reports are for agents to "proceed further, evaluate,
+    // and integrate" — this is that bootstrap call). No status filter: agents
+    // may want the latest row even if it failed; callers filter as needed.
+    if (workflowId && req.nextUrl.searchParams.get("latest")) {
+      const row = await db.runReport.findFirst({
+        where: { workflowId },
+        orderBy: { startedAt: "desc" },
+      });
+      if (!row) return NextResponse.json({ error: "not found" }, { status: 404 });
+      return NextResponse.json({
+        report: { ...row, steps: JSON.parse(row.stepsJson) as ArchiveStep[] },
+      });
+    }
     const rows = await db.runReport.findMany({
       where: workflowId ? { workflowId } : undefined,
       orderBy: { startedAt: "desc" },

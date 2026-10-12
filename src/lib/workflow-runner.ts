@@ -642,6 +642,72 @@ export function describeRunShape(
  * step index, preserving every completed step's output (non-destructive).
  * Returns the run id, or null when the run could not start.
  */
+// ─── r457: prior-knowledge digest from the durable archive ──────────────────
+// One GET at fresh-run start (server-local, ~ms): the latest archived report
+// for this workflow, rendered as a bounded synthetic prior step. Bounded by
+// construction — per-step 1200 chars, total 4000 — so a ballooning archive
+// can never balloon the prompt. Client-side module: relative fetch +
+// best-effort catch, same doctrine as the r455 archive POST (never affects
+// the run). This is the "proceed further, evaluate, and integrate" half of
+// the user's archive ask (r455): new runs build on past research instead of
+// repeating it.
+const PRIOR_STEP_CAP = 1200;
+const PRIOR_TOTAL_CAP = 4000;
+
+async function loadPriorReportDigest(workflowId: string): Promise<PrevStepOutput | null> {
+  try {
+    const res = await fetch(
+      `/api/runs/archive?workflowId=${encodeURIComponent(workflowId)}&latest=1`
+    );
+    if (!res.ok) return null; // no archive yet, or archive unavailable
+    const json = (await res.json()) as {
+      report?: {
+        task?: string | null;
+        startedAt?: string | null;
+        status?: string | null;
+        steps?: { label?: string; agentName?: string; output?: string }[];
+      };
+    };
+    const rep = json.report;
+    const status = (rep?.status ?? "").toLowerCase();
+    // Only completed prior runs inject — a failed run's partial outputs are
+    // noise, not knowledge (the r457 latest=1 route returns any status; the
+    // caller-side filter keeps the route general for agents).
+    if (!rep || !(status === "completed" || status === "done") || !rep.steps?.length) return null;
+
+    let total = 0;
+    const parts: string[] = [];
+    let omitted = 0;
+    for (const s of rep.steps) {
+      const out = (s.output ?? "").trim();
+      if (!out) continue;
+      if (total >= PRIOR_TOTAL_CAP) {
+        omitted++;
+        continue;
+      }
+      const budget = Math.min(PRIOR_STEP_CAP, PRIOR_TOTAL_CAP - total);
+      const clipped = out.length > budget ? `${out.slice(0, budget)}…` : out;
+      total += clipped.length;
+      parts.push(`### ${s.label ?? "step"}${s.agentName ? ` — ${s.agentName}` : ""}\n${clipped}`);
+    }
+    if (parts.length === 0) return null;
+
+    const when = rep.startedAt ? new Date(rep.startedAt).toLocaleString() : "an unknown date";
+    const header =
+      `PRIOR RUN DIGEST — this workflow ran before (${when}). Its task was: "${rep.task ?? ""}". ` +
+      `Treat the following as PRIOR KNOWLEDGE: build on it, verify its load-bearing claims against your fresh ` +
+      `findings, integrate what is still relevant, and avoid redoing identical work. Do not copy it blindly.\n\n`;
+    const tail = omitted > 0 ? `\n\n(${omitted} more step(s) omitted to fit the context budget.)` : "";
+    return {
+      label: "Prior run digest (archived report)",
+      agentName: "durable archive",
+      output: `${header}${parts.join("\n\n")}${tail}`,
+    };
+  } catch {
+    return null; // best-effort — run proceeds without prior context
+  }
+}
+
 export async function executeWorkflowRun(
   options: ExecuteRunOptions
 ): Promise<string | null> {
@@ -1700,6 +1766,17 @@ export async function executeWorkflowRun(
             .map((s) => ({ label: s.label, agentName: s.agentName, output: s.output, degraded: s.degraded }))
         : [];
     const framework = settings.settings.framework;
+
+    // ─── r457: prior-knowledge injection — on a FRESH run of a workflow that
+    // has an archived completed report, prepend a bounded digest of it as a
+    // synthetic prior step so every step's context carries the prior run's
+    // knowledge (user ask r455). Best-effort: any failure just runs without
+    // it. Resume runs (startIndex > 0) skip this — their context is already
+    // rebuilt from completed steps.
+    if (startIndex === 0 && wf.id) {
+      const prior = await loadPriorReportDigest(wf.id);
+      if (prior) prev.push(prior);
+    }
 
     for (let i = startIndex; i < steps.length; i++) {
       const step = steps[i];
