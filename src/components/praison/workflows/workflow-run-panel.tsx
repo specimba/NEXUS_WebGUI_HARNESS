@@ -1308,7 +1308,19 @@ export function WorkflowRunPanel({
                 }}
               />
             )}
-            {scheduleEnabled && (
+            {/* r452: an enabled schedule on a steps-less pipeline can never
+                fire (the scheduler's due filter requires steps.length > 0) —
+                the old chip pulsed green "next now" forever while nothing
+                would ever run. Say the truth in amber instead. */}
+            {scheduleEnabled && !hasSteps ? (
+              <span
+                title="Enabled schedule has nothing to run — this pipeline has no steps. Open Schedule to turn it off, or add steps in the editor."
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+              >
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Schedule · no steps
+              </span>
+            ) : scheduleEnabled ? (
               <span
                 title={`Recurring schedule · next ${fmtIn(schedule?.nextRunAt)}`}
                 className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
@@ -1320,7 +1332,7 @@ export function WorkflowRunPanel({
                 Every {fmtIntervalShort(schedule?.intervalMs ?? 900_000)} · next{" "}
                 {fmtIn(schedule?.nextRunAt)}
               </span>
-            )}
+            ) : null}
           </div>
         </SheetHeader>
 
@@ -1374,21 +1386,34 @@ export function WorkflowRunPanel({
                   scheduleTick();
                 }}
               >
+                {/* r452: the trigger used to be disabled when the pipeline had
+                    no steps — which STRANDED an already-enabled schedule: its
+                    own control could never be opened to switch it off. The
+                    popover now opens always; the Switch below gates enabling. */}
                 <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
                     aria-label="Recurring schedule"
-                    title="Recurring schedule"
-                    disabled={!hasSteps}
+                    title={
+                      scheduleEnabled && !hasSteps
+                        ? "Recurring schedule — armed, but this pipeline has no steps"
+                        : "Recurring schedule"
+                    }
                     className={cn(
                       "h-8 gap-1.5 px-2.5 text-xs text-muted-foreground transition-colors hover:text-violet-400",
                       scheduleEnabled &&
-                        "border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
+                        (hasSteps
+                          ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
+                          : "border border-amber-500/40 bg-amber-500/10 text-amber-600 hover:text-amber-500 dark:text-amber-400")
                     )}
                   >
                     <Clock className="h-3.5 w-3.5" />
-                    {scheduleEnabled ? fmtIntervalShort(schedule?.intervalMs ?? 900_000) : "Schedule"}
+                    {scheduleEnabled
+                      ? hasSteps
+                        ? fmtIntervalShort(schedule?.intervalMs ?? 900_000)
+                        : "No steps"
+                      : "Schedule"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-80 space-y-3.5 p-4">
@@ -1399,12 +1424,33 @@ export function WorkflowRunPanel({
                         Re-runs this pipeline automatically while the app is open.
                       </p>
                     </div>
+                    {/* r452: enabling is gated on steps existing (the scheduler
+                        would skip a stepless fire every tick), but an ALREADY
+                        enabled schedule stays switchable so the orphaned state
+                        is always escapable from here. */}
                     <Switch
                       aria-label="Enable recurring schedule"
                       checked={scheduleEnabled}
+                      disabled={!hasSteps && !scheduleEnabled}
                       onCheckedChange={(v) => patchSchedule({ enabled: v })}
                     />
                   </div>
+
+                  {!hasSteps ? (
+                    /* r232's save-block stops NEW empty pipelines, but a
+                       pre-r232 persisted workflow (which silently dropped
+                       unassigned steps at save) can still sit here enabled. */
+                    <p
+                      role="alert"
+                      className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs text-amber-600 dark:text-amber-400"
+                    >
+                      This pipeline has no steps, so a schedule has nothing to
+                      run
+                      {scheduleEnabled
+                        ? " — it is armed but will never fire. Turn it off or add steps in the editor."
+                        : ". Add steps in the editor first."}
+                    </p>
+                  ) : null}
 
                   {scheduleEnabled && (
                     <>
@@ -1454,8 +1500,16 @@ export function WorkflowRunPanel({
                         </div>
                         <div className="mt-1 flex items-center justify-between">
                           <span>Next run</span>
-                          <span className="font-medium tabular-nums text-violet-400">
-                            {fmtIn(schedule?.nextRunAt)}
+                          {/* r452: in the no-steps state fmtIn(stale nextRunAt)
+                              reads "now" forever — say the real reason instead. */}
+                          <span
+                            className={
+                              hasSteps
+                                ? "font-medium tabular-nums text-violet-400"
+                                : "font-medium text-amber-600 dark:text-amber-400"
+                            }
+                          >
+                            {hasSteps ? fmtIn(schedule?.nextRunAt) : "paused — no steps"}
                           </span>
                         </div>
                       </div>
