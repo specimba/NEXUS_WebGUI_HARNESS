@@ -132,10 +132,20 @@ export function HfTrendingTab() {
         if (attempts[i].status === "rejected") failed.push(kinds[i]);
       }
       if (failed.length === kinds.length) {
-        const reason = attempts.find((a) => a.status === "rejected");
-        throw reason && reason.status === "rejected"
-          ? reason.reason
-          : new Error("Could not fetch HF trending.");
+        // r478: all-fail used to rethrow the FIRST rejection verbatim, so the
+        // user saw an error about "models" even when datasets and spaces were
+        // down too. Name every dead section — the same truthfulness the r468
+        // partial-note brought to partial failures — and keep one underlying
+        // reason as the "why" instead of a bare "Could not fetch".
+        const first = attempts.find(
+          (a): a is PromiseRejectedResult => a.status === "rejected"
+        );
+        const raw = first?.reason;
+        const why =
+          raw instanceof Error ? raw.message : raw ? String(raw) : "unknown error";
+        throw new Error(
+          `All three Hub sections failed (${kinds.join(" + ")}) — reason: ${why}.`
+        );
       }
       const next: HfCache = {
         fetchedAt: cache?.fetchedAt ?? 0,

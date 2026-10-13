@@ -1,0 +1,1024 @@
+"use client";
+
+// ─── Suites board (harness rank-①, r31) ──────────────────────────────────────
+// Replayable task suites over real workflows: run cases × repeats, show
+// done-rate diff cards, export aggregate markdown. Aggregates only — the
+// suite store never keeps pipeline outputs.
+
+import * as React from "react";
+import { toast } from "sonner";
+import { CalendarClock, Crown, Download, FlaskConical, Play, Plus, Square, Trash2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { useAgentsStore, useSettingsStore, useSuitesStore, useUiStore, useWorkflowsStore } from "@/lib/stores";
+import { downloadText, fmtIntervalShort, fmtRel, slugify, suiteResultToMarkdown } from "@/lib/helpers";
+import { isSuiteRunning, runSuite, stopSuite, suiteDiff, type SuiteProgress } from "@/lib/suite-runner";
+import { SUITE_REPEATS_MAX, SUITE_HARNESSES_MAX, SUITE_SCHEDULE_MIN_MS, SUITE_SCHEDULE_FAIL_BREAKER } from "@/lib/constants";
+import { HARNESS_PRESETS, harnessById } from "@/lib/harness";
+import { activeProviderId, laneHints } from "@/lib/llm-config";
+import { agentLaneSummary, loadCapsIndex, type CapsIndex } from "@/lib/tracker-caps-index";
+import { cn } from "@/lib/utils";
+import type { Suite, SuiteCaseResult, SuiteCaseRun, SuiteResult } from "@/lib/types";
+
+/** r37: offered bake-off cadences — the user's own sustainability ordering. */
+const SUITE_CADENCES: { value: string; label: string; ms: number }[] = [
+  { value: "1800000", label: "Every 30 min", ms: 30 * 60_000 },
+  { value: "3600000", label: "Hourly", ms: 3_600_000 },
+  { value: "21600000", label: "Every 6 h", ms: 6 * 3_600_000 },
+  { value: "43200000", label: "Every 12 h", ms: 12 * 3_600_000 },
+  { value: "86400000", label: "Daily", ms: 24 * 3_600_000 },
+];
+
+/**
+ * r37 scheduled bake-offs: arm/disarm a suite's recurring cadence. Armed
+ * suites re-run on their own while the app tab is open (re-arm-before-fire,
+ * 30-min quota floor, failure breaker after repeated all-fail rounds).
+ */
+function SuiteScheduleRow({ suite, disabled }: { suite: Suite; disabled?: boolean }) {
+  const setSchedule = useSuitesStore((s) => s.setSchedule);
+  const setScheduleAutoAdopt = useSuitesStore((s) => s.setScheduleAutoAdopt);
+  const schedule = suite.schedule;
+  const armed = schedule?.enabled === true;
+  const breakerPaused = armed === false && (schedule?.failStreak ?? 0) >= SUITE_SCHEDULE_FAIL_BREAKER;
+  const [repeats, setRepeats] = React.useState(String(schedule?.repeats ?? 1));
+  // r39: schedule state can change behind React's back (scheduler re-arms every
+  // round) — the Switch reads the prop directly, so only the toast is local.
+  const autoAdopt = schedule?.autoAdopt === true;
+  const adoption = suite.lastAdoption;
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2",
+        armed
+          ? "border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.06] to-transparent"
+          : breakerPaused
+            ? "border-amber-500/40 bg-amber-500/[0.06]"
+            : "border-dashed border-border/70"
+      )}
+    >
+      <CalendarClock
+        className={cn("h-3.5 w-3.5 shrink-0", armed ? "text-emerald-500" : breakerPaused ? "text-amber-500" : "text-muted-foreground")}
+        aria-hidden
+      />
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Bake-off schedule
+      </span>
+      <Select
+        value={armed ? String(Math.max(SUITE_SCHEDULE_MIN_MS, schedule!.intervalMs)) : "off"}
+        disabled={disabled}
+        onValueChange={(v) => {
+          if (v === "off") {
+            setSchedule(suite.id, undefined);
+            toast("Bake-off schedule removed", { icon: "🗓️", description: `${suite.name} no longer re-runs on its own.` });
+          } else {
+            const ms = Number(v);
+            setSchedule(suite.id, { intervalMs: ms, repeats: Math.min(Math.max(1, Number(repeats) || 1), SUITE_REPEATS_MAX) });
+            toast.success("Bake-off schedule armed", {
+              icon: "🔬",
+              description: `${suite.name} re-runs every ${fmtIntervalShort(ms)} while the app tab is open — first fire ${fmtRel(Date.now() + ms)}.`,
+            });
+          }
+        }}
+      >
+        <SelectTrigger className="h-8 w-[124px] text-xs" aria-label="Bake-off cadence">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="off">Off</SelectItem>
+          {SUITE_CADENCES.map((c) => (
+            <SelectItem key={c.value} value={c.value}>
+              {c.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={repeats}
+        disabled={disabled || !armed}
+        onValueChange={(v) => {
+          setRepeats(v);
+          if (armed) {
+            setSchedule(suite.id, { intervalMs: Math.max(SUITE_SCHEDULE_MIN_MS, schedule!.intervalMs), repeats: Number(v) });
+          }
+        }}
+      >
+        <SelectTrigger className="h-8 w-[92px] text-xs" aria-label="Repeats for scheduled runs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: SUITE_REPEATS_MAX }, (_, i) => i + 1).map((n) => (
+            <SelectItem key={n} value={String(n)}>
+              {n} repeat{n === 1 ? "" : "s"}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {/* r39 auto-adopt: scheduled verdicts become workflow harness defaults. */}
+      <label
+        className={cn(
+          "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
+          armed
+            ? autoAdopt
+              ? "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-300"
+              : "border-border bg-muted/30 text-muted-foreground"
+            : "cursor-not-allowed border-dashed border-border/60 text-muted-foreground/60 opacity-60"
+        )}
+        title={
+          armed
+            ? "After each scheduled round, apply each case's winning harness as that workflow's default — the bake-off maintains itself. Manual runs never auto-adopt."
+            : "Arm the schedule first — auto-adoption only applies to scheduled rounds."
+        }
+      >
+        <Switch
+          checked={autoAdopt}
+          disabled={!armed}
+          onCheckedChange={(v) => {
+            setScheduleAutoAdopt(suite.id, v);
+            toast(v ? "Auto-adopt armed" : "Auto-adopt off", {
+              icon: v ? "⚖️" : "✋",
+              description: v
+                ? `Scheduled ${suite.name} rounds will now apply winning harnesses to their workflows automatically (armed clock untouched).`
+                : `Scheduled ${suite.name} rounds will record verdicts only — you adopt manually.`,
+            });
+          }}
+          aria-label="Auto-adopt scheduled bake-off winners"
+        />
+        Auto-adopt
+      </label>
+      <span className="min-w-0 flex-1 text-[11px] leading-tight text-muted-foreground">
+        {armed ? (
+          <>
+            <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 soft-pulse" aria-hidden />
+              next {schedule!.nextRunAt ? fmtRel(schedule!.nextRunAt) : "awaiting slot"}
+            </span>
+            {schedule!.lastRunAt ? <span className="ml-1.5">· last {fmtRel(schedule!.lastRunAt)}</span> : null}
+            {schedule!.failStreak ? <span className="ml-1.5 text-amber-600 dark:text-amber-400">· {schedule!.failStreak} all-fail round{schedule!.failStreak === 1 ? "" : "s"}</span> : null}
+            <span className="block">fires only while the app is open · 3 all-fail rounds auto-pause</span>
+            {autoAdopt ? (
+              adoption && adoption.entries.some((e) => e.held) ? (
+                <span
+                  className="block text-amber-600 dark:text-amber-400"
+                  title={adoption.entries
+                    .filter((e) => e.held)
+                    .map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}: ${e.reason ?? "held"}`)
+                    .join("\n")}
+                >
+                  held (unstable verdict — adoption needs 2 agreeing rounds):{" "}
+                  {adoption.entries
+                    .filter((e) => e.held)
+                    .map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`)
+                    .join(", ")}
+                  {adoption.entries.some((e) => !e.held)
+                    ? ` · applied: ${adoption.entries
+                        .filter((e) => !e.held)
+                        .map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`)
+                        .join(", ")}`
+                    : ""}{" "}
+                  · {fmtRel(adoption.at)}
+                </span>
+              ) : (
+                <span className="block text-violet-600 dark:text-violet-300">
+                  {adoption
+                    ? adoption.entries.length > 0
+                      ? `last round applied: ${adoption.entries.map((e) => `“${e.workflowName}” → ${harnessById(e.to).name}`).join(", ")} · ${fmtRel(adoption.at)}`
+                      : `last round verified winners already in place · ${fmtRel(adoption.at)}`
+                    : "winners of the next round apply automatically · a verdict needs 2 agreeing rounds to land"}
+                </span>
+              )
+            ) : null}
+          </>
+        ) : breakerPaused ? (
+          <span className="font-medium text-amber-600 dark:text-amber-400">
+            paused by the failure breaker — pick a cadence again to re-arm
+          </span>
+        ) : (
+          <span>re-runs the A/B lanes on their own and keeps fresh verdicts in history</span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+const STATUS_DOT: Record<SuiteCaseRun["status"], string> = {
+  done: "bg-emerald-500",
+  error: "bg-red-500",
+  stopped: "bg-amber-500",
+  running: "bg-violet-500 animate-pulse",
+};
+
+const HARNESS_BAR_COLORS: Record<string, string> = {
+  balanced: "bg-violet-500/70",
+  "free-frontier": "bg-emerald-500/70",
+  "deep-research": "bg-sky-500/70",
+  fast: "bg-amber-500/70",
+  worker: "bg-fuchsia-500/70",
+  inherit: "bg-muted-foreground/50",
+};
+
+/**
+ * r36 A/B lab harness picker: a chip row over the 5 presets. Toggling builds
+ * an ordered rotation (click order preserved); empty = single inherit pass.
+ */
+function HarnessPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Harness rotation for this case">
+      {HARNESS_PRESETS.map((p) => {
+        const active = value.includes(p.id);
+        const order = value.indexOf(p.id) + 1;
+        return (
+          <button
+            key={p.id}
+            type="button"
+            role="checkbox"
+            aria-checked={active}
+            disabled={disabled}
+            title={`${p.name} — ${p.tagline}`}
+            onClick={() => {
+              if (active) {
+                onChange(value.filter((x) => x !== p.id));
+              } else if (value.length >= SUITE_HARNESSES_MAX) {
+                toast.warning(`A case compares at most ${SUITE_HARNESSES_MAX} harnesses`, {
+                  description: "Unpick one first — every extra lane multiplies real quota spend.",
+                });
+              } else {
+                onChange([...value, p.id]);
+              }
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all disabled:opacity-50",
+              active
+                ? "border-violet-500/50 bg-violet-500/15 text-violet-600 dark:text-violet-300 shadow-[0_0_0_2px_oklch(0.606_0.25_292.717/0.10)]"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-violet-500/40 hover:text-foreground"
+            )}
+          >
+            <span aria-hidden>{p.glyph}</span>
+            {p.name}
+            {active ? (
+              <span className="ml-0.5 rounded-full bg-violet-500/25 px-1 text-[9px] font-bold tabular-nums">
+                {order}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** r44 agent-vs-agent lab: agent lane chips (sky tone — distinct from harness violet). */
+function AgentPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  const agents = useAgentsStore((s) => s.agents);
+  // r47: lane capability hints on the bake-off chips — a tool-bearing agent
+  // picked onto a lane whose catalog does not declare tool calling is the
+  // exact failure this annotation makes visible before quota is spent.
+  // Runtime-faithful lane: bare agent model rides the ACTIVE provider.
+  // r48 key-awareness: dormant lanes (no key / no profile) stay silent —
+  // they ride Auto, so a no-tools warning there would be a false alarm.
+  const settings = useSettingsStore((s) => s.settings);
+  const activePid = activeProviderId(settings);
+  const capsIndex = React.useState<CapsIndex>(() => loadCapsIndex())[0];
+  const hints = React.useMemo(() => laneHints(settings), [settings]);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Agent lanes for this case">
+      {agents.map((a) => {
+        const active = value.includes(a.id);
+        const order = value.indexOf(a.id) + 1;
+        const sum = agentLaneSummary(capsIndex, a, activePid, hints);
+        const noTools = sum.hasTools && sum.lacksTools;
+        return (
+          <button
+            key={a.id}
+            type="button"
+            role="checkbox"
+            aria-checked={active}
+            disabled={disabled}
+            title={`${a.name} — one single-turn task per agent, own model + tools${
+              sum.caps?.tools
+                ? " · lane declares tool calling"
+                : noTools
+                  ? " · ⚠ catalog does not declare tool calling"
+                  : ""
+            }`}
+            onClick={() => {
+              if (active) {
+                onChange(value.filter((x) => x !== a.id));
+              } else if (value.length >= SUITE_HARNESSES_MAX) {
+                toast.warning(`A case compares at most ${SUITE_HARNESSES_MAX} agents`, {
+                  description: "Unpick one first — every extra lane multiplies real quota spend.",
+                });
+              } else {
+                onChange([...value, a.id]);
+              }
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all disabled:opacity-50",
+              active
+                ? "border-sky-500/50 bg-sky-500/15 text-sky-600 dark:text-sky-300 shadow-[0_0_0_2px_oklch(0.623_0.214_259.815/0.10)]"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-sky-500/40 hover:text-foreground",
+              noTools && "border-amber-500/50 text-amber-600 dark:text-amber-400"
+            )}
+          >
+            <span aria-hidden>{a.emoji || "🤖"}</span>
+            {a.name}
+            {sum.caps?.tools ? (
+              <span
+                aria-label="capability: tools"
+                className="inline-flex h-3.5 shrink-0 items-center rounded bg-sky-500/15 px-0.5 text-[8px] font-bold text-sky-600 dark:text-sky-400"
+              >
+                🔧
+              </span>
+            ) : null}
+            {noTools ? (
+              <span aria-hidden className="shrink-0 text-[9px] font-bold">
+                ⚠
+              </span>
+            ) : null}
+            {active ? (
+              <span className="ml-0.5 rounded-full bg-sky-500/25 px-1 text-[9px] font-bold tabular-nums">
+                {order}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** r36 A/B lab: per-harness done-rate bars + the crowned winner. */
+function AbBars({ result }: { result: SuiteCaseResult }) {
+  // r38 winner adoption: a bake-off verdict is evidence — one click makes the
+  // winning harness the workflow's default (editor selection stays editable).
+  const workflow = useWorkflowsStore((s) => s.workflows.find((w) => w.id === result.workflowId));
+  const updateWorkflow = useWorkflowsStore((s) => s.update);
+  const isAgentCase = result.mode === "agents";
+  const agentName = (id: string) => result.agents?.find((a) => a.id === id)?.name ?? id;
+  const adoptable = !isAgentCase && !!result.winner && !!workflow && workflow.harness !== result.winner;
+  const byHarness = result.byHarness ?? [];
+  if (byHarness.length < 2) return null;
+  return (
+    <div className="mt-2 space-y-1.5 rounded-lg border border-violet-500/25 bg-violet-500/[0.04] p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">
+          {isAgentCase ? "Agent A/B" : "Harness A/B"}
+        </p>
+        {result.winner ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+            <Crown className="h-3 w-3" aria-hidden />
+            {isAgentCase
+              ? `${agentName(result.winner)} wins`
+              : `${harnessById(result.winner).glyph} ${harnessById(result.winner).name} wins`}
+          </span>
+        ) : (
+          <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+            no lane finished
+          </span>
+        )}
+        {result.winner && !isAgentCase && (
+          <button
+            type="button"
+            disabled={!adoptable}
+            onClick={() => {
+              if (!result.winner || !workflow) return;
+              updateWorkflow(workflow.id, { harness: result.winner });
+              toast.success(
+                `“${workflow.name}” now defaults to ${harnessById(result.winner).name}`,
+                {
+                  description: `Adopted from the ${result.workflowName} bake-off verdict (${result.winner}). Editor selection stays editable.`,
+                  icon: "⚖️",
+                }
+              );
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold transition-colors",
+              adoptable
+                ? "border-violet-500/50 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 dark:text-violet-300"
+                : "border-dashed text-muted-foreground"
+            )}
+            title={
+              adoptable
+                ? `Set ${result.workflowName}'s default harness to the empirical winner`
+                : !workflow
+                  ? "The workflow behind this case was deleted"
+                  : `Already adopted — ${result.workflowName} defaults to ${harnessById(result.winner).name}`
+            }
+          >
+            {adoptable
+              ? `⬆ adopt on ${result.workflowName}`
+              : `✓ adopted on ${result.workflowName}`}
+          </button>
+        )}
+        {result.winner && isAgentCase ? (
+          <span
+            className="rounded-full border border-dashed px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+            title="Agent verdicts are evidence only — there is no harness default to adopt onto"
+          >
+            evidence only
+          </span>
+        ) : null}
+      </div>
+      <ul className="space-y-1">
+        {byHarness.map((h) => {
+          const laneAgent = isAgentCase ? agentName(h.harness) : undefined;
+          const preset = isAgentCase ? undefined : harnessById(h.harness);
+          const laneLabel = laneAgent ?? `${preset!.glyph} ${preset!.name}`;
+          const pct = Math.round(h.doneRate * 100);
+          const isWinner = result.winner === h.harness;
+          return (
+            <li key={h.harness} className="flex items-center gap-2 text-[11px]">
+              <span className="w-28 shrink-0 truncate font-medium" title={laneLabel}>
+                {laneLabel}
+              </span>
+              <span
+                className="h-2 min-w-1 flex-1 overflow-hidden rounded-full bg-muted/60"
+                role="meter"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${laneLabel} done rate ${pct}%`}
+              >
+                <span
+                  className={cn(
+                    "block h-full rounded-full transition-all duration-700",
+                    isAgentCase
+                      ? isWinner
+                        ? "bg-sky-500"
+                        : "bg-sky-500/40"
+                      : HARNESS_BAR_COLORS[h.harness] ?? "bg-muted-foreground/50",
+                    isWinner && "shadow-[0_0_6px_oklch(0.7_0.15_160/0.6)]"
+                  )}
+                  style={{ width: `${Math.max(pct, 3)}%` }}
+                />
+              </span>
+              <span className="w-24 shrink-0 text-right tabular-nums text-muted-foreground">
+                {pct}% · {(h.meanMs / 1000).toFixed(1)}s
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function CaseRow({
+  c,
+  index,
+  diff,
+  onRemove,
+  rotation,
+  onSetRotation,
+  notRun,
+}: {
+  c: SuiteResult["results"][number];
+  index: number;
+  diff: "improved" | "flat" | "regressed" | "new" | undefined;
+  onRemove?: () => void;
+  /** r36 A/B lab: this case's harness rotation (empty = inherit). */
+  rotation?: string[];
+  /** r36 A/B lab: when set, the rotation is editable in place (live picker). */
+  onSetRotation?: (next: string[]) => void;
+  /** Pre-run placeholder row (Cases list) — honest “not run yet” copy. */
+  notRun?: boolean;
+}) {
+  const diffMeta: Record<NonNullable<typeof diff>, { label: string; cls: string }> = {
+    improved: { label: "improved", cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+    flat: { label: "flat", cls: "border-muted-foreground/30 bg-muted text-muted-foreground" },
+    regressed: { label: "regressed", cls: "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400" },
+    new: { label: "new", cls: "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+  };
+  return (
+    <div className="rounded-lg border bg-background/60 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">#{index + 1}</span>
+            <span className="truncate text-sm font-medium">{c.workflowName}</span>
+            {c.runs !== "skipped" && c.runs.length > 0 ? (
+              <span
+                className={cn(
+                  "rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+                  c.doneRate === 1
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : c.doneRate === 0
+                      ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+                      : "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                )}
+              >
+                {Math.round(c.doneRate * 100)}% done
+              </span>
+            ) : null}
+            {diff ? (
+              <span className={cn("rounded-full border px-1.5 py-0.5 text-[10px] font-semibold", diffMeta[diff].cls)}>
+                {diffMeta[diff].label}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{c.task}</p>
+          {c.expect ? <p className="mt-0.5 text-[11px] italic text-muted-foreground/80">expect: {c.expect}</p> : null}
+        </div>
+        {onRemove ? (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-red-500"
+            onClick={onRemove}
+            aria-label="Remove case"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
+      </div>
+      {notRun ? (
+        <p className="mt-2 text-xs italic text-muted-foreground">not run yet — run the suite to collect metrics</p>
+      ) : c.runs === "skipped" ? (
+        <p className="mt-2 text-xs italic text-muted-foreground">
+          {c.mode === "agents" ? "skipped — agents missing" : "skipped — workflow missing"}
+        </p>
+      ) : c.runs.length === 0 ? (
+        <p className="mt-2 text-xs italic text-muted-foreground">could not start (pipeline busy?)</p>
+      ) : (
+        <ul className="mt-2 space-y-1">
+          {c.runs.map((r) => {
+            const rh = r.harness && c.mode !== "agents" ? harnessById(r.harness) : undefined;
+            const agentLane = r.agentId
+              ? c.agents?.find((a) => a.id === r.agentId)?.name ?? r.agentId
+              : undefined;
+            return (
+              <li key={r.runId} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[r.status])} aria-hidden />
+                  <span className="font-medium text-foreground">{r.status}</span>
+                </span>
+                {agentLane ? (
+                  <span
+                    className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 text-[10px] font-semibold text-sky-600 dark:text-sky-300"
+                    title="Agent lane in the agent-vs-agent bake-off"
+                  >
+                    🤖 {agentLane}
+                  </span>
+                ) : null}
+                {rh ? (
+                  <span
+                    className="rounded-full border border-violet-500/30 bg-violet-500/10 px-1.5 text-[10px] font-semibold text-violet-600 dark:text-violet-300"
+                    title={`Driven by the ${rh.name} harness`}
+                  >
+                    {rh.glyph} {rh.name}
+                  </span>
+                ) : null}
+                <span>
+                  steps {r.stepsDone}/{r.stepsTotal}
+                </span>
+                <span>{(r.ms / 1000).toFixed(1)}s</span>
+                <span>{r.toolCallsOk} tool ok</span>
+                {r.degraded > 0 ? <span className="text-amber-600 dark:text-amber-400">{r.degraded} auto-digest</span> : null}
+                {r.reworked > 0 ? <span className="text-violet-500">{r.reworked} reworked</span> : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {c.runs !== "skipped" && c.runs.length > 0 ? <AbBars result={c} /> : null}
+      {onSetRotation && c.mode !== "agents" ? (
+        <div className="mt-2 border-t border-dashed pt-2">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Harness rotation{" "}
+            {rotation && rotation.length > 0 ? (
+              <span className="text-violet-600 dark:text-violet-300">
+                · {rotation.length} lane{rotation.length === 1 ? "" : "s"} — the same task runs under EACH (A/B)
+              </span>
+            ) : (
+              "· inherit (single pass)"
+            )}
+          </p>
+          <HarnessPicker value={rotation ?? []} onChange={onSetRotation} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function SuitesBoard() {
+  const suites = useSuitesStore((s) => s.suites);
+  const addCase = useSuitesStore((s) => s.addCase);
+  const removeCase = useSuitesStore((s) => s.removeCase);
+  const setCaseHarnesses = useSuitesStore((s) => s.setCaseHarnesses);
+  const workflows = useWorkflowsStore((s) => s.workflows);
+  const agents = useAgentsStore((s) => s.agents);
+  const setBoardOpen = useUiStore((s) => s.setWorkflowBoardOpen);
+
+  const [runningId, setRunningId] = React.useState<string | null>(null);
+  const [progress, setProgress] = React.useState<SuiteProgress | null>(null);
+  const [repeats, setRepeats] = React.useState("1");
+  const [addWfId, setAddWfId] = React.useState("");
+  const [addTask, setAddTask] = React.useState("");
+  const [addHarnesses, setAddHarnesses] = React.useState<string[]>([]);
+  // r44 agent-vs-agent: form mode + agent lanes.
+  const [addMode, setAddMode] = React.useState<"workflow" | "agents">("workflow");
+  const [addAgents, setAddAgents] = React.useState<string[]>([]);
+
+  // A suite may finish while this component unmounts — poll the running flag
+  // so the Stop button state stays truthful.
+  React.useEffect(() => {
+    if (!runningId) return;
+    const t = setInterval(() => {
+      if (!isSuiteRunning()) {
+        setRunningId(null);
+        setProgress(null);
+      }
+    }, 700);
+    return () => clearInterval(t);
+  }, [runningId]);
+
+  // r37: scheduled bake-offs run WITHOUT the board's progress callback —
+  // poll the runner so the board still shows a truthful "running" state.
+  const [scheduledRunning, setScheduledRunning] = React.useState(false);
+  React.useEffect(() => {
+    if (runningId) return;
+    const t = setInterval(() => setScheduledRunning(isSuiteRunning()), 1_500);
+    return () => clearInterval(t);
+  }, [runningId]);
+
+  const handleRun = async (suiteId: string) => {
+    if (isSuiteRunning()) return;
+    const n = Math.min(Math.max(1, Number(repeats) || 1), SUITE_REPEATS_MAX);
+    setRunningId(suiteId);
+    try {
+      const result = await runSuite(suiteId, n, setProgress);
+      if (result) {
+        const done = result.results.filter((r) => r.runs !== "skipped" && r.runs.length > 0);
+        const overall =
+          done.length > 0 ? Math.round((done.reduce((a, r) => a + r.doneRate, 0) / done.length) * 100) : 0;
+        if (result.status === "stopped") {
+          toast.warning("Suite stopped — partial results kept", { icon: "⏹", description: `Done-rate so far: ${overall}%` });
+        } else {
+          toast.success(`Suite finished — overall done-rate ${overall}%`, { icon: "🧪" });
+        }
+      }
+    } finally {
+      setRunningId(null);
+      setProgress(null);
+    }
+  };
+
+  const handleExport = (suiteId: string) => {
+    const suite = suites.find((s) => s.id === suiteId);
+    if (!suite?.lastResult) return;
+    downloadText(
+      `praison-suite-${slugify(suite.name)}-${new Date().toISOString().slice(0, 10)}.md`,
+      suiteResultToMarkdown(suite, suite.lastResult),
+      "text/markdown"
+    );
+  };
+
+  const handleAddCase = (suiteId: string) => {
+    // r44 agent-vs-agent branch: ≥2 agents + a task → an agent bake-off case.
+    if (addMode === "agents") {
+      if (addAgents.length < 2 || addTask.trim() === "") {
+        toast.warning("Pick at least 2 agents and a task", {
+          description: "An agent bake-off runs the SAME single-turn task through EACH agent.",
+        });
+        return;
+      }
+      addCase(suiteId, {
+        id: `case_${Date.now().toString(36)}`,
+        workflowId: "",
+        task: addTask.trim().slice(0, 500),
+        agentIds: addAgents.slice(0, SUITE_HARNESSES_MAX),
+      });
+      setAddTask("");
+      setAddAgents([]);
+      toast.success(
+        `Agent bake-off added — ${Math.min(addAgents.length, SUITE_HARNESSES_MAX)} agent lanes`,
+        { description: "Same task, each agent answers solo — the board crowns the most reliable." }
+      );
+      return;
+    }
+    if (!addWfId || addTask.trim() === "") {
+      toast.error("Pick a pipeline and write the fixed task text first.");
+      return;
+    }
+    addCase(suiteId, {
+      id: `case_${Date.now().toString(36)}`,
+      workflowId: addWfId,
+      task: addTask.trim().slice(0, 500),
+      ...(addHarnesses.length > 0 ? { harnesses: addHarnesses } : {}),
+    });
+    setAddTask("");
+    setAddHarnesses([]);
+    toast.success(
+      addHarnesses.length > 1
+        ? `A/B case added — ${addHarnesses.length} harness lanes`
+        : "Case added"
+    );
+  };
+
+  if (suites.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed p-8 text-center">
+        <FlaskConical className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
+        <h3 className="mt-3 text-sm font-semibold">No suites yet</h3>
+        <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+          Suites replay fixed tasks against your pipelines — n≥1 repeats per case with done-rate, latency and
+          tool-call metrics, so harness changes become experiments instead of vibes. The baseline suite seeds
+          automatically on first launch.
+        </p>
+        <Button size="sm" variant="outline" className="mt-4" onClick={() => setBoardOpen(true)}>
+          Back to runs board
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {suites.map((suite) => {
+        const isRunning = runningId === suite.id;
+        const last = suite.lastResult;
+        const prev = suite.history && suite.history.length >= 2 ? suite.history[suite.history.length - 2] : undefined;
+        const diff = last ? suiteDiff(last, prev) : undefined;
+        return (
+          <Card key={suite.id} className="gap-3 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <FlaskConical className="h-4 w-4 text-violet-500" aria-hidden />
+                  <h3 className="text-sm font-semibold">{suite.name}</h3>
+                  <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400">
+                    {suite.cases.length} case{suite.cases.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <p className="mt-1 max-w-2xl text-xs text-muted-foreground">{suite.description}</p>
+                {last ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground/80">
+                    last run {fmtRel(last.startedAt)} · {last.status} · {last.repeats} repeat{last.repeats === 1 ? "" : "s"} per case
+                    {prev ? " · diff vs previous shown" : ""}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Select value={repeats} onValueChange={setRepeats} disabled={isRunning}>
+                  <SelectTrigger className="h-8 w-[118px] text-xs" aria-label="Repeats per case">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: SUITE_REPEATS_MAX }, (_, i) => i + 1).map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n} repeat{n === 1 ? "" : "s"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isRunning ? (
+                  <Button size="sm" variant="outline" className="h-8 border-red-500/40 text-red-500 hover:bg-red-500/10" onClick={() => stopSuite()}>
+                    <Square className="h-3.5 w-3.5" /> Stop
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="h-8 bg-violet-600 text-white hover:bg-violet-700"
+                    onClick={() => void handleRun(suite.id)}
+                    disabled={
+                      workflows.length === 0 &&
+                      !suite.cases.some((c) => (c.agentIds ?? []).length >= 2)
+                    }
+                  >
+                    <Play className="h-3.5 w-3.5" /> Run suite
+                  </Button>
+                )}
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  onClick={() => handleExport(suite.id)}
+                  disabled={!last}
+                  aria-label="Export suite report"
+                  title={last ? "Export latest suite report (markdown)" : "Run the suite first"}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* r37: per-suite recurring bake-off schedule */}
+            <SuiteScheduleRow suite={suite} disabled={isRunning} />
+
+            {scheduledRunning && !isRunning ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.05] px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400"
+              >
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden />
+                Scheduled bake-off in progress — live metrics land here when it finishes
+              </div>
+            ) : null}
+
+            {isRunning && progress ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/5 px-3 py-2 text-xs text-violet-600 dark:text-violet-400"
+              >
+                <span className="h-2 w-2 animate-pulse rounded-full bg-violet-500" aria-hidden />
+                Case {progress.caseIndex + 1}/{progress.caseTotal} · {progress.workflowName}
+                {progress.harness ? (
+                  <span className="rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold">
+                    {progress.harness}
+                  </span>
+                ) : null}
+                · repeat {progress.repeat}/{progress.repeats}
+                — running REAL pipelines, quota is being spent
+              </div>
+            ) : null}
+            {!isRunning ? (
+              <p className="text-[11px] text-muted-foreground/80">
+                Suites run REAL pipelines and spend provider quota — repeats trade statistical confidence for cost.
+              </p>
+            ) : null}
+
+            {last ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest result</h4>
+                  {last.results.some((r) => r.byHarness && r.byHarness.length > 1) ? (
+                    <span className="rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-300">
+                      A/B verdicts below
+                    </span>
+                  ) : null}
+                </div>
+                {last.results.map((c, i) => (
+                  <CaseRow key={c.caseId} c={c} index={i} diff={diff?.get(c.caseId)} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cases</h4>
+                {suite.cases.map((c, i) => (
+                  <CaseRow
+                    key={c.id}
+                    index={i}
+                    diff={undefined}
+                    c={{
+                      caseId: c.id,
+                      workflowId: c.workflowId,
+                      workflowName:
+                        (c.agentIds?.length ?? 0) >= 2
+                          ? "(agent bake-off)"
+                          : workflows.find((w) => w.id === c.workflowId)?.name ?? "(missing workflow)",
+                      task: c.task,
+                      expect: c.expect,
+                      runs: "skipped",
+                      doneRate: 0,
+                      ...((c.agentIds?.length ?? 0) >= 2
+                        ? {
+                            mode: "agents" as const,
+                            agents: c.agentIds!
+                              .map((id) => agents.find((a) => a.id === id))
+                              .filter((a): a is NonNullable<typeof a> => !!a)
+                              .map((a) => ({ id: a.id, name: a.name })),
+                          }
+                        : {}),
+                    }}
+                    rotation={c.harnesses}
+                    onSetRotation={
+                      isRunning
+                        ? undefined
+                        : (next) => setCaseHarnesses(suite.id, c.id, next)
+                    }
+                    onRemove={isRunning ? undefined : () => removeCase(suite.id, c.id)}
+                    notRun
+                  />
+                ))}
+              </div>
+            )}
+
+            {!isRunning ? (
+              <div className="space-y-2 rounded-lg border border-dashed p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  {/* r44: case kind — classic pipeline replay or agent-vs-agent. */}
+                  <div
+                    className="flex shrink-0 items-center gap-0.5 rounded-lg border bg-muted/30 p-0.5"
+                    role="radiogroup"
+                    aria-label="Case kind"
+                  >
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={addMode === "workflow"}
+                      onClick={() => setAddMode("workflow")}
+                      className={cn(
+                        "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                        addMode === "workflow"
+                          ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Pipeline
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={addMode === "agents"}
+                      onClick={() => setAddMode("agents")}
+                      className={cn(
+                        "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                        addMode === "agents"
+                          ? "bg-sky-500/15 text-sky-600 dark:text-sky-300"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Agents A/B
+                    </button>
+                  </div>
+                  {addMode === "workflow" ? (
+                    <div className="shrink-0 sm:w-56">
+                      <Select value={addWfId} onValueChange={setAddWfId}>
+                        <SelectTrigger className="h-8 text-xs" aria-label="Pipeline for the new case">
+                          <SelectValue placeholder="Pick pipeline…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {workflows.map((w) => (
+                            <SelectItem key={w.id} value={w.id}>
+                              {w.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+                  <Input
+                    value={addTask}
+                    onChange={(e) => setAddTask(e.target.value)}
+                    placeholder={
+                      addMode === "agents"
+                        ? "Same single-turn task for every agent…"
+                        : "Fixed task text for the new case…"
+                    }
+                    className="h-8 flex-1 text-xs"
+                    maxLength={500}
+                  />
+                  <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={() => handleAddCase(suite.id)}>
+                    <Plus className="h-3.5 w-3.5" /> Add case
+                  </Button>
+                </div>
+                {addMode === "workflow" ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Harness rotation
+                    </span>
+                    <HarnessPicker value={addHarnesses} onChange={setAddHarnesses} />
+                    {addHarnesses.length > 1 ? (
+                      <span className="text-[10px] italic text-violet-600 dark:text-violet-300">
+                        the same task runs under EACH lane — board crowns the winner
+                      </span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Agent lanes
+                    </span>
+                    <AgentPicker value={addAgents} onChange={setAddAgents} />
+                    {addAgents.length > 1 ? (
+                      <span className="text-[10px] italic text-sky-600 dark:text-sky-300">
+                        the same single-turn task runs through EACH agent solo — board crowns the most reliable
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
