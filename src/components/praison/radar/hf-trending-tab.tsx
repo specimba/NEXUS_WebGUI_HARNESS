@@ -72,6 +72,9 @@ export function HfTrendingTab() {
   const [cache, setCache] = React.useState<HfCache | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // r468: when only SOME Hub sections fail their refresh, the surviving boards
+  // still render — this amber status line names the gap instead of hiding it.
+  const [partialNote, setPartialNote] = React.useState<string | null>(null);
   const [kind, setKindState] = React.useState<HfKind>(() => {
     const saved = readCache<HfKind>(HF_KIND_KEY);
     return saved === "models" || saved === "datasets" || saved === "spaces"
@@ -91,9 +94,10 @@ export function HfTrendingTab() {
     if (loading) return;
     setLoading(true);
     setError(null);
+    setPartialNote(null);
     try {
       const kinds: HfKind[] = ["models", "datasets", "spaces"];
-      const lists = await Promise.all(
+      const attempts = await Promise.allSettled(
         kinds.map(async (k) => {
           // r139: routed through our own /api/radar/hf proxy — the last of
           // the three radar sources to leave the browser (GitHub Stars and
@@ -116,21 +120,52 @@ export function HfTrendingTab() {
           return [k, data.items] as const;
         })
       );
-      const next: HfCache = { fetchedAt: Date.now(), models: [], datasets: [], spaces: [] };
-      for (const [k, items] of lists) next[k] = items;
-      writeCache(HF_CACHE_KEY, next);
+      // r468: this used to be Promise.all — one flaky Hub endpoint threw away
+      // BOTH good boards: cache untouched, a full-width error box, and a retry
+      // that re-fetched everything. The three kinds are independent upstreams;
+      // keep what answered. Merge rule: a failed kind falls back to its
+      // previous rows (if any) instead of being wiped, and fetchedAt only
+      // advances on a FULL success so the cache stamp never claims fresher
+      // than the oldest board on screen.
+      const failed: HfKind[] = [];
+      for (let i = 0; i < kinds.length; i++) {
+        if (attempts[i].status === "rejected") failed.push(kinds[i]);
+      }
+      if (failed.length === kinds.length) {
+        const reason = attempts.find((a) => a.status === "rejected");
+        throw reason && reason.status === "rejected"
+          ? reason.reason
+          : new Error("Could not fetch HF trending.");
+      }
+      const next: HfCache = {
+        fetchedAt: cache?.fetchedAt ?? 0,
+        models: cache?.models ?? [],
+        datasets: cache?.datasets ?? [],
+        spaces: cache?.spaces ?? [],
+      };
+      for (let i = 0; i < kinds.length; i++) {
+        const a = attempts[i];
+        if (a.status === "fulfilled") next[kinds[i]] = a.value[1];
+      }
+      if (failed.length === 0 || !cache) next.fetchedAt = Date.now();
       setCache(next);
+      writeCache(HF_CACHE_KEY, next);
+      if (failed.length > 0) {
+        setPartialNote(
+          `${failed.join(" + ")} failed to refresh — ${failed.length === 1 ? "that section keeps" : "those sections keep"} the previous board if one exists; hit Refresh to try again.`
+        );
+      }
     } catch (err) {
       const message = isTimeoutError(err)
-          ? "Hugging Face took too long to answer — try again."
-          : err instanceof Error
-            ? err.message
-            : "Could not fetch HF trending.";
+        ? "Hugging Face took too long to answer — try again."
+        : err instanceof Error
+          ? err.message
+          : "Could not fetch HF trending.";
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [loading]);
+  }, [loading, cache]);
 
   // First open of the tab = the explicit trigger; afterwards cache-only.
   React.useEffect(() => {
@@ -224,6 +259,12 @@ export function HfTrendingTab() {
       {loading && cache ? (
         <p className="text-[11px] text-muted-foreground" aria-live="polite">
           Refreshing from the Hugging Face Hub…
+        </p>
+      ) : null}
+
+      {partialNote ? (
+        <p className="text-[11px] text-amber-600 dark:text-amber-400" role="status">
+          {partialNote}
         </p>
       ) : null}
 

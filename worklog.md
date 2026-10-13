@@ -10993,3 +10993,28 @@ Scope committed: src/components/praison/tracker/model-radar-tab.tsx (pinModel ro
 Open risks: pin-pinModel logic is now DUPLICATED between model-ticker.tsx and model-radar-tab.tsx (deliberate: rotation discipline — a shared usePinModel hook extraction is a candidate refactor, not urgent); pin toast/override value unverified (recipe above); amber playground footer branches un-witnessed (preseed-blocked); r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked generation); r457 prior-digest needs a real workflow run (minutes); HF-trending-tab + github-stars-tab unprobed this window; standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r468 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r467 snapshot) + health (short curl). (3) Candidates: (a) rotate to HF-trending-tab or github-stars-tab (the last unprobed radar siblings); (b) r458 embed witness via one small real image-generation (book quota honestly); (c) usePinModel hook extraction (small DRY refactor across the two pin call sites); (d) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth for workflows/conversations; resolver reads settings.activeProviderId; vault preseed re-seeds keys on rehydrate (stores.ts:278) — QA profile is NEVER keyless; Grep over Glob for file discovery; MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r468
+Agent: main (platform dev agent)
+Task: r467 handoff candidate (a) — radar rotation complete: survey the last two unprobed siblings (hf-trending-tab, github-stars-tab), ship the real gap found.
+
+Work Log:
+- No user reply (cron round). Lineage OK (bcb56e420 = r467 snapshot); HEALTH=200.
+- SURVEY (1 round, both tabs together): github-stars-tab.tsx — polished, NO defects (r245 IME parity, r417 aria-live count, 404/429 classification, dedupe+sort, server-side token doctrine, named links). hf-trending-tab.tsx — mature except ONE real robustness flaw:
+- THE GAP (shipped): fetchTrending ran the three Hub sections through Promise.all — ONE flaky endpoint (spaces is the usual suspect) threw away BOTH good boards: cache untouched, full-width error box, retry re-fetched everything. Three independent upstreams deserve independent fates. Shipped: Promise.allSettled + merge-over-previous-cache (a failed kind falls back to its previous rows instead of being wiped) + fetchedAt advances ONLY on full success (the cache stamp never claims fresher than the oldest board on screen) + an amber role=status note naming the failed section(s) with honest wording ("keep the previous board if one exists"); all-fail still takes today's error-box path.
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact (run twice: post-edit and post-grammar-fix).
+- WITNESS (live, 3 rounds — the round's best moment): agent-browser network route mocked ONLY kind=spaces to abort; opened the HF tab fresh (auto-fetch fired). Old code: error box, zero cards. Witnessed: 30 real model cards rendered ("30 of 30 models" count line), NO alert box, and the amber note verbatim: "spaces failed to refresh — that section keep(s) the previous board…". The partial-failure path is witnessed end-to-end against a real board.
+- SELF-CAUGHT via the witness: the note's singular branch read "that section keep" — grammar fixed to "that section keeps" (one-line Edit, re-gated).
+- BUDGET: ~11/12 — the witness ate one extra grep round (snapshot grep patterns missed the tab content; full snapshot + section read found it).
+
+Stage Summary:
+- The radar surface survey is COMPLETE: all four tabs + shell + shared layer probed this window. The HF board now survives a partial Hub outage — sections that answer still render, the stamp stays honest, and the gap is named in place. GitHub tab passed inspection untouched.
+
+Round Handoff:
+Round ID: r469
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/radar/hf-trending-tab.tsx (allSettled partial-failure merge + amber partial note).
+Open risks: the all-fail path (every kind rejected) is code-reviewed but not mocked-witnessed (same recipe: abort all three patterns → expect the error box + kept board); pinModel duplication ticker/radar stands (usePinModel extraction candidate); amber playground footer branches un-witnessed (preseed-blocked); r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked generation); r457 prior-digest needs a real workflow run (minutes); settings-view remaining sections unprobed; standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r469 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r468 snapshot) + health (short curl). (3) Candidates: (a) r458 embed witness via one small real image-generation (book quota honestly — the radar arc is closed, this is the biggest open witness); (b) settings-view remaining sections (last big unprobed surface); (c) all-fail-path mock witness (cheap, completes r468's coverage); (d) usePinModel hook extraction; (e) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth; vault preseed re-seeds keys (stores.ts:278) — QA profile is NEVER keyless; Grep over Glob for file discovery; MultiEdit failure → diff before retry; land on budget — early exit IS success.
