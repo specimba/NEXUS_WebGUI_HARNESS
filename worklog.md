@@ -11018,3 +11018,25 @@ Scope committed: src/components/praison/radar/hf-trending-tab.tsx (allSettled pa
 Open risks: the all-fail path (every kind rejected) is code-reviewed but not mocked-witnessed (same recipe: abort all three patterns → expect the error box + kept board); pinModel duplication ticker/radar stands (usePinModel extraction candidate); amber playground footer branches un-witnessed (preseed-blocked); r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked generation); r457 prior-digest needs a real workflow run (minutes); settings-view remaining sections unprobed; standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r469 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r468 snapshot) + health (short curl). (3) Candidates: (a) r458 embed witness via one small real image-generation (book quota honestly — the radar arc is closed, this is the biggest open witness); (b) settings-view remaining sections (last big unprobed surface); (c) all-fail-path mock witness (cheap, completes r468's coverage); (d) usePinModel hook extraction; (e) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth; vault preseed re-seeds keys (stores.ts:278) — QA profile is NEVER keyless; Grep over Glob for file discovery; MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r469
+Agent: main (platform dev agent)
+Task: cron round — shipped the usePinModel hook extraction (the r467-flagged DRY candidate), collapsing the pin contract duplicated across the ticker (r28) and the radar tab (r467).
+
+Work Log:
+- Lineage OK (169d83747 = r468 snapshot on top; HEALTH=200). No user reply — cron round proceeded per handoff.
+- NEW src/components/praison/tracker/use-pin-model.ts: the shared contract — no activeId → honest toast + setView("chat") + pin NOTHING; success → setModelOverride + setView("chat") + origin-honest toast. Params: origin string (keeps "pinned from the model tracker / model radar" honest per caller) + optional onPinned (success-path ONLY; the ticker's popover close rides along — the no-chat branch deliberately leaves the surface open so the redirect is visible).
+- model-ticker.tsx: 14-line pinModel fn → `usePinModel("the model tracker", () => setOpen(false))`; dropped activeId + setModelOverride selectors and the useConversationsStore import (setView KEPT — still used by the strip's radar link). Hook call sits before the !data early return — hooks-order safe.
+- model-radar-tab.tsx: pinModel fn + r467 comment block → `usePinModel("the model radar")` + 3-line note; dropped all three selectors, useConversationsStore + useUiStore imports, and the now-unused `type TrackedModelRow` import (toast/providerMeta stay — sync/copy rows still use them).
+- Verified: unmasked `npx tsc --noEmit` → TSC_EXIT=0; `bun run lint` → 0 errors / 33 warnings (EXACT baseline), LINT_EXIT=0 with pipefail.
+- Behavior equivalence: verbatim merge of the two bodies, code-reviewed; runtime pin re-witness deferred (standing debt, recipe unchanged).
+- BUDGET: ~12/12 — landed on budget (worklog append + snapshot share this bash round; append precedes the snapshot — ordering preserved).
+
+Round Handoff:
+Round ID: r470
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/tracker/use-pin-model.ts (new) + model-ticker.tsx + model-radar-tab.tsx (dedup).
+Open risks: pin toast/persisted-override value unwitnessed through the NEW hook (recipe: pin a lane → read the "Model for this chat" combobox → expect origin-naming toast; also closes the standing r466 toast debt); hf-trending all-fail path code-reviewed not mocked-witnessed; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked generation); r457 prior-digest needs a real workflow run (minutes); settings-view remaining sections unprobed; standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r470 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r469 snapshot) + health (short curl). (3) Candidates: (a) browser-witness the refactored pin path (one pin → combobox read → also retires the standing pin-witness debt); (b) r458 embed witness via one small real image-generation (book quota honestly); (c) settings-view remaining sections (last big unprobed surface); (d) all-fail-path mock witness. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot; survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth; vault preseed re-seeds keys (stores.ts:278) — QA profile is NEVER keyless; Grep over Glob; MultiEdit failure → diff before retry; land on budget — early exit IS success.

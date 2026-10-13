@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
 import { relayHealthSnapshot, relayHopBadge, type RelayHealthBadge, type RelayHealthEntry } from "@/lib/relay";
-import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
+import { useSettingsStore, useUiStore } from "@/lib/stores";
 import {
   fmtAge,
   fmtCtx,
@@ -23,6 +23,7 @@ import {
   type TrackedModelRow,
   type TrackerData,
 } from "@/lib/tracker-types";
+import { usePinModel } from "./use-pin-model";
 
 // ─── Model Tracker ticker (r28) ──────────────────────────────────────────────
 // The "firsthand entry advantage" strip: a slim always-visible marquee that
@@ -97,8 +98,6 @@ export function ModelTicker() {
   const [query, setQuery] = React.useState("");
 
   const setView = useUiStore((s) => s.setView);
-  const activeId = useConversationsStore((s) => s.activeId);
-  const setModelOverride = useConversationsStore((s) => s.setModelOverride);
   const vyceKey = useSettingsStore((s) => s.settings.providerKeys?.vyce?.key ?? "");
 
   const syncNowRef = React.useRef<() => Promise<void>>(async () => {});
@@ -271,20 +270,10 @@ export function ModelTicker() {
   const freeCount = data ? data.tracked.filter((m) => m.free).length : 0;
   const syncedRel = data?.status.lastSyncAt ? fmtAge(data.status.lastSyncAt) : "never";
 
-  function pinModel(m: TrackedModelRow) {
-    if (!activeId) {
-      toast("Open a chat first, then pin the model", { icon: "💬" });
-      setView("chat");
-      return;
-    }
-    setModelOverride(activeId, m.id);
-    setView("chat");
-    setOpen(false);
-    toast(`This chat now runs on ${m.modelId}`, {
-      description: `${providerMeta(m.providerId).label} — pinned from the model tracker.`,
-      icon: "📌",
-    });
-  }
+  // r469: the pin contract lives in usePinModel now (shared with the radar
+  // tab); the popover close rides along on the success path only — the
+  // no-chat branch leaves the strip open so the redirect is visible.
+  const pinModel = usePinModel("the model tracker", () => setOpen(false));
 
   // Don't render an empty strip before the first snapshot lands.
   if (!data || feed.length === 0) return null;

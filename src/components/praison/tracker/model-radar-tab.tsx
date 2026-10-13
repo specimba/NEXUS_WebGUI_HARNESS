@@ -8,16 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
-import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
+import { useSettingsStore } from "@/lib/stores";
 import {
   fmtAge,
   fmtCtx,
   fmtPrice,
   providerMeta,
-  type TrackedModelRow,
   type TrackerData,
   type TrackerSourceHealth,
 } from "@/lib/tracker-types";
+import { usePinModel } from "./use-pin-model";
 
 // ─── Radar → "Models" tab (r28) ──────────────────────────────────────────────
 // The full-screen companion to the ticker: every watched lane with NEW/FREE
@@ -56,29 +56,10 @@ export function ModelRadarTab() {
 
   const vyceKey = useSettingsStore((s) => s.settings.providerKeys?.vyce?.key ?? "");
 
-  // r467: the pin affordance. The ticker panel has had one-click "pin in this
-  // chat" since r28, but this full-screen companion — the view that promises
-  // "every watched lane" — could only COPY a lane: a user who searched a lane
-  // here had to re-open the cramped ticker popover and search again to pin it.
-  // Same store contract as the ticker's pinModel (active-conversation model
-  // override + redirect to chat), with an honest toast naming the origin.
-  const activeId = useConversationsStore((s) => s.activeId);
-  const setModelOverride = useConversationsStore((s) => s.setModelOverride);
-  const setView = useUiStore((s) => s.setView);
-
-  function pinModel(m: TrackedModelRow) {
-    if (!activeId) {
-      toast("Open a chat first, then pin the model", { icon: "💬" });
-      setView("chat");
-      return;
-    }
-    setModelOverride(activeId, m.id);
-    setView("chat");
-    toast(`This chat now runs on ${m.modelId}`, {
-      description: `${providerMeta(m.providerId).label} — pinned from the model radar.`,
-      icon: "📌",
-    });
-  }
+  // r467: the pin affordance — this full-screen companion (the view that
+  // promises "every watched lane") could only COPY a lane before it; r469
+  // moved the shared contract into usePinModel, one hook for ticker + radar.
+  const pinModel = usePinModel("the model radar");
 
   const load = React.useCallback(async () => {
     try {
