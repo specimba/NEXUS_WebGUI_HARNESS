@@ -11040,3 +11040,32 @@ Scope committed: src/components/praison/tracker/use-pin-model.ts (new) + model-t
 Open risks: pin toast/persisted-override value unwitnessed through the NEW hook (recipe: pin a lane → read the "Model for this chat" combobox → expect origin-naming toast; also closes the standing r466 toast debt); hf-trending all-fail path code-reviewed not mocked-witnessed; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked generation); r457 prior-digest needs a real workflow run (minutes); settings-view remaining sections unprobed; standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r470 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r469 snapshot) + health (short curl). (3) Candidates: (a) browser-witness the refactored pin path (one pin → combobox read → also retires the standing pin-witness debt); (b) r458 embed witness via one small real image-generation (book quota honestly); (c) settings-view remaining sections (last big unprobed surface); (d) all-fail-path mock witness. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot; survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth; vault preseed re-seeds keys (stores.ts:278) — QA profile is NEVER keyless; Grep over Glob; MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r470
+Agent: main (platform dev agent)
+Task: cron round — browser-witnessed the refactored pin path end-to-end (top r469 handoff candidate), retiring the standing "pin toast + persisted override unverified" debt that had been carried since r466 through the r469 usePinModel extraction.
+
+Work Log:
+- Lineage OK (cd7b3ea97 = r469 snapshot; HEALTH=200). No user reply — cron round proceeded per handoff.
+- Witness ledger (agent-browser, live):
+  1. Radar Models tab → Pin "meta/muse-wonder in this chat" → view redirected to Chat (hook success path).
+  2. Combobox "Model for this chat" → "meta/muse-wonder pinned".
+  3. localStorage → "modelOverride":"openrouter::meta/muse-wonder" (persisted through the hook).
+  4. Ticker popover → Pin "openai-fast in this chat" → LIVE TOAST caught: "📌 This chat now runs on openai-fast / Pollinations — pinned from the model tracker." (origin-honest string through the hook param).
+  5. Popover auto-closed after pin (onPinned fired on the success path ONLY — expanded=true → false).
+  6. Re-pin replaces: combobox muse-wonder → "OpenAI Fast".
+  7. Un-pin via composer option "Follow global default" → combobox restored, modelOverride GONE from storage (composer clear path witnessed too).
+  8. A11y names intact through the refactor: "Pin <modelId> in this chat" on both surfaces.
+- Honest gap: the RADAR-origin toast text expired before capture (tracker-origin toast caught live; same code path, only the origin string differs — radar pin itself witnessed via redirect + override).
+- QA profile restored to pre-round state (Follow global default, no override in storage).
+- No product code changed this round — pure witness round, booked honestly.
+- BUDGET: ~11/12.
+
+Round Handoff:
+Round ID: r471
+Task owner: main (platform dev agent)
+Scope committed: none (witness round; pin contract fully verified through usePinModel).
+Open risks: radar-origin toast text not captured live (minor — tracker-origin witnessed); hf-trending all-fail path code-reviewed not mocked-witnessed; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked image-generation); r457 prior-digest needs a real workflow run (minutes); settings-view remaining sections unprobed; standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r471 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r470 snapshot) + health (short curl). (3) Candidates: (a) ship real code again — settings-view remaining sections probe then fix/polish (last big unprobed surface); (b) r458 embed witness via one small real image-generation (book quota honestly); (c) hf-trending all-fail-path mock witness (agent-browser network route --abort all three patterns → expect error box + kept board); (d) any user reply outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot; survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth; vault preseed re-seeds keys (stores.ts:278) — QA profile is NEVER keyless; Grep over Glob; MultiEdit failure → diff before retry; land on budget — early exit IS success.
