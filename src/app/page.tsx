@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useEffect } from "react";
+import { useSyncExternalStore, useEffect, useRef } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { AppSidebar, MobileNav, Splash, TopBar } from "@/components/praison/shell";
 import { CommandPalette } from "@/components/praison/command-palette";
@@ -101,6 +101,9 @@ export default function Page() {
   const view = useUiStore((s) => s.view);
   const uiTheme = useSettingsStore((s) => s.settings.uiTheme);
   useKeyboardShortcuts();
+  // r485: flips once the router effect has consumed the initial hash (see the
+  // bridge note below) — declared with the other hooks, before first use.
+  const hashConsumedRef = useRef(false);
 
   // Keep <html data-theme> in sync with the persisted accent theme.
   useEffect(() => {
@@ -118,8 +121,16 @@ export default function Page() {
   // Guarded so parameterized deep links survive: #/chat/<id> keeps its
   // conversation id while chat is active, and #/setup | #/guide/<provider>
   // are never overwritten by this effect.
+  // r485: the bridge must not rewrite the hash before the router has
+  // CONSUMED the deep link the page loaded with — both effects fire on the
+  // same mount flush, and this effect's closure still holds the pre-route
+  // view, so a fresh #/settings link was rewritten to #/chat (the default
+  // view) before applyHashRoute ever saw it. Bookmarks/shared links to
+  // bare views bounced to Chat on any profile whose persisted (or default)
+  // view differed — witnessed live in r484. The ref gate skips the bridge
+  // until the router effect below has consumed the initial hash.
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !hashConsumedRef.current) return;
     const [head] = window.location.hash.replace(/^#\/?/, "").split("/");
     const known = head === "" || VIEW_KEYS.includes(head);
     if (known && head !== view) {
@@ -131,6 +142,7 @@ export default function Page() {
   useEffect(() => {
     if (!mounted) return;
     applyHashRoute();
+    hashConsumedRef.current = true;
     const onHash = () => applyHashRoute();
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);

@@ -11498,3 +11498,24 @@ Scope committed: worklog only (the witnessed fix was committed in r483; this rou
 Open risks: fork-push credential streak (environmental, local chain is truth); amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451; chat send-flow re-witness still queued from r482's handoff (the r483 storage fix makes this lower-risk but it remains unwitnessed this era).
 Blockers: none
 Next recommended action: r485 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) A CODE round on a fresh surface (UI polish / error handling / new user-facing feature; survey HARD-CAP 3) — the vault slice and its witness are both closed, so the queue is clear. Optionally ride-along: the chat send-flow witness via agent-browser (IIFE-wrapped evals, in-round fixture per the ephemeral-profile doctrine). (4) Standing: tsc TRUE-exit with FULL-LOG rg (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, ONE route + hash-nav, localStorage source of truth, NEVER nohup-boot (scripts/dev-restart.sh only), land on budget — early exit IS success.
+
+---
+Task ID: r485
+Agent: main (platform dev agent)
+Task: cron round — DEEP-LINK BOUNCE BUG fixed (fresh surface: the app router in src/app/page.tsx). Bookmarks and shared links to bare views (#/settings, #/radar, #/agents, #/workflows) bounced to the default view (#/chat) on any profile whose persisted or default view differed from the link target — a defect I personally hit and documented during r484's witness work, now root-caused, fixed, and live-witnessed.
+
+Work Log:
+- No user reply. HEALTH=200 at open (fourth consecutive daemon survival). Survey (cap 3): radar tab persistence already exists (r301 — idea dead); no tab-state gaps in tracker/workflows; pivoted to the r484-observed deep-link bounce.
+- ROOT CAUSE: the r427 URL-reflect bridge effect and the r272 hash-router effect both fire on the same mount flush, in declaration order — the bridge runs FIRST, its closure still holds the PRE-route view (default "chat"), so it rewrote the loaded #/settings to #/chat via replaceState BEFORE applyHashRoute ever consumed it. r484's own transcript confirms the theory (open #/settings -> eval "#/chat"; click -> "#/settings").
+- FIX (src/app/page.tsx only): hashConsumedRef declared with the other hooks; the router effect flips it after applyHashRoute(); the bridge early-returns until consumption. Subsequent bridge runs are unchanged (in-app nav reflection, #/chat/<id> param preservation, #/setup/#/guide non-rewrite all re-reasoned and hold).
+- Two gate iterations, both honest: first run caught React.useRef on a UMD global (page.tsx imports named hooks) + react-hooks/immutability flagging the ref declared after its use — fixed by named useRef import + moving the ref up with the other hooks. Final: TSC_EXIT=0 / 0 errors (tsbuildinfo cleared), LINT_EXIT=0 / 0 errors + 33 warnings (EXACT baseline), HEALTH=200.
+- LIVE WITNESS (fresh ephemeral profile via browser relaunch): open #/settings -> hash STAYS "#/settings", heading renders "Settings" (pre-fix: "#/chat"); open #/radar -> stays "#/radar" (generality); bare / -> hash stays "" (the default-view rewrite is now post-consumption only — cosmetic r427 behavior for the default view, no user-visible regression; first in-app nav reflects correctly). agent-browser note: relaunch = fresh profile confirmed via the close/open cycle.
+- BUDGET: 12/12 — exactly at budget.
+
+Round Handoff:
+Round ID: r486
+Task owner: main (platform dev agent)
+Scope committed: src/app/page.tsx (deep-link fix) + this worklog.
+Open risks: fork-push credential streak (environmental, local chain is truth); amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451; chat send-flow re-witness STILL queued (carried since r482 — the hash fix touches page.tsx mount effects, so a chat send witness would doubly confirm the router change left the chat flow intact).
+Blockers: none
+Next recommended action: r486 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) TOP CANDIDATE: the chat send-flow witness (long-queued; type + send in the composer on a fresh profile, observe message -> status -> honest error path with the demo preseed keys; IIFE-wrapped evals, in-round fixture). If it passes clean, spend the remainder on a small UI polish. (4) Standing: tsc TRUE-exit with FULL-LOG rg (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, survey HARD-CAP 3, ONE route + hash-nav, localStorage source of truth, NEVER nohup-boot (scripts/dev-restart.sh only), land on budget — early exit IS success.
