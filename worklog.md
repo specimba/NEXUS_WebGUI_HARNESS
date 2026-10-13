@@ -11158,3 +11158,24 @@ Scope committed: src/components/praison/agents/agent-form-dialog.tsx (temperatur
 Open risks: server fast-death pattern r473+r474 (curl-200-then-refused within ~90s) — if seen again, spend a NO-SERVER round reading dev.log for the kill cause (OOM? reaper? port conflict?) instead of babysitting; r458 embed witness + r473 image-studio smoke-test (need a stable server window); hf-trending all-fail unmocked; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r475 — (1) FIRST re-read any user reply. (2) Health short curl; if DOWN, ONE restart; if it fast-dies again, do NOT retry — go no-server and read dev.log tail for the kill signature (one forensic look, then move on). (3) Candidates: (a) stable server → r458 embed witness (books one small generation; doubles as r473+r474 smoke-test); (b) dev.log forensics round if fast-death recurs; (c) any user reply outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (same-bash conditional works); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage source of truth; vault preseed re-seeds keys (stores.ts:278); Grep over Glob; MultiEdit failure → diff before retry AND re-read the edited block; land on budget — early exit IS success.
+
+---
+Task ID: r475
+Agent: main (platform dev agent)
+Task: cron round — the r473/r474 "server fast-death" mystery SOLVED with a live proof, and the fix institutionalized as scripts/dev-restart.sh. Root cause was restart-method drift, NOT app or sandbox instability.
+
+Work Log:
+- Lineage OK (af6141d8c = r474 snapshot). No user reply. HEALTH=000DOWN at open.
+- One nohup restart (r474 recipe) → poll2=200 → dead by next tool call (~60s). Forensic look (one, per handoff): process GONE, port closed, dev.log ends silently after GET / 200 — no crash trace, no OOM record. Silent external kill signature.
+- ROOT CAUSE (worklog r221-era line 3288 + scripts/dev-daemon.mjs header, both pre-existing): the Bash tool reaps its spawned process tree when the tool call ends — setsid/nohup NOTwithstanding. scripts/dev-daemon.mjs (spawn detached:true + unref → process-group leader reparented to PID 1, same as the surviving agent-browser daemon) is the PROVEN recipe. r472's stable server was daemon-spawned; r473/474/475 drifted back to the nohup one-liner → three rounds of "curl-200-then-die" were self-inflicted.
+- SHIPPED scripts/dev-restart.sh: kill stale dev procs (spares agent-browser daemon) → boot via dev-daemon.mjs → poll to 200. Canonical entry point; the nohup line is retired.
+- LIVE PROOF: restarted via dev-restart.sh → poll2=200 (pid 1443) → CROSS-BOUNDARY curl from the NEXT tool call = 200 → server STILL alive two tool calls later at log time. Tool-boundary survival witnessed, which nohup never achieved.
+- BONUS smoke: browser opened clean (console empty); "Open Image Studio" → dialog renders with intact a11y labels (Prompt textbox, aspect combobox, disabled Generate on empty prompt). Gallery EMPTY in QA profile → Download click and r458 embed witness still need a real generation (next round, stable server now guaranteed).
+
+Round Handoff:
+Round ID: r476
+Task owner: main (platform dev agent)
+Scope committed: scripts/dev-restart.sh + this worklog section (no app code changed — infra/doctrine round).
+Open risks: r458 embed witness (real generation → Add to chat → one fetch + real bytes + durable embed) now has a stable-server path — biggest open witness; r473 image-studio Download smoke needs one generation result first (gallery empty in QA profile); hf-trending all-fail unmocked; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r476 — (1) FIRST re-read any user reply. (2) bash scripts/dev-restart.sh (NEVER the nohup line — it dies at the tool boundary; r475 proved the daemon survives). (3) With the stable window: r458 embed witness — open Image Studio, fill prompt, Generate (book quota honestly), wait for result, then (a) Add to chat → verify one fetch + real bytes + durable embed in chat, (b) Download → r473 unification smoke (triggerDownload/fetchImageBlob path). (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot; survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage source of truth; vault preseed re-seeds keys (stores.ts:278); Grep over Glob; MultiEdit failure → diff before retry AND re-read the edited block; land on budget — early exit IS success.
