@@ -59,6 +59,42 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+// r473: one truth for the image-extension mapping — was duplicated across
+// the add-to-chat and download paths with divergence risk. jpeg→jpg, png/webp
+// direct, other image/* subtypes sliced raw (gif stays gif), else jpg.
+function extFromMime(mime: string | null | undefined): string {
+  if (!mime) return "jpg";
+  if (mime.includes("png")) return "png";
+  if (mime.includes("webp")) return "webp";
+  if (mime.includes("jpeg")) return "jpg";
+  if (mime.startsWith("image/")) return mime.slice("image/".length) || "jpg";
+  return "jpg";
+}
+
+// r473: the anchor-click save was duplicated for the blob and data-URL paths.
+function triggerDownload(href: string, filename: string, revokeAfterMs?: number) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  if (revokeAfterMs) setTimeout(() => URL.revokeObjectURL(href), revokeAfterMs);
+}
+
+// r473: shared fetch-to-blob for provider-hosted https results (the r458/r432
+// pattern) — null on HTTP failure or CORS block; callers keep their divergent
+// fallbacks (embed-hosted toast vs open-in-tab).
+async function fetchImageBlob(url: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.blob();
+  } catch {
+    return null;
+  }
+}
+
 export function ImageStudioDialog() {
   const open = useUiStore((s) => s.imageStudioOpen);
   const setOpen = useUiStore((s) => s.setImageStudioOpen);
@@ -136,20 +172,19 @@ export function ImageStudioDialog() {
     let embedded = false;
     const dataM = /^data:image\/(\w+);base64,/.exec(result.imageUrl);
     if (dataM) {
-      ext = dataM[1] === "jpeg" ? "jpg" : (dataM[1] ?? "jpg");
       mime = `image/${dataM[1] ?? "jpeg"}`;
+      ext = extFromMime(mime);
       // honest byte count: base64 payload only, not the data: header
       bytes = Math.floor(((result.imageUrl.length - dataM[0].length) * 3) / 4);
       embedded = true;
     } else if (/^https:/i.test(result.imageUrl)) {
       setAdding(true);
       try {
-        const res = await fetch(result.imageUrl);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
+        const blob = await fetchImageBlob(result.imageUrl);
+        if (!blob) throw new Error("unfetchable");
         bytes = blob.size;
         mime = blob.type || "image/jpeg";
-        ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+        ext = extFromMime(blob.type);
         if (blob.size <= EMBED_BUDGET) {
           content = await blobToDataUrl(blob);
           embedded = true;
@@ -203,18 +238,13 @@ export function ImageStudioDialog() {
     if (/^https:/i.test(result.imageUrl)) {
       setDownloading(true);
       try {
-        const res = await fetch(result.imageUrl);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
-        const objUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = objUrl;
-        a.download = `praison-image-${Date.now()}.${ext}`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(objUrl), 10_000);
+        const blob = await fetchImageBlob(result.imageUrl);
+        if (!blob) throw new Error("unfetchable");
+        triggerDownload(
+          URL.createObjectURL(blob),
+          `praison-image-${Date.now()}.${extFromMime(blob.type)}`,
+          10_000
+        );
       } catch {
         window.open(result.imageUrl, "_blank", "noopener");
         toast.info("Opened in a new tab — the host blocked a direct save; save it from there.", { icon: "🖼️" });
@@ -224,13 +254,10 @@ export function ImageStudioDialog() {
       return;
     }
     const m = /^data:image\/(\w+);base64,/.exec(result.imageUrl);
-    const ext = m && m[1] === "jpeg" ? "jpg" : (m?.[1] ?? "jpg");
-    const a = document.createElement("a");
-    a.href = result.imageUrl;
-    a.download = `praison-image-${Date.now()}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    triggerDownload(
+      result.imageUrl,
+      `praison-image-${Date.now()}.${extFromMime(m ? `image/${m[1]}` : null)}`
+    );
   }
 
   return (

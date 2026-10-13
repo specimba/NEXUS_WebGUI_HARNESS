@@ -11115,3 +11115,24 @@ Scope committed: src/components/ui/slider.tsx (aria-valuetext quantization).
 Open risks: agent-browser snapshot may read valuenow rather than valuetext — if the witness line above still shows the raw float, note that AT devices announce valuetext per ARIA spec; the announcement itself is not directly witnessable headlessly; hf-trending all-fail path code-reviewed not mocked-witnessed; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked image-generation — biggest open witness); r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r473 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r472 snapshot) + health (short curl). (3) Candidates: (a) r458 embed witness via one small real image-generation (book quota honestly — biggest open witness); (b) hf-trending all-fail-path mock witness (agent-browser network route --abort x3 → expect error box + kept board); (c) any small code polish if a probe finds it; (d) any user reply outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (same-bash conditional on green verify works well — keep); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth; vault preseed re-seeds keys (stores.ts:278); Grep over Glob; MultiEdit failure → diff before retry AND re-read the edited block (r471 over-deletion lesson); land on budget — early exit IS success.
+
+---
+Task ID: r473
+Agent: main (platform dev agent)
+Task: cron round — attempted the r458 embed witness (top handoff candidate); app was DOWN at open. One restart succeeded, the server died again within the round, babysitting cap (2 rounds) hit — pivoted per round shape to no-server work: the r458-booked image-studio unification (Download vs Add-to-chat blob plumbing).
+
+Work Log:
+- Lineage OK (4aee8e3d1 = r472 snapshot). No user reply. HEALTH=000DOWN at open.
+- BOOT: kill dev procs + bun run dev — HEALTH=200 after ~25s (warm boot, .next intact; no rm -rf .next needed this time). Browser open then hit ERR_CONNECTION_REFUSED: the server died again after the successful poll. Babysitting cap reached — NO further restart attempts (round shape honored).
+- r458 embed witness NOT executed (needs the live browser) — stays the biggest open witness, recipe unchanged in r458's section.
+- SHIPPED instead (image-studio.tsx): unified the duplicated blob plumbing — three module-level helpers: extFromMime (one ext-truth; jpeg→jpg, png/webp direct, other image/* subtypes sliced raw so gif stays gif — parity with both old paths), triggerDownload (anchor-click save + optional revoke; was duplicated blob/data-URL), fetchImageBlob (shared https fetch-to-blob, null on HTTP/CORS failure; callers keep their divergent fallbacks — embed-hosted toast vs open-in-tab). Both call sites rewired; ~20 lines of duplication removed; r458/r432 comment blocks preserved.
+- Verified: TSC_EXIT=0 (unmasked true exit); lint exit 0 (0 errors / 33 warnings baseline). NOT browser-witnessed (server down) — the refactor is mechanical with reviewed behavior parity; next live round should smoke-test Download + Add-to-chat on any image result.
+- BUDGET: ~11/12.
+
+Round Handoff:
+Round ID: r474
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/chat/image-studio.tsx (blob-plumbing unification).
+Open risks: r473 unification not browser-smoke-tested yet (one Download or Add-to-chat click on any result closes it); r458 embed witness still open (recipe: real generation → Add to chat → one fetch + real bytes + durable embed; QA profile is NEVER keyless — vault preseed, stores.ts:278); server liveness fragile this window (died post-restart — next round: short curl, ONE restart if down, then non-server work); hf-trending all-fail path unmocked; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r474 — (1) FIRST re-read any user reply. (2) Health short curl; if DOWN: ONE restart; if the restart dies again, go straight to non-server work (do not loop). (3) Candidates: (a) if server lives: r458 embed witness (real generation, book quota) — which ALSO smoke-tests the r473 unification on the Add-to-chat path; (b) else: cheap no-server polish from the cosmetic notes (archive API source "local"→"manual" normalization); (c) any user reply outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (same-bash conditional works); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage source of truth; vault preseed re-seeds keys (stores.ts:278); Grep over Glob; MultiEdit failure → diff before retry AND re-read the edited block; land on budget — early exit IS success.
