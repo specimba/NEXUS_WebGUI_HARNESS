@@ -1227,3 +1227,4 @@ export function ChatView() {
     </div>
   );
 }
+

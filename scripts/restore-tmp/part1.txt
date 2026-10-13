@@ -1,0 +1,199 @@
+"use client";
+
+import * as React from "react";
+import { ArrowDown, Download, Eraser, MessagesSquare, PanelLeftOpen, Plus, RefreshCw, Search } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AgentAvatar, ModelBadge } from "@/components/praison/atoms";
+import { ChatSearch } from "@/components/praison/chat/chat-search";
+import { HeartbeatButton } from "@/components/praison/chat/chat-heartbeat";
+import { Composer } from "@/components/praison/chat/composer";
+import { ConversationList } from "@/components/praison/chat/conversation-list";
+import { MemoryDialog } from "@/components/praison/chat/memory-dialog";
+import { MessageItem } from "@/components/praison/chat/message-item";
+import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { resolveExplicitLlm, resolveLlm } from "@/lib/llm-config";
+import { buildRelayWire, recordRelayStatusLine, stripRelayMarkers } from "@/lib/relay";
+import {
+  DEFAULT_TTS_VOICE,
+  MAX_CONTEXT_MESSAGES,
+  MAX_SPEAK_CHARS,
+} from "@/lib/constants";
+import {
+  attachmentContextBlock,
+  conversationToMarkdown,
+  downloadText,
+  mdToSpeakable,
+  msgContextText,
+  slugify,
+  titleFrom,
+  uid,
+} from "@/lib/helpers";
+import { buildMemoryBlock, maybeAutoConsolidate } from "@/lib/memory";
+import {
+  useAgentsStore,
+  useConversationsStore,
+  useSettingsStore,
+  useUiStore,
+} from "@/lib/stores";
+import type { Agent, ChatMessage, MessageAttachment, QueuedMessage, RouteReceipt, Settings } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const NO_MESSAGES: ChatMessage[] = [];
+
+/**
+ * r26.2: merge the client-side tool ledger into an engine receipt and stamp
+ * the HONEST completion status (arXiv:2605.01710 — a receipt that claims
+ * "complete" for a stopped or errored turn is a trust violation).
+ */
+function finalizeReceipt(
+  receipt: RouteReceipt,
+  status: RouteReceipt["completion_status"],
+  toolCalls: { name: string }[]
+): RouteReceipt {
+  return {
+    ...receipt,
+    tools_used: Object.entries(
+      toolCalls.reduce<Record<string, number>>((acc, tc) => {
+        acc[tc.name] = (acc[tc.name] ?? 0) + 1;
+        return acc;
+      }, {})
+    ).map(([name, invocation_count]) => ({ name, invocation_count })),
+    completion_status: status,
+  };
+}
+
+export function ChatView() {
+  // ─── Stores ────────────────────────────────────────────────────────────────
+  const conversations = useConversationsStore((s) => s.conversations);
+  const activeId = useConversationsStore((s) => s.activeId);
+  const create = useConversationsStore((s) => s.create);
+  const deleteMessage = useConversationsStore((s) => s.deleteMessage);
+  const agents = useAgentsStore((s) => s.agents);
+  const chatListOpen = useUiStore((s) => s.chatListOpen);
+  const toggleChatList = useUiStore((s) => s.toggleChatList);
+  const uiActiveAgentId = useUiStore((s) => s.activeAgentId);
+  const setActiveAgentId = useUiStore((s) => s.setActiveAgentId);
+
+  const conversation = React.useMemo(
+    () => conversations.find((c) => c.id === activeId) ?? null,
+    [conversations, activeId]
+  );
+
+  // ─── Local state / refs ────────────────────────────────────────────────────
+  const [streaming, setStreaming] = React.useState(false);
+  /** Sync mirror of `streaming` — readable inside async callbacks without stale closures. */
+  const streamingRef = React.useRef(false);
+  const [statusLine, setStatusLine] = React.useState<string | null>(null);
+  // r316: the pre-dial cooling notice survives the engine's iteration-1 wipe
+  // (onIteration used to null the shared slot in the same React batch, so the
+  // notice never reached the DOM). Cleared at turn start/end; a relay hop
+  // trace supersedes it.
+  const coolingNoticeRef = React.useRef<string | null>(null);
+  const [showJump, setShowJump] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const [scrolledDown, setScrolledDown] = React.useState(false);
+  /** Per-chat agent override: which agent the NEXT message in this chat goes to. */
+  const [chatAgentId, setChatAgentId] = React.useState<string | null>(null);
+  /** Follow-up typed while the agent streams — auto-sent when the turn settles. */
+  const [queued, setQueued] = React.useState<QueuedMessage | null>(null);
+  const queuedRef = React.useRef<QueuedMessage | null>(null);
+  const flushQueueRef = React.useRef<(() => void) | null>(null);
+
+  const abortRef = React.useRef<AbortController | null>(null);
+  const draftRef = React.useRef("");
+  const reasoningRef = React.useRef("");
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const isNearBottomRef = React.useRef(true);
+
+  const agentMap = React.useMemo(() => {
+    const m = new Map<string, Agent>();
+    for (const a of agents) m.set(a.id, a);
+    return m;
+  }, [agents]);
+
+  // Reset the per-chat agent override when switching conversations
+  React.useEffect(() => {
+    setChatAgentId(null);
+    setSearchOpen(false);
+  }, [activeId]);
+
+  const convAgentId =
+    conversation?.agentId && agentMap.has(conversation.agentId) ? conversation.agentId : null;
+  const uiAgentId =
+    uiActiveAgentId && agentMap.has(uiActiveAgentId) ? uiActiveAgentId : null;
+  const effectiveAgentId = chatAgentId ?? convAgentId ?? uiAgentId ?? agents[0]?.id ?? null;
+  const agent = effectiveAgentId ? agentMap.get(effectiveAgentId) : undefined;
+
+  // Latest selected agent id, readable inside the async send callback
+  const agentIdRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    agentIdRef.current = effectiveAgentId;
+  }, [effectiveAgentId]);
+
+  // Abort any in-flight run when the view unmounts
+  React.useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const messages = conversation?.messages ?? NO_MESSAGES;
+
+  // r102 (v14): lane health over this chat's assistant replies — v12/v12b receipts feed this.
+  const laneCounts = React.useMemo(() => {
+    let relay = 0;
+    let direct = 0;
+    for (const m of messages) {
+      if (m.role !== "assistant") continue;
+      if (m.transport === "server") relay += 1;
+      else if (m.transport === "browser-direct") direct += 1;
+    }
+    return { relay, direct };
+  }, [messages]);
+
+  // Show "Regenerate" when the conversation ends on a finished assistant reply
+  const canRegenerate = React.useMemo(() => {
+    if (streaming || messages.length === 0) return false;
+    const last = messages[messages.length - 1];
+    return last.role === "assistant" && last.status !== "streaming";
+  }, [messages, streaming]);
+
+  // ─── Auto-scroll: pin to bottom while near it, else offer "Jump to latest" ──
+  React.useEffect(() => {
+    if (!isNearBottomRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const last = messages[messages.length - 1];
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: last?.status === "streaming" ? "auto" : "smooth",
+    });
+  }, [messages, statusLine]);
+
+  // Jump to bottom when switching conversations
+  React.useEffect(() => {
+    isNearBottomRef.current = true;
+    setShowJump(false);
+    const raf = requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
