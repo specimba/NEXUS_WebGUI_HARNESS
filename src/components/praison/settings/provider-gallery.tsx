@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { runAgentChat } from "@/lib/chat-client";
 import { resetProvider429 } from "@/lib/provider-rotation";
+import { PRESEED_PROVIDER_KEYS } from "@/lib/constants";
 import {
   FREELLM_SH_URL,
   FREE_PROVIDERS,
@@ -183,6 +184,35 @@ export function ProviderGallery() {
       description: "Stored only in this browser's localStorage — never sent anywhere but the provider.",
     });
     if (opts?.validateAfter) void validate(p);
+  }
+
+  // r483: remove a stored key from the local vault. For preseeded providers
+  // the pid is tombstoned in clearedPreseedProviderIds so the settings-store
+  // merge never resurrects the built-in demo key on the next load (the r18-era
+  // merge re-seeded on every rehydration, which made preseeded keys
+  // undeletable). Native confirm on purpose: the smallest honest trigger that
+  // cannot desync (the vault card's two-click arming pattern needs per-card
+  // state this slice did not add).
+  function removeKey(p: FreeProvider) {
+    if (!window.confirm(`Remove the stored ${p.name} key from this browser?`)) return;
+    const keys = { ...(useSettingsStore.getState().settings.providerKeys ?? {}) };
+    const preseeded = Object.prototype.hasOwnProperty.call(PRESEED_PROVIDER_KEYS, p.id);
+    delete keys[p.id];
+    update({
+      providerKeys: keys,
+      ...(preseeded
+        ? {
+            clearedPreseedProviderIds: [
+              ...new Set([...(settings.clearedPreseedProviderIds ?? []), p.id]),
+            ],
+          }
+        : {}),
+    });
+    toast.success(`${p.name} key removed`, {
+      description: preseeded
+        ? "The built-in demo key stays deleted — it will not be re-seeded."
+        : "Deleted from this browser's localStorage.",
+    });
   }
 
   async function validate(p: FreeProvider) {
@@ -714,6 +744,16 @@ export function ProviderGallery() {
                       <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
                     )}
                     Validate
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeKey(p)}
+                    disabled={busy === p.id}
+                    title={`Remove the stored ${p.name} key from this browser`}
+                  >
+                    Remove
                   </Button>
                 </>
               ) : null}

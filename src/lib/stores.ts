@@ -277,8 +277,14 @@ export const useSettingsStore = create<SettingsState>()(
         const settings = { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) };
         // Vault preseed (r18): fill in pre-seeded keys for providers the user
         // has no key for yet — never overwrite a key the user saved themselves.
+        // r483: honor explicit removals — a pid the user deleted via the vault
+        // UI is tombstoned in clearedPreseedProviderIds and is NEVER re-seeded
+        // (the r18 merge resurrected deleted preseed keys on every load, which
+        // made preseeded keys undeletable).
+        const clearedPreseed = new Set(settings.clearedPreseedProviderIds ?? []);
         const keys = { ...(settings.providerKeys ?? {}) };
         for (const [pid, pre] of Object.entries(PRESEED_PROVIDER_KEYS)) {
+          if (clearedPreseed.has(pid)) continue;
           const cur = keys[pid];
           if (!cur?.key?.trim()) {
             keys[pid] = { ...pre, ...cur, key: cur?.key?.trim() || pre.key };

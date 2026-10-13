@@ -213,6 +213,7 @@ export const DEFAULT_SETTINGS: Settings = {
   speechRate: 1,
   uiTheme: DEFAULT_UI_THEME,
   providerKeys: { ...PRESEED_PROVIDER_KEYS },
+  clearedPreseedProviderIds: [],
   activeProviderId: "vyce",
   relayEnabled: true,
   preferRelay: false,

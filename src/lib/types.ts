@@ -472,6 +472,8 @@ export interface Settings {
   uiTheme?: UiThemeId;
   /** Per-provider key vault (id → entry). Local-only, never leaves the browser. */
   providerKeys?: Record<string, ProviderKeyEntry>;
+  /** r483: provider ids whose PRESEED key the user explicitly removed — the settings-store merge must never re-seed them. */
+  clearedPreseedProviderIds?: string[];
   /** Which LLM source is active when provider = "custom": a registry id or "custom" (legacy endpoint). */
   activeProviderId?: string;
   /** Model Relay — automatic fallback rotation when the active model fails. Default true. */

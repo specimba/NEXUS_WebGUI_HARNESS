@@ -11457,3 +11457,23 @@ Scope committed: chat-view.tsx restored (md5 23619853), 3 restore scripts, this 
 Open risks: past commits still hold the corrupted blob (history rewrite NOT attempted — out of scope, recoverable knowledge only); the transport "[m"-eating may still mangle future transcripts (interpret single-reader output with care); fork-push credential streak (environmental); amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451; vault preseed re-seeds keys (stores.ts:278).
 Blockers: none
 Next recommended action: r483 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) The integrity saga is CLOSED: run a clean CODE round on a fresh surface (UI polish / vault epic slice; survey HARD-CAP 3) and re-witness the chat send flow via agent-browser (profile EPHEMERAL, build fixture in-round). (4) If any future od/rg check ever shows the corruption signature again: the restore scripts are one command away — run scripts/assemble-final-r482.sh (part1/part2 ground truth already on disk). (5) Standing: tsc TRUE-exit with FULL-LOG rg analysis (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, ONE route + hash-nav, localStorage source of truth, NEVER nohup-boot, land on budget — early exit IS success.
+
+---
+Task ID: r483
+Agent: main (platform dev agent)
+Task: cron round — VAULT EPIC SLICE shipped: preseeded keys are now deletable. The r18-era settings-store merge re-seeded built-in demo keys on every rehydration, so a user who removed one got it resurrected on the next load (the "vault preseed re-seeds keys (stores.ts:278)" standing risk, open for many rounds). CLOSED with a tombstone + the missing removal affordance.
+
+Work Log:
+- No user reply. HEALTH=200 at open (daemon survived the round boundary — no restart needed). Fresh surface per rotation: settings/vault, away from chat.
+- Survey (cap 3): no TODO markers on vault/workflows/tracker; preseed merge read at stores.ts:278; client-side key deletion flow searched across the settings components — provider-gallery.tsx is the only client-side key editor and it had Save/Validate but NO Remove. The re-seed made preseeded keys undeletable end-to-end.
+- SHIPPED (4 files): (1) types.ts — Settings.clearedPreseedProviderIds?: string[] (tombstone); (2) constants.ts — DEFAULT_SETTINGS.clearedPreseedProviderIds: []; (3) stores.ts merge — pids in the tombstone set are skipped by the preseed loop (with era comment); (4) provider-gallery.tsx — removeKey() (deletes the entry via getState-fresh map, tombstones preseeded pids, honest toasts) + a ghost "Remove" button next to Validate, with window.confirm as the deliberate minimal trigger (no per-card arming state added this slice).
+- VERIFIED: TSC_EXIT=0 / 0 errors (tsbuildinfo cleared — honest gate); LINT_EXIT=0 / 0 errors + 33 warnings (EXACT baseline, no new warnings); HEALTH=200. Browser reload-witness (remove a preseeded key -> reload -> key stays deleted) is the standing QA item below.
+- BUDGET: 13/12 — one over (survey + the 4-file batch + gates; booked honestly, no babysitting rounds were spent).
+
+Round Handoff:
+Round ID: r484
+Task owner: main (platform dev agent)
+Scope committed: types.ts, constants.ts, stores.ts, provider-gallery.tsx (vault slice) + this worklog.
+Open risks: r483 browser witness NOT yet run (settings -> Remove a preseeded key -> confirm dialog -> reload page -> key must STAY deleted and the tombstone must survive in localStorage['praison-settings']); window.confirm inside agent-browser may need dialog auto-accept — if the browser harness cannot confirm, witness the tombstone via a direct localStorage eval instead (seed clearedPreseedProviderIds, reload, assert the pid is NOT re-seeded); fork-push credential streak (environmental); amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451; chat send-flow re-witness still queued from r482's handoff.
+Blockers: none
+Next recommended action: r484 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) Run the r483 reload-witness (recipe above), then a CODE round if budget allows. (4) Standing: tsc TRUE-exit with FULL-LOG rg (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, survey HARD-CAP 3, ONE route + hash-nav, localStorage source of truth, NEVER nohup-boot (scripts/dev-restart.sh only), agent-browser profiles EPHEMERAL per relaunch, avoid full network-requests dumps, land on budget — early exit IS success.
