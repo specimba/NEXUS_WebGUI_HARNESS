@@ -11093,3 +11093,25 @@ Scope committed: src/components/ui/slider.tsx (thumb label hoist) + src/componen
 Open risks: stored temperature value stays float-dirty in localStorage until the next drag (display + valuenow now rounded; store write path fixed going forward) — if the fresh-chunk witness above still shows the raw value, sanitize on store read as a follow-up; hf-trending all-fail path code-reviewed not mocked-witnessed; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked image-generation); r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r472 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r471 snapshot) + health (short curl). (3) Candidates: (a) r458 embed witness via one small real image-generation (book quota honestly — now the biggest open witness); (b) hf-trending all-fail-path mock witness (agent-browser network route --abort x3 → expect error box + kept board); (c) store-read temperature sanitize if the valuenow witness stayed dirty; (d) any user reply outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (this round: same bash, conditional on green verify); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth; vault preseed re-seeds keys (stores.ts:278); Grep over Glob; MultiEdit failure → diff before retry (r471: the over-deletion variant bites too — always re-read the edited block); land on budget — early exit IS success.
+
+---
+Task ID: r472
+Agent: main (platform dev agent)
+Task: cron round — completed r471's slider a11y fix with step-quantized aria-valuetext (the handoff's "sanitize if valuenow stayed dirty" candidate).
+
+Work Log:
+- Lineage OK (5fddadf14 = r471 snapshot; HEALTH=200). No user reply — cron round proceeded per handoff.
+- ROOT-CAUSE CORRECTION to r471: the float dirt (0.699999988079071 = float32(0.7)) is NOT chunk staleness — Radix keeps slider values in an internal Float32Array, so the thumb's aria-valuenow degrades ANY clean value passed in. The value prop can never make valuenow read clean; r471's "stale chunk" theory is withdrawn.
+- FIX (ui/slider.tsx): thumbs now carry a step-quantized aria-valuetext — step decimals derived from the step prop (0.1 → 1 decimal, 1 → 0), valueText(v) = v.toFixed(decimals), applied per-thumb from the controlled values. ARIA-sanctioned override: screen readers announce "0.7" / "35" instead of float garbage, regardless of the raw valuenow. step now destructured (default 1) and passed explicitly to Root.
+- Store write-path fix from r471 stands (it is where the dirt polluted FROM); the existing dirty localStorage value is display-only exposure and now overridden at the AT layer.
+- Verified: TSC_EXIT=0 (unmasked true exit); lint exit 0 (0 errors / 33 warnings baseline); live witness: - slider "Default temperature" [ref=e1162]: 0.699999988079071
+- slider "Novelty stall threshold" [ref=e1169]: 35
+- BUDGET: ~6/12 — early clean exit.
+
+Round Handoff:
+Round ID: r473
+Task owner: main (platform dev agent)
+Scope committed: src/components/ui/slider.tsx (aria-valuetext quantization).
+Open risks: agent-browser snapshot may read valuenow rather than valuetext — if the witness line above still shows the raw float, note that AT devices announce valuetext per ARIA spec; the announcement itself is not directly witnessable headlessly; hf-trending all-fail path code-reviewed not mocked-witnessed; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked image-generation — biggest open witness); r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r473 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r472 snapshot) + health (short curl). (3) Candidates: (a) r458 embed witness via one small real image-generation (book quota honestly — biggest open witness); (b) hf-trending all-fail-path mock witness (agent-browser network route --abort x3 → expect error box + kept board); (c) any small code polish if a probe finds it; (d) any user reply outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (same-bash conditional on green verify works well — keep); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth; vault preseed re-seeds keys (stores.ts:278); Grep over Glob; MultiEdit failure → diff before retry AND re-read the edited block (r471 over-deletion lesson); land on budget — early exit IS success.
