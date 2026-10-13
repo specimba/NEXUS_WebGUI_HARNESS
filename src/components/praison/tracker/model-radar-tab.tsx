@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
-import { useSettingsStore } from "@/lib/stores";
+import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import {
   fmtAge,
   fmtCtx,
@@ -55,6 +55,30 @@ export function ModelRadarTab() {
   const [query, setQuery] = React.useState("");
 
   const vyceKey = useSettingsStore((s) => s.settings.providerKeys?.vyce?.key ?? "");
+
+  // r467: the pin affordance. The ticker panel has had one-click "pin in this
+  // chat" since r28, but this full-screen companion — the view that promises
+  // "every watched lane" — could only COPY a lane: a user who searched a lane
+  // here had to re-open the cramped ticker popover and search again to pin it.
+  // Same store contract as the ticker's pinModel (active-conversation model
+  // override + redirect to chat), with an honest toast naming the origin.
+  const activeId = useConversationsStore((s) => s.activeId);
+  const setModelOverride = useConversationsStore((s) => s.setModelOverride);
+  const setView = useUiStore((s) => s.setView);
+
+  function pinModel(m: TrackedModelRow) {
+    if (!activeId) {
+      toast("Open a chat first, then pin the model", { icon: "💬" });
+      setView("chat");
+      return;
+    }
+    setModelOverride(activeId, m.id);
+    setView("chat");
+    toast(`This chat now runs on ${m.modelId}`, {
+      description: `${providerMeta(m.providerId).label} — pinned from the model radar.`,
+      icon: "📌",
+    });
+  }
 
   const load = React.useCallback(async () => {
     try {
@@ -318,6 +342,7 @@ export function ModelRadarTab() {
                       variant="ghost"
                       size="sm"
                       className="h-7 shrink-0 text-[11px]"
+                      aria-label={`Copy model id ${m.modelId}`}
                       onClick={async () => {
                         const ok = await copyText(m.modelId);
                         if (ok) toast(`Copied ${m.modelId}`, { icon: "📋" });
@@ -325,6 +350,15 @@ export function ModelRadarTab() {
                       }}
                     >
                       Copy id
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 gap-1 text-[11px]"
+                      aria-label={`Pin ${m.modelId} in this chat`}
+                      onClick={() => pinModel(m)}
+                    >
+                      Pin
                     </Button>
                   </li>
                 ))}

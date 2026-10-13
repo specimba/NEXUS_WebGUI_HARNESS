@@ -10967,3 +10967,29 @@ Scope committed: src/components/praison/tracker/model-ticker.tsx (Pin accessible
 Open risks: pin-toast + persisted override value unverified (recipe above); amber playground footer branches still un-witnessed (preseed-blocked); r460 proposals-restore un-witnessed; r458 image-studio embed attemptable (one small booked generation); r457 prior-digest needs a real workflow run (minutes — deliberate round); standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r467 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r466 snapshot) + health (short curl). (3) Candidates: (a) continue rotation — settings-view remaining sections (unprobed this window) or the full radar view internals (model radar tab — the paper tab was r462's); (b) r458 embed witness via one small real image-generation (book quota honestly); (c) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth for workflows/conversations; resolver reads settings.activeProviderId; vault preseed re-seeds keys on rehydrate (stores.ts:278) — QA profile is NEVER keyless; MultiEdit failure → diff before retry; land on budget — early exit IS success.
+
+---
+Task ID: r467
+Agent: main (platform dev agent)
+Task: r466 handoff candidate (a) — surface rotation to the radar view internals (model radar tab, unprobed this window; the paper tab was r462's): survey, ship the real gap, live-witness.
+
+Work Log:
+- No user reply (cron round). Lineage OK (fe373de39 = r466 snapshot); HEALTH=200; worklog +25 lines = the r466 section exactly (tail verified by arithmetic).
+- Round-open friction, booked: two Glob calls (dir-glob src/components/praison/radar/** and basename *radar*) returned EMPTY despite existing files — this Glob impl only matched the src/**/*model-ticker* shape earlier. Fell back to Grep -l "radar" (reliable, found all 23 files). Lesson: trust Grep for file discovery; Glob patterns are flaky here beyond simple basename wildcards.
+- SURVEY (1 round): model-radar-tab.tsx + radar-view.tsx + radar-shared.tsx read together. Verdict: mature — r411 first-load-failure honesty, r435 search-before-cap, r219 parked-tab staleness, r283/290 signals honest truncation, aria-pressed chips, guarded cache helpers. Two real gaps:
+  (1) FEATURE (shipped): the ticker panel has had one-click "pin in this chat" since r28, but the full-screen companion — the view promising "every watched lane" — could only COPY a lane id; finding a lane here meant re-opening the cramped ticker popover and searching AGAIN to pin it. Shipped pinModel into the radar rows: same store contract as the ticker (activeId guard with honest toast + chat redirect, setModelOverride(activeId, m.id), origin-honest toast "pinned from the model radar").
+  (2) A11y (shipped): the row's "Copy id" button had no accessible name (×120 identical "Copy id" for screen readers) while the ticker's own Copy names the id — the companion was LESS accessible than the popover. Fixed with the ticker convention: "Copy model id <id>"; Pin gets "Pin <id> in this chat" (r466 convention).
+- GATES: unmasked tsc exit 0; lint 0 errors / 33 warnings — baseline exact.
+- WITNESS (live, 2 rounds): Radar → Models tab: every lane row exposes both named buttons in the a11y tree (6+ rows spot-checked); clicked Pin on meta/muse-wonder → popover-free redirect to Chat witnessed — the store contract works from the second surface. Caps: toast + persisted override value not captured (same recipe as r466: pin, then read the "Model for this chat" combobox).
+- BUDGET: ~8/12 — clean round; 2 rounds lost to Glob flakiness (booked above), not to the product.
+
+Stage Summary:
+- The model radar now completes the ticker's flagship affordance: search a lane anywhere in the full 160-lane picture and pin it to the chat in one click, with every row action properly named for screen readers. The radar surface joins the probed set (view shell + shared layer + models tab; HF/GitHub tabs remain unprobed this window).
+
+Round Handoff:
+Round ID: r468
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/tracker/model-radar-tab.tsx (pinModel rows + named Copy/Pin buttons).
+Open risks: pin-pinModel logic is now DUPLICATED between model-ticker.tsx and model-radar-tab.tsx (deliberate: rotation discipline — a shared usePinModel hook extraction is a candidate refactor, not urgent); pin toast/override value unverified (recipe above); amber playground footer branches un-witnessed (preseed-blocked); r460 proposals-restore un-witnessed; r458 embed attemptable (one small booked generation); r457 prior-digest needs a real workflow run (minutes); HF-trending-tab + github-stars-tab unprobed this window; standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r468 — (1) FIRST re-read any user reply. (2) Verify lineage (expect the r467 snapshot) + health (short curl). (3) Candidates: (a) rotate to HF-trending-tab or github-stars-tab (the last unprobed radar siblings); (b) r458 embed witness via one small real image-generation (book quota honestly); (c) usePinModel hook extraction (small DRY refactor across the two pin call sites); (d) if a user reply arrives it outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (own call); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage is source of truth for workflows/conversations; resolver reads settings.activeProviderId; vault preseed re-seeds keys on rehydrate (stores.ts:278) — QA profile is NEVER keyless; Grep over Glob for file discovery; MultiEdit failure → diff before retry; land on budget — early exit IS success.
