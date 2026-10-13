@@ -681,8 +681,13 @@ export function SettingsView() {
                   min={0}
                   max={1.5}
                   step={0.1}
-                  value={[temperature]}
-                  onValueChange={(vals) => update({ temperature: vals[0] ?? 0.7 })}
+                  // r471: the a11y tree exposed the raw stored value as
+                  // 0.699999988079071 (float32(0.7)) — round at read AND write
+                  // so the thumb's aria-valuenow stays clean at step precision.
+                  value={[Math.round(temperature * 10) / 10]}
+                  onValueChange={(vals) =>
+                    update({ temperature: Math.round((vals[0] ?? 0.7) * 10) / 10 })
+                  }
                 />
                 <p className="text-xs text-muted-foreground">
                   Used as fallback when an agent doesn&apos;t specify its own.

@@ -13,6 +13,11 @@ function Slider({
   max = 100,
   ...props
 }: React.ComponentProps<typeof SliderPrimitive.Root>) {
+  // r471: role="slider" lives on the THUMB, not the Root — an aria-label passed
+  // here used to land on Root and vanish from the a11y tree (every
+  // <Slider aria-label> in the app rendered an unnamed "slider"). Hoist it
+  // onto the thumbs; all current usages are single-thumb.
+  const { "aria-label": ariaLabel, "aria-labelledby": ariaLabelledBy, ...rootProps } = props
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -34,7 +39,7 @@ function Slider({
         "relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col",
         className
       )}
-      {...props}
+      {...rootProps}
     >
       <SliderPrimitive.Track
         data-slot="slider-track"
@@ -53,6 +58,8 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
           className="border-primary bg-background ring-ring/50 block size-4 shrink-0 rounded-full border shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
