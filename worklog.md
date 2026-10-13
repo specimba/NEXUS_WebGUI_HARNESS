@@ -11136,3 +11136,25 @@ Scope committed: src/components/praison/chat/image-studio.tsx (blob-plumbing uni
 Open risks: r473 unification not browser-smoke-tested yet (one Download or Add-to-chat click on any result closes it); r458 embed witness still open (recipe: real generation → Add to chat → one fetch + real bytes + durable embed; QA profile is NEVER keyless — vault preseed, stores.ts:278); server liveness fragile this window (died post-restart — next round: short curl, ONE restart if down, then non-server work); hf-trending all-fail path unmocked; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451.
 Blockers: none
 Next recommended action: r474 — (1) FIRST re-read any user reply. (2) Health short curl; if DOWN: ONE restart; if the restart dies again, go straight to non-server work (do not loop). (3) Candidates: (a) if server lives: r458 embed witness (real generation, book quota) — which ALSO smoke-tests the r473 unification on the Add-to-chat path; (b) else: cheap no-server polish from the cosmetic notes (archive API source "local"→"manual" normalization); (c) any user reply outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (same-bash conditional works); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage source of truth; vault preseed re-seeds keys (stores.ts:278); Grep over Glob; MultiEdit failure → diff before retry AND re-read the edited block; land on budget — early exit IS success.
+
+---
+Task ID: r474
+Agent: main (platform dev agent)
+Task: cron round — attempted the r458 embed witness + r473 smoke-test (server-dependent); the restarted server died seconds after a clean 200 (same fast-death pattern as r473) — babysitting cap honored, pivoted to non-server work per the r473 handoff.
+
+Work Log:
+- Lineage OK (0c2565510 = r473 snapshot). No user reply. HEALTH=000DOWN at open.
+- BOOT: one restart → poll2=200 (~21s warm boot). Browser open → ERR_CONNECTION_REFUSED seconds later. Two rounds straight now (r473, r474) of curl-200-then-die within ~60-90s — a new sandbox instability pattern (r472 enjoyed a stable multi-round server). Booked for observation, NOT more restarts.
+- r458 embed witness + r473 smoke-test NOT executed — stay open, recipes unchanged.
+- NOTE RETIRED (stale cosmetic): "archive API normalizes source local→manual" — grep shows NO writer sends "local" anymore (union is "manual" | "scheduled"; the route.ts:123 normalizer is sound defensive code). Dropped from the risk list; no code change needed there.
+- SHIPPED instead (agent-form-dialog.tsx): completed the r471/r472 slider hygiene story — (1) drag write-path now rounds to step precision (Math.round(v*10)/10) so Radix Float32Array dirt can never reach a saved agent config; (2) edit-mode load rounds too — agents saved before r471 get sanitized on open instead of re-saving the dirt. Settings-view got this in r471; the agent form was the remaining ingester.
+- Verified: TSC_EXIT=0 (unmasked true exit); lint exit 0 (0 errors / 33 warnings baseline). NOT browser-witnessed (server down) — two one-line mechanical changes with reviewed types.
+- BUDGET: ~9/12 — early clean exit.
+
+Round Handoff:
+Round ID: r475
+Task owner: main (platform dev agent)
+Scope committed: src/components/praison/agents/agent-form-dialog.tsx (temperature float hygiene, write + load paths).
+Open risks: server fast-death pattern r473+r474 (curl-200-then-refused within ~90s) — if seen again, spend a NO-SERVER round reading dev.log for the kill cause (OOM? reaper? port conflict?) instead of babysitting; r458 embed witness + r473 image-studio smoke-test (need a stable server window); hf-trending all-fail unmocked; amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451.
+Blockers: none
+Next recommended action: r475 — (1) FIRST re-read any user reply. (2) Health short curl; if DOWN, ONE restart; if it fast-dies again, do NOT retry — go no-server and read dev.log tail for the kill signature (one forensic look, then move on). (3) Candidates: (a) stable server → r458 embed witness (books one small generation; doubles as r473+r474 smoke-test); (b) dev.log forensics round if fast-death recurs; (c) any user reply outranks all. (4) Standing: unmasked tsc TRUE exit; lint 0/33 pipefail; worklog BEFORE snapshot (same-bash conditional works); survey HARD-CAP 3; ONE route (/) + hash-nav; localStorage source of truth; vault preseed re-seeds keys (stores.ts:278); Grep over Glob; MultiEdit failure → diff before retry AND re-read the edited block; land on budget — early exit IS success.

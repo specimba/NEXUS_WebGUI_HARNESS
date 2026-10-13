@@ -174,7 +174,10 @@ export function AgentFormDialog({
     setDescription(next.description);
     setInstructions(next.instructions);
     setModel(next.model);
-    setTemperature(next.temperature);
+    // r474: round to step precision on load too — agents saved before the
+    // r471/r472 slider hygiene may carry Radix Float32Array dirt
+    // (0.699999988079071); the form must not re-save it.
+    setTemperature(Math.round(next.temperature * 10) / 10);
     setMaxIterations(next.maxIterations);
     setTools(next.tools);
     setNameError(false);
@@ -368,7 +371,7 @@ export function AgentFormDialog({
                 min={0}
                 max={1.5}
                 step={0.1}
-                onValueChange={([v]) => setTemperature(v)}
+                onValueChange={([v]) => setTemperature(Math.round(v * 10) / 10)}
                 aria-label="Temperature"
               />
               <p className="text-xs text-muted-foreground">
