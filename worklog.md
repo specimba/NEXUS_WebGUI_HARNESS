@@ -11477,3 +11477,24 @@ Scope committed: types.ts, constants.ts, stores.ts, provider-gallery.tsx (vault 
 Open risks: r483 browser witness NOT yet run (settings -> Remove a preseeded key -> confirm dialog -> reload page -> key must STAY deleted and the tombstone must survive in localStorage['praison-settings']); window.confirm inside agent-browser may need dialog auto-accept — if the browser harness cannot confirm, witness the tombstone via a direct localStorage eval instead (seed clearedPreseedProviderIds, reload, assert the pid is NOT re-seeded); fork-push credential streak (environmental); amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451; chat send-flow re-witness still queued from r482's handoff.
 Blockers: none
 Next recommended action: r484 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) Run the r483 reload-witness (recipe above), then a CODE round if budget allows. (4) Standing: tsc TRUE-exit with FULL-LOG rg (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, survey HARD-CAP 3, ONE route + hash-nav, localStorage source of truth, NEVER nohup-boot (scripts/dev-restart.sh only), agent-browser profiles EPHEMERAL per relaunch, avoid full network-requests dumps, land on budget — early exit IS success.
+
+---
+Task ID: r484
+Agent: main (platform dev agent)
+Task: cron round — r483 vault-slice RELOAD-WITNESS landed live via agent-browser: the preseed-key resurrection bug is DEAD. The Remove affordance, the native confirm, the tombstone write, and the merge-skip across a full page reload all verified against the real app on a fresh ephemeral profile. No new code needed — the r483 fix works exactly as designed.
+
+Work Log:
+- No user reply. HEALTH=200 at open (no restart needed, third consecutive round-boundary survival for the daemon).
+- Witness sequence (fresh ephemeral profile): open /#/settings (initially redirected to #/chat — settings is reached via the hub card "Settings — Provider, profile & data" button, ref e18); provider cards are collapsed accordions (expanded AIHubMix @e54); the Remove button renders next to Save key / Validate exactly as coded (@e205).
+- Clicked Remove -> native confirm appeared VERBATIM: "Remove the stored AIHubMix key from this browser?" -> dialog accept -> localStorage eval: aihubmix key emptied, clearedPreseedProviderIds=["aihubmix"] persisted.
+- RELOADED the page (the decisive step) -> post-rehydrate eval: aihubmixKeyLen=0 (pre-fix the merge would resurrect the 51-char demo key here), tombstone survived, AND pollinationsLen=35 / vyceLen=51 — untouched preseeds still re-seed normally, so the tombstone is surgical, not a blanket suppression.
+- agent-browser notes for future rounds: eval bindings persist across calls (declare inside an IIFE); confirm/prompt pause the page until dialog accept/dismiss (auto-accept covers only alert/beforeunload); #/settings does not deep-link from a fresh profile — navigate via the hub card.
+- BUDGET: 13/12 — one over, booked honestly (12 witness rounds + this bookkeeping round).
+
+Round Handoff:
+Round ID: r485
+Task owner: main (platform dev agent)
+Scope committed: worklog only (the witnessed fix was committed in r483; this round's deliverable is the live verification).
+Open risks: fork-push credential streak (environmental, local chain is truth); amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r457 prior-digest needs a real workflow run; standing witnesses r454/r453/r452/r451; chat send-flow re-witness still queued from r482's handoff (the r483 storage fix makes this lower-risk but it remains unwitnessed this era).
+Blockers: none
+Next recommended action: r485 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) A CODE round on a fresh surface (UI polish / error handling / new user-facing feature; survey HARD-CAP 3) — the vault slice and its witness are both closed, so the queue is clear. Optionally ride-along: the chat send-flow witness via agent-browser (IIFE-wrapped evals, in-round fixture per the ephemeral-profile doctrine). (4) Standing: tsc TRUE-exit with FULL-LOG rg (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, ONE route + hash-nav, localStorage source of truth, NEVER nohup-boot (scripts/dev-restart.sh only), land on budget — early exit IS success.
