@@ -58,8 +58,12 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 // r456: durable archive read surface — full steps from SQLite via /api/runs/archive
 import { ArchivedReports } from "@/components/praison/workflows/archived-reports";
+// r486-a (Run Archive epic): successor wire — the Run flow can prepend a
+// bounded digest of this workflow's last archived runs as continuity context.
+import { digestRecent } from "@/lib/run-archive";
 import {
   downloadText,
   fmtIn,
@@ -815,6 +819,8 @@ export function WorkflowRunPanel({
   const agents = useAgentsStore((s) => s.agents);
 
   const [task, setTask] = React.useState("");
+  // r486-a: attach the prior-runs continuity digest to the next run (default OFF).
+  const [attachDigest, setAttachDigest] = React.useState(false);
   const [running, setRunning] = React.useState(false);
   const [viewingRunId, setViewingRunId] = React.useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = React.useState(false);
@@ -940,9 +946,18 @@ export function WorkflowRunPanel({
     const trimmed = task.trim();
     if (!trimmed) return;
 
+    // r486-a successor wire: when the digest checkbox is checked, prepend a
+    // compact continuity digest of this workflow's last archived runs to the
+    // FIRST step's task (for a fresh run the first step's prompt IS the task —
+    // `prev` is empty, see buildSequentialContext) under the labeled
+    // PRIOR RUN DIGEST heading. Bounded ≤4000 chars by digestRecent; empty
+    // when nothing is archived yet, in which case the task runs unchanged.
+    const digest =
+      attachDigest ? digestRecent(liveWorkflow?.id ?? wf.id, 3) : "";
+
     await safeRun({
       workflow: { id: wf.id },
-      task: trimmed,
+      task: digest ? `${digest}\n\n---\n\n${trimmed}` : trimmed,
       source: "manual",
       onStarted: (runId, controller) => {
         setViewingRunId(runId);
@@ -1348,6 +1363,22 @@ export function WorkflowRunPanel({
             aria-label="Pipeline task"
             className="resize-none"
           />
+          {/* r486-a successor wire (RSI continuity): when checked, the run's
+              first step receives a labeled digest of this pipeline's last
+              archived runs — successors build on prior outputs instead of
+              redoing them. Default OFF; the user opts in per run. */}
+          <label
+            className="mt-2 flex w-fit cursor-pointer items-center gap-2 text-[11px] text-muted-foreground"
+            title="Prepends a short digest of this pipeline's last archived runs to the first step as continuity context — successors build on prior outputs instead of redoing them."
+          >
+            <Checkbox
+              checked={attachDigest}
+              onCheckedChange={(v) => setAttachDigest(v === true)}
+              disabled={!hasSteps || running}
+              aria-label="Attach digest of last archived runs"
+            />
+            Attach digest of last archived runs
+          </label>
           <div className="mt-3 flex items-center justify-between gap-2">
             <p className="truncate text-[11px] text-muted-foreground">
               {hasSteps

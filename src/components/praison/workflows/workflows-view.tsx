@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ServerAutopilot } from "@/components/praison/workflows/server-autopilot";
 import { GatewayPulse } from "@/components/praison/workflows/gateway-pulse-chip";
 import {
+  Archive,
   ChevronRight,
   Clock,
   Columns3,
@@ -77,6 +78,7 @@ import { AgentAvatar, DepthChip, EmptyState, PageHeader } from "@/components/pra
 import { WorkflowEditorDialog } from "./workflow-editor-dialog";
 import { WorkflowRunPanel } from "./workflow-run-panel";
 import { RunKanban } from "./run-kanban";
+import { RunArchivePanel } from "./run-archive-panel";
 
 // ─── Workflow import/export helpers ─────────────────────────────────
 
@@ -908,6 +910,8 @@ export function WorkflowsView() {
   // Grid ↔ board layout toggle (persisted in the ui store)
   const boardOpen = useUiStore((s) => s.workflowBoardOpen);
   const setBoardOpen = useUiStore((s) => s.setWorkflowBoardOpen);
+  // r486-a: the third tab — Run Archive (localStorage tier, browsable/exportable).
+  const [archiveOpen, setArchiveOpen] = React.useState(false);
 
   const agentById = React.useMemo(
     () => new Map(agents.map((a) => [a.id, a])),
@@ -1331,13 +1335,16 @@ export function WorkflowsView() {
           <button
             type="button"
             role="radio"
-            aria-checked={!boardOpen}
+            aria-checked={!boardOpen && !archiveOpen}
             aria-label="Card grid layout"
             title="Card grid"
-            onClick={() => setBoardOpen(false)}
+            onClick={() => {
+              setBoardOpen(false);
+              setArchiveOpen(false);
+            }}
             className={cn(
               "flex h-8 items-center gap-1.5 px-2.5 text-xs font-medium transition-colors",
-              !boardOpen
+              !boardOpen && !archiveOpen
                 ? "bg-violet-500/15 text-violet-500 dark:text-violet-400"
                 : "text-muted-foreground hover:bg-muted"
             )}
@@ -1348,19 +1355,41 @@ export function WorkflowsView() {
           <button
             type="button"
             role="radio"
-            aria-checked={boardOpen}
+            aria-checked={boardOpen && !archiveOpen}
             aria-label="Runs board layout"
             title="Runs board"
-            onClick={() => setBoardOpen(true)}
+            onClick={() => {
+              setBoardOpen(true);
+              setArchiveOpen(false);
+            }}
             className={cn(
               "flex h-8 items-center gap-1.5 border-l px-2.5 text-xs font-medium transition-colors",
-              boardOpen
+              boardOpen && !archiveOpen
                 ? "bg-violet-500/15 text-violet-500 dark:text-violet-400"
                 : "text-muted-foreground hover:bg-muted"
             )}
           >
             <Columns3 className="h-3.5 w-3.5" aria-hidden />
             <span className="hidden sm:inline">Runs board</span>
+          </button>
+          {/* r486-a: Run Archive — every settled run's full step log lands here
+              automatically; browse, search, batch-export, prune. */}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={archiveOpen}
+            aria-label="Run archive"
+            title="Run archive — browse and batch-download every run's conversation log"
+            onClick={() => setArchiveOpen(true)}
+            className={cn(
+              "flex h-8 items-center gap-1.5 border-l px-2.5 text-xs font-medium transition-colors",
+              archiveOpen
+                ? "bg-violet-500/15 text-violet-500 dark:text-violet-400"
+                : "text-muted-foreground hover:bg-muted"
+            )}
+          >
+            <Archive className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">Archive</span>
           </button>
         </div>
         <Button
@@ -1435,7 +1464,7 @@ export function WorkflowsView() {
         <EvolutionInbox />
         <EvolutionLedger workflows={workflows} />
 
-        {!boardOpen && workflows.length > 0 && (
+        {!boardOpen && !archiveOpen && workflows.length > 0 && (
           <div className="mb-4 flex items-center gap-2">
             <div className="relative w-full max-w-xs">
               <Search
@@ -1485,7 +1514,9 @@ export function WorkflowsView() {
           </div>
         )}
 
-        {boardOpen ? (
+        {archiveOpen ? (
+          <RunArchivePanel />
+        ) : boardOpen ? (
           <RunKanban onSelect={openRunFromBoard} />
         ) : workflows.length === 0 ? (
           <EmptyState

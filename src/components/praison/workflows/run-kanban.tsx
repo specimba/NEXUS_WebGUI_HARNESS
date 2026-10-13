@@ -22,6 +22,9 @@ import {
 import { fmtIn, fmtIntervalShort, fmtMs, fmtRel } from "@/lib/helpers";
 import type { Workflow, WorkflowRun } from "@/lib/types";
 import { cn } from "@/lib/utils";
+// r486-a (Run Archive epic): the board's own poll lands server-lane rows in
+// client state — they archive here too (shared dedupe lives in run-archive).
+import { archiveServerLaneRun } from "@/lib/run-archive";
 
 /** v24: one server-lane AutomationRun row (from /api/automation/sync GET). */
 interface ServerRunRow {
@@ -123,7 +126,12 @@ function useServerRuns(enabled: boolean): ServerRunRow[] {
         const res = await fetch("/api/automation/sync");
         if (!res.ok) return;
         const json = (await res.json()) as { runs?: ServerRunRow[] };
-        if (!stopped && Array.isArray(json.runs)) setServerRuns(json.runs);
+        if (!stopped && Array.isArray(json.runs)) {
+          setServerRuns(json.runs);
+          // r486-a: land each settled server run into the local archive
+          // (dedupe by id inside; "running" rows skipped until they settle).
+          for (const row of json.runs) archiveServerLaneRun(row);
+        }
       } catch {
         /* server briefly unreachable — next poll retries */
       }

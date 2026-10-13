@@ -11,6 +11,7 @@ import {
 } from "@/lib/gateway-cadence";
 import { buildAngleHistory, latestScoredNovelty, maybeProposeSpawn, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
+import { archiveRun, engineStatusToArchiveStatus } from "@/lib/run-archive";
 import { maxParks, parkDelayMs, resolvePark, type ParkKind } from "@/lib/park-policy";
 // r306 reconciliation: the runner wires BOTH rotation halves — lane-rotation
 // owns family-window demotion (wire ORDER + same-family retry pacing),
@@ -1005,6 +1006,44 @@ export async function executeWorkflowRun(
       }
     } catch {
       /* archive is best-effort */
+    }
+    // r486-a (Run Archive epic): every settled run ALSO lands in the local
+    // localStorage archive ("praisonai.run-archive.v1", src/lib/run-archive.ts)
+    // — the DB tier above needs the server, this tier is offline-first and is
+    // what the Workflows → Archive tab browses and batch-exports. Upsert by
+    // run id, so a resumed run re-archives over its earlier snapshot.
+    // Best-effort try/catch — archiving must never break or alter a run.
+    try {
+      const stLocal = useWorkflowsStore.getState();
+      const runLocal = stLocal.workflows
+        .find((w) => w.id === wf.id)
+        ?.runs.find((r) => r.id === runId);
+      if (runLocal && runLocal.status !== "running") {
+        const model =
+          runLocal.callLog?.find((c) => typeof c.model === "string" && c.model.length > 0)?.model;
+        archiveRun({
+          id: runLocal.id,
+          workflowId: wf.id,
+          workflowName: wf.name,
+          trigger: source === "scheduled" ? "schedule" : "manual",
+          status: engineStatusToArchiveStatus(
+            runLocal.status,
+            runLocal.steps.some((s) => s.status === "done")
+          ),
+          startedAt: new Date(runLocal.startedAt).toISOString(),
+          finishedAt: new Date(runLocal.finishedAt ?? Date.now()).toISOString(),
+          ...(runLocal.finishedAt ? { totalMs: runLocal.finishedAt - runLocal.startedAt } : {}),
+          ...(model ? { model } : {}),
+          steps: runLocal.steps.map((s) => ({
+            name: s.label,
+            agent: s.agentName,
+            output: s.output,
+            ...(s.ms != null ? { ms: s.ms } : {}),
+          })),
+        });
+      }
+    } catch {
+      /* archiving must never break or alter a run */
     }
     if (source === "scheduled") {
       // r29 scheduled-run autonomy (Temporal/Circuit-Breaker doctrine):

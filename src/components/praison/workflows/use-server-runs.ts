@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+// r486-a (Run Archive epic): server-lane runs archive at the moment they land
+// in client state (trigger "server") — closed-tab runs must not evaporate.
+import { archiveServerLaneRun } from "@/lib/run-archive";
 
 // ─── r375: shared server-lane run poll (extracted from the runs kanban) ──────
 // v24 doctrine, now in one place both consumers use: poll the headless lane
@@ -36,7 +39,12 @@ export function useServerRuns(enabled: boolean): ServerRunRow[] {
         const res = await fetch("/api/automation/sync");
         if (!res.ok) return;
         const json = (await res.json()) as { runs?: ServerRunRow[] };
-        if (!stopped && Array.isArray(json.runs)) setServerRuns(json.runs);
+        if (!stopped && Array.isArray(json.runs)) {
+          setServerRuns(json.runs);
+          // r486-a: land each settled server run into the local archive
+          // (dedupe by id inside; "running" rows skipped until they settle).
+          for (const row of json.runs) archiveServerLaneRun(row);
+        }
       } catch {
         /* server briefly unreachable — next poll retries */
       }
