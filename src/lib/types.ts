@@ -538,3 +538,34 @@ export type ChatStreamEvent =
   | { type: "tool_result"; id: string; name: string; ok: boolean; ms: number; content: string }
   | { type: "done"; content: string; toolCalls: ToolCallInfo[]; iterations: number }
   | { type: "error"; message: string };
+
+// r479 RESTORE (lost in the r449 .git rollback; consumer: src/lib/suite-schedule.ts sanitizer;
+// definition verbatim from the r40-era commit 415d248f2 — the last word on this type in history).
+/** r37: interval-based bake-off schedule for a suite (app-open runners). */
+export interface SuiteSchedule {
+  enabled: boolean;
+  /** Fire interval in ms (clamped to SUITE_SCHEDULE_MIN_MS — quota discipline). */
+  intervalMs: number;
+  /** Repeats per case for scheduled runs (1..SUITE_REPEATS_MAX). */
+  repeats: number;
+  /**
+   * r39 auto-adoption: when a SCHEDULED round crowns a case winner, apply it
+   * as the case workflow's default harness without asking. Opt-in — manual
+   * board runs never auto-adopt (you clicked run, you keep control).
+   */
+  autoAdopt?: boolean;
+  /**
+   * Consecutive scheduled rounds with an overall done-rate of 0 (reset on any
+   * completed case). ≥3 → the breaker auto-pauses the schedule (enabled=false).
+   */
+  failStreak?: number;
+  /**
+   * r40 sticky-adoption guard: each case workflow's winner from the PREVIOUS
+   * scheduled round. A round's verdict only auto-applies when it AGREES with
+   * the previous round's (2 consecutive agreeing rounds) — a single flipped
+   * verdict is noise and is held, so one bad round can't flip a pipeline.
+   */
+  lastWinners?: Record<string, string>;
+  lastRunAt?: number;
+  nextRunAt?: number;
+}

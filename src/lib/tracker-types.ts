@@ -148,3 +148,11 @@ export function fmtAge(iso: string): string {
   if (h < 48) return `${h}h ago`;
   return `${Math.round(h / 24)}d ago`;
 }
+
+// r479 RESTORE (lost in the r449 .git rollback; definition verbatim from r45 commit 584ebe031; consumer: src/lib/tracker-caps-index.ts):
+export interface ModelCaps {
+  tools: boolean; // tool/function calling
+  structured: boolean; // structured outputs / json response_format
+  reasoning: boolean; // reasoning / chain-of-thought controls
+  vision: boolean; // image input
+}

@@ -408,3 +408,7 @@ export const MEMORY_CONSOLIDATE_EVERY = 10;
 export const MEMORY_MAX_CHARS = 1200;
 /** Messages (most recent first) fed into a consolidation pass. */
 export const MEMORY_SOURCE_MESSAGES = 24;
+
+// r479 RESTORE (lost in the r449 .git rollback; definition verbatim from r37 commit 212089542):
+/** r37: quota floor for scheduled suite bake-offs (scheduler clamps intervalMs up to this). */
+export const SUITE_SCHEDULE_MIN_MS = 30 * 60_000;
