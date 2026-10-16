@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 const BASE = "https://models.lunarwerx.com/api/v1";
-const UA = "Mozilla/5.0 (compatible; PraisonAI-radar/1.0; local BYOK platform)";
+const UA = "Mozilla/5.0 (compatible; NEXUS-WebGUI/1.0; local-first agentic workflow platform)";
 const CACHE_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 15_000;
 

@@ -1,15 +1,17 @@
-# PraisonAI — Multi-Agent AI Platform
+# NEXUS WebGUI — Agentic Workflow Automation Platform
 
 *(repo codename: NEXUS_WebGUI_HARNESS)*
 
-A local-first, multi-agent web platform: chat with agents, build agent teams, orchestrate
+A local-first, agentic workflow automation platform: chat with agents, build agent teams, orchestrate
 multi-step workflows, watch a trend radar, and manage providers — all served on
 `localhost:3000` from this repo. Platform docs: [docs/LOCAL_AUTOMATION.md](docs/LOCAL_AUTOMATION.md)
 (local automation — two-lane model & vault contract).
 
+Independent from-scratch build — not affiliated with any similarly named open-source project.
+
 ## Views
 
-Navigation lives in `src/components/praison/shell.tsx` (`NAV_ITEMS` / `VIEW_TITLES`).
+Navigation lives in `src/components/nexus/shell.tsx` (`NAV_ITEMS` / `VIEW_TITLES`).
 Nav labels are short; page titles are descriptive — both names are intentional, not drift:
 
 | Nav label | Page title | Purpose |
@@ -24,24 +26,24 @@ Nav labels are short; page titles are descriptive — both names are intentional
 
 - **Chat** — conversations with model picker, image studio, conversation memory,
   full-text search (timestamps via `fmtChatTime`), and a Hermes-style conversation
-  heartbeat that keeps idle conversations moving (`src/components/praison/chat/`).
+  heartbeat that keeps idle conversations moving (`src/components/nexus/chat/`).
 - **Agents** — agent create/edit dialogs plus a live test dialog; the agent card is
-  keyboard-complete (role, tabIndex, Enter/Space, focus ring) (`src/components/praison/agents/`).
+  keyboard-complete (role, tabIndex, Enter/Space, focus ring) (`src/components/nexus/agents/`).
 - **Workflows / Workflow Studio** — pipeline grid, step editor dialog (arrow-button
   step reordering with aria-labelled movers), run panel, and the server autopilot
-  panel (`src/components/praison/workflows/`).
+  panel (`src/components/nexus/workflows/`).
 - **Radar / Trend Radar** — GitHub stars, Hugging Face trending (proxied), arXiv papers
-  (`src/components/praison/radar/`).
+  (`src/components/nexus/radar/`).
 - **Settings** — provider gallery with per-provider cards, in-browser local models
-  (WebLLM), model relay, automation vault, referral card (`src/components/praison/settings/`).
+  (WebLLM), model relay, automation vault, referral card (`src/components/nexus/settings/`).
 - **Model tracker** — a global ticker over provider/model lanes; polls every 15 min and
   retries failed fetches with a short backoff (5s/15s/60s) so a failed first fetch can't
-  leave the strip dark (`src/components/praison/tracker/model-ticker.tsx`).
+  leave the strip dark (`src/components/nexus/tracker/model-ticker.tsx`).
 - **Shell** — ⌘K command palette (see Keyboard below), TopBar provider switcher
   (keyless providers route you to Settings with a pointing toast instead of doing
   nothing), and a stale-build guard that toasts + pins a refresh pill when the server
-  picks up newer code than the tab is running (`src/components/praison/shell.tsx`,
-  `src/components/praison/stale-build-guard.tsx`).
+  picks up newer code than the tab is running (`src/components/nexus/shell.tsx`,
+  `src/components/nexus/stale-build-guard.tsx`).
 
 ## Keyboard
 
@@ -55,7 +57,7 @@ Nav labels are short; page titles are descriptive — both names are intentional
   the rest work everywhere.
 
 Shortcuts live in `src/lib/use-shortcuts.ts` (global) and
-`src/components/praison/command-palette.tsx` (palette).
+`src/components/nexus/command-palette.tsx` (palette).
 
 ## Stack & rules
 

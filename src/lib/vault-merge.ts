@@ -1,7 +1,9 @@
 /**
  * r41-c — Provider-vault import math (pure, unit-tested).
  *
- * The advisory pack (r41) delivered `praison-provider-vault.json` — a
+ * The advisory pack (r41) delivered `praison-provider-vault.json` (today's
+ * exports carry the `nexus-provider-vault` kind; the legacy `praison-*` kind
+ * is still accepted on import) — a
  * `{kind, exportedAt, providerKeys, activeProviderId, defaultModel, provider}`
  * slice whose 17 real keys could not arm a profile because the Settings
  * importer only accepted full exports (agents/conversations/workflows arrays)
@@ -51,7 +53,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 /** A vault-shaped file: kind marker OR providerKeys object without app arrays. */
 export function looksLikeProviderVault(parsed: unknown): boolean {
   if (!isRecord(parsed)) return false;
-  if (parsed.kind === "praison-provider-vault") return true;
+  if (parsed.kind === "praison-provider-vault" || parsed.kind === "nexus-provider-vault") return true;
   return isRecord(parsed.providerKeys) && !Array.isArray(parsed.agents);
 }
 

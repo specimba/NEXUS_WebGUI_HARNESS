@@ -65,8 +65,8 @@ export interface TrackerCache {
   lastSyncAt: string | null;
 }
 
-export const TRACKER_CACHE_KEY = "praison-tracker-cache";
-export const TRACKER_LAST_SEEN_KEY = "praison-tracker-lastseen";
+export const TRACKER_CACHE_KEY = "nexus-tracker-cache";
+export const TRACKER_LAST_SEEN_KEY = "nexus-tracker-lastseen";
 export const TRACKER_SYNC_TTL_MS = 4 * 60 * 60_000;
 
 // r210: pure mirror parser — the boot path must DISTINGUISH "no cache yet"

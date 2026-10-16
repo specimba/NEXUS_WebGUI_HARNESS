@@ -38,7 +38,7 @@ const TIMEOUT_MS = 14_000;
 
 async function getJson(url: string, headers?: Record<string, string>): Promise<unknown> {
   const res = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (compatible; PraisonAI-Web/1.0; BYOK local-first)", ...headers },
+    headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (compatible; NEXUS-WebGUI/1.0; local-first agentic workflow platform)", ...headers },
     signal: AbortSignal.timeout(TIMEOUT_MS),
     cache: "no-store",
   });

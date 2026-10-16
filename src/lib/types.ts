@@ -1,4 +1,4 @@
-// ─── PraisonAI Web · Shared Types ────────────────────────────────────────────
+// ─── NEXUS WebGUI · Shared Types ─────────────────────────────────────────────
 
 export type View = "chat" | "agents" | "workflows" | "settings" | "radar";
 

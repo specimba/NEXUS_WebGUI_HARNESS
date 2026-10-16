@@ -1,6 +1,6 @@
 // ─── Harness selection (r34) ─────────────────────────────────────────────────
 // The user's r34 directive: "why our system is lack of harness selection
-// capabilities beside our system" — inspired by the PraisonAI lineage ("Hire a
+// capabilities beside our system" — inspired by the harness lineage ("Hire a
 // 24/7 AI Workforce … built-in memory, RAG, and support for 100+ LLMs") and the
 // advisory-backed AIHubMix LLM Router policies (cost / balanced / quality /
 // latency). A harness preset is ONE selector that retunes the whole agentic

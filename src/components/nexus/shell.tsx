@@ -1,0 +1,507 @@
+"use client";
+
+import * as React from "react";
+import {
+  Bot,
+  KeyRound,
+  MessagesSquare,
+  Plus,
+  Radar as RadarIcon,
+  Search,
+  Settings2,
+  Sheet as SheetIcon,
+  Sparkles,
+  Workflow as WorkflowIcon,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { BrandMark, ThemeToggle } from "@/components/nexus/atoms";
+import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
+import { resolveLlm } from "@/lib/llm-config";
+import { FREE_PROVIDERS } from "@/lib/providers";
+import { APP_VERSION, AIHUBMIX_INTRO_FLAG, VYCE_INTRO_FLAG } from "@/lib/constants";
+import type { View } from "@/lib/types";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+// ─── Nav items ───────────────────────────────────────────────────────────────
+const NAV_ITEMS: { view: View; label: string; icon: React.ElementType; hint: string }[] = [
+  { view: "chat", label: "Chat", icon: MessagesSquare, hint: "Talk to agents & workflows" },
+  { view: "agents", label: "Agents", icon: Bot, hint: "Create & manage AI agents" },
+  { view: "workflows", label: "Workflows", icon: WorkflowIcon, hint: "Multi-agent pipelines" },
+  { view: "radar", label: "Radar", icon: RadarIcon, hint: "GitHub stars, HF trending & arXiv papers" },
+  { view: "settings", label: "Settings", icon: Settings2, hint: "Provider, profile & data" },
+];
+
+function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  const view = useUiStore((s) => s.view);
+  const setView = useUiStore((s) => s.setView);
+  return (
+    <nav aria-label="Primary" className="flex flex-col gap-1 px-3">
+      {NAV_ITEMS.map(({ view: v, label, icon: Icon, hint }) => {
+        const active = view === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => {
+              setView(v);
+              onNavigate?.();
+            }}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              active
+                ? "bg-primary/15 text-foreground ring-1 ring-primary/25"
+                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+            )}
+          >
+            {active && (
+              <span
+                aria-hidden
+                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gradient-to-b from-violet-400 to-fuchsia-500"
+              />
+            )}
+            <Icon className={cn("h-4 w-4 shrink-0", active ? "text-violet-400" : "")} />
+            {label}
+            {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-400 soft-pulse" />}
+            {!active && <span className="sr-only">{hint}</span>}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function NewChatButton({ onDone }: { onDone?: () => void }) {
+  const create = useConversationsStore((s) => s.create);
+  const activeAgentId = useUiStore((s) => s.activeAgentId);
+  const setView = useUiStore((s) => s.setView);
+  return (
+    <Button
+      className="mx-3 justify-start gap-2 bg-primary/90 text-white shadow-md shadow-violet-500/20 hover:bg-primary"
+      onClick={() => {
+        // create() sets activeId — the user lands directly in the fresh chat
+        create(activeAgentId ?? undefined);
+        setView("chat");
+        onDone?.();
+      }}
+    >
+      <Plus className="h-4 w-4" />
+      New Chat
+    </Button>
+  );
+}
+
+// ─── Fleet chip (post-restore rebuild of the sidebar fleet indicator) ───────
+type FleetState = {
+  n: number;
+  total: number;
+  paused: number;
+  foreign: number;
+  nextMin: number | null;
+  lastHeartbeat: string;
+  cli: boolean;
+};
+
+function parseMinuteSlots(expr: unknown): number[] {
+  if (typeof expr !== "string") return [];
+  const first = expr.trim().split(/\s+/)[0];
+  if (!/^\d+(,\d+)*$/.test(first)) return []; // simple cron minutes only
+  return first
+    .split(",")
+    .map(Number)
+    .filter((m) => m >= 0 && m < 60);
+}
+
+function FleetChip() {
+  const [fleet, setFleet] = React.useState<FleetState | null>(null);
+  const [tick, setTick] = React.useState(0);
+
+  React.useEffect(() => {
+    let alive = true;
+    fetch("/api/cron/forensics")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (!alive) return;
+        const jobs: Array<{ kind?: string; enabled?: boolean; schedule?: { expr?: unknown } }> =
+          d?.registry?.jobs ?? [];
+        // r300: one ratio, one population. The chip printed "cron n/total" with
+        // n over enabled agentTurn jobs but total over EVERY registry job —
+        // while its own tooltip claimed "(agentTurn)". A banned-kind job (the
+        // forensics route still warns about the webDevReview era) or a paused
+        // schedule silently shrank the ratio and lit the degraded state even
+        // when every agentTurn was armed. Both sides now count agentTurn jobs
+        // only; paused and foreign jobs are named in the tooltip instead of
+        // hiding inside the denominator.
+        const turns = jobs.filter((j) => j.kind === "agentTurn");
+        const total = turns.length;
+        const n = turns.filter((j) => j.enabled ?? true).length;
+        const slots = Array.from(
+          new Set(turns.flatMap((j) => parseMinuteSlots(j.schedule?.expr)))
+        ).sort((a, b) => a - b);
+        const cur = new Date().getUTCMinutes();
+        let nextMin: number | null = null;
+        for (const s of slots) {
+          const delta = ((s - cur + 60) % 60) || 60;
+          if (nextMin === null || delta < nextMin) nextMin = delta;
+        }
+        const last = (d?.heartbeat?.last ?? []).slice(-1)[0] ?? "";
+        setFleet({
+          n,
+          total,
+          paused: total - n,
+          foreign: jobs.length - total,
+          nextMin,
+          lastHeartbeat: last,
+          cli: d?.cli?.available === true,
+        });
+      })
+      .catch(() => {
+        if (alive) setFleet(null);
+      });
+    const t = setInterval(() => setTick((x) => x + 1), 60_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [tick]);
+
+  const healthy = !!fleet && fleet.total > 0 && fleet.n === fleet.total;
+  const degraded = !!fleet && fleet.n < fleet.total;
+  return (
+    <button
+      type="button"
+      onClick={() => setTick((x) => x + 1)}
+      title={
+        fleet
+          ? [
+              `cron fleet ${fleet.n}/${fleet.total} agentTurns armed`,
+              fleet.paused > 0 ? `${fleet.paused} paused` : null,
+              fleet.foreign > 0
+                ? `+${fleet.foreign} non-agentTurn job${fleet.foreign === 1 ? "" : "s"} in registry (agentTurn only)`
+                : null,
+              fleet.cli ? "cli ok" : "cli n/a — double-fire doctrine",
+              fleet.lastHeartbeat ? `last heartbeat: ${fleet.lastHeartbeat}` : null,
+              "click to re-check",
+            ]
+              .filter(Boolean)
+              .join("\n")
+          : "fleet status unavailable — /api/cron/forensics unreachable\nclick to retry"
+      }
+      aria-label={`Cron fleet ${fleet ? `${fleet.n} of ${fleet.total} agentTurns armed` : "status unknown"}`}
+      className={cn(
+        "mt-2 flex w-full items-center gap-1.5 rounded-md border px-2 py-1 text-left text-[10px] transition-colors",
+        healthy && "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10",
+        degraded && "border-amber-500/30 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10",
+        !fleet && "border-border/60 text-muted-foreground hover:bg-accent/40"
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "h-1.5 w-1.5 shrink-0 rounded-full",
+          healthy ? "bg-emerald-400 soft-pulse" : degraded ? "bg-amber-400" : "bg-muted-foreground/40"
+        )}
+      />
+      <span className="font-medium">cron {fleet ? `${fleet.n}/${fleet.total}` : "?/?"}</span>
+      {fleet?.nextMin != null && <span className="ml-auto text-muted-foreground">next {fleet.nextMin}m</span>}
+    </button>
+  );
+}
+
+// ─── Sidebar (desktop) ───────────────────────────────────────────────────────
+export function AppSidebar() {
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+      <div className="px-4 pb-3 pt-4">
+        <BrandMark />
+      </div>
+      <NewChatButton />
+      <div className="mt-3" />
+      <NavList />
+      <div className="mt-auto px-3 pb-4">
+        <Separator className="mb-3 opacity-60" />
+        <div className="flex items-center justify-end px-1">
+          <ThemeToggle />
+        </div>
+        <FleetChip />
+        <div className="mt-2 px-1 text-[10px] text-muted-foreground">
+          v{APP_VERSION} · local-first · BYOK
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ─── Mobile nav (Sheet) ──────────────────────────────────────────────────────
+export function MobileNav() {
+  const open = useUiStore((s) => s.mobileNavOpen);
+  const setOpen = useUiStore((s) => s.setMobileNavOpen);
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetContent side="left" className="w-64 bg-sidebar p-0">
+        <SheetHeader className="px-4 pb-3 pt-4">
+          <SheetTitle asChild>
+            <div>
+              <BrandMark />
+            </div>
+          </SheetTitle>
+        </SheetHeader>
+        <NewChatButton onDone={() => setOpen(false)} />
+        <div className="mt-3" />
+        <NavList onNavigate={() => setOpen(false)} />
+        <div className="mt-auto px-4 pb-6 pt-4">
+          <div className="flex items-center justify-end px-1">
+            <ThemeToggle />
+          </div>
+          <FleetChip />
+          <div className="mt-2 px-1 text-[10px] text-muted-foreground">
+            v{APP_VERSION} · local-first · BYOK
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Top bar ─────────────────────────────────────────────────────────────────
+const VIEW_TITLES: Record<View, { title: string; subtitle: string }> = {
+  chat: { title: "Chat", subtitle: "Converse with your agents" },
+  agents: { title: "Agents", subtitle: "Build your AI workforce" },
+  workflows: { title: "Workflows", subtitle: "Orchestrate agent pipelines" },
+  radar: { title: "Trend Radar", subtitle: "GitHub stars · HF trending · arXiv papers" },
+  settings: { title: "Settings", subtitle: "Configure providers & preferences" },
+};
+
+export function TopBar() {
+  const view = useUiStore((s) => s.view);
+  const setMobileNavOpen = useUiStore((s) => s.setMobileNavOpen);
+  const setPaletteOpen = useUiStore((s) => s.setPaletteOpen);
+  const settings = useSettingsStore((s) => s.settings);
+  const update = useSettingsStore((s) => s.update);
+  const meta = VIEW_TITLES[view];
+
+  // One-time "Vyce AI is here" intro (r18): pre-seeded key landed in the vault;
+  // offer existing users a one-click switch instead of silently changing brains.
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem(VYCE_INTRO_FLAG)) return;
+      localStorage.setItem(VYCE_INTRO_FLAG, "1");
+      const s = useSettingsStore.getState().settings;
+      if (s.provider === "custom" && s.activeProviderId === "vyce") return;
+      toast("Vyce AI added — $10/day free credits", {
+        description: "DeepSeek V4.1 is pre-loaded with your key and ready to chat.",
+        action: {
+          label: "Use Vyce",
+          onClick: () => useSettingsStore.getState().update({ provider: "custom", activeProviderId: "vyce" }),
+        },
+        duration: 15_000,
+      });
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, []);
+
+  // One-time "AIHubMix is here" intro (r30): 45 free lanes + frontier; the
+  // key is preseeded but the active brain is NOT switched (unlike Vyce r18).
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem(AIHUBMIX_INTRO_FLAG)) return;
+      localStorage.setItem(AIHUBMIX_INTRO_FLAG, "1");
+      const s = useSettingsStore.getState().settings;
+      if (s.providerKeys?.aihubmix?.key) {
+        toast("AIHubMix added — 45 free model lanes", {
+          description: "coding-glm-5.3-free (1M ctx, tools) is pre-loaded in the vault — pick it from any model picker.",
+          duration: 15_000,
+        });
+      }
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, []);
+
+  // Resolve the active provider for the badge + quick-switch dropdown.
+  const resolved = React.useMemo(() => resolveLlm(settings), [settings]);
+  const registryReady = React.useMemo(
+    () =>
+      FREE_PROVIDERS.map((p) => ({
+        p,
+        ready: p.noKey || !!settings.providerKeys?.[p.id]?.key?.trim(),
+      })),
+    [settings.providerKeys]
+  );
+  let legacyHost = "custom";
+  try {
+    legacyHost = new URL(settings.baseUrl).hostname.replace("api.", "");
+  } catch {
+    /* keep default */
+  }
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background/60 px-3 backdrop-blur-md md:px-5">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden"
+        aria-label="Open navigation"
+        onClick={() => setMobileNavOpen(true)}
+      >
+        <SheetIcon className="h-5 w-5" />
+      </Button>
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-sm font-semibold leading-tight">{meta.title}</h2>
+        <p className="truncate text-xs text-muted-foreground">{meta.subtitle}</p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setPaletteOpen(true)}
+        aria-label="Open command palette"
+        className="h-8 gap-2 rounded-full border-border/70 text-muted-foreground shadow-sm hover:text-foreground"
+      >
+        <Search className="h-3.5 w-3.5" aria-hidden />
+        <span className="hidden sm:inline">Search…</span>
+        <kbd className="pointer-events-none hidden rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-block">
+          ⌘K
+        </kbd>
+      </Button>
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "hidden cursor-pointer gap-1.5 font-normal transition-colors hover:bg-muted/60 sm:flex",
+                    resolved.providerId === "auto"
+                      ? "border-emerald-500/40 text-emerald-400"
+                      : "border-violet-500/40 text-violet-400"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      resolved.providerId === "auto" ? "bg-emerald-400" : "bg-violet-400"
+                    )}
+                  />
+                  {resolved.label}
+                </Badge>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+                  LLM provider — switch instantly
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => update({ provider: "auto", activeProviderId: undefined })}
+                  className={cn(resolved.providerId === "auto" && "bg-accent")}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+                  <span className="flex-1">Auto · built-in GLM</span>
+                  {resolved.providerId === "auto" && <span className="text-xs">✓</span>}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] tracking-wide text-muted-foreground uppercase">
+                  Free frontier providers
+                </DropdownMenuLabel>
+                {registryReady.map(({ p, ready }) => {
+                  const active = resolved.providerId === p.id;
+                  return (
+                    <DropdownMenuItem
+                      key={p.id}
+                      onClick={() => {
+                        if (ready) {
+                          update({ provider: "custom", activeProviderId: p.id });
+                          return;
+                        }
+                        // r246: a keyless provider used to be a dead click —
+                        // it even mutated the wrong store (setPaletteOpen is
+                        // the command palette, not this dropdown) and left
+                        // the user nowhere. Send them to Settings where the
+                        // key actually lives.
+                        useUiStore.getState().setView("settings");
+                        toast(`Add your ${p.name} key`, {
+                          description:
+                            "Settings → Free frontier providers — paste it once and it lands in the local vault.",
+                        });
+                      }}
+                      className={cn(active && "bg-accent")}
+                      {...(ready
+                        ? {}
+                        : { title: `Add your ${p.name} key in Settings → Free frontier providers` })}
+                    >
+                      <span aria-hidden className="w-4 text-center text-sm">
+                        {p.glyph}
+                      </span>
+                      <span className={cn("flex-1 truncate", !ready && "text-muted-foreground")}>
+                        {p.name}
+                        {!ready && <span className="ml-1 text-[10px]">no key</span>}
+                      </span>
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          ready ? "bg-emerald-400" : "bg-muted-foreground/30"
+                        )}
+                        aria-hidden
+                      />
+                      {active && <span className="text-xs">✓</span>}
+                    </DropdownMenuItem>
+                  );
+                })}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => update({ provider: "custom", activeProviderId: "custom" })}
+                  className={cn(resolved.providerId === "custom" && "bg-accent")}
+                >
+                  <KeyRound className="h-3.5 w-3.5" aria-hidden />
+                  <span className="flex-1 truncate">Custom endpoint · {legacyHost}</span>
+                  {resolved.providerId === "custom" && <span className="text-xs">✓</span>}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    history.replaceState(null, "", "#/setup");
+                    useUiStore.getState().openSetupWizard();
+                  }}
+                  className="text-violet-400"
+                >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                  <span className="flex-1">Get a free frontier key — guided setup</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Click to switch LLM provider — resolved: {resolved.label}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <ThemeToggle />
+    </header>
+  );
+}
+
+// ─── Splash (pre-hydration, accent-themed art backdrop) ─────────────────────
+export function Splash() {
+  return (
+    <div className="relative flex h-dvh flex-col items-center justify-center gap-4 overflow-hidden bg-background">
+      <div className="theme-art opacity-70" aria-hidden />
+      <div className="theme-art-veil" aria-hidden />
+      <div className="soft-pulse relative z-10">
+        <BrandMark />
+      </div>
+      <p className="shimmer-text relative z-10 text-sm font-medium">spinning up your agents…</p>
+    </div>
+  );
+}

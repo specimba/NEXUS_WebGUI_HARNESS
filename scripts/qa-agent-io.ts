@@ -5,7 +5,7 @@
 // (export → wipe → import restores workflow wiring), collisions mint fresh
 // ids, flags survive as one grapheme (pre-fix: .slice(0, 2) cut 🇺🇸 in half),
 // junk is skipped, numbers are clamped, tools are deduped.
-import { sanitizeAgent } from "../src/components/praison/agents/agents-view";
+import { sanitizeAgent } from "../src/components/nexus/agents/agents-view";
 
 let passed = 0;
 let failed = 0;

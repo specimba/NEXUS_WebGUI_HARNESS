@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 // is a two-click deliberate action (no auto-download, no clipboard).
 //
 // Response shapes:
-//   GET  200 { ok: true, app: "praison-automation-vault", version: 1,
+//   GET  200 { ok: true, app: "nexus-automation-vault", version: 1,
 //              exportedAt, slots: [{ provider, label, key, createdAt, updatedAt }] }
 //   GET  403 (non-local)
 //   POST 200 { ok: true, imported, skipped, providers: [...] }
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
     const rows = await db.automationVault.findMany({ orderBy: { provider: "asc" } });
     return NextResponse.json({
       ok: true,
-      app: "praison-automation-vault",
+      app: "nexus-automation-vault",
       version: 1,
       exportedAt: new Date().toISOString(),
       slots: rows.map((r) => ({

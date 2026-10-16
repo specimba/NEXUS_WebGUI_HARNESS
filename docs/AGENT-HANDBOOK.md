@@ -1,4 +1,4 @@
-# PraisonAI Multi-Agent Platform — Agent Operations Handbook
+# NEXUS WebGUI Multi-Agent Platform — Agent Operations Handbook
 
 **Audience:** any AI agent (patrol/review cron loops, or a human developer) operating the project at `/home/z/my-project` (Next.js 16 App Router, served on `localhost:3000`).
 **Scope:** architecture, operational doctrine, forensics history, verified fixes, known issues, and step-by-step protocols. This document supersedes conversational memory; the append-only changelog lives in `/home/z/my-project/worklog.md` (read its tail before every shift).
@@ -7,13 +7,14 @@
 
 ## 1. Project Overview
 
-PraisonAI is a **local-first, BYOK (bring-your-own-key), multi-agent platform**:
+NEXUS WebGUI is a **local-first, BYOK (bring-your-own-key), multi-agent platform**:
 
 - **Stack:** Next.js 16 (App Router) + TypeScript 5 + Tailwind CSS 4 + shadcn/ui (New York) + Zustand stores persisted to `localStorage`. No server-side database. Prisma is configured but the product is intentionally client-side.
+- **Storage keys & rebrand migration:** persisted state lives under `nexus-*` / `nexus.*` localStorage keys (e.g. `nexus-workflows`). The pre-rebrand `praison-*` / `praisonai.*` keys are copied to their new names once at boot by `src/lib/migration.ts` — idempotent, guarded by the `nexus-migrated-from-praison-v1` flag key, legacy keys kept for rollback.
 - **Single user-visible route:** `/` (`src/app/page.tsx`). Chat, Agents, Workflows (Workflow Studio), Radar (model tracker), and Settings are client-side views switched inside that route. Do NOT create new routes.
 - **Engine is client-side:** workflow runs execute in the user's browser (`src/lib/workflow-runner.ts` → `src/lib/agent-engine.ts`). Consequences:
   - A closed tab cannot run anything; the in-app scheduler (10s tick) fires due schedules only while the tab is open (r71 handles background-tab timer throttling).
-  - All run state persists to `localStorage` under the `praison-workflows` key (Zustand persist). QA in one browser profile is invisible to another profile (isolated localStorage).
+  - All run state persists to `localStorage` under the `nexus-workflows` key (Zustand persist). QA in one browser profile is invisible to another profile (isolated localStorage).
   - Page reload mid-run kills the run; r25 "zombie cleanup" marks orphaned `running` runs so they never fake liveness.
 - **Port/gateway discipline:** the sandbox exposes only port 3000 (Caddy gateway). Cross-service API calls must use relative URLs with `?XTransformPort=<port>`. Never write absolute localhost URLs in frontend fetches; never write ports in WebSocket URLs.
 - **Mini services** (if ever needed) live in `mini-services/`, each an independent bun project with its own fixed port, started with `bun run dev` in the background (auto-restart via `bun --hot`).
@@ -122,10 +123,10 @@ Read the tail before every shift. Never overwrite. The patrol job does NOT write
 |---|---|
 | `src/lib/workflow-runner.ts` | Run orchestration: step loop, materializeRunSteps (r80 pending), MAX_STEP_ATTEMPTS=3 self-heal (r83), relay wire rebuild, classifyRunError, resume machinery |
 | `src/lib/agent-engine.ts` | LLM engine: attemptLoop, IDLE_CHUNK_TIMEOUT_MS=180_000 (r78), isTransientNetworkError, consumeUpstreamSSE, tool loop |
-| `src/lib/stores.ts` | Zustand stores + localStorage persistence (`praison-workflows`), r25 zombie cleanup |
-| `src/components/praison/workflows/workflows-view.tsx` | Workflow Studio: cards (r81 live badge/ring, r82 sparkline, outcome dots), scheduler chips (r76 blocked, r77 deferral audit), header counters |
-| `src/components/praison/workflows/workflow-run-panel.tsx` | Run dialog: live step rows, statuses, recovery card |
-| `src/components/praison/workflows/workflow-scheduler.tsx` | 10s tick scheduler, fire-and-forget executeWorkflowRun, r77 deferral audit |
+| `src/lib/stores.ts` | Zustand stores + localStorage persistence (`nexus-workflows`), r25 zombie cleanup |
+| `src/components/nexus/workflows/workflows-view.tsx` | Workflow Studio: cards (r81 live badge/ring, r82 sparkline, outcome dots), scheduler chips (r76 blocked, r77 deferral audit), header counters |
+| `src/components/nexus/workflows/workflow-run-panel.tsx` | Run dialog: live step rows, statuses, recovery card |
+| `src/components/nexus/workflows/workflow-scheduler.tsx` | 10s tick scheduler, fire-and-forget executeWorkflowRun, r77 deferral audit |
 | `scripts/start-server.py` | Double-fork daemonizer — the 1-round self-heal for http=000 (r79) |
 | `ops/heartbeat.log` | Patrol heartbeat lines (`<ISO-8601Z> http=<code> fleet=<n>/2`) |
 | `ops/cron.jobs.json` | Canonical fleet definition (recreate from here ONLY if a job stops firing; kind=agentTurn ONLY) |

@@ -82,13 +82,13 @@ const activeControllers = new Map<string, AbortController>();
 const lastRunActivity = new Map<string, number>();
 const stalledRuns = new Set<string>();
 /** Stall watchdog threshold — runtime-tunable (r75): set localStorage
- * "praison-stall-timeout-ms" and reload; clamped 20s–10min so an E2E can
+ * "nexus-stall-timeout-ms" and reload; clamped 20s–10min so an E2E can
  * force stalls in seconds WITHOUT a rebuild, while production keeps 4min.
  * Read live per watchdog tick (one localStorage read per tick). */
 function stallTimeoutMs(): number {
   const DEF = 4 * 60_000;
   try {
-    const raw = localStorage.getItem("praison-stall-timeout-ms");
+    const raw = localStorage.getItem("nexus-stall-timeout-ms");
     if (!raw) return DEF;
     const n = Number(raw);
     return Number.isFinite(n) ? Math.min(Math.max(Math.floor(n), 20_000), 600_000) : DEF;
@@ -146,7 +146,7 @@ const MAX_PARK_REARMS = 5;
 // gateway-cadence owns the built-in engine's politeness.
 const laneSaturation = new Map<string, LaneSaturation>();
 const STALL_CHECK_MS = 15_000;
-const STALL_WATCHDOG_KEY = "praison-stall-watchdog";
+const STALL_WATCHDOG_KEY = "nexus-stall-watchdog";
 let stallWatchdog: ReturnType<typeof setInterval> | null = null;
 
 /** Live controller for a workflow's active run — lets the UI re-acquire Stop after a remount. */
@@ -1008,7 +1008,7 @@ export async function executeWorkflowRun(
       /* archive is best-effort */
     }
     // r486-a (Run Archive epic): every settled run ALSO lands in the local
-    // localStorage archive ("praisonai.run-archive.v1", src/lib/run-archive.ts)
+    // localStorage archive ("nexus.run-archive.v1", src/lib/run-archive.ts)
     // — the DB tier above needs the server, this tier is offline-first and is
     // what the Workflows → Archive tab browses and batch-exports. Upsert by
     // run id, so a resumed run re-archives over its earlier snapshot.

@@ -1,4 +1,4 @@
-# Operating Doctrine — NEXUS WebGUI (PraisonAI Web)
+# Operating Doctrine — NEXUS WebGUI
 
 **Task ID:** r41-b · **Date:** 2026-09-24 · **Status:** ACTIVE
 **Source:** advisory pack `zaiGLM53flashWEBGUIforNEXUScreationADVISORY-B.txt` ("NEXUS Coordination & Delegation Advisory v1", 11 sections), adapted to the shipped r26–r40 tree.

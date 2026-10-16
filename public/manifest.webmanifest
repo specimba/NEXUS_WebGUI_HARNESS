@@ -1,6 +1,6 @@
 {
-  "name": "PraisonAI — Multi-Agent AI Platform",
-  "short_name": "PraisonAI",
+  "name": "NEXUS WebGUI — Agentic Workflow Automation Platform",
+  "short_name": "NEXUS",
   "description": "Create autonomous AI agents, wire them into workflows and chat with them. Local-first, BYOK.",
   "start_url": "/",
   "scope": "/",

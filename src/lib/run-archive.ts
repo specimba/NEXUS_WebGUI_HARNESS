@@ -1,12 +1,14 @@
 "use client";
 
+import "@/lib/migration";
+
 // ─── r486-a: Run Archive — the local persistence + export wire ───────────────
 // The owner's ask: "the works are getting lost in the thin air due to no
 // collection archive saving or batch complete pack downloading of the workflow
 // conversation logs of outputs." The r414 trimmers mean the live run store
 // forgets, and the r455 DB tier needs the server — this module is the
 // OFFLINE-FIRST tier: every settled run lands in localStorage under
-// "praisonai.run-archive.v1", is browsable in Workflows → Archive, exports as
+// "nexus.run-archive.v1", is browsable in Workflows → Archive, exports as
 // batch Markdown/JSON packs, and feeds successors via digestRecent() (the RSI
 // continuity wire, consumed by the run panel's digest checkbox).
 //
@@ -50,15 +52,15 @@ interface ArchivePayload {
   runs: RunArchiveEntry[];
 }
 
-const ARCHIVE_KEY = "praisonai.run-archive.v1";
-const BACKFILL_KEY = "praisonai.run-archive.backfill.v1";
+const ARCHIVE_KEY = "nexus.run-archive.v1";
+const BACKFILL_KEY = "nexus.run-archive.backfill.v1";
 /** FIFO cap — the archive remembers 300 runs by finishedAt, oldest evicted. */
 const MAX_ARCHIVE_RUNS = 300;
 /** Continuity digest budget (chars) — mirrors the r457 PRIOR_TOTAL_CAP. */
 const DIGEST_TOTAL_CAP = 4000;
 const DIGEST_STEP_CAP = 240;
 /** Dispatched on every mutation so open surfaces live-refresh. */
-export const RUN_ARCHIVE_EVENT = "praison:run-archive-updated";
+export const RUN_ARCHIVE_EVENT = "nexus:run-archive-updated";
 /** Exported for the panel's `storage`-event key filter. */
 export const RUN_ARCHIVE_STORAGE_KEY = ARCHIVE_KEY;
 
@@ -246,7 +248,7 @@ export function runToMarkdown(entry: RunArchiveEntry): string {
 /** Batch Markdown pack: header + one section per run. */
 export function buildMarkdownPack(entries: RunArchiveEntry[]): string {
   const header = [
-    `# PraisonAI Run Archive`,
+    `# NEXUS WebGUI Run Archive`,
     ``,
     `- Generated at: ${new Date().toISOString()}`,
     `- Runs: ${entries.length}`,
@@ -259,7 +261,7 @@ export function buildMarkdownPack(entries: RunArchiveEntry[]): string {
 export function buildJsonPack(entries: RunArchiveEntry[]): string {
   return JSON.stringify(
     {
-      schema: "praisonai.run-archive-pack.v1",
+      schema: "nexus.run-archive-pack.v1",
       exportedAt: new Date().toISOString(),
       runs: entries,
     },
@@ -286,7 +288,7 @@ export function downloadText(filename: string, content: string, mime = "text/pla
   }
 }
 
-/** `praisonai-run-archive-YYYYMMDD-HHmm` stamp for pack filenames. */
+/** `nexus-run-archive-YYYYMMDD-HHmm` stamp for pack filenames. */
 export function archivePackStamp(d = new Date()): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;

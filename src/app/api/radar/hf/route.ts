@@ -52,7 +52,7 @@ export async function GET(request: Request): Promise<Response> {
       {
         headers: {
           "User-Agent":
-            "PraisonAgent/1.0 (trend radar; +https://github.com/specimba/PraisonAI)",
+            "NEXUS-WebGUI/1.0 (trend radar; local-first agentic workflow platform)",
         },
         signal: AbortSignal.timeout(HF_TIMEOUT_MS),
       }

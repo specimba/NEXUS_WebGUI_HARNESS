@@ -34,7 +34,7 @@ export default function ErrorPage({
   // appear in render errors).
   function copyDiagnostics() {
     const text = [
-      `PraisonAI client error — ${new Date().toISOString()}`,
+      `NEXUS WebGUI client error — ${new Date().toISOString()}`,
       `path: ${typeof window !== "undefined" ? window.location.pathname : "?"}`,
       `digest: ${error.digest ?? "none"}`,
       `message: ${error.message}`,

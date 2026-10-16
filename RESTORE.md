@@ -1,6 +1,6 @@
 # Disaster-recovery / restore guide
 
-This repo is the full source backup of the NEXUS_WebGUI_HARNESS (PraisonAI-style multi-agent web GUI).
+This repo is the full source backup of the NEXUS_WebGUI_HARNESS (NEXUS WebGUI-style multi-agent web GUI).
 
 ## Restore into a fresh sandbox
 
@@ -16,8 +16,8 @@ bun run dev            # http://localhost:3000
 
 | Data | Location |
 |------|----------|
-| Chats, agents, workflows, settings | Browser `localStorage` keys `praison-*` |
-| Per-device session health | `localStorage` `praison-session-health` |
+| Chats, agents, workflows, settings | Browser `localStorage` keys `nexus-*` |
+| Per-device session health | `localStorage` `nexus-session-health` |
 
 Use **Settings → Your Data → Export** in the running app to back up all localStorage data as JSON; Import restores it.
 

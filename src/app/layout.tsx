@@ -15,12 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PraisonAI — Multi-Agent AI Platform",
+  title: "NEXUS WebGUI — Agentic Workflow Automation Platform",
   description:
-    "Create autonomous AI agents, wire them into workflows and chat with them. Local-first, BYOK, powered by Groq-compatible providers.",
-  keywords: ["PraisonAI", "AI agents", "multi-agent", "workflows", "Groq", "BYOK"],
+    "Create autonomous AI agents, wire them into workflows and chat with them. Local-first, BYOK agentic workflow automation powered by Groq-compatible providers.",
+  keywords: ["NEXUS WebGUI", "AI agents", "agentic workflows", "workflow automation", "Groq", "BYOK"],
   manifest: "/manifest.webmanifest",
-  applicationName: "PraisonAI",
+  applicationName: "NEXUS WebGUI",
   icons: {
     icon: [
       { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "PraisonAI",
+    title: "NEXUS WebGUI",
   },
 };
 
@@ -43,8 +43,11 @@ export const viewport: Viewport = {
 };
 
 /** Pre-hydration accent theme: reads the persisted settings before React boots
- *  so the splash already renders in the chosen Fallout/Matrix/Cyber theme. */
-const THEME_BOOT = `try{(function(){var s=localStorage.getItem("praison-settings");var t=s?JSON.parse(s)?.state?.settings?.uiTheme:null;var ok=["nexus","matrix","fallout","cyber"];if(ok.indexOf(t)>-1){document.documentElement.setAttribute("data-theme",t);}})();}catch(e){}`;
+ *  so the splash already renders in the chosen Fallout/Matrix/Cyber theme.
+ *  Falls back to the pre-rebrand "praison-settings" key so the FIRST paint after
+ *  the one-time migration still gets the owner's accent (migration runs later,
+ *  during React boot). */
+const THEME_BOOT = `try{(function(){var s=localStorage.getItem("nexus-settings")||localStorage.getItem("praison-settings");var t=s?JSON.parse(s)?.state?.settings?.uiTheme:null;var ok=["nexus","matrix","fallout","cyber"];if(ok.indexOf(t)>-1){document.documentElement.setAttribute("data-theme",t);}})();}catch(e){}`;
 
 export default function RootLayout({
   children,
@@ -61,7 +64,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="praison-theme">
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="nexus-theme">
           {children}
           <Toaster position="bottom-right" richColors closeButton />
         </ThemeProvider>

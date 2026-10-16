@@ -141,7 +141,7 @@ export async function POST(req: Request) {
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${key}`,
-        "User-Agent": "Mozilla/5.0 (compatible; PraisonAI-Web/1.0; BYOK local-first)",
+        "User-Agent": "Mozilla/5.0 (compatible; NEXUS-WebGUI/1.0; local-first agentic workflow platform)",
       },
       signal: AbortSignal.timeout(12_000),
       cache: "no-store",

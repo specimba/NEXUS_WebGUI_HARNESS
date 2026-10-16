@@ -11637,3 +11637,87 @@ Task owner: main (platform dev agent)
 Open risks: none blocking; token expires 2027-01-14 (re-grant or new PAT before then restores after any expiry gap).
 Blockers: none
 Next recommended action: r494 — re-read any user reply FIRST; then the r492 smart-routing epic: ingest upload/detail.csv + upload/statistics.csv into a per-lane limits registry (RPM/TPM/daily), budgeted dialing, pin-respect (strict-pin vs smart-shim + pre-send consent). Standing gates: tsc TRUE-exit (tsbuildinfo cleared), lint 0/33, worklog BEFORE snapshot, ONE route + hash-nav, never nohup-boot.
+
+---
+Task ID: r494-a
+Agent: main (platform dev agent) — REBRAND ROUND OPEN
+Task: OWNER DIRECTIVE — kill all PraisonAI naming; the platform becomes the NEXUS WebGUI Harness (agentic workflow automation platform). Remove the repo-redirect link and the Settings About section. Keep every feature intact. Surgical, parallel sub-agent run.
+
+Work Log:
+- Survey complete: 191 case-insensitive "praison" hits across 50 src/ files + public/manifest.webmanifest + README/RESTORE/docs. Health 200. Zero hits in package.json/prisma/tests.
+- Canonical mapping (BINDING for all agents this round):
+  * localStorage: prefix rule praison-* -> nexus-*, praisonai.* -> nexus.* (e.g. praison-settings->nexus-settings, praisonai.run-archive.v1->nexus.run-archive.v1, praison-theme->nexus-theme)
+  * Event: praison:run-archive-updated -> nexus:run-archive-updated
+  * CSRF header: x-praison-csrf -> x-nexus-csrf (client + ALL server gates, atomic)
+  * QA global: window.__PRAISON_QA__ -> window.__NEXUS_QA__; __praisonPerfNotes -> __nexusPerfNotes
+  * Filenames: praisonai-export.json->nexus-export.json, praison-agents/-workflows/-chat-/-image-/-compare-/-provider-vault/-run-/-run-archive- -> nexus- equivalents
+  * Schema/kind fields: praisonai.run-archive-pack.v1->nexus.run-archive-pack.v1; kind "praison-*"->"nexus-*" BUT import validators MUST ALSO ACCEPT legacy praison*/praisonai* kinds (owner's existing exports keep working)
+  * UA strings: PraisonAgent/PraisonAI-Web/PraisonAI-radar -> NEXUS-WebGUI/1.0 (+variant), NO PraisonAI repo URL in any UA
+  * HMAC default secret 'praison' -> 'nexus' (tools-defs.ts + server/tools.ts)
+  * constants: APP_NAME->"NEXUS WebGUI"; GITHUB_URL CONSTANT DELETED (all usages removed); APP_VERSION kept
+  * BrandMark: NEXUS·WebGUI wordmark (violet dot), subtitle "WORKFLOW AUTOMATION", Network icon replaces Bot in the violet-fuchsia tile
+  * layout metadata: "NEXUS WebGUI — Agentic Workflow Automation Platform"; manifest.webmanifest name/short_name -> NEXUS WebGUI / NEXUS; THEME_BOOT reads nexus-settings
+  * Settings: About card (last section) REMOVED ENTIRELY; shell sidebar + mobile nav "PraisonAI repo" links REMOVED
+  * Seed agent "Praison Assistant" -> "Nexus Assistant" (constants seed only — user data untouched)
+  * Export markdown headers: "NEXUS WebGUI"
+  * MIGRATION: new src/lib/migration.ts — one-time idempotent copy of praison-* / praisonai.* keys to nexus-* (legacy keys KEPT as rollback safety, flag nexus-migrated-from-praison-v1), self-executes on import, wired as first import in stores.ts AND run-archive.ts
+- FILE OWNERSHIP (no overlaps): rb-a = src/lib/**, src/app/layout.tsx, src/app/error.tsx, src/app/api/**, public/manifest.webmanifest, package.json name, README.md, RESTORE.md, docs/AGENT-HANDBOOK.md + docs/OPERATING_DOCTRINE.md (name sed only). rb-b = src/components/** (git mv praison->nexus + import rewrites), src/app/page.tsx (imports only), settings About removal, shell link removal, UI strings.
+- scripts/ (180 historical QA probes referencing old keys) deliberately UNTOUCHED — they are dated round records; standing gates use agent-browser + tsc/lint only.
+- DO-NOT-MERGE note to concurrent rounds: rebrand in flight; do not edit src/ until rb-a/rb-b land and gates pass.
+
+Stage Summary:
+- Round opened; parallel execution starting. Next entry closes with gates + browser witness + push (fork + origin).
+
+---
+Task ID: rb-b
+Agent: full-stack-developer (components/UI rebrand)
+Task: NEXUS WebGUI rebrand — src/components/** + src/app/page.tsx: praison→nexus directory rename, canonical key/filename/CSRF mapping, legacy-tolerant import validators, BrandMark identity, sidebar/mobile repo-link removal, Settings About card removal.
+
+Work Log:
+- STEP 1 rename: `git mv src/components/praison src/components/nexus` (23 files, history preserved — git status shows R/RM). Rewrote every `@/components/praison/` import across src/app/page.tsx + 22 component files via sed; `rg -l "components/praison" src` returns nothing.
+- localStorage keys renamed per BINDING map: radar-view nexus-radar-tab; paper-radar-tab nexus-radar-arxiv + nexus-radar-paper-query; github-stars-tab nexus-radar-user + nexus-radar-gh; hf-trending-tab nexus-radar-hf + nexus-radar-hf-kind; local-models nexus-local-model; provider-gallery nexus-free-catalog-at.
+- CSRF header x-praison-csrf → x-nexus-csrf in all owned fetches: workflows-view ×1, automation-vault-card ×9, tracker/model-ticker ×1, tracker/model-radar-tab ×1 (server gates = rb-a, atomic).
+- Export filenames/kinds: chat-view/composer/conversation-list nexus-chat-*.md; image-studio ×2 nexus-image-*; workflow-compare-dialog nexus-compare-*.md; agents-view nexus-agent-*.json/nexus-agents.json + kind "nexus-agents"; workflows-view nexus-workflow-*.json/nexus-workflows.json + kind "nexus-workflows"; provider-gallery nexus-provider-vault.json + kind "nexus-provider-vault"; run-archive-panel nexus-run-archive-*.md/json, nexus-run-*.md/json, schema "nexus.run-archive-pack.v1", header comment event → nexus:run-archive-updated; settings-view nexus-export.json.
+- Import validators: agents-view, workflows-view, provider-gallery vault, settings-view full export — all four are STRUCTURAL validators (no `kind` gate existed), so legacy praison*/praisonai* exports import unchanged by design; added a 3-line comment at each site documenting that both kinds are accepted. Error texts → "Expected a NEXUS export…" / "Expected an agents array or a NEXUS export." / "Expected a workflows array or a NEXUS export." / "Expected a NEXUS provider-vault export with a \"providerKeys\" object."
+- settings-view import path: direct-write keys praison-agents/conversations/workflows/settings → nexus-* (matches rb-a's store keys + migration); failedKeys strip regex now /^(nexus-|praison-|praisonai\.)/; Clear-all-data danger zone now wipes /^(nexus-|nexus\.|praison-|praisonai\.)/ (full purge incl. legacy leftovers + migration stamp, per directive).
+- storage-usage.tsx: KNOWN_KEYS fully re-keyed to nexus-*, added "nexus-migrated-from-praison-v1": "Rebrand migration stamp", added LEGACY_PREFIXES ["praison-","praisonai."] + keyLabel() fallback rendering "Legacy pre-rebrand data".
+- whats-fixed.tsx strings only: praisonai-export.json→nexus-export.json, praison-settings→nexus-settings, x-praison-csrf→x-nexus-csrf, praison-radar-hf→nexus-radar-hf, "every praison-* key's size"→"every nexus-* key's size", lookFor "raw praison-* names"→"raw nexus-* names". Historical meaning of each entry intact; no PraisonAI repo mention existed in the file.
+- atoms.tsx BrandMark: wordmark NEXUS·WebGUI (violet dot), subtitle "Workflow Automation" (uppercase tracking kept), icon Bot→Network (added Network import; Bot retained for AgentAvatar default). Violet-fuchsia gradient tile + emerald pulse dot untouched.
+- shell.tsx: DELETED both "PraisonAI repo" anchors (desktop sidebar footer + mobile nav); footer rows justify-between → justify-end (ThemeToggle only); removed GITHUB_URL from constants import (kept APP_VERSION, AIHUBMIX_INTRO_FLAG, VYCE_INTRO_FLAG) and dropped now-unused ExternalLink import. Splash/TopBar had no other PraisonAI text.
+- settings-view.tsx: REMOVED the entire About Card (version line, local-first/BYOK badges, BuildInfoLine, github.com/specimba/PraisonAI anchor, inspiration paragraph) — JSX nesting verified clean (inner grid </div> intact). Removed local BuildInfoLine definition (left a pointer comment; /api/version route still backs the stale-tab guard). Removed APP_VERSION + GITHUB_URL from constants import and ExternalLink from lucide import (Badge kept — still used). "…full PraisonAI vibe." → "…full NEXUS vibe."
+- chat-view.tsx read_url suggestion → "Read https://github.com/specimba/NEXUS_WebGUI_HARNESS and summarize it".
+- Residual scan `rg -i "praison" src/components src/app/page.tsx`: 12 hits, ALL allowed (legacy-kind literals/comments in the 4 import validators + storage-usage LEGACY_PREFIXES + migration-stamp key + regexes). No window.__PRAISON_QA__/UA-string/HMAC hits existed in components (lib/api = rb-a).
+
+Stage Summary:
+- Files changed: 23 renamed (praison→nexus, history preserved) of which 22 content-modified, plus src/app/page.tsx (imports only). Scoped eslint on all 23 edited files: 0 errors, 0 warnings. tsc --noEmit: ZERO errors in src/components/** and src/app/page.tsx (log /tmp/tsc-rb-b.log).
+- FOR RB-A/MAIN (outside my ownership, flagged not touched): `scripts/qa-agent-io.ts:8` hard-imports `../src/components/praison/agents/agents-view` → TS2307 now that the dir is renamed; it is the ONLY tsc error and it breaks the tsc TRUE-exit gate. 155 scripts/ files reference `components/praison` paths as strings (dated probes, per r494-a untouched); only qa-agent-io.ts actually IMPORTS one. Fix: repo-wide scripts/ sed `components/praison`→`components/nexus` OR exclude "scripts" in tsconfig. Also note: constants GITHUB_URL deletion is now safe — zero references left in src/components (shell.tsx + settings-view.tsx importers removed).
+- Dev server health could NOT be witnessed at close: nothing listening on :3000 and no next/bun process (curl 000 ×4 across ~40s). Per instructions I did not restart it. My last dev.log read showed only normal API/prisma traffic (no component compile errors) before shutdown.
+- Residuals allowed by directive: 12 case-insensitive "praison" strings listed above; zero anywhere else in my scope. User data untouched — legacy data survives via rb-a's migration.ts; legacy exports/vaults still import.
+---
+
+Task ID: rb-a
+Agent: full-stack-developer (lib/config rebrand)
+Task: Rebrand round rb-a — purge every PraisonAI name from src/lib/**, src/app/{layout,error}.tsx, src/app/api/**, public/manifest.webmanifest, package.json (name), README/RESTORE/AGENT-HANDBOOK/OPERATING_DOCTRINE per the r494-a canonical mapping; add the one-time praison→nexus localStorage migration. Zero feature loss, minimal diffs.
+
+Work Log:
+- NEW src/lib/migration.ts — one-time idempotent localStorage migration: flag `nexus-migrated-from-praison-v1` (early return when set), snapshot-scan of `praison-`/`praisonai.` keys, prefix rule copy `praisonai.X→nexus.X` / `praison-X→nexus-X` (only when the target key does not exist), per-key try/catch (quota errors never abort the loop), legacy keys NEVER deleted (rollback safety), flag set (ISO stamp) in a final try/catch, `console.info("[nexus] migrated N legacy storage key(s)")` only when N>0, whole body guarded + SSR-safe (`typeof window`), self-executes on module import.
+- src/lib/stores.ts: `import "@/lib/migration"` as FIRST import; persist names `praison-{settings,agents,conversations,workflows,ui}` → `nexus-*`; `window.__PRAISON_QA__` → `window.__NEXUS_QA__` (comment + type + 2 assigns); budget comments → nexus-workflows/nexus-conversations.
+- src/lib/run-archive.ts: `import "@/lib/migration"` as first import; `ARCHIVE_KEY`/`BACKFILL_KEY` → `nexus.run-archive.v1` / `nexus.run-archive.backfill.v1`; `RUN_ARCHIVE_EVENT` → `nexus:run-archive-updated`; markdown pack title → `# NEXUS WebGUI Run Archive`; JSON pack `schema` → `nexus.run-archive-pack.v1`; pack-stamp doc comment → `nexus-run-archive-…`. (Import path has NO schema validator — verified — so no dual-accept needed for packs.)
+- src/lib/constants.ts: `APP_NAME` → "NEXUS WebGUI"; **GITHUB_URL export deleted** (importers live only in rb-b's shell.tsx/settings-view.tsx — removed there in parallel); `VYCE_INTRO_FLAG`/`AIHUBMIX_INTRO_FLAG` → `nexus-vyce-intro`/`nexus-aihubmix-intro`; seed agent "Praison Assistant" → "Nexus Assistant" (+ system prompt). APP_VERSION untouched.
+- src/lib/helpers.ts: 3× "Exported from PraisonAI Web" → "Exported from NEXUS WebGUI"; 3× footer → "_Generated locally by NEXUS WebGUI — agentic workflow automation platform._"; diagnostics header → "NEXUS WebGUI — run diagnostics"; run-report filename builder + doc comments `praison-run-…` → `nexus-run-…`.
+- src/lib/types.ts (header), agent-engine.ts:238 ("running inside NEXUS WebGUI, an agentic workflow automation platform."), harness.ts ("the harness lineage"), perf-notes.ts (`__nexusPerfNotes`), relay.ts (`nexus-relay-health`), providers.ts (`nexus-free-catalog`), schedule-skips.ts (`nexus-schedule-skips`), tracker-types.ts (`nexus-tracker-cache`/`nexus-tracker-lastseen`), workflow-runner.ts (`nexus-stall-timeout-ms` + comment, `nexus-stall-watchdog`, run-archive comment).
+- UA strings (tracker-sources.ts, server/tools.ts ×3, api/radar/{github,papers,hf}, api/vault/test-dial, api/providers/free-models, api/tracker/odds) → "NEXUS-WebGUI/1.0 (…; local-first agentic workflow platform)" variants; `PRAISON_UA` const renamed `NEXUS_UA`; zero PraisonAI repo URLs.
+- HMAC default secret 'praison' → 'nexus' in server/tools.ts (default value) AND tools-defs.ts (description + schema text) — consistent.
+- CSRF header `x-praison-csrf` → `x-nexus-csrf` atomically: client sender tools-defs.ts:451 + ALL four server gates (api/tools/execute, api/vault, api/vault/consume, api/tracker). Cross-checked rb-b's component senders — they already send `x-nexus-csrf`.
+- src/lib/vault-merge.ts: `looksLikeProviderVault` now accepts BOTH `praison-provider-vault` (legacy exports) and `nexus-provider-vault`; header comment updated.
+- api/vault/backup: comment + payload `app` → `nexus-automation-vault`.
+- src/app/layout.tsx: title "NEXUS WebGUI — Agentic Workflow Automation Platform"; description/keywords/applicationName/appleWebApp.title rewritten (no PraisonAI); THEME_BOOT reads `nexus-settings`; ThemeProvider storageKey `nexus-theme`. src/app/error.tsx: "NEXUS WebGUI client error".
+- public/manifest.webmanifest: name/short_name → "NEXUS WebGUI — Agentic Workflow Automation Platform" / "NEXUS". package.json: name → "nexus-webgui" (version/scripts untouched).
+- README.md: retitled, intro reworded to agentic-workflow-automation, added "Independent from-scratch build — not affiliated with any similarly named open-source project.", `src/components/praison/` → `nexus/`. RESTORE.md / docs/AGENT-HANDBOOK.md / docs/OPERATING_DOCTRINE.md: sed-style renames only (+ a "Storage keys & rebrand migration" bullet in the handbook teaching `nexus-migrated-from-praison-v1`). docs/research/** and scripts/** untouched.
+
+Stage Summary:
+- 37 files in my scope changed (17 lib modified + migration.ts new + 11 api routes + layout + error + manifest + package.json + 4 docs). User-facing behavior unchanged except names/keys; persisted data survives via migration.
+- Verification: scoped `rm -f .next/cache/tsbuildinfo* tsconfig.tsbuildinfo && bunx tsc --noEmit` → exactly 1 error, `scripts/qa-agent-io.ts(8,31)` (NOT owned: rb-b's component git-mv broke its stale import; scripts/ are deliberately untouched this round — needs owner/rb-b follow-up). ZERO errors in src/lib/**, src/app/api/**, layout.tsx, error.tsx (/tmp/tsc-rb-a.log). Scoped `bunx eslint` on all 37 owned files → clean. Live gate check before server went down: POST /api/tools/execute 200 with `x-nexus-csrf`.
+- Residual `rg -i "praison" src/lib src/app public/manifest.webmanifest package.json README.md` → 14 lines, ALL sanctioned: migration.ts legacy-prefix literals + flag name (11), vault-merge.ts legacy-kind literals (3). src/app is otherwise clean; the only old-prefix mention outside code is the sanctioned AGENT-HANDBOOK migration bullet.
+- One-time effects accepted by the mapping: Vyce/AIHubMix intro toasts re-fire once (flag keys renamed); THEME_BOOT may miss the accent theme on the very first post-upgrade paint (migration runs after the inline boot script; correct from the second render/reload).
+- Left for rb-b / owner: (1) GITHUB_URL importers in shell.tsx + settings-view.tsx must drop their imports (export is gone); (2) scripts/qa-agent-io.ts stale `components/praison` import path; (3) RESTORE.md still cites the old-org clone URL (`github.com/specimba/…`, cosmetically renamed by sed) — owner may want it genericized; (4) dev server stopped listening on :3000 near round end AFTER compiling my changes successfully (log shows ✓ Compiled + 200s) — supervisor/rb-b matter; not restarted per directive.

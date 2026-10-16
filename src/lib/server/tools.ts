@@ -261,7 +261,7 @@ async function doReadUrl(args: Record<string, unknown>): Promise<string> {
     let res = await fetch(target, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; PraisonAgent/1.0; +https://github.com/specimba/PraisonAI)",
+          "Mozilla/5.0 (compatible; NEXUS-WebGUI/1.0; local-first agentic workflow platform)",
         Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
       },
       signal: AbortSignal.timeout(15_000),
@@ -438,7 +438,7 @@ async function doArxivSearch(args: Record<string, unknown>, signal?: AbortSignal
   const res = (await Promise.race([
     fetch(feedUrl, {
       headers: {
-        "User-Agent": "PraisonAgent/1.0 (research tool; +https://github.com/specimba/PraisonAI)",
+        "User-Agent": "NEXUS-WebGUI/1.0 (research tool; local-first agentic workflow platform)",
       },
       signal: AbortSignal.timeout(ARXIV_TIMEOUT_MS),
     }),
@@ -532,8 +532,8 @@ export function decodeXml(s: string): string {
 // exactly the class guardPublicUrl exists for. guardedFetch re-runs the guard
 // on every redirect hop (same doctrine as the r26.2 read_url fix).
 
-const PRAISON_UA =
-  "Mozilla/5.0 (compatible; PraisonAgent/1.0; +https://github.com/specimba/PraisonAI)";
+const NEXUS_UA =
+  "Mozilla/5.0 (compatible; NEXUS-WebGUI/1.0; local-first agentic workflow platform)";
 
 /** Caller abort + per-tool deadline, composed when the runtime supports it. */
 function toolSignal(signal?: AbortSignal, timeoutMs = 15_000): AbortSignal | undefined {
@@ -557,7 +557,7 @@ async function guardedFetch(
     let res: Response;
     try {
       res = await fetch(target, {
-        headers: { "User-Agent": PRAISON_UA, Accept: "application/json", ...(opts?.headers ?? {}) },
+        headers: { "User-Agent": NEXUS_UA, Accept: "application/json", ...(opts?.headers ?? {}) },
         signal: toolSignal(opts?.signal, opts?.timeoutMs ?? 15_000),
         redirect: "manual",
         // Live-data tools: never let the framework serve a stale cached body.
@@ -966,7 +966,7 @@ function doUuidHash(args: Record<string, unknown>): string {
     case "hmac": {
       const value = str(args, "value");
       if (!value) throw new Error('hmac requires the "value" argument');
-      const secret = str(args, "secret") || "praison";
+      const secret = str(args, "secret") || "nexus";
       return `HMAC-SHA256 (secret ${secret ? `of ${secret.length} char(s)` : "default"}):\n${createHmac("sha256", secret).update(value, "utf8").digest("hex")}`;
     }
     case "random": {

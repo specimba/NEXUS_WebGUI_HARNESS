@@ -1,3 +1,4 @@
+import "@/lib/migration";
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import { toast } from "sonner";
@@ -166,8 +167,8 @@ const trimConversations = (convs: Conversation[]): Conversation[] =>
 // whole origin. Full-fidelity reports live in the DB archive tier
 // (/api/runs/archive, r455), so the deep cut sheds duplicated bulk, not the
 // only copy.
-const WORKFLOWS_BUDGET = 1_200_000; // serialized bytes for praison-workflows
-const CHATS_BUDGET = 700_000; // serialized bytes for praison-conversations
+const WORKFLOWS_BUDGET = 1_200_000; // serialized bytes for nexus-workflows
+const CHATS_BUDGET = 700_000; // serialized bytes for nexus-conversations
 const measure = (v: unknown): number => {
   try {
     return JSON.stringify(v)?.length ?? 0;
@@ -264,7 +265,7 @@ export const useSettingsStore = create<SettingsState>()(
       reset: () => set({ settings: DEFAULT_SETTINGS }),
     }),
     {
-      name: "praison-settings",
+      name: "nexus-settings",
       // r414: was raw localStorage — the ONLY unguarded synchronous writer
       // left, so when the origin hit quota, settings toggles were the one
       // place that threw a raw QuotaExceededError into the UI (user-reported:
@@ -358,8 +359,8 @@ export const useAgentsStore = create<AgentsState>()(
       getById: (id) => (id ? get().agents.find((a) => a.id === id) : undefined),
     }),
     {
-      name: "praison-agents",
-      // r414: same unguarded-writer fix as praison-settings above.
+      name: "nexus-agents",
+      // r414: same unguarded-writer fix as nexus-settings above.
       storage: createJSONStorage(() => debouncedStorage(300)),
       // r26.2 tool-expansion migration (v0 → v1): seeded agents gain the new
       // tools (UNION — nothing the user kept is removed) and tool ids that no
@@ -548,7 +549,7 @@ export const useConversationsStore = create<ConversationsState>()(
       clearAll: () => set({ conversations: [], activeId: null }),
     }),
     {
-      name: "praison-conversations",
+      name: "nexus-conversations",
       // r414: trim bulk payloads (old tool results/args) on the way out —
       // the newest 10 messages per chat stay intact.
       // r455: wrapped in the global byte-budget ladder — deep level keeps the
@@ -578,12 +579,12 @@ export const useConversationsStore = create<ConversationsState>()(
 
 // ─── r312 QA-only render-probe driver ────────────────────────────────────────
 // Inert for the product. Registered so CDP harnesses can drive REAL
-// patchMessage token bursts from page context (window.__PRAISON_QA__.patchBurst)
+// patchMessage token bursts from page context (window.__NEXUS_QA__.patchBurst)
 // to witness memo engagement without a live provider. Pacing mirrors token
 // streaming: one macrotask gap per patch so React flushes between updates.
 if (typeof window !== "undefined") {
   const w = window as unknown as {
-    __PRAISON_QA__?: {
+    __NEXUS_QA__?: {
       patchBurst: (
         convId: string,
         msgId: string,
@@ -594,8 +595,8 @@ if (typeof window !== "undefined") {
       cooldownMs: (providerId: string) => number;
     };
   };
-  if (!w.__PRAISON_QA__) {
-    w.__PRAISON_QA__ = {
+  if (!w.__NEXUS_QA__) {
+    w.__NEXUS_QA__ = {
       // r316: seed + read the shared per-provider 429 exhaustion memory
       // (provider-rotation.ts) from the QA harness. note429() with no id
       // notes EVERY registry lane, so a seeded tab is cooling no matter
@@ -761,7 +762,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
         })),
     }),
     {
-      name: "praison-workflows",
+      name: "nexus-workflows",
       // r414: the whale. Every run persisted full step outputs + tool results
       // (research essays × 213 tool calls × dozens of runs) — this key alone
       // filled the origin quota, and when it did, the unguarded settings
@@ -903,7 +904,7 @@ export const useUiStore = create<UiState>()(
       setSettingsAnchor: (settingsAnchor) => set({ settingsAnchor }),
     }),
     {
-      name: "praison-ui",
+      name: "nexus-ui",
       partialize: (s) => ({
         view: s.view,
         activeAgentId: s.activeAgentId,

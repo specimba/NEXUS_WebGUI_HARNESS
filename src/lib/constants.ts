@@ -1,10 +1,9 @@
 import type { Agent, ProviderKeyEntry, Settings, ToolId, UiThemeId } from "./types";
 
 // ─── Branding ────────────────────────────────────────────────────────────────
-export const APP_NAME = "PraisonAI";
+export const APP_NAME = "NEXUS WebGUI";
 export const APP_TAGLINE = "Multi-Agent AI Platform";
 export const APP_VERSION = "1.0.0";
-export const GITHUB_URL = "https://github.com/specimba/PraisonAI";
 
 // ─── Provider defaults ───────────────────────────────────────────────────────
 export const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1";
@@ -33,10 +32,10 @@ export const PRESEED_PROVIDER_KEYS: Record<string, ProviderKeyEntry> = {
 };
 
 /** localStorage flag so the one-time "Vyce is here" intro toast fires once. */
-export const VYCE_INTRO_FLAG = "praison-vyce-intro";
+export const VYCE_INTRO_FLAG = "nexus-vyce-intro";
 
 /** localStorage flag for the one-time "AIHubMix joined the vault" intro toast (r30). */
-export const AIHUBMIX_INTRO_FLAG = "praison-aihubmix-intro";
+export const AIHUBMIX_INTRO_FLAG = "nexus-aihubmix-intro";
 
 export const AUTO_MODEL = {
   id: "auto",
@@ -228,13 +227,13 @@ export const DEFAULT_SETTINGS: Settings = {
 export const SEED_AGENTS: Agent[] = [
   {
     id: "a-assistant",
-    name: "Praison Assistant",
+    name: "Nexus Assistant",
     emoji: "🤖",
     color: "violet",
     role: "General-purpose AI agent",
     description: "Versatile assistant that can search the web, read pages, run code and tell time.",
     instructions:
-      "You are Praison Assistant, a capable, friendly generalist agent. Answer with well-structured markdown. Use your tools whenever real-world data or computation would improve the answer.",
+      "You are Nexus Assistant, a capable, friendly generalist agent. Answer with well-structured markdown. Use your tools whenever real-world data or computation would improve the answer.",
     model: "auto",
     temperature: 0.7,
     maxIterations: 6,

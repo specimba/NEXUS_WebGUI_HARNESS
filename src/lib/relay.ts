@@ -208,7 +208,7 @@ function hopKey(providerId: string, model: string): string {
 // The rotator remembers which hops recently failed so the next run doesn't
 // queue them first and burn 3 engine retries on a corpse again.
 
-export const RELAY_HEALTH_KEY = "praison-relay-health";
+export const RELAY_HEALTH_KEY = "nexus-relay-health";
 
 export interface RelayHealthEntry {
   ok: number;

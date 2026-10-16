@@ -186,13 +186,13 @@ export function buildToolDefs(tools: ToolId[]): ToolDef[] {
       function: {
         name: "uuid_hash",
         description:
-          "Generate cryptographic values in server code: uuid (UUIDv4), sha256 (hex of a value), hmac (HMAC-SHA256 of a value with a secret, default 'praison'), or random (hex bytes). NEVER invent UUIDs, hashes or randomness yourself — models cannot generate entropy; always call this instead.",
+          "Generate cryptographic values in server code: uuid (UUIDv4), sha256 (hex of a value), hmac (HMAC-SHA256 of a value with a secret, default 'nexus'), or random (hex bytes). NEVER invent UUIDs, hashes or randomness yourself — models cannot generate entropy; always call this instead.",
         parameters: {
           type: "object",
           properties: {
             op: { type: "string", enum: ["uuid", "sha256", "hmac", "random"], description: "The operation to perform" },
             value: { type: "string", description: "Input for sha256/hmac (required for those ops)" },
-            secret: { type: "string", description: "HMAC secret (optional, default 'praison')" },
+            secret: { type: "string", description: "HMAC secret (optional, default 'nexus')" },
             length: { type: "number", description: "Bytes for the random op (1-128, default 16)" },
           },
           required: ["op"],
@@ -448,7 +448,7 @@ export const httpToolExecutor: ToolExecutor = async (name, argsJson, signal) => 
       // r26.1: CSRF gate token — a custom header foreign pages cannot forge
       // (they'd need a CORS preflight we never grant). Keep in sync with the
       // csrfOk() gate in /api/tools/execute.
-      headers: { "Content-Type": "application/json", "x-praison-csrf": "1" },
+      headers: { "Content-Type": "application/json", "x-nexus-csrf": "1" },
       body: JSON.stringify({ name, args: argsJson }),
       ...(composed ? { signal: composed.signal } : {}),
     });

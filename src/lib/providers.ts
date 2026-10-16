@@ -463,7 +463,7 @@ export interface LiveModel {
 
 export type LiveCatalog = Record<string, LiveModel[]>;
 
-export const LIVE_CATALOG_KEY = "praison-free-catalog";
+export const LIVE_CATALOG_KEY = "nexus-free-catalog";
 
 export function loadLiveCatalog(): LiveCatalog {
   try {

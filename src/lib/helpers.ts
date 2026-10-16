@@ -410,7 +410,7 @@ export function conversationToMarkdown(conv: Conversation): string {
   const lines: string[] = [
     `# ${conv.title}`,
     "",
-    `> Exported from PraisonAI Web · ${conv.messages.length} message${
+    `> Exported from NEXUS WebGUI · ${conv.messages.length} message${
       conv.messages.length === 1 ? "" : "s"
     } · ${new Date().toLocaleString()}`,
   ];
@@ -453,7 +453,7 @@ export function conversationToMarkdown(conv: Conversation): string {
     }
     if (m.error) lines.push("", `> ⚠️ Error: ${m.error}`);
   }
-  lines.push("", "---", "", "_Generated locally by PraisonAI Web — multi-agent platform._");
+  lines.push("", "---", "", "_Generated locally by NEXUS WebGUI — agentic workflow automation platform._");
   return lines.join("\n");
 }
 
@@ -592,7 +592,7 @@ export function runToMarkdown(workflow: Pick<Workflow, "name">, run: WorkflowRun
   const lines: string[] = [
     `# Run report — ${workflow.name}`,
     "",
-    `> Exported from PraisonAI Web · ${new Date().toLocaleString()}`,
+    `> Exported from NEXUS WebGUI · ${new Date().toLocaleString()}`,
     "",
     `- **Status:** ${STATUS_LABEL[run.status]}`,
     `- **Started:** ${new Date(run.startedAt).toLocaleString()}${
@@ -650,7 +650,7 @@ export function runToMarkdown(workflow: Pick<Workflow, "name">, run: WorkflowRun
       );
     });
   }
-  lines.push("", "---", "", "_Generated locally by PraisonAI Web — multi-agent platform._");
+  lines.push("", "---", "", "_Generated locally by NEXUS WebGUI — agentic workflow automation platform._");
   return lines.join("\n");
 }
 
@@ -663,7 +663,7 @@ export function runDiagnostics(
   run: WorkflowRun
 ): string {
   const lines: string[] = [
-    "PraisonAI Web — run diagnostics",
+    "NEXUS WebGUI — run diagnostics",
     "===============================",
     `workflow : ${workflow.name} (${run.workflowId})`,
     `run      : ${run.id}`,
@@ -737,7 +737,7 @@ export function comparisonToMarkdown(
   const lines: string[] = [
     `# Comparison report — ${workflow.name}`,
     "",
-    `> Exported from PraisonAI Web · ${new Date().toLocaleString()}`,
+    `> Exported from NEXUS WebGUI · ${new Date().toLocaleString()}`,
     "",
     "| | Run A | Run B |",
     "| --- | --- | --- |",
@@ -779,16 +779,16 @@ export function comparisonToMarkdown(
       stepDelta ? `\`${stepDelta.replace(" · ", "")}\`` : ""
     );
   }
-  lines.push("", "---", "", "_Generated locally by PraisonAI Web — multi-agent platform._");
+  lines.push("", "---", "", "_Generated locally by NEXUS WebGUI — agentic workflow automation platform._");
   return lines.join("\n");
 }
 
 /**
  * r177 (user report): recurring workflow runs used to export to the SAME
- * filename (`praison-run-<slug>.md`) — every new run overwrote the previous
+ * filename (`nexus-run-<slug>.md`) — every new run overwrote the previous
  * report in the user's Downloads. Convention (r177 research: GitHub Actions
  * run_number × ISO-stamp hybrid, honoring the user's own a/b/c habit):
- *   praison-run-<slug>-run<NNN>-<YYYYMMDD-HHMM>[a|b|c].md
+ *   nexus-run-<slug>-run<NNN>-<YYYYMMDD-HHMM>[a|b|c].md
  * NNN = the run's 1-based ordinal inside the workflow's own run list (sorted
  * by startedAt — stable as long as the run exists); stamp = the run's local
  * start time; the letter is appended ONLY when sibling runs share the same
@@ -815,5 +815,5 @@ export function runReportFileName(
     const li = siblings.findIndex((r) => r.id === run.id);
     letter = String.fromCharCode(97 + Math.min(Math.max(li, 0), 25));
   }
-  return `praison-run-${slug}-run${nnn}-${stamp}${letter}.md`;
+  return `nexus-run-${slug}-run${nnn}-${stamp}${letter}.md`;
 }

@@ -39,7 +39,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
-    "User-Agent": "PraisonAgent/1.0 (trend radar; +https://github.com/specimba/PraisonAI)",
+    "User-Agent": "NEXUS-WebGUI/1.0 (trend radar; local-first agentic workflow platform)",
   };
   const token = process.env.GITHUB_TOKEN?.trim();
   if (token) headers.Authorization = `Bearer ${token}`;

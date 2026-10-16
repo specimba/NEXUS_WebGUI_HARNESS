@@ -32,7 +32,7 @@ function csrfOk(req: NextRequest): boolean {
   const site = req.headers.get("sec-fetch-site");
   const origin = req.headers.get("origin");
   if (site === null && origin === null) return true; // CLI / server-to-server
-  if (req.headers.get("x-praison-csrf") !== "1") return false;
+  if (req.headers.get("x-nexus-csrf") !== "1") return false;
   return site !== "cross-site";
 }
 

@@ -51,6 +51,6 @@ if (
   typeof window !== "undefined"
 ) {
   (
-    window as unknown as { __praisonPerfNotes: typeof perfNotes }
-  ).__praisonPerfNotes = perfNotes;
+    window as unknown as { __nexusPerfNotes: typeof perfNotes }
+  ).__nexusPerfNotes = perfNotes;
 }

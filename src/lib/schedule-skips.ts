@@ -25,7 +25,7 @@ export interface ScheduleSkipEntry {
   reason?: ScheduleSkipReason;
 }
 
-const KEY = "praison-schedule-skips";
+const KEY = "nexus-schedule-skips";
 const CAP = 20;
 /** A tab closed mid-episode leaves the entry open — 24h then treat as stale. */
 const OPEN_STALE_MS = 24 * 60 * 60_000;

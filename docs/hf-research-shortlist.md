@@ -1,7 +1,7 @@
 # HuggingFace Hub Deep Research — Shortlist
 
 > Task ID: phase-4 (research-only) · Date: 2026-09-15 · Method: `hf` CLI 1.9.2 (huggingface_hub) + HF REST API via curl, all sizes verified from the Hub API (see §D).
-> Scope: (A) models that fit an 8 GB VRAM budget, (B) agent-tooling/UX Spaces, (C) top-5 concrete integrations for PraisonAI Web, (D) method & sources.
+> Scope: (A) models that fit an 8 GB VRAM budget, (B) agent-tooling/UX Spaces, (C) top-5 concrete integrations for NEXUS WebGUI, (D) method & sources.
 > Not re-researched: the 12 WebGPU inference Spaces already curated in `src/lib/hf-spaces.ts` and the 21 WebLLM prebuilts in `src/lib/webgpu.ts` (cross-checked, see §D contradictions).
 
 ---

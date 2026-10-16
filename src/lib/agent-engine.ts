@@ -235,7 +235,7 @@ export function clampIter(n?: number): number {
 
 export function composeSystem(system: string | undefined, hasTools: boolean): string {
   const lines = [
-    "You are an autonomous AI agent running inside PraisonAI, a multi-agent platform.",
+    "You are an autonomous AI agent running inside NEXUS WebGUI, an agentic workflow automation platform.",
     system ? `YOUR PERSONA & INSTRUCTIONS:\n${system}` : "",
     "Answer using rich markdown (headings, lists, tables, fenced code blocks with language tags).",
     hasTools

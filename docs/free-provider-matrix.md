@@ -2,7 +2,7 @@
 
 - **Date:** 2026-09-15 (live research day)
 - **Method:** live web search (web-search skill) + direct HTTP probes of live API endpoints (`integrate.api.nvidia.com/v1/models`, `opencode.ai/zen/v1/*`, `openrouter.ai/api/v1/models`, `api.kilo.ai` docs endpoints) + official vendor docs fetches. Third-party rate-limit claims are marked with their as-of date and source.
-- **Project context:** PraisonAI Web is **local-first, BYOK, localStorage-only, zero telemetry**. Every key below is pasted by the user into their browser and sent only to the provider they chose, only when they chat. Nothing is proxied or logged anywhere else.
+- **Project context:** NEXUS WebGUI is **local-first, BYOK, localStorage-only, zero telemetry**. Every key below is pasted by the user into their browser and sent only to the provider they chose, only when they chat. Nothing is proxied or logged anywhere else.
 - **Legend for "In registry?"** — refers to `src/lib/providers.ts` (`FREE_PROVIDERS` — 12 providers at r14, **15 as of 2026-10-05**: + `vyce` r18, `orcarouter` r23, `aihubmix` r30 — see the accuracy-pass addendum at the bottom). Registry ids are given where known.
 - **Confidence marks:** ✅ verified live or from official docs on 2026-09-15 · 🕐 as-of (dated secondary source, not re-verified live) · ⚠️ UNVERIFIED (do not trust without checking).
 

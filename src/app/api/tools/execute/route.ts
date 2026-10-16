@@ -32,7 +32,7 @@ const KNOWN = new Set([
 // The executor can search the web, fetch arbitrary URLs and run sandboxed
 // code — a foreign website's page must not be able to drive it from a victim's
 // browser (drive-by CSRF). Two independent gates:
-//   1. Custom-header gate — our UI always sends "x-praison-csrf: 1". Cross-
+//   1. Custom-header gate — our UI always sends "x-nexus-csrf: 1". Cross-
 //      origin pages CANNOT attach custom headers without a successful CORS
 //      preflight, and we never grant preflight to foreign origins. This alone
 //      defeats drive-by CSRF — and unlike the old `Origin === Host` check it
@@ -46,7 +46,7 @@ function csrfOk(req: NextRequest): boolean {
   const site = req.headers.get("sec-fetch-site");
   const origin = req.headers.get("origin");
   if (site === null && origin === null) return true; // CLI / server-to-server
-  if (req.headers.get("x-praison-csrf") !== "1") return false; // preflight gate
+  if (req.headers.get("x-nexus-csrf") !== "1") return false; // preflight gate
   return site !== "cross-site";
 }
 

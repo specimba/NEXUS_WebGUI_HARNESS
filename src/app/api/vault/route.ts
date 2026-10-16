@@ -24,7 +24,7 @@ const maskKey = (k: string) =>
 
 // r321 double-gate applied route-wide (r325; consume/tools-execute/tracker
 // carry the same local copy): (1) custom-header gate — foreign pages cannot
-// attach "x-praison-csrf" without a granted preflight (never granted), so a
+// attach "x-nexus-csrf" without a granted preflight (never granted), so a
 // text/plain simple-request bypass dies here; (2) fetch-metadata gate —
 // Sec-Fetch-Site "cross-site" rejected. No browser headers at all = CLI /
 // scheduler pass.
@@ -32,7 +32,7 @@ function csrfOk(req: Request): boolean {
   const site = req.headers.get("sec-fetch-site");
   const origin = req.headers.get("origin");
   if (site === null && origin === null) return true; // CLI / server-to-server
-  if (req.headers.get("x-praison-csrf") !== "1") return false; // preflight gate
+  if (req.headers.get("x-nexus-csrf") !== "1") return false; // preflight gate
   return site !== "cross-site";
 }
 

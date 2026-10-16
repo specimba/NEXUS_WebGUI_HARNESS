@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(url, {
       headers: {
         Accept: "application/json",
-        "User-Agent": "Mozilla/5.0 (compatible; PraisonAI-Web/1.0; BYOK local-first)",
+        "User-Agent": "Mozilla/5.0 (compatible; NEXUS-WebGUI/1.0; local-first agentic workflow platform)",
         ...(key ? { Authorization: `Bearer ${key}` } : {}),
       },
       signal: AbortSignal.timeout(12_000),

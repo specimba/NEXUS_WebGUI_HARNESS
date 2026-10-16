@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 // "builtin". The response was unreadable to that page under same-origin
 // policy — but that shield is one CORS misconfiguration away from gone, so
 // the gate is enforced here instead of trusted upstream: foreign pages cannot
-// attach "x-praison-csrf" without a granted preflight (never granted), and
+// attach "x-nexus-csrf" without a granted preflight (never granted), and
 // Sec-Fetch-Site "cross-site" is rejected outright. Non-browser callers (the
 // scheduler mini-service, CLI) send neither Origin nor Sec-Fetch-Site and
 // pass — the r133 handoff contract is unchanged. The same-LAN raw-process
@@ -94,7 +94,7 @@ function csrfOk(req: Request): boolean {
   const site = req.headers.get("sec-fetch-site");
   const origin = req.headers.get("origin");
   if (site === null && origin === null) return true; // CLI / server-to-server
-  if (req.headers.get("x-praison-csrf") !== "1") return false; // preflight gate
+  if (req.headers.get("x-nexus-csrf") !== "1") return false; // preflight gate
   return site !== "cross-site";
 }
 
