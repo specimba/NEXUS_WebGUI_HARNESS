@@ -87,3 +87,6 @@ ops/chrome-profile/
 .chrome-qa-profile/
 # r449: rollback-incident quarantine tarballs — incident artifacts, not source.
 lost-era-quarantine-*.tar.gz
+
+# r493: vault rehydration seed holds plaintext keys — same trust class as db/*.db, NEVER commit
+db/vault-seed.json

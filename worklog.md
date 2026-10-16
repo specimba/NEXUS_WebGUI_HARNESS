@@ -11562,3 +11562,35 @@ Scope committed: run-archive.ts, run-archive-panel.tsx, workflow-runner.ts, work
 Open risks: fork-push credential streak (environmental); amber playground footer preseed-blocked; r460 proposals-restore un-witnessed; r454/r453/r452/r451 standing witnesses; chat send-flow re-witness still queued; archive backfill can only rescue newest-12/wf (older outputs genuinely lost — owner informed); scheduleId not carried (WorkflowSchedule has no id field).
 Blockers: none
 Next recommended action: r487 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) Candidates: (a) Evolution ledger reading archive novelty automatically (close the RSI loop the owner described); (b) auto-attach digest toggle for scheduled runs (successor wire for the cron lane, currently manual-only); (c) chat send-flow re-witness ride-along. (4) Standing: tsc TRUE-exit w/ full-log rg (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, survey HARD-CAP 3, ONE route + hash-nav, localStorage truth, NEVER nohup-boot, agent-browser profiles: this daemon's profile is persistent (refs shift after re-render; text-selectors fragile under overlays — prefer refs + Escape/scrollintoview), land on budget — early exit IS success.
+
+---
+Task ID: r493
+Agent: main (platform dev agent)
+Task: human-request round — owner: (1) "preview broken for a while with sandbox... take your backup rollback points also take version control pushes to our github repo too"; (2) "qwen 3.8 Flash isn't there; you somehow rolled back the last additions and upgrades. be smarter and work properly"; (3) the recurring vault nag ("⏸ 3 schedules due... no vault key is stored... store a registry provider key in the Automation vault") — "this is wanted from me every time same keys nonsensically" — plus 3 uploads: praison-provider-vault1610.json (17-key vault export), praisonai-export1610.json (full app export), praison-workflows1610.json.
+
+Work Log:
+- DIAGNOSIS: .git rolled back to the Oct-13 19:06Z snapshot (post-r486); reflog + every remote (fork/main=Oct-05, origin/main=r50-era, rollback-lineage branch) hold NO r487–r492 objects — the lost layer (r487 scheduled-runs QA, r488 Vyce-favorites focus, r489 qwen3.8-max-free add, r490 model-ambiguity fix, r491 relay affinity, r492 evidence round) is unrecoverable from git; manual re-application was the only path. Worklog on disk ended at r486 (this entry re-records the lost layer's essentials). The DB SURVIVED (4 scheduled workflows due, nextRunAt today) but AutomationVault=0 rows — the nag was honest: keys only ever lived in the browser.
+- RE-APPLIED r489 roster: aihubmix qwen3.8-max-free + qwen3.8-flash-free in providers.ts model list (first-hand telemetry notes: max-free peak TTFT ~55s / 9 tok/s congested edge; flash-free ~5.4s / 36 tok/s healthy) + relay.ts ARENA_CATALOG (max-free tier-1 elo 0.945, flash-free tier-1 elo 0.912).
+- RE-APPLIED r491 relay affinity in buildRelayWire: stable four-bucket reorder (healthy-same-provider → healthy-rest → sick-same → sick-rest; soft 429 hops never demote — recentlyFailed single truth) + the r491 leftover: AUTO slot reserved under MAX_RELAY_HOPS (built-in engine stays the unconditional last resort). Call sites (chat-view.tsx:281, workflow-runner.ts:1424) already pass providerId — no changes needed there.
+- VAULT FIXED end-to-end: owner's 17-key export → db/vault-seed.json (converter: providerKeys → slots, label "owner vault export · <model>") → POST /api/vault/backup returned {imported:17, skipped:0} → sqlite: AutomationVault 17 rows → GET /api/automation/sync: executorLane {ready:true, reason:null, providerLabel:"Vyce AI", slotCount:17}. The "no vault key is stored" nag is dead; due schedules can fire closed-tab.
+- DURABILITY (new): instrumentation.ts boot hook rehydrates an EMPTY vault from db/vault-seed.json (fires only when count===0 — deliberate deletions respected; logs "[boot] vault rehydrated N slot(s)"). A sandbox/DB reset can never re-ask the owner for keys again.
+- SECURITY: db/vault-seed.json holds plaintext keys — .gitignore entry added BEFORE any snapshot (check-ignore verified). Never commit, never serve beyond localhost.
+- GATES: qa:tsc TSC_EXIT=0 / 0 errors; lint 0 errors / 33 warnings (EXACT baseline); HEALTH=200; dev.log clean (200s, no compile errors).
+- WITNESS: agent-browser #/workflows?r=493 — "no vault key" nag ABSENT from the rendered view; #/chat composer picker DOM dive attempted twice (button survey: Attach files/Image Studio/voice/Send — the model selector sits outside probed roots; picker-list proof NOT captured) — roster truth is code+TSC-verified (providers.ts qwen3.8-max-free/flash-free entries, relay.ts catalog); picker DOM witness queued with the r482-era chat send-flow witness.
+- ROLLBACK POINTS + PUSH (owner directive): snapshot commit via scripts/git-snapshot.sh (commits + pushes fork/main); result recorded in the next snapshot line. Owner's earlier 2 AIHubMix CSVs (upload/detail.csv, upload/statistics.csv) survived on disk — still queued as the limits-registry truth source.
+
+Stage Summary:
+- Server lane ready=true with 17 vault slots (Vyce AI first resolvable); due schedules unblocked.
+- Roster restored: qwen3.8-max-free/flash-free back in the AIHubMix list + relay chain (high-priority per r489).
+- Relay affinity + AUTO-slot reservation back (the r491 "pinned AIHubMix, answered Vyce" protection).
+- Vault rehydration boot hook closes the "same keys every time" class permanently.
+- Lost-layer bookkeeping: r487–r492 intents re-recorded here; r492's smart-routing epic (per-lane limits registry + budgeted dialing + pin-respect strict/shim with pre-send consent + health-aware pre-routing + tracker dedup/freshness) remains the standing top epic.
+- praisonai-export1610.json (agents/conversations) + praison-workflows1610.json ingested as successor context but NOT restored into any store — browser localStorage remains source of truth; imports stay owner-driven.
+
+Round Handoff:
+Round ID: r494
+Task owner: main (platform dev agent)
+Scope committed: src/lib/relay.ts, src/lib/providers.ts, src/instrumentation.ts, .gitignore, db/vault-seed.json (ignored), worklog.
+Open risks: fork push credential streak (result below); picker DOM witness queued; lost r487–r492 code re-applied from records, not git.
+Blockers: none
+Next recommended action: r494 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) Confirm push landed on fork/main; then the r492 smart-routing epic: limits registry from detail.csv/statistics.csv + per-lane budgeted dialing; pin-respect (strict-pin vs smart-shim with pre-send consent). (4) Standing gates: tsc TRUE-exit w/ full-log rg (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, ONE route + hash-nav, localStorage truth, NEVER nohup-boot, land on budget — early exit IS success.

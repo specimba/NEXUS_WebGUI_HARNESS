@@ -41,6 +41,49 @@ export async function register(): Promise<void> {
       err instanceof Error ? err.message : err
     );
   }
+  // r493 — vault rehydration: the vault is the ONLY thing the closed-tab lane
+  // needs, and a sandbox/DB reset silently emptied it while the registry rows
+  // survived — the exact loop the owner called nonsensical ("store the same
+  // keys every time"). db/vault-seed.json (localhost-only file, same plaintext
+  // trust model as the vault's own SQLite) rehydrates an EMPTY vault at boot.
+  // Deliberate deletions stay respected: rehydration fires only when the
+  // table has ZERO slots.
+  try {
+    const { db: bootDb } = await import("@/lib/db");
+    const { readFile } = await import("node:fs/promises");
+    const path = await import("node:path");
+    const seedPath = path.join(process.cwd(), "db", "vault-seed.json");
+    const seed = JSON.parse(await readFile(seedPath, "utf8")) as {
+      slots?: { provider?: unknown; key?: unknown; label?: unknown }[];
+    };
+    const slots = Array.isArray(seed?.slots) ? seed.slots : [];
+    if (slots.length > 0 && (await bootDb.automationVault.count()) === 0) {
+      let n = 0;
+      for (const s of slots) {
+        const provider = typeof s?.provider === "string" ? s.provider.trim() : "";
+        const key = typeof s?.key === "string" ? s.key.trim() : "";
+        if (!provider || !key) continue;
+        const label =
+          typeof s.label === "string" && s.label.trim() ? s.label.trim() : null;
+        await bootDb.automationVault.upsert({
+          where: { provider },
+          create: { provider, key, label },
+          update: { key, label },
+        });
+        n += 1;
+      }
+      console.info(
+        `[boot] vault rehydrated ${n} slot(s) from db/vault-seed.json — the closed-tab lane can dial again`
+      );
+    }
+  } catch (err) {
+    // No seed file (fresh clone) or first-boot schema race — never block the
+    // executor; the next boot re-checks.
+    console.warn(
+      "[boot] vault rehydration skipped:",
+      err instanceof Error ? err.message : err
+    );
+  }
   const { startAutomationExecutor } = await import("@/lib/server/automation-executor");
   startAutomationExecutor();
 }

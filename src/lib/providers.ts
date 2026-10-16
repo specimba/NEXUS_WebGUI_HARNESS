@@ -109,6 +109,8 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       { id: "nemotron-3-ultra-550b-a55b-free", label: "Nemotron 3 Ultra 550B (Free)", note: "550B MoE (55B active) · 1M ctx · frontier reasoning · $0" },
       { id: "nemotron-3.5-lightning-free", label: "Nemotron 3.5 Lightning (Free)", note: "30B MoE (3B active) · 1M ctx · high-throughput · $0" },
       { id: "hy3-free", label: "Hunyuan Hy3 (Free)", note: "295B MoE (21B active) · 256K ctx · 3 thinking modes · $0" },
+      { id: "qwen3.8-max-free", label: "Qwen 3.8 Max (Free)", note: "Alibaba flagship · 1M ctx · $0 — peak TTFT ~55s / 9 tok/s (congested edge)" },
+      { id: "qwen3.8-flash-free", label: "Qwen 3.8 Flash (Free)", note: "1M ctx · $0 — healthy lane: TTFT ~5.4s / 36 tok/s" },
       { id: "auto", label: "AIHubMix Router (auto)", note: "Platform auto-router · auto:balanced/quality_first/latency_critical · bills at resolved model" },
       { id: "claude-sonnet-5", label: "Claude Sonnet 5", note: "Frontier workhorse · 1M ctx · $2/$10" },
       { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", note: "OpenAI fast flagship · 1.05M ctx · $0.20/$1.20" },

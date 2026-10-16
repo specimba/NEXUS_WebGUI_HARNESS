@@ -78,6 +78,12 @@ const ARENA_CATALOG: Record<
       { id: "gemini-3.6-flash", tier: 1, elo: 0.962, note: "Google current-gen · 1M ctx · $1.50/$7.50" },
       { id: "grok-4.5", tier: 1, elo: 0.955, note: "xAI frontier · 500K ctx · $2/$6" },
       { id: "qwen3.8-max", tier: 1, elo: 0.95, note: "Alibaba flagship · 1M ctx · $1.69/$5.07" },
+      // r493 re-applied (lost in the Oct-13 .git rollback): the r489 owner
+      // directive — qwen3.8-max-free joins the high-priority list; flash-free is
+      // the healthy sibling lane. First-hand AIHubMix telemetry (owner model-page
+      // dump): max-free edge TTFT ~55s / 9 tok/s at peak; flash-free ~5.4s / 36 tok/s.
+      { id: "qwen3.8-max-free", tier: 1, elo: 0.945, note: "Qwen 3.8 Max free lane · 1M ctx · $0 · peak TTFT ~55s / 9 tok/s" },
+      { id: "qwen3.8-flash-free", tier: 1, elo: 0.912, note: "Qwen 3.8 Flash free lane · 1M ctx · $0 · healthy ~5.4s / 36 tok/s" },
       { id: "deepseek-v4-flash", tier: 2, elo: 0.93, note: "Budget frontier · 1M ctx · $0.142/$0.284" },
       { id: "glm-5.3-flash", tier: 2, elo: 0.925, note: "Z.ai fast lane · 1M ctx · $0.11/$0.39" },
       { id: "coding-glm-5.3-free", tier: 2, elo: 0.912, note: "FREE coding lane · 1M ctx · tools" },
@@ -630,9 +636,38 @@ export function buildRelayWire(
       ? hopKey(primary.providerId, primary.model)
       : undefined;
   const excludeAuto = primary?.providerId === "auto";
-  return buildRelayChain(settings, opts)
-    .filter((h) => h.key !== excludeKey && !(excludeAuto && h.providerId === "auto"))
-    .slice(0, MAX_RELAY_HOPS)
+  let chain = buildRelayChain(settings, opts).filter(
+    (h) => h.key !== excludeKey && !(excludeAuto && h.providerId === "auto")
+  );
+
+  // r493 re-applied (lost in the Oct-13 .git rollback): r491 provider affinity —
+  // when the request pins a provider, STABLY reorder into four buckets so the
+  // pinned provider's own healthy lanes dial before a foreign tier-1 flagship
+  // (the "pinned AIHubMix, answered Vyce" incident). Hard-failed hops sink
+  // within their provider group; soft (429/capacity) hops NEVER demote
+  // (recentlyFailed already enforces that — the rotator doctrine, one truth).
+  const affinityId =
+    primary?.providerId && primary.providerId !== "auto" ? primary.providerId : undefined;
+  if (affinityId) {
+    const health = loadHealth();
+    const sick = (h: RelayHop) => recentlyFailed(health[h.key]);
+    const buckets: RelayHop[][] = [[], [], [], []];
+    for (const h of chain) {
+      buckets[(sick(h) ? 2 : 0) + (h.providerId === affinityId ? 0 : 1)].push(h);
+    }
+    chain = [...buckets[0], ...buckets[1], ...buckets[2], ...buckets[3]];
+  }
+
+  // r493 re-applied: the built-in engine stays the unconditional last resort —
+  // under the MAX_RELAY_HOPS cap the AUTO slot is reserved, never sliced off
+  // by keyed hops (r491 live note: the affinity reshuffle squeezed AUTO out).
+  const keyed = chain.filter((h) => h.providerId !== "auto");
+  const autoHop = chain.find((h) => h.providerId === "auto");
+  const capped = autoHop
+    ? [...keyed.slice(0, MAX_RELAY_HOPS - 1), autoHop]
+    : keyed.slice(0, MAX_RELAY_HOPS);
+
+  return capped
     .map((h) => ({
       key: h.key,
       ...(h.baseUrl ? { baseUrl: h.baseUrl } : {}),
