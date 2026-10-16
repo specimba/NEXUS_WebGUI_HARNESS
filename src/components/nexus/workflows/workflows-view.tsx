@@ -121,8 +121,9 @@ function exportWorkflows(workflows: Workflow[]) {
  * its own export file on re-import and spawn an "(imported)" twin instead. */
 function sanitizeWorkflow(
   raw: unknown,
-  validAgentIds: Set<string>
-): { wf: Workflow; droppedSteps: number } | null {
+  validAgentIds: Set<string>,
+  agentNameIndex?: Map<string, string>
+): { wf: Workflow; droppedSteps: number; reboundSteps: number } | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const name = typeof r.name === "string" ? r.name.trim() : "";
@@ -132,16 +133,29 @@ function sanitizeWorkflow(
   const rawSteps = Array.isArray(r.steps) ? r.steps : [];
   const steps: WorkflowStep[] = [];
   let droppedSteps = 0;
+  let reboundSteps = 0;
   for (const rs of rawSteps) {
     if (!rs || typeof rs !== "object") {
       droppedSteps++;
       continue;
     }
     const s = rs as Record<string, unknown>;
-    const agentId = typeof s.agentId === "string" ? s.agentId : "";
+    let agentId = typeof s.agentId === "string" ? s.agentId : "";
     if (!agentId || !validAgentIds.has(agentId)) {
-      droppedSteps++; // r448: no longer silent — the caller reports the count
-      continue;
+      // r495: portable packs carry `agentName` on each step (ids are
+      // profile-local uid()s that never survive an export). Rebind by name
+      // (case-insensitive) instead of silently dropping the step; the caller
+      // reports the rebind count in the import receipt. Unresolvable steps
+      // still drop with a visible count — no silent truncation.
+      const nm = typeof s.agentName === "string" ? s.agentName.trim().toLowerCase() : "";
+      const rebound = nm && agentNameIndex ? agentNameIndex.get(nm) : undefined;
+      if (rebound && validAgentIds.has(rebound)) {
+        agentId = rebound;
+        reboundSteps++;
+      } else {
+        droppedSteps++; // r448: no longer silent — the caller reports the count
+        continue;
+      }
     }
     steps.push({
       id: uid("step"),
@@ -171,6 +185,7 @@ function sanitizeWorkflow(
         : {}),
     },
     droppedSteps,
+    reboundSteps,
   };
 }
 
@@ -1231,14 +1246,19 @@ export function WorkflowsView() {
         return;
       }
       const validAgentIds = new Set(useAgentsStore.getState().agents.map((a) => a.id));
-      const results = list.map((w) => sanitizeWorkflow(w, validAgentIds));
+      // r495: name→id index for portable-pack rebinds (pack steps carry agentName).
+      const agentNameIndex = new Map(
+        useAgentsStore.getState().agents.map((a) => [a.name.trim().toLowerCase(), a.id] as const)
+      );
+      const results = list.map((w) => sanitizeWorkflow(w, validAgentIds, agentNameIndex));
       const imported = results.filter(
-        (x): x is { wf: Workflow; droppedSteps: number } => x !== null
+        (x): x is { wf: Workflow; droppedSteps: number; reboundSteps: number } => x !== null
       );
       const wfs = imported.map((x) => x.wf);
       // r448: steps dropped inside surviving workflows are part of the import
       // receipt now — silent truncation also defeated fingerprint dedupe.
       const droppedSteps = imported.reduce((n, x) => n + x.droppedSteps, 0);
+      const reboundSteps = imported.reduce((n, x) => n + x.reboundSteps, 0);
       if (imported.length === 0) {
         toast.error("No usable workflows found", {
           description: "Workflows need a name and at least one step whose agent exists in your roster.",
@@ -1294,6 +1314,9 @@ export function WorkflowsView() {
             (renamed > 0 ? ` · ${renamed} renamed to avoid a clash` : "") +
             (droppedSteps > 0
               ? ` · ${droppedSteps} step${droppedSteps === 1 ? "" : "s"} skipped (no usable agent)`
+              : "") +
+            (reboundSteps > 0
+              ? ` · ${reboundSteps} step${reboundSteps === 1 ? "" : "s"} rebound by agent name`
               : "") +
             (skipped > 0 ? ` (${skipped} skipped — unusable)` : "")
         );
