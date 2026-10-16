@@ -11594,3 +11594,25 @@ Scope committed: src/lib/relay.ts, src/lib/providers.ts, src/instrumentation.ts,
 Open risks: fork push credential streak (result below); picker DOM witness queued; lost r487–r492 code re-applied from records, not git.
 Blockers: none
 Next recommended action: r494 — (1) FIRST re-read any user reply. (2) Health curl; DOWN -> ONE scripts/dev-restart.sh. (3) Confirm push landed on fork/main; then the r492 smart-routing epic: limits registry from detail.csv/statistics.csv + per-lane budgeted dialing; pin-respect (strict-pin vs smart-shim with pre-send consent). (4) Standing gates: tsc TRUE-exit w/ full-log rg (tsbuildinfo cleared), lint 0/33 pipefail, worklog BEFORE snapshot, ONE route + hash-nav, localStorage truth, NEVER nohup-boot, land on budget — early exit IS success.
+
+---
+Task ID: r493-b
+Agent: main (platform dev agent)
+Task: owner hand-delivered a fresh fine-grained PAT ("hlmWEBGUIadmin", expires 2027-01-14) to unblock the GitHub push streak. Installed it, diagnosed the residual 403, and left the remote wired for zero-touch push.
+
+Work Log:
+- TOKEN SAFETY: token installed ONLY in .git/config via `git remote set-url fork https://specimba:<PAT>@github.com/specimba/PraisonAI.git` (untracked file — never in worklog/commits; a .git rollback would discard it, re-run the set-url to restore).
+- VERIFIED: `git ls-remote fork` resolves (repo is public, so read proves no scope); API `GET /user` → login specimba; `GET /repos/specimba/PraisonAI` → permissions push/admin TRUE (that reflects the USER's owner role, NOT the token scope — fine-grained PAT gotcha).
+- PUSH ATTEMPT: `git push fork main` → 403 "Permission to specimba/PraisonAI.git denied to specimba". DIAGNOSIS: the owner's paste lists ONLY account permissions (Copilot/SSH/GPG/Plan/Starring/Models/Issue Fields/Types) — the PAT was saved with ZERO repository permissions; Contents:write was never granted. Fix is owner-side, no regeneration needed: GitHub → Settings → Developer settings → Fine-grained tokens → hlmWEBGUIadmin → Edit → Repository access: All repositories (or select specimba/PraisonAI) → Repository permissions → Contents: Read and write → Save. The moment that flips, `git push fork main` ships the whole chain (ffe7c1ed4..73518a221 fast-forward) and every future scripts/git-snapshot.sh run auto-pushes.
+- Local truth unchanged: HEAD 73518a221 + backups/main-r493.bundle (44M, verified, gitignored).
+
+Stage Summary:
+- Remote `fork` now carries a valid credential (expires 2027-01-14); push blocked solely by the token's missing Contents:write scope — one owner-side checkbox away.
+- Read/ls-remote restored on the fork remote; snapshot script will push automatically once the scope lands.
+
+Round Handoff:
+Round ID: r494
+Task owner: main (platform dev agent)
+Open risks: push pending owner's Contents:write grant; everything else green (vault 17 slots ready, roster restored, gates 0/33).
+Blockers: none (push is owner-side)
+Next recommended action: r494 — re-read any user reply FIRST; if the PAT scope was updated, `git push fork main` and confirm ffe7c1ed4..HEAD lands on GitHub; then proceed with the r492 smart-routing epic (limits registry from upload/detail.csv + upload/statistics.csv, budgeted dialing, pin-respect strict/shim).
