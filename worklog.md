@@ -11616,3 +11616,24 @@ Task owner: main (platform dev agent)
 Open risks: push pending owner's Contents:write grant; everything else green (vault 17 slots ready, roster restored, gates 0/33).
 Blockers: none (push is owner-side)
 Next recommended action: r494 — re-read any user reply FIRST; if the PAT scope was updated, `git push fork main` and confirm ffe7c1ed4..HEAD lands on GitHub; then proceed with the r492 smart-routing epic (limits registry from upload/detail.csv + upload/statistics.csv, budgeted dialing, pin-respect strict/shim).
+
+---
+Task ID: r493-c
+Agent: main (platform dev agent)
+Task: owner granted Contents:write on the PAT (2 repositories specified) — re-attempted the push and CONFIRMED it landed.
+
+Work Log:
+- `git push fork main` → **ffe7c1ed4..4a01152ae main -> main** (fast-forward, no force) — the multi-round environmental push streak is BROKEN.
+- Verified: remote SHA == local HEAD (4a01152ae) via ls-remote — GitHub now holds the full chain: all Oct-13 snapshots + r493 rollback recovery (vault rehydration + 17-slot seed, relay affinity re-application, qwen3.8 free lanes restored, run-archive epic, and the entire r486-era lineage that was previously push-blocked).
+- From this point every scripts/git-snapshot.sh run (each cron round's bookkeeping) auto-pushes to GitHub — off-site backup is now the default, not an aspiration.
+
+Stage Summary:
+- GITHUB IS IN SYNC: specimba/PraisonAI main == local HEAD. The "backup rollback points + version control pushes to our github repo" directive is fully satisfied: snapshot commits + 44MB offline bundle + live remote.
+- Open work unchanged: r492 smart-routing epic (limits registry from upload/detail.csv + upload/statistics.csv, budgeted dialing, pin-respect strict/shim with pre-send consent), tracker dedup/freshness, picker DOM witness.
+
+Round Handoff:
+Round ID: r494
+Task owner: main (platform dev agent)
+Open risks: none blocking; token expires 2027-01-14 (re-grant or new PAT before then restores after any expiry gap).
+Blockers: none
+Next recommended action: r494 — re-read any user reply FIRST; then the r492 smart-routing epic: ingest upload/detail.csv + upload/statistics.csv into a per-lane limits registry (RPM/TPM/daily), budgeted dialing, pin-respect (strict-pin vs smart-shim + pre-send consent). Standing gates: tsc TRUE-exit (tsbuildinfo cleared), lint 0/33, worklog BEFORE snapshot, ONE route + hash-nav, never nohup-boot.
