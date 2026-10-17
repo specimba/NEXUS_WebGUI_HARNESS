@@ -668,7 +668,9 @@ export const useWorkflowsStore = create<WorkflowsState>()(
           name: wf.name ?? "Untitled workflow",
           description: wf.description ?? "",
           steps: wf.steps ?? [],
-          runs: [],
+          // r496: honor pre-loaded run history (full-pack imports restore runs
+          // read-only). Every other caller passes none — behavior unchanged.
+          runs: wf.runs ?? [],
           createdAt: now,
           updatedAt: now,
           ...(wf.depth ? { depth: wf.depth } : {}),

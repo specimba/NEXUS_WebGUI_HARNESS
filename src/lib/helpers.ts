@@ -3,9 +3,14 @@ import type {
   ChatMessage,
   Conversation,
   MessageAttachment,
+  PipelineDepth,
+  RunCallLogEntry,
   RunComparison,
+  RunErrorInfo,
+  ToolCallInfo,
   Workflow,
   WorkflowRun,
+  WorkflowRunStep,
 } from "./types";
 import { IMAGE_MAX_DIMENSION, MAX_IMAGE_DATAURL_CHARS } from "./constants";
 import { buildEvidenceLedger, formatCiters } from "./evidence-ledger";
@@ -392,6 +397,214 @@ export function downloadText(filename: string, text: string, mime = "text/plain"
 
 export function downloadJson(filename: string, data: unknown): void {
   downloadText(filename, JSON.stringify(data, null, 2), "application/json");
+}
+
+// ─── Workflow export packs (r496) ────────────────────────────────────────────
+// r496 (owner directive): the definitions-only batch export weighed LESS than
+// one single run report (five pipelines ≈ 9.6 KB vs one run report ≈ 68 KB of
+// step outputs). The export carried none of the run intelligence, so moving
+// workflows between profiles meant losing every run, output and schedule.
+// Two modes now:
+//   "definitions" — the old portable shape (compatible with version-1 files).
+//   "full"        — version 2: definitions + run history (outputs, tool
+//                   calls, LLM call log, novelty, errors) + schedule intent,
+//                   with agentName on every step so any profile can rebind
+//                   workers (ids are profile-local uid()s and never survive).
+
+/** Restored step-output cap — largest observed real output ≈ 20 KB; headroom without pathology. */
+const EXPORT_OUTPUT_CAP = 60_000;
+/** Cap for one tool-call args/result field inside a restored run step. */
+const EXPORT_TOOL_FIELD_CAP = 4_000;
+/** Imported run history per workflow — mirrors the live addRun() cap (12). */
+export const IMPORT_RUNS_CAP = 12;
+/** Restored LLM-call log entries per run. */
+const IMPORT_CALLLOG_CAP = 200;
+
+const TERMINAL_RUN_STATUSES: readonly string[] = ["done", "error", "stopped", "partial", "blocked"];
+
+function capExportText(v: unknown, cap: number): string {
+  if (typeof v !== "string") return "";
+  return v.length <= cap ? v : v.slice(0, cap - 1) + "…[truncated]";
+}
+
+function isPipelineDepth(v: unknown): v is PipelineDepth {
+  return v === "quick" || v === "standard" || v === "deep";
+}
+
+/**
+ * Build the export payload for one or many workflows. Pure — the caller owns
+ * filenames, byte counting and toasts.
+ */
+export function buildWorkflowExport(
+  workflows: Workflow[],
+  mode: "definitions" | "full",
+  agentNameById: Map<string, string>
+): Record<string, unknown> {
+  return {
+    kind: "nexus-workflows",
+    version: 2,
+    ...(mode === "full" ? { mode: "full" } : {}),
+    exportedAt: new Date().toISOString(),
+    workflows: workflows.map((w) => {
+      const base: Record<string, unknown> = {
+        name: w.name,
+        description: w.description,
+        // agentName rides on every step: step ids AND agent ids are
+        // profile-local uid()s that never survive an export — the importer
+        // rebinds workers by name (r495/r496).
+        steps: w.steps.map((s) => ({ ...s, agentName: agentNameById.get(s.agentId) })),
+        ...(w.depth ? { depth: w.depth } : {}),
+      };
+      if (mode !== "full") return base;
+      // Schedule INTENT only (intervalMs + task) — runtime counters
+      // (failStreak/lastRunAt/nextRunAt/autoResumeAt) are profile state.
+      if (w.schedule) {
+        base.schedule = { intervalMs: w.schedule.intervalMs, task: w.schedule.task };
+      }
+      // Inert provenance for human readers; the importer ignores unknown keys.
+      if (w.evolution) base.lineage = w.evolution;
+      base.createdAt = w.createdAt;
+      base.updatedAt = w.updatedAt;
+      base.runs = w.runs.map(({ id: _runId, workflowId: _wfId, ...rest }) => rest);
+      return base;
+    }),
+  };
+}
+
+/**
+ * Sanitize one untrusted run object from a full-pack import into a real
+ * WorkflowRun. Returns null for junk rows. Live "running" runs are coerced to
+ * "stopped" — nothing can still be executing on a fresh profile — and
+ * never-started steps (pending/running) become "skipped" so the imported
+ * history reads honestly instead of promising phantom work.
+ */
+export function sanitizeImportedRun(
+  raw: unknown,
+  workflowId: string,
+  workflowName: string
+): WorkflowRun | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const str = (v: unknown, fallback = "") => (typeof v === "string" ? v : fallback);
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+
+  let status = str(r.status) as WorkflowRun["status"];
+  if (status === "running") status = "stopped";
+  if (!TERMINAL_RUN_STATUSES.includes(status)) return null;
+
+  const startedAt = num(r.startedAt) ?? Date.now();
+  const rawSteps = Array.isArray(r.steps) ? r.steps : [];
+  const steps: WorkflowRunStep[] = [];
+  for (const rs of rawSteps) {
+    if (!rs || typeof rs !== "object") continue;
+    const s = rs as Record<string, unknown>;
+    const st = str(s.status);
+    steps.push({
+      stepId: str(s.stepId) || uid("step"),
+      agentId: str(s.agentId),
+      agentName: str(s.agentName, "Agent"),
+      agentEmoji: str(s.agentEmoji, "🤖"),
+      label: truncateAtWord(stripUiChipArtifacts(str(s.label, "Step")), 200) || "Step",
+      ...(typeof s.roleId === "string" && s.roleId.trim() ? { roleId: s.roleId } : {}),
+      output: capExportText(s.output, EXPORT_OUTPUT_CAP),
+      toolCalls: (Array.isArray(s.toolCalls) ? s.toolCalls : []).flatMap((t): ToolCallInfo[] => {
+        if (!t || typeof t !== "object") return [];
+        const tc = t as Record<string, unknown>;
+        const ms = num(tc.ms);
+        return [
+          {
+            id: str(tc.id) || uid("tool"),
+            name: str(tc.name, "tool"),
+            args: capExportText(tc.args, EXPORT_TOOL_FIELD_CAP),
+            ...(typeof tc.result === "string" ? { result: capExportText(tc.result, EXPORT_TOOL_FIELD_CAP) } : {}),
+            ...(tc.ok === false ? { ok: false } : {}),
+            ...(ms != null ? { ms } : {}),
+          },
+        ];
+      }),
+      status:
+        st === "done" || st === "error" || st === "stopped" || st === "skipped"
+          ? (st as WorkflowRunStep["status"])
+          : "skipped",
+      ...(num(s.ms) != null ? { ms: num(s.ms) } : {}),
+      ...(s.kind === "review" || s.kind === "generate" ? { kind: s.kind } : {}),
+      ...(typeof s.instruction === "string" ? { instruction: capExportText(s.instruction, 2000) } : {}),
+      ...(s.verdict === "pass" || s.verdict === "rework" ? { verdict: s.verdict } : {}),
+      ...(s.reworked === true ? { reworked: true } : {}),
+      ...(s.degraded === true ? { degraded: true } : {}),
+    });
+  }
+  if (steps.length === 0) return null;
+
+  const finishedAt = num(r.finishedAt);
+  const callLog = (Array.isArray(r.callLog) ? r.callLog : [])
+    .flatMap((c): RunCallLogEntry[] => {
+      if (!c || typeof c !== "object") return [];
+      const e = c as Record<string, unknown>;
+      const ms = num(e.ms);
+      if (typeof e.engine !== "string" || ms == null) return [];
+      const attempt = num(e.attempt);
+      return [
+        {
+          at: num(e.at) ?? startedAt,
+          ...(typeof e.stepId === "string" ? { stepId: e.stepId } : {}),
+          ...(typeof e.stepLabel === "string" ? { stepLabel: e.stepLabel } : {}),
+          ...(typeof e.agentName === "string" ? { agentName: e.agentName } : {}),
+          engine: e.engine,
+          ...(typeof e.model === "string" ? { model: e.model } : {}),
+          ms,
+          ok: e.ok === true,
+          ...(typeof e.error === "string" ? { error: capExportText(e.error, 1000) } : {}),
+          ...(attempt != null ? { attempt } : {}),
+          ...(typeof e.note === "string" ? { note: capExportText(e.note, 500) } : {}),
+        },
+      ];
+    })
+    .slice(0, IMPORT_CALLLOG_CAP);
+
+  const rawErr = r.error;
+  let error: RunErrorInfo | undefined;
+  if (rawErr && typeof rawErr === "object" && typeof (rawErr as Record<string, unknown>).message === "string") {
+    const e = rawErr as Record<string, unknown>;
+    error = {
+      stepIndex: num(e.stepIndex) ?? 0,
+      stepId: str(e.stepId),
+      stepLabel: str(e.stepLabel),
+      agentName: str(e.agentName, "Agent"),
+      message: capExportText(e.message, 4000),
+      kind: str(e.kind, "unknown") as RunErrorInfo["kind"],
+      hint: str(e.hint),
+      toolCallsOk: num(e.toolCallsOk) ?? 0,
+      stepsDone: num(e.stepsDone) ?? 0,
+      llmLabel: str(e.llmLabel),
+      attempts: num(e.attempts) ?? 1,
+      ...(e.autoRetried === true ? { autoRetried: true } : {}),
+    };
+  }
+
+  const novelty = num(r.novelty);
+  const resumeCount = num(r.resumeCount);
+  const parkCount = num(r.parkCount);
+  const netParkCount = num(r.netParkCount);
+
+  return {
+    id: uid("run"),
+    workflowId,
+    workflowName,
+    task: capExportText(r.task, 2000) || "(untitled run)",
+    status,
+    startedAt,
+    ...(finishedAt != null ? { finishedAt } : {}),
+    steps,
+    ...(isPipelineDepth(r.depth) ? { depth: r.depth } : {}),
+    ...(r.source === "manual" || r.source === "scheduled" ? { source: r.source } : {}),
+    ...(error ? { error } : {}),
+    ...(novelty != null ? { novelty: Math.max(0, Math.min(100, Math.round(novelty))) } : {}),
+    ...(resumeCount != null ? { resumeCount } : {}),
+    ...(parkCount != null ? { parkCount } : {}),
+    ...(netParkCount != null ? { netParkCount } : {}),
+    ...(callLog.length > 0 ? { callLog } : {}),
+  };
 }
 
 /** Filesystem-safe slug for exported filenames. */

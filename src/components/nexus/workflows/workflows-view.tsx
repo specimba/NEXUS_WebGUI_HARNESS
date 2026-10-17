@@ -65,10 +65,10 @@ import {
   useUiStore,
   useWorkflowsStore,
 } from "@/lib/stores";
-import type { SpawnProposal, Workflow, WorkflowStep } from "@/lib/types";
+import type { SpawnProposal, Workflow, WorkflowRun, WorkflowSchedule, WorkflowStep } from "@/lib/types";
 import { buildAngleHistory, buildVariationProposal, latestScoredNovelty, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
 import { useSettingsStore } from "@/lib/stores";
-import { downloadJson, fmtIn, fmtIntervalShort, fmtRel, resolveStepRole, roleMatchesAgent, stripUiChipArtifacts, summarizeRoleTagMismatches, truncateAtWord, uid } from "@/lib/helpers";
+import { buildWorkflowExport, downloadJson, fmtBytes, fmtIn, fmtIntervalShort, fmtRel, IMPORT_RUNS_CAP, resolveStepRole, roleMatchesAgent, sanitizeImportedRun, stripUiChipArtifacts, summarizeRoleTagMismatches, truncateAtWord, uid } from "@/lib/helpers";
 import { resolveLlm } from "@/lib/llm-config";
 import { isWorkflowRunning } from "@/lib/workflow-runner";
 import { deepPauseChip } from "@/lib/depth-chip";
@@ -92,24 +92,41 @@ function slugifyWf(name: string): string {
   );
 }
 
-function exportWorkflows(workflows: Workflow[]) {
-  // Runs are history — not portable. Export the definition only.
+function exportWorkflows(workflows: Workflow[], mode: "definitions" | "full") {
+  // r496: two export modes. Definitions = the old portable file. Full pack =
+  // definitions + run history (outputs, tool calls, LLM call log, novelty,
+  // errors) + schedule intent — so a batch export finally outweighs a single
+  // run report instead of the reverse.
+  const agentNameById = new Map(
+    useAgentsStore.getState().agents.map((a) => [a.id, a.name] as const)
+  );
+  const payload = buildWorkflowExport(workflows, mode, agentNameById);
+  const runsTotal = workflows.reduce((n, w) => n + w.runs.length, 0);
   downloadJson(
     workflows.length === 1
-      ? `nexus-workflow-${slugifyWf(workflows[0].name)}.json`
-      : "nexus-workflows.json",
-    {
-      kind: "nexus-workflows",
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      workflows: workflows.map((w) => ({
-        name: w.name,
-        description: w.description,
-        steps: w.steps,
-        ...(w.depth ? { depth: w.depth } : {}),
-      })),
-    }
+      ? `nexus-workflow-${slugifyWf(workflows[0].name)}${mode === "full" ? "-full" : ""}.json`
+      : mode === "full"
+        ? "nexus-workflows-full.json"
+        : "nexus-workflows.json",
+    payload
   );
+  if (mode === "full") {
+    const bytes = new Blob([JSON.stringify(payload)]).size;
+    toast.success(
+      `Full pack exported — ${workflows.length} workflow${workflows.length === 1 ? "" : "s"} · ${runsTotal} run${runsTotal === 1 ? "" : "s"} · ${fmtBytes(bytes)}`,
+      {
+        description:
+          "Definitions + run history + outputs + schedules. Schedules import paused — re-arm them after import.",
+      }
+    );
+  } else {
+    toast.success(
+      `Exported ${workflows.length} workflow${workflows.length === 1 ? "" : "s"} — definitions only`,
+      runsTotal > 0
+        ? { description: "Run history not included — use “Full pack — with runs” for that." }
+        : undefined
+    );
+  }
 }
 
 /** Validate an untrusted parsed value as a Workflow; returns null when unusable.
@@ -118,7 +135,11 @@ function exportWorkflows(workflows: Workflow[]) {
  * r270 doctrine: an action that silently dropped data must SAY so. It also
  * matters mechanically: the import fingerprint includes ordered step
  * identities, so a silently truncated import would fail to dedupe against
- * its own export file on re-import and spawn an "(imported)" twin instead. */
+ * its own export file on re-import and spawn an "(imported)" twin instead.
+ * r496: full packs (version 2) also carry run history — restored read-only
+ * and capped — plus schedule intent, which imports PAUSED (a recurring
+ * pipeline from another profile must be re-armed deliberately, never fire
+ * as a surprise). Definitions-only files import exactly as before. */
 function sanitizeWorkflow(
   raw: unknown,
   validAgentIds: Set<string>,
@@ -171,18 +192,46 @@ function sanitizeWorkflow(
   if (steps.length === 0) return null;
 
   const now = Date.now();
+  const id = uid("wf");
+  const wfName = truncateAtWord(stripUiChipArtifacts(name), 80);
+  // r496: run history rides in full packs — sanitize each row (junk rows drop
+  // here; live "running" rows coerce to "stopped"; never-started steps become
+  // "skipped" so imported history never promises phantom work), then cap to
+  // the live per-workflow cap. Newest-first order matches addRun().
+  const runs = (Array.isArray(r.runs) ? r.runs : [])
+    .map((raw) => sanitizeImportedRun(raw, id, wfName))
+    .filter((x): x is WorkflowRun => x !== null)
+    .slice(0, IMPORT_RUNS_CAP);
+  // r496: schedule intent imports PAUSED (mirror duplicate()): intervalMs +
+  // task survive; runtime counters (failStreak/lastRunAt/nextRunAt) are
+  // profile state and never cross profiles.
+  const rawSchedule =
+    r.schedule && typeof r.schedule === "object" ? (r.schedule as Record<string, unknown>) : null;
+  const scheduleInterval =
+    rawSchedule && typeof rawSchedule.intervalMs === "number" && rawSchedule.intervalMs >= 60_000
+      ? rawSchedule.intervalMs
+      : null;
+  const schedule: WorkflowSchedule | undefined =
+    rawSchedule && scheduleInterval
+      ? {
+          enabled: false,
+          intervalMs: scheduleInterval,
+          task: truncateAtWord(stripUiChipArtifacts(str(rawSchedule.task)), 500),
+        }
+      : undefined;
   return {
     wf: {
-      id: uid("wf"),
-      name: truncateAtWord(stripUiChipArtifacts(name), 80),
+      id,
+      name: wfName,
       description: truncateAtWord(stripUiChipArtifacts(str(r.description)), 300),
       steps,
-      runs: [],
-      createdAt: now,
+      runs,
+      createdAt: typeof r.createdAt === "number" && r.createdAt > 0 ? r.createdAt : now,
       updatedAt: now,
       ...(r.depth === "quick" || r.depth === "standard" || r.depth === "deep"
         ? { depth: r.depth as Workflow["depth"] }
         : {}),
+      ...(schedule ? { schedule } : {}),
     },
     droppedSteps,
     reboundSteps,
@@ -1302,6 +1351,10 @@ export function WorkflowsView() {
         }
       }
       for (const w of toAdd) addWf(w);
+      // r496: the receipt counts what the full pack actually restored — run
+      // history and paused schedules are the payload the owner asked for.
+      const restoredRuns = toAdd.reduce((n, w) => n + w.runs.length, 0);
+      const pausedSchedules = toAdd.filter((w) => w.schedule).length;
       const skipped = list.length - imported.length;
       if (toAdd.length === 0 && dupes > 0) {
         toast.info(
@@ -1310,6 +1363,12 @@ export function WorkflowsView() {
       } else {
         toast.success(
           `Imported ${toAdd.length} workflow${toAdd.length === 1 ? "" : "s"}` +
+            (restoredRuns > 0
+              ? ` · ${restoredRuns} run${restoredRuns === 1 ? "" : "s"} restored`
+              : "") +
+            (pausedSchedules > 0
+              ? ` · ${pausedSchedules} schedule${pausedSchedules === 1 ? "" : "s"} imported paused`
+              : "") +
             (dupes > 0 ? ` · ${dupes} duplicate${dupes === 1 ? "" : "s"} skipped` : "") +
             (renamed > 0 ? ` · ${renamed} renamed to avoid a clash` : "") +
             (droppedSteps > 0
@@ -1438,16 +1497,39 @@ export function WorkflowsView() {
           <Upload className="h-4 w-4" />
           <span className="hidden sm:inline">Import</span>
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={workflows.length === 0}
-          onClick={() => exportWorkflows(workflows)}
-          aria-label="Export all workflows"
-        >
-          <Download className="h-4 w-4" />
-          <span className="hidden sm:inline">Export</span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={workflows.length === 0}
+              aria-label="Export workflows"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuItem onClick={() => exportWorkflows(workflows, "definitions")}>
+              <Download className="h-4 w-4" />
+              <span className="flex min-w-0 flex-col">
+                <span>Definitions only</span>
+                <span className="text-xs text-muted-foreground">
+                  Portable pipeline JSON — small, no history
+                </span>
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportWorkflows(workflows, "full")}>
+              <Archive className="h-4 w-4" />
+              <span className="flex min-w-0 flex-col">
+                <span>Full pack — with runs</span>
+                <span className="text-xs text-muted-foreground">
+                  History, outputs, schedules — one archive file
+                </span>
+              </span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button size="sm" onClick={openNew} aria-label="New Workflow">
           <Plus className="h-4 w-4" />
           New Workflow
@@ -1650,9 +1732,13 @@ export function WorkflowsView() {
                           <Copy className="h-4 w-4" />
                           Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => exportWorkflows([wf])}>
+                        <DropdownMenuItem onClick={() => exportWorkflows([wf], "definitions")}>
                           <Download className="h-4 w-4" />
-                          Export
+                          Export definitions
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportWorkflows([wf], "full")}>
+                          <Archive className="h-4 w-4" />
+                          Export full pack
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
