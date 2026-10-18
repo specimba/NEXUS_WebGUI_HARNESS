@@ -11839,3 +11839,31 @@ Blockers: none
 Next recommended action: r498 — (1) re-read user reply; `cron list` first. (2) Health curl; DOWN → ONE scripts/dev-restart.sh. (3) Candidates: (a) owner re-seeds the vault → witness first closed-tab server-lane run + radar finding clears; (b) probe-first research step as a real Studio template (radar experiment #2); (c) r492 smart-routing / relay-lane pinning epic; (d) wire the radar digest into a weekly workflow that auto-imports seeds. (4) Standing gates unchanged.
 
 PUSH BLOCKED (r497 addendum): both remotes' embedded tokens are DEAD (GitHub API 401; reads only succeeded because both repos are public). Root cause: the sandbox rollback restored the Oct-15 .git/config — the valid owner PAT installed on Oct-17 (r494-b re-wire) lived only in the post-rollback config and is LOST; the r494 handoff anticipated exactly this ("after any .git rollback, re-run the two git remote set-url commands") but the token string itself is not recoverable locally (no ~/.git-credentials, no ~/.netrc, no gh config, no env tokens). Commit cc7940202 (r497) is SAFE locally on main; push pending owner PAT. OWNER ACTION NEEDED: provide a fresh PAT (Contents:write on both specimba/NEXUS_WebGUI_HARNESS and specimba/PraisonAI), then: git remote set-url origin "https://<TOKEN>@github.com/specimba/NEXUS_WebGUI_HARNESS.git" && git remote set-url fork "https://<TOKEN>@github.com/specimba/PraisonAI.git" && git push origin main && git push fork main.
+
+---
+Task ID: r498
+Agent: main (z.ai webDevReview round)
+Task: Owner delivered fresh fine-grained PAT ("save your credentials for repo control usage properly"); continue r497 — push the blocked r497 commit, verify exports, confirm the 1-hour check, diagnose the 16h Vyce stall.
+
+Work Log:
+- cron list FIRST (handoff rule): registry TOTAL 0 — webDevReview job 464960 purged a 5th time. Rebuilt immediately: job 467112, 0 0/15 * * * ? (6-digit cron: second field required; bare */15 parsed as 15 SECONDS and 400-rejected), Europe/Istanbul, priority 10.
+- PAT installed properly (never committed — .gitignore r493/r179 classes already cover it): (1) git remote set-url origin/fork with embedded token; (2) git config credential.helper store + credential-store entry; (3) chmod 600 ~/.git-credentials. Verified: git ls-remote origin HEAD answered (repo control restored).
+- PUSH UNBLOCKED AND EXECUTED: origin AND fork now at 243d48784 (r497 Capability Radar cc7940202 + worklog append). The r497 push-pending blocker from the previous round is CLOSED.
+- Export audit re-run (previous attempt lost to context compaction) on upload/nexus-workflows-full.json (owner's real 4.0MB full pack): 5 workflows, 30 runs, 166 steps, 162 outputs, 605 toolCalls. Outputs: 0 over the 60KB class (worst 15.2KB). ToolCalls serialize large (395 > 4KB whole-object; worst 20.8KB run_code) — RESOLVED AS BY-DESIGN after code read: EXPORT_TOOL_FIELD_CAP/EXPORT_OUTPUT_CAP are IMPORT-side (sanitizeImportedRun caps per-field at 4KB, outputs at 60KB, IMPORT_RUNS_CAP 12/workflow); the full pack is deliberately full-fidelity (that is why it weighs 60× a single report). 15 result fields carry …[truncated] sentinels = capText already fired historically. VERDICT: pack CLEAN, r496 contract holds.
+- 16h Vyce stall forensics CONFIRMED (the owner's question "why are you stopped"): live /api/automation/sync → executorLane { ready:false, reason:"no-vault-key", slotCount:0 }; registry has 3 enabled rows overdue since Oct-17/18 (wf-continuous-research hourly, wf-deep-dossier 6h, wf_3e86cb083363 hourly, lastRunAt None); vault table 0 rows; db/vault-seed.json ENOENT (lost in the Oct-15 rollback, documented r497). Chain: tab closed 21:02Z → BYOK lane died → server lane alive but honestly refuses to dial an empty vault (BYOK doctrine) → 0 dials. The platform did not malfunction; it needs ONE vault slot re-stored by the owner (keys exist only in his browser's localStorage since the seed file was lost).
+- Capability Radar verified END-TO-END LIVE: /api/radar/hourly → 4 hourly buckets (17:00Z→20:00Z), latest digest matches forensics (401-streak healed probe ok 1704ms; vault no-key; 3 overdue; 6 new models 48h). agent-browser: #/workflows renders pulse grid "CAPABILITY RADAR 4 findings · 44m ago", radar card with findings/tryables/experiments/seeds; console clean (0 errors/warnings).
+- Pack finding files cross-checked: nexus-run run011 (67.8KB) < full pack (4.0MB) — owner-visible ratio ≈ 60×, fix witnessed.
+
+Stage Summary:
+- Repo control restored end-to-end: new PAT stored (remotes + credential store, gitignored), r497 pushed to BOTH remotes (2cd093c81 → 243d48784). No credentials committed.
+- webDevReview automation re-armed (467112) after 5th registry purge; 6-digit cron syntax lesson recorded.
+- The owner's 1-hour check (Capability Radar) proven live in DB, API and UI; hourly buckets accumulating.
+- 16h stall = empty vault + closed tab (honest no-dial), NOT a crash; single-action fix is owner-side: re-store one Vyce key in Settings → Automation Vault, then closed-tab lane dials and 3 overdue schedules fire with stagger.
+- Export audit verdict documented: full pack clean; caps are import-side protection by design.
+
+Round Handoff:
+Round ID: r499
+Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if purged)
+Open risks: (1) vault still empty — every closed-tab hour stays quiet until owner re-stores a key; radar surfaces it hourly (R4 + experiment "Seed the closed-tab lane"); (2) registry rows overdue 2+ days will fire in a burst on key restore — stagger (≤90s) spreads them; (3) webDevReview cron keeps getting purged (5×) — always check `cron list` at round start.
+Blockers: none
+Next recommended action: r499 — (1) cron list; (2) if owner re-seeded vault: witness first closed-tab server-lane run end-to-end + radar R4 finding clears; (3) else: probe-first research step Studio template (radar experiment #2), or weekly radar-seed auto-import workflow (r497 handoff item d).
