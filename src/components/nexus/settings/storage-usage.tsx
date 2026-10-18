@@ -10,8 +10,9 @@
 // demand; nothing is estimated, cached, or invented.
 
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { History, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const KNOWN_KEYS: Record<string, string> = {
   "nexus-workflows": "Workflows",
@@ -47,6 +48,8 @@ const KNOWN_KEYS: Record<string, string> = {
   "nexus-vyce-intro": "Vyce intro seen",
   // Rebrand: one-time migration stamp written by the nexus-* key migration.
   "nexus-migrated-from-praison-v1": "Rebrand migration stamp",
+  // r498: tombstone written by the legacy reclaimer (small JSON receipt).
+  "nexus-legacy-reclaimed": "Legacy reclaim receipt",
 };
 
 // Keys written before the NEXUS rebrand (praison-* / praisonai.*). The
@@ -82,6 +85,138 @@ const SEGMENT_CLASSES = [
 type KeyUsage = { key: string; label: string; chars: number };
 
 type Snapshot = { rows: KeyUsage[]; totalChars: number; available: boolean };
+
+// r498: the rebrand migration (src/lib/migration.ts) COPIED every praison-*/
+// praisonai.* key to its nexus-* name but deliberately kept the originals as
+// rollback safety. Months later the nexus-* keys hold newer, diverged live
+// data — the originals are stale rollback weight (measured live: up to ~70%
+// of the per-origin budget). The reclaimer frees that space with a
+// provably-safe order: download a full backup FIRST, then delete ONLY keys
+// whose migrated counterpart exists (a copy-failure survivor is kept and
+// reported), then leave a small receipt tombstone for the next visit.
+const MIGRATION_FLAG = "nexus-migrated-from-praison-v1";
+const RECLAIM_FLAG = "nexus-legacy-reclaimed";
+
+function nexusKeyOf(legacy: string): string | null {
+  if (legacy.startsWith("praisonai.")) return "nexus." + legacy.slice("praisonai.".length);
+  if (legacy.startsWith("praison-")) return "nexus-" + legacy.slice("praison-".length);
+  return null;
+}
+
+interface LegacyScan {
+  keys: { key: string; chars: number; hasCounterpart: boolean }[];
+  chars: number;
+  reclaimableChars: number;
+  migrationDone: boolean;
+}
+
+function scanLegacy(): LegacyScan {
+  const empty: LegacyScan = {
+    keys: [],
+    chars: 0,
+    reclaimableChars: 0,
+    migrationDone: false,
+  };
+  if (typeof window === "undefined") return empty;
+  try {
+    const store = window.localStorage;
+    if (!store) return empty;
+    const migrationDone = !!store.getItem(MIGRATION_FLAG);
+    const keys: LegacyScan["keys"] = [];
+    let chars = 0;
+    let reclaimableChars = 0;
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (!k || !(k.startsWith("praison-") || k.startsWith("praisonai."))) continue;
+      const c = k.length + (store.getItem(k)?.length ?? 0);
+      chars += c;
+      const hasCounterpart = store.getItem(nexusKeyOf(k) ?? "") != null;
+      if (hasCounterpart) reclaimableChars += c;
+      keys.push({ key: k, chars: c, hasCounterpart });
+    }
+    return { keys, chars, reclaimableChars, migrationDone };
+  } catch {
+    return empty;
+  }
+}
+
+interface ReclaimReceipt {
+  at: string;
+  reclaimed: number;
+  chars: number;
+  skipped: string[];
+  backupFile: string;
+}
+
+function readReceipt(): ReclaimReceipt | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(RECLAIM_FLAG);
+    return raw ? (JSON.parse(raw) as ReclaimReceipt) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** One reclamation: backup download → delete migrated keys → receipt. */
+function reclaimLegacy(scan: LegacyScan): { reclaimed: number; chars: number; skipped: string[]; backupFile: string } | null {
+  if (typeof window === "undefined" || scan.keys.length === 0) return null;
+  const store = window.localStorage;
+  const backupFile = `nexus-legacy-backup-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")}.json`;
+  // 1. Backup FIRST — every legacy key and value, plus the migration stamp
+  //    for context. If the download cannot even be offered, nothing is
+  //    deleted (the reclaim aborts with the error instead).
+  let downloadOk = false;
+  try {
+    const payload = {
+      kind: "nexus-legacy-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      migrationStamp: store.getItem(MIGRATION_FLAG),
+      keys: scan.keys.map((k) => ({ key: k.key, value: store.getItem(k.key) })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 1)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = backupFile;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5_000);
+    downloadOk = true;
+  } catch {
+    downloadOk = false;
+  }
+  if (!downloadOk) return null;
+  // 2. Delete only provably-migrated keys; copy-failure survivors stay.
+  let reclaimed = 0;
+  let chars = 0;
+  const skipped: string[] = [];
+  for (const k of scan.keys) {
+    if (!k.hasCounterpart) {
+      skipped.push(k.key);
+      continue;
+    }
+    try {
+      store.removeItem(k.key);
+      reclaimed += 1;
+      chars += k.chars;
+    } catch {
+      skipped.push(k.key);
+    }
+  }
+  // 3. Receipt tombstone — small, honest, survives for the next visit.
+  try {
+    store.setItem(
+      RECLAIM_FLAG,
+      JSON.stringify({ at: new Date().toISOString(), reclaimed, chars, skipped, backupFile } satisfies ReclaimReceipt),
+    );
+  } catch {
+    /* quota on a ~200-char receipt — the reclaim itself already happened */
+  }
+  return { reclaimed, chars, skipped, backupFile };
+}
 
 function measure(): Snapshot {
   if (typeof window === "undefined") {
@@ -122,10 +257,41 @@ export function StorageUsage() {
     totalChars: 0,
     available: false,
   });
+  const [legacy, setLegacy] = React.useState<LegacyScan>({
+    keys: [],
+    chars: 0,
+    reclaimableChars: 0,
+    migrationDone: false,
+  });
+  const [receipt, setReceipt] = React.useState<ReclaimReceipt | null>(null);
+  const [reclaiming, setReclaiming] = React.useState(false);
 
   const recheck = React.useCallback(() => {
     setSnap(measure());
+    setLegacy(scanLegacy());
+    setReceipt(readReceipt());
   }, []);
+
+  const onReclaim = React.useCallback(() => {
+    setReclaiming(true);
+    try {
+      const result = reclaimLegacy(scanLegacy());
+      if (!result) {
+        toast.error("Reclaim aborted — the backup download could not be offered, nothing was deleted.");
+        return;
+      }
+      const skippedNote =
+        result.skipped.length > 0 ? ` · kept ${result.skipped.length} key${result.skipped.length === 1 ? "" : "s"} without a migrated copy` : "";
+      toast.success(
+        `Reclaimed ${result.reclaimed} legacy key${result.reclaimed === 1 ? "" : "s"} (${fmt(result.chars)}) — backup ${result.backupFile} downloaded${skippedNote}`,
+      );
+    } catch (err) {
+      toast.error(`Reclaim failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setReclaiming(false);
+      recheck();
+    }
+  }, [recheck]);
 
   React.useEffect(() => {
     recheck();
@@ -243,8 +409,54 @@ export function StorageUsage() {
               }`}
             >
               {overBudget
-                ? "This site is over the typical localStorage budget — saves may not persist until you free space. Old workflow runs and chat tool payloads eat the most; Export above, then Clear all data, frees it, and recent saves already trim old history automatically."
-                : "Nearly full. Recent saves trim old workflow runs and chat tool payloads automatically, but Export + Clear all data frees the most space if storage errors appear."}
+                ? "This site is over the typical localStorage budget — saves may not persist until you free space. Old workflow runs and chat tool payloads eat the most; reclaiming the stale pre-rebrand copies below (if offered) frees it without touching live data, and recent saves already trim old history automatically."
+                : `Nearly full. Recent saves trim old workflow runs and chat tool payloads automatically${legacy.chars > 0 ? ", and the stale pre-rebrand copies below can be reclaimed in one click" : ""}; Export + Clear all data frees the most space if storage errors appear.`}
+            </p>
+          )}
+
+          {legacy.keys.length > 0 && (
+            <div
+              className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2"
+              data-testid="legacy-reclaim"
+            >
+              <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-400">
+                The rebrand copied every pre-rebrand key to its new <code>nexus-*</code> name but kept the
+                originals as rollback safety. Those copies are stale now (the live keys hold newer data) and
+                currently weigh <span className="font-medium">{fmt(legacy.chars)}</span> —
+                {legacy.reclaimableChars === legacy.chars ? (
+                  <> all of it provably migrated and safe to free.</>
+                ) : (
+                  <> {fmt(legacy.reclaimableChars)} of it provably migrated and safe to free (the rest has no migrated copy and will be kept).</>
+                )}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 h-7 gap-1.5 border-amber-500/40 px-2 text-xs text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
+                disabled={reclaiming || !legacy.migrationDone}
+                onClick={onReclaim}
+                aria-label="Download a backup of the pre-rebrand data, then delete the migrated legacy keys"
+              >
+                <History className="h-3 w-3" aria-hidden />
+                {reclaiming
+                  ? "Reclaiming…"
+                  : !legacy.migrationDone
+                    ? "Reclaim unavailable — migration stamp missing"
+                    : `Reclaim legacy space (${fmt(legacy.chars)})`}
+              </Button>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                A full backup downloads first; only keys whose migrated copy exists are deleted (the rest are
+                kept and reported). The live <code>nexus-*</code> data is never touched.
+              </p>
+            </div>
+          )}
+
+          {receipt && (
+            <p className="mt-2 text-[11px] text-muted-foreground" data-testid="legacy-reclaim-receipt">
+              Last reclaim {new Date(receipt.at).toLocaleString()} — {receipt.reclaimed} key
+              {receipt.reclaimed === 1 ? "" : "s"} ({fmt(receipt.chars)}) freed, backup {receipt.backupFile}
+              {receipt.skipped.length > 0 ? `, kept without migrated copy: ${receipt.skipped.join(", ")}` : ""}.
             </p>
           )}
 

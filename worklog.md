@@ -11867,3 +11867,28 @@ Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if pu
 Open risks: (1) vault still empty — every closed-tab hour stays quiet until owner re-stores a key; radar surfaces it hourly (R4 + experiment "Seed the closed-tab lane"); (2) registry rows overdue 2+ days will fire in a burst on key restore — stagger (≤90s) spreads them; (3) webDevReview cron keeps getting purged (5×) — always check `cron list` at round start.
 Blockers: none
 Next recommended action: r499 — (1) cron list; (2) if owner re-seeded vault: witness first closed-tab server-lane run end-to-end + radar R4 finding clears; (3) else: probe-first research step Studio template (radar experiment #2), or weekly radar-seed auto-import workflow (r497 handoff item d).
+
+---
+Task ID: r499
+Agent: main (z.ai webDevReview round)
+Task: Owner mirrored fresh keys into the Automation Vault (Vyce dial-first + 3 more, some flagged "key drifted — re-mirror") and asked "why our storage 2 mb?" — the Legacy pre-rebrand data entries (2.36 MB + 944 KB + …) pushing him to 4.99/5.00 MB.
+
+Work Log:
+- Witnessed the vault restore live: /api/automation/sync → executorLane { ready:true, providerLabel:"Vyce AI", maskedKey:"sk-1••••8f71", slotCount:4 }; SQLite AutomationVault holds vyce/aihubmix/orcarouter/openrouter. Server runs still 0 — CORRECT: the owner's open tab holds a fresh heartbeat, the server lane stands down (client-alive) by doctrine; the closed-tab lane arms the moment the tab closes.
+- "Key drifted — re-mirror" explained (no bug): r340 drift detection — a mirrored slot whose browser-saved key has since changed. The owner rotated keys after mirroring those 3 slots; the card honestly flags the stale SQLite copy and offers an idempotent re-mirror. Vyce was mirrored last → matches → "dials first".
+- Storage root cause: src/lib/migration.ts (rebrand r494-era) COPIED every praison-*/praisonai.* key to nexus-* and deliberately kept the originals "as rollback safety". Months later the nexus-* keys hold newer diverged data → the originals are stale rollback weight. Owner's numbers: ~3.55 MB across 5+ legacy keys = ~70% of the 5 MB budget. Answer to "why 2 mb": the biggest single entry (2.36 MB) is the old pre-rebrand workflows/chats snapshot, dead weight since the rebrand.
+- BUILT the fix — one-click legacy reclamation in storage-usage.tsx: scanLegacy() (per-key chars + hasCounterpart check against the deterministic praison→nexus mapping), reclaimLegacy() with a provably-safe order: (1) FULL backup download FIRST (nexus-legacy-backup-<ts>.json, aborts nothing-deleted if the download cannot be offered), (2) delete ONLY keys whose migrated counterpart exists — copy-failure survivors are kept and reported, (3) small receipt tombstone nexus-legacy-reclaimed {at, reclaimed, chars, skipped, backupFile}. UI: amber reclaim block with honest math ("X of it provably migrated…"), Reclaim button (disabled when the migration stamp is missing), receipt line after, updated nearly-full copy, KNOWN_KEYS label for the tombstone.
+- GATES: tsc --noEmit 0 errors TRUE-exit; lint 0 errors / 33 warnings EXACT baseline.
+- BROWSER QA (agent-browser, seeded profile): seeded praison-workflows (5 KB, with counterpart) + praison-orphan-key (3 KB, NO counterpart) + migration stamp → card shows "weigh 7.9 KB — 4.9 KB of it provably migrated and safe to free (the rest has no migrated copy and will be kept)" (math exact) → clicked Reclaim via aria-label → praison-workflows GONE, orphan KEPT, live nexus-workflows untouched, receipt {reclaimed:1, chars:5041, skipped:[praison-orphan-key], backupFile:…json}, backup download fired, meter 44.0→39.2 KB, receipt line renders with the kept-key honesty, console 0 errors/warnings.
+
+Stage Summary:
+- The storage question is answered AND fixed in-product: "Legacy pre-rebrand data" = stale pre-rebrand rollback copies; the new Reclaim legacy space button frees provably-migrated ones (owner's ~3.55 MB → expected drop to ~1.4 MB) with a full backup-first guarantee and per-key migrated-copy proof.
+- Vault restored by the owner and witnessed: 4 slots, Vyce dial-first; closed-tab lane READY (stands down only while his tab heartbeat is fresh — by design). Drift flags are the r340 detector telling the truth about his own key rotation; re-mirror syncs each stale slot in one click.
+- No backend changes this round; single-file UI feature + docs.
+
+Round Handoff:
+Round ID: r500
+Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if purged)
+Open risks: (1) owner should click re-mirror on the 3 drifted slots so the SQLite copies match his freshest keys; (2) when he closes the tab, the 3 overdue schedules fire through the Vyce slot — first closed-tab server-lane run is the thing to witness next; (3) radar R4/R6 findings should clear within the next hourly bucket.
+Blockers: none
+Next recommended action: r500 — (1) cron list; (2) witness the first closed-tab server-lane run end-to-end (AutomationRun row + radar R4 clearing); (3) candidates: weekly radar-seed auto-import workflow; probe-first Studio template; free-catalog freshness pinning.
