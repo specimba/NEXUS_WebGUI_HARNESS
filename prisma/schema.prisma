@@ -168,3 +168,28 @@ model RunReport {
   @@index([workflowId, startedAt])
   @@index([archivedAt])
 }
+
+// ─── r497: Capability Radar — the hourly platform self-check ─────────────────
+// Owner directive: "cron automation for every 1-hour check … with that new
+// workflow, findings, experimental, and tryable discoveries, we can adapt
+// here for improvements in our agent and platform capabilities." The radar
+// is a DETERMINISTIC (LLM-free, vault-free — it must work while the vault is
+// empty and the tab is closed) hourly scan of the intelligence tables the
+// platform already keeps: the durable run archive, the registry, the vault,
+// the tracker catalog and the gateway pulse. One row per UTC hour bucket
+// (id = the bucket) → re-running within the same hour is an idempotent
+// upsert, never a duplicate. Findings carry a `tryable` — a concrete
+// adaptation the owner (or an agent) can act on immediately.
+model CapabilityCheck {
+  id         String   @id // hour bucket "2026-10-18T17:00Z" (idempotent upsert)
+  digestJson String   @default("{}")
+  findings   Int      @default(0)
+  critical   Int      @default(0)
+  warnings   Int      @default(0)
+  tryables   Int      @default(0)
+  durationMs Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([createdAt])
+}

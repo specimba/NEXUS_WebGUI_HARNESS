@@ -86,4 +86,10 @@ export async function register(): Promise<void> {
   }
   const { startAutomationExecutor } = await import("@/lib/server/automation-executor");
   startAutomationExecutor();
+  // r497 — Capability Radar: the owner's "cron automation for every 1-hour
+  // check". Deterministic + vault-free (it must fire when nothing else can),
+  // so it runs regardless of the tab heartbeat — one idempotent digest per
+  // UTC hour bucket over the platform's own intelligence tables.
+  const { startCapabilityRadar } = await import("@/lib/server/capability-radar");
+  startCapabilityRadar();
 }

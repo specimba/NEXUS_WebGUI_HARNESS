@@ -5,7 +5,10 @@ import {
   Bot,
   CircleDot,
   Clock,
+  Copy,
+  FlaskConical,
   KeyRound,
+  Radar as RadarIcon,
   RefreshCw,
   RadioTower,
   Server,
@@ -15,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUiStore, useWorkflowsStore } from "@/lib/stores";
+import { copyText } from "@/lib/helpers";
 import {
   computeStaleRegistry,
   humanizeLaneReason,
@@ -71,6 +75,46 @@ type SyncState = {
 };
 
 const POLL_MS = 15_000;
+// r497: the radar digest changes at most hourly (one row per UTC hour
+// bucket) — a 60s poll keeps the panel honest without hammering the route.
+const RADAR_POLL_MS = 60_000;
+
+// ── r497: Capability Radar view types (client mirror of the server digest) ──
+type RadarFindingView = {
+  severity: "critical" | "warning" | "info";
+  area: string;
+  title: string;
+  evidence: string;
+  tryable: string | null;
+};
+type RadarDigestView = {
+  generatedAt: string;
+  hourBucket: string;
+  windowHours: number;
+  runs: {
+    total: number;
+    done: number;
+    error: number;
+    blocked: number;
+    toolCalls: number;
+    failureRate: number;
+    quietCycles: number;
+    gatewayAuthFailures: number;
+  };
+  registry: { enabled: number; parked: string[]; overdue: string[] };
+  vault: { slots: number; closedTabLane: string };
+  catalog: { newModels48h: string[]; removed48h: number };
+  gateway: { probe: { ok: boolean; ms: number; error: string | null } };
+  experiments: { name: string; why: string }[];
+  findings: RadarFindingView[];
+  seeds: { label: string; prompt: string }[];
+};
+type RadarState = {
+  ok: boolean;
+  error?: string;
+  latest: RadarDigestView | null;
+  history: { id: string; findings: number; critical: number; warnings: number; tryables: number; updatedAt: string }[];
+};
 
 function fmtIn(iso: string | null): string {
   if (!iso) return "—";
@@ -99,6 +143,8 @@ export function ServerAutopilot() {
   const [state, setState] = React.useState<SyncState | null>(null);
   const [openRun, setOpenRun] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [radar, setRadar] = React.useState<RadarState | null>(null);
+  const [radarBusy, setRadarBusy] = React.useState(false);
 
   const poll = React.useCallback(async () => {
     try {
@@ -129,6 +175,56 @@ export function ServerAutopilot() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [poll]);
+
+  // ── r497: Capability Radar poll + actions ──────────────────────────────────
+  const pollRadar = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/radar/hourly", { cache: "no-store" });
+      if (res.ok) setRadar((await res.json()) as RadarState);
+    } catch {
+      /* local server briefly unreachable — retry next tick */
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void pollRadar();
+    const t = setInterval(() => {
+      if (!document.hidden) void pollRadar();
+    }, RADAR_POLL_MS);
+    return () => clearInterval(t);
+  }, [pollRadar]);
+
+  async function checkNow() {
+    setRadarBusy(true);
+    try {
+      const res = await fetch("/api/radar/hourly", { method: "POST" });
+      const json = (await res.json()) as RadarState;
+      if (json.ok) {
+        setRadar(json);
+        const n = json.latest?.findings.length ?? 0;
+        const crit = json.latest?.findings.filter((f) => f.severity === "critical").length ?? 0;
+        toast.success("Capability check complete", {
+          description: `${n} finding${n === 1 ? "" : "s"}${crit > 0 ? ` (${crit} critical)` : ""} · bucket ${json.latest?.hourBucket ?? "?"} — same-hour re-checks are idempotent`,
+        });
+      } else {
+        toast.error("Capability check failed", { description: json.error ?? "unknown error" });
+      }
+    } catch {
+      toast.error("Capability check failed", { description: "the local server did not answer" });
+    } finally {
+      setRadarBusy(false);
+    }
+  }
+
+  async function copySeed(prompt: string) {
+    const ok = await copyText(prompt);
+    if (ok) toast.success("Seed prompt copied", { description: "Paste it into a Workflow Studio step to turn the finding into a pipeline." });
+    else toast.error("Copy failed");
+  }
+
+  function focusRadar() {
+    document.getElementById("capability-radar")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 
   async function runNow(id: string, name: string) {
     setBusy(id);
@@ -267,8 +363,8 @@ export function ServerAutopilot() {
       {state ? (
         <div
           aria-label="Automation pulse"
-          title="One-glance aggregation of the automation diagnostics: registry schedules, recent server-run outcomes, the evolution inbox, and anything needing attention. Each number is explained by its dedicated surface below."
-          className="mb-3 grid grid-cols-2 gap-1.5 lg:grid-cols-4"
+          title="One-glance aggregation of the automation diagnostics: registry schedules, recent server-run outcomes, the evolution inbox, the capability radar's latest findings, and anything needing attention. Each number is explained by its dedicated surface below."
+          className="mb-3 grid grid-cols-2 gap-1.5 lg:grid-cols-5"
         >
           <div
             title="Enabled schedules in the local registry. “Parked” = disabled by the 3-strike failure breaker; “off” = disabled by you or the orphan guard (never failing)."
@@ -300,6 +396,19 @@ export function ServerAutopilot() {
               {openProposals} open · {acceptedProposals} accepted
             </p>
           </div>
+          <button
+            type="button"
+            onClick={focusRadar}
+            title="Capability radar — the hourly platform self-check. Click to jump to the full digest (findings, experiments, tryable adaptation seeds)."
+            className="w-full rounded-lg border border-violet-500/15 bg-background/40 px-2 py-1.5 text-left transition-colors hover:bg-violet-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-500/50"
+          >
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Capability radar</p>
+            <p className="mt-0.5 text-xs font-semibold tabular-nums text-violet-300">
+              {radar?.latest
+                ? `${radar.latest.findings.length} finding${radar.latest.findings.length === 1 ? "" : "s"} · ${fmtAgo(radar.latest.generatedAt)}`
+                : "arming…"}
+            </p>
+          </button>
           {attention.length > 0 ? (
             <button
               type="button"
@@ -526,6 +635,156 @@ export function ServerAutopilot() {
           </p>
         </div>
       ) : null}
+
+      {/* r497: Capability Radar — the hourly self-check digest. Deterministic
+          + vault-free by design: it must fire when nothing else can (tab
+          closed, no keys). One idempotent row per UTC hour bucket. */}
+      <div id="capability-radar" className="mt-3 rounded-lg border border-violet-500/20 bg-background/40 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <RadarIcon className="h-4 w-4 shrink-0 text-violet-400" aria-hidden />
+          <h4 className="text-xs font-semibold leading-none">Capability radar</h4>
+          <Badge
+            variant="outline"
+            className="px-1.5 py-0 text-[10px] border-violet-500/40 bg-violet-500/10 text-violet-300"
+            title="The hourly check fires from the local server with or without this tab open — no vault key needed (deterministic scans + one built-in-gateway probe per pass)."
+          >
+            every 1h · works tab-closed
+          </Badge>
+          {radar?.latest ? (
+            <span className="text-[10px] text-muted-foreground">
+              last check {fmtAgo(radar.latest.generatedAt)} · bucket {radar.latest.hourBucket}
+            </span>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">no digest yet — first pass lands ~1 min after server boot</span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={radarBusy}
+            onClick={() => void checkNow()}
+            className="ml-auto h-6 gap-1 border-violet-500/40 px-2 text-[10px] text-violet-300 transition-colors hover:bg-violet-500/10 hover:text-violet-200"
+            title="Run the hourly self-check right now (idempotent within the current hour bucket)"
+          >
+            <RefreshCw className={cn("h-3 w-3", radarBusy ? "animate-spin" : "")} aria-hidden />
+            Check now
+          </Button>
+        </div>
+
+        {radar?.latest ? (
+          <>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+              Last {radar.latest.windowHours}h: {radar.latest.runs.total} archived run{radar.latest.runs.total === 1 ? "" : "s"} ({radar.latest.runs.done}✓ {radar.latest.runs.error > 0 ? `${radar.latest.runs.error}✗ ` : ""}{radar.latest.runs.blocked > 0 ? `${radar.latest.runs.blocked}⛔ ` : ""}· {radar.latest.runs.toolCalls.toLocaleString()} tool calls)
+              {radar.latest.runs.quietCycles > 0 ? ` · ${radar.latest.runs.quietCycles} quiet` : ""}
+              {radar.latest.runs.gatewayAuthFailures > 0 ? ` · ${radar.latest.runs.gatewayAuthFailures} hit gateway-auth failures` : ""}
+              {" · probe "}
+              <span className={radar.latest.gateway.probe.ok ? "text-emerald-400" : "text-red-400"}>
+                {radar.latest.gateway.probe.ok ? `ok (${radar.latest.gateway.probe.ms}ms)` : `failing (${radar.latest.gateway.probe.error ?? "unknown"})`}
+              </span>
+            </p>
+
+            {radar.latest.findings.length > 0 ? (
+              <ul className="mt-2 space-y-1.5">
+                {radar.latest.findings.map((f, i) => (
+                  <li
+                    key={`${f.area}-${i}`}
+                    className={cn(
+                      "rounded-md border p-2 text-[11px] leading-relaxed",
+                      f.severity === "critical"
+                        ? "border-red-500/30 bg-red-500/[0.06] text-red-300"
+                        : f.severity === "warning"
+                          ? "border-amber-500/30 bg-amber-500/[0.06] text-amber-300"
+                          : "border-sky-500/25 bg-sky-500/[0.05] text-sky-200/90",
+                    )}
+                  >
+                    <p className="font-medium">
+                      {f.severity === "critical" ? "✗" : f.severity === "warning" ? "⚠" : "ⓘ"} {f.title}
+                    </p>
+                    <p className="mt-0.5 text-muted-foreground">{f.evidence}</p>
+                    {f.tryable ? (
+                      <p className="mt-0.5 text-violet-300/90">
+                        <span className="font-medium">→ try:</span> {f.tryable}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] p-2 text-[11px] text-emerald-400">
+                ✓ All clear — no findings in this pass.
+              </p>
+            )}
+
+            {radar.latest.experiments.length > 0 ? (
+              <div className="mt-2">
+                <p className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                  <FlaskConical className="h-3 w-3" aria-hidden />
+                  Tryable experiments
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {radar.latest.experiments.map((x, i) => (
+                    <li key={i} className="rounded-md border bg-background/60 p-2 text-[11px] leading-relaxed">
+                      <p className="font-medium text-violet-300">{x.name}</p>
+                      <p className="mt-0.5 text-muted-foreground">{x.why}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {radar.latest.seeds.length > 0 ? (
+              <div className="mt-2">
+                <p className="text-[11px] font-medium text-muted-foreground">Improvement seeds — paste into a Studio step</p>
+                <ul className="mt-1 space-y-1">
+                  {radar.latest.seeds.map((s, i) => (
+                    <li key={i} className="flex items-start gap-1.5 rounded-md border bg-background/60 p-2 text-[11px]">
+                      <span className="min-w-0 flex-1 break-words font-medium">{s.label}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 shrink-0 gap-1 px-1.5 text-[10px] text-muted-foreground transition-colors hover:text-violet-300"
+                        onClick={() => void copySeed(s.prompt)}
+                        title="Copy the seed prompt"
+                      >
+                        <Copy className="h-2.5 w-2.5" aria-hidden />
+                        copy
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {radar.history.length > 1 ? (
+              <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-violet-500/15 pt-2">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">history</span>
+                {radar.history
+                  .slice(0, 12)
+                  .reverse()
+                  .map((h) => (
+                    <span
+                      key={h.id}
+                      title={`${h.id} — ${h.findings} finding${h.findings === 1 ? "" : "s"} (${h.critical} critical · ${h.warnings} warning) · ${h.tryables} tryables`}
+                      className={cn(
+                        "rounded px-1 py-0.5 text-[9.5px] font-semibold tabular-nums",
+                        h.critical > 0
+                          ? "bg-red-500/15 text-red-300"
+                          : h.warnings > 0
+                            ? "bg-amber-500/15 text-amber-300"
+                            : "bg-emerald-500/15 text-emerald-300",
+                      )}
+                    >
+                      {h.id.slice(11, 16)}·{h.findings}
+                    </span>
+                  ))}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            The radar scans the run archive, registry, vault, model catalog and gateway pulse every hour and distills findings + tryable adaptations. Use “Check now” for the first digest.
+          </p>
+        )}
+      </div>
 
       {state && state.runs.length > 0 ? (
         <div className="mt-3 border-t border-sky-500/15 pt-2.5">
