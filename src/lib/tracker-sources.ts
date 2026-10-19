@@ -15,6 +15,11 @@
 const NON_TEXT_RE =
   /embed|whisper|\btts\b|guard|rerank|moderation|sdxl|imagen|imagine|diffusion|vision-?(?:enc|only)|voice|transcribe/i;
 
+// r501: the owner's HF PAT (db/hf-token.txt, gitignored) rides along on Hub
+// API reads — higher rate-limit ceiling, gated repos the token can see.
+// Server-side only; the token never reaches the browser bundle.
+import { hfAuthHeaders } from "@/lib/server/hf-token";
+
 export interface TrackerRow {
   key: string; // "providerId::modelId" — matches the relay hopKey convention
   providerId: string;
@@ -145,7 +150,8 @@ interface HfModel {
 
 async function fetchHuggingFaceSignals(): Promise<TrackerRow[]> {
   const data = (await getJson(
-    "https://huggingface.co/api/models?sort=createdAt&direction=-1&limit=60&pipeline_tag=text-generation"
+    "https://huggingface.co/api/models?sort=createdAt&direction=-1&limit=60&pipeline_tag=text-generation",
+    hfAuthHeaders()
   )) as HfModel[];
   const out: TrackerRow[] = (Array.isArray(data) ? data : [])
     .map((m) => m.modelId ?? m.id ?? "")

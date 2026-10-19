@@ -90,3 +90,6 @@ lost-era-quarantine-*.tar.gz
 
 # r493: vault rehydration seed holds plaintext keys — same trust class as db/*.db, NEVER commit
 db/vault-seed.json
+
+# HF hub token (r501) — owner PAT, server-side only
+/db/hf-token.txt

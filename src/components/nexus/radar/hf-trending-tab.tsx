@@ -50,6 +50,9 @@ interface HfCache {
   models: HfItem[];
   datasets: HfItem[];
   spaces: HfItem[];
+  /** r501: the server proxy answered with the owner's HF PAT attached
+   * (db/hf-token.txt) — higher Hub rate limits + gated repos visible. */
+  authed?: boolean;
 }
 
 type HfKind = "models" | "datasets" | "spaces";
@@ -107,7 +110,7 @@ export function HfTrendingTab() {
             signal: AbortSignal.timeout(25_000),
           });
           const data = (await res.json().catch(() => null)) as
-            | { items?: HfItem[]; error?: string }
+            | { items?: HfItem[]; error?: string; authed?: boolean }
             | null;
           if (!res.ok) {
             throw new Error(
@@ -117,7 +120,7 @@ export function HfTrendingTab() {
           if (!data || !Array.isArray(data.items)) {
             throw new Error(`Unexpected Hugging Face response for ${k}.`);
           }
-          return [k, data.items] as const;
+          return [k, data.items, data.authed === true] as const;
         })
       );
       // r468: this used to be Promise.all — one flaky Hub endpoint threw away
@@ -152,11 +155,16 @@ export function HfTrendingTab() {
         models: cache?.models ?? [],
         datasets: cache?.datasets ?? [],
         spaces: cache?.spaces ?? [],
+        authed: cache?.authed ?? false,
       };
       for (let i = 0; i < kinds.length; i++) {
         const a = attempts[i];
         if (a.status === "fulfilled") next[kinds[i]] = a.value[1];
       }
+      // r501: any successful section proves whether the proxy is authed.
+      next.authed = attempts.some(
+        (a) => a.status === "fulfilled" && a.value[2]
+      );
       if (failed.length === 0 || !cache) next.fetchedAt = Date.now();
       setCache(next);
       writeCache(HF_CACHE_KEY, next);
@@ -236,6 +244,15 @@ export function HfTrendingTab() {
             );
           })}
         </div>
+        {cache?.authed ? (
+          <span
+            className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400"
+            title="Hub calls carry the owner's HF token (db/hf-token.txt, gitignored) — higher rate limits, gated repos visible. Rotate by editing that file; no restart needed."
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+            HF auth
+          </span>
+        ) : null}
         <div className="relative ml-auto">
           <Search
             className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"

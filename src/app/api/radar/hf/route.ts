@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hfAuthHeaders, hfToken } from "@/lib/server/hf-token";
 
 // ─── GET /api/radar/hf — Trend Radar · HF Trending (r139) ────────────────────
 // Thin proxy over the public Hugging Face Hub trending API. This is the LAST
@@ -53,6 +54,9 @@ export async function GET(request: Request): Promise<Response> {
         headers: {
           "User-Agent":
             "NEXUS-WebGUI/1.0 (trend radar; local-first agentic workflow platform)",
+          // r501: owner's HF PAT (db/hf-token.txt) — raises the Hub rate-limit
+          // ceiling; absent file falls back to keyless reads, nothing breaks.
+          ...hfAuthHeaders(),
         },
         signal: AbortSignal.timeout(HF_TIMEOUT_MS),
       }
@@ -85,7 +89,7 @@ export async function GET(request: Request): Promise<Response> {
         ...(typeof r.pipeline_tag === "string" ? { pipeline_tag: r.pipeline_tag } : {}),
         ...(typeof r.library_name === "string" ? { library_name: r.library_name } : {}),
       }));
-    return NextResponse.json({ kind, count: items.length, items });
+    return NextResponse.json({ kind, count: items.length, items, authed: hfToken() !== null });
   } catch (err) {
     const timedOut = err instanceof Error && /timeout|timed? ?out|aborted/i.test(err.message);
     return NextResponse.json(

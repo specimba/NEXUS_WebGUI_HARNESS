@@ -887,6 +887,15 @@ function ModelRow({
           <Badge variant="outline" className="font-mono text-[10px] font-normal">
             {model.params}
           </Badge>
+          {model.fresh && (
+            <Badge
+              variant="outline"
+              className="gap-0.5 border-emerald-500/40 text-[10px] font-normal text-emerald-400"
+              title="December-2025 generation — Qwen3.5 / Mistral-3-2512 prebuilts, verified against the installed web-llm 0.2.85 model list"
+            >
+              new gen
+            </Badge>
+          )}
           {model.requiresF16 && (
             <Badge variant="outline" className="text-[10px] font-normal text-violet-300">
               f16
