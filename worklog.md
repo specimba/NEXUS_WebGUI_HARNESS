@@ -11897,3 +11897,30 @@ r499 addendum (post-rebase healing, same round):
 - The sandbox .git rollback gremlin struck AGAIN between rounds: local main was reset to 2cd093c81 (r496) while the working tree kept the newer files — the r499 commit initially landed on the wrong parent, and a first push collided with origin. HEALED: fetch → rebase onto origin/main (one worklog conflict resolved as union: r497+r498 from origin + r499 from local) → pushed as 8bb42131d to both remotes. Lesson stands: ALWAYS `git fetch origin && git log --oneline main..origin/main` before committing in a new round.
 - The rollback also reverted the GENERATED prisma client (node_modules/.prisma) to the r496-era schema → /api/radar/hourly 500 "Cannot read properties of undefined (reading 'findMany')" (db.capabilityCheck undefined). Schema file + SQLite table were intact. HEALED: bunx prisma generate + scripts/dev-restart.sh (Turbopack kept serving the stale client graph until restart). Post-heal: radar latest bucket 22:00Z, lane READY (Vyce AI, 4 slots), executor + radar loops armed at boot, app 200.
 - Note for r500: the radar's finding count dropped 4→1 after the lane went ready (vault/overdue findings clearing). Owner's tab was OPEN at 22:15Z (heartbeat fresh) → server lane correctly stands down; the first closed-tab server-lane run is still the thing to witness when the tab closes.
+
+---
+Task ID: r500
+Agent: main (Z.ai Code)
+Task: Handoff round — (1) cron list FIRST (registry purged again); (2) witness closed-tab server-lane state; (3) next feature from radar evidence; gates + push + docs.
+
+Work Log:
+- cron registry was purged a 6th time (list returned empty) → rebuilt the 15-min webDevReview cadence as job 467956 (`0 */15 * * * ?` 6-field, Europe/Istanbul). NOTE: the create API rejects 5-field exprs AND `*/15` alone (reads as every 15 SECONDS, min interval 300s) — `0 */15 * * * ?` is the shape that survives.
+- Witnessed the closed-tab lane: executorLane {ready:true, Vyce AI sk-1••••8f71, slotCount:4}, serverDriving:false (owner tab heartbeat 4.6s fresh → correct stand-down), latest schedule runs all `done` (12:31Z), CapabilityCheck rows = 16. The r499 handoff's "first closed-tab run" item is satisfied by the DB record.
+- Radar evidence drove the feature: the live probe was failing with 429 "Too many requests" while rule R1 rendered CRITICAL "probe still failing / auth failing" — a misdiagnosis, because a 429 is the gateway ANSWERING (auth passed, shared bucket full). Auth outage and congestion demand opposite owner responses (pause schedules vs space them).
+- IMPLEMENTED (src/lib/server/capability-radar.ts): exported `ProbeClass` ("ok"|"congestion"|"auth"|"down") + `classifyProbeError()`; probeGateway now retries ONCE after 2.5s for transient classes (auth never retries — deterministic, a second call teaches nothing) and stamps {class, attempts} into the digest; R1 rule branches three ways — probe ok → "streak healed" warning (unchanged), probe congestion → WARNING with honest "rate-limited (429), not dead" copy, probe auth/down → critical (unchanged); the no-streak `!probe.ok` branch likewise demotes congestion to a warning ("lane up, bucket congesting"); "Probe-first research step" experiment now also fires under congestion with class-aware why-copy.
+- IMPLEMENTED (src/components/nexus/workflows/server-autopilot.tsx): view type grew optional class/attempts (older persisted digests predate the fields); new ProbeSpan component renders emerald "ok (Nms)" / amber "rate-limited (429 · Nms)" / red "auth failing"/"failing" with a hover hint that says what each class wants; attempts>1 renders "· N tries".
+- GATES: tsc --noEmit 0 errors TRUE-exit; lint 0 errors / 33 warnings EXACT baseline (left the pre-existing unused `share` in R1 untouched to keep the count); db/gateway-pulse.json runtime noise restored before commit.
+- LIVE WITNESS: dev-restart → POST /api/radar/hourly → probe {ok:false, class:"congestion", attempts:2, ms:2791} and R1 rendered as WARNING "…live probe is rate-limited (429), not dead" — zero criticals in the digest. agent-browser QA: workflows page shows "probe rate-limited (429 · 2791ms) · 2 tries" + ⚠ finding with full congestion evidence; settings page intact (storage card + labels from r499); console 0 errors/warnings.
+- PUSHED 212ae2bfd to origin (specimba/NEXUS_WebGUI_Harness) AND fork (specimba/PraisonAI).
+
+Stage Summary:
+- The radar no longer cries "auth outage" when the gateway is merely congesting: 429 → amber warning with "keep schedules on" advice; 401/403 → red critical with "pause schedules" advice. Severity now tracks the response the owner should actually take.
+- One transient retry removes single-instant false negatives (an isolated 429 no longer poisons a whole hour bucket).
+- Cron cadence restored (job 467956); no backend behavior changes beyond the radar probe itself.
+
+Round Handoff:
+Round ID: r501
+Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if purged)
+Open risks: (1) the 401-streak evidence window rolls off naturally as new runs land — the congestion warning should resolve within ~24h of healthy runs; (2) if the probe starts returning 401/403 again, the finding flips back to critical by design; (3) owner still owes a re-mirror click on the 3 drifted vault slots (r499).
+Blockers: none
+Next recommended action: r501 — (1) cron list; (2) candidates from the radar: probe-first Studio template (one-click "Apply as template" on the radar's probe seed → creates a 2-step workflow: probe gate + research body), free-catalog freshness pinning UX in Model relay, weekly radar-seed auto-import; (3) keep watching console/lint baselines.
