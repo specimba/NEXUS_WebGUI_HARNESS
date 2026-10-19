@@ -33,6 +33,34 @@ import { gatewayPulse } from "./gateway-pulse";
 export const RADAR_INTERVAL_MS = 3_600_000; // the owner's "every 1-hour check"
 const WINDOW_HOURS = 24;
 const PROBE_TIMEOUT_MS = 10_000;
+/** r500: one retry for transient probe classes — a single congested instant
+ * must not read as an outage for a whole hour. Auth failures do NOT retry
+ * (deterministic rejection — a second call burns quota to learn nothing). */
+const PROBE_RETRY_MS = 2_500;
+
+// ── r500: probe error classification ────────────────────────────────────────
+// The witnessed misdiagnosis: the live probe came back 429 "Too many
+// requests" and rule R1 escalated the finding to CRITICAL "probe still
+// failing" — but a 429 is the gateway ANSWERING (auth path passed, shared
+// bucket just full). Auth outage and congestion demand opposite responses
+// (pause schedules vs space them), so the radar now names the class.
+export type ProbeClass = "ok" | "congestion" | "auth" | "down";
+
+export function classifyProbeError(raw: string): Exclude<ProbeClass, "ok"> {
+  const m = raw.toLowerCase();
+  if (m.includes("429") || m.includes("too many requests") || m.includes("rate limit")) return "congestion";
+  if (
+    m.includes("401") ||
+    m.includes("403") ||
+    m.includes("x-token") ||
+    m.includes("unauthorized") ||
+    m.includes("forbidden") ||
+    m.includes("api key") ||
+    m.includes("auth")
+  )
+    return "auth";
+  return "down"; // timeouts, network errors, empty results, 5xx
+}
 
 export type RadarSeverity = "critical" | "warning" | "info";
 export type RadarArea = "gateway" | "runs" | "registry" | "vault" | "catalog";
@@ -70,7 +98,11 @@ export interface RadarDigest {
   registry: { enabled: number; parked: string[]; overdue: string[]; heartbeatStaleMs: number | null };
   vault: { slots: number; closedTabLane: "ready" | "no-vault-key" };
   catalog: { newModels48h: string[]; removed48h: number };
-  gateway: { pulse1h: number; pulse24h: number; probe: { ok: boolean; ms: number; error: string | null } };
+  gateway: {
+    pulse1h: number;
+    pulse24h: number;
+    probe: { ok: boolean; ms: number; error: string | null; class: ProbeClass; attempts: number };
+  };
   experiments: { name: string; why: string }[];
   findings: RadarFinding[];
   seeds: RadarSeed[];
@@ -92,26 +124,37 @@ function getZai() {
 
 async function probeGateway(): Promise<RadarDigest["gateway"]["probe"]> {
   const t0 = Date.now();
-  try {
-    const zai = await getZai();
-    const res = (await Promise.race([
-      zai.functions.invoke("web_search", { query: "openai compatible api", num: 1 }),
-      new Promise((_, rej) =>
-        setTimeout(() => rej(new Error(`probe timed out after ${PROBE_TIMEOUT_MS / 1000}s`)), PROBE_TIMEOUT_MS),
-      ),
-    ])) as unknown;
-    const text = typeof res === "string" ? res : JSON.stringify(res);
-    if (!text || text === "[]" || text === "null") {
-      return { ok: false, ms: Date.now() - t0, error: "probe returned empty result" };
+  let attempts = 0;
+  let error: string | null = null;
+  while (attempts < 2) {
+    attempts += 1;
+    try {
+      const zai = await getZai();
+      const res = (await Promise.race([
+        zai.functions.invoke("web_search", { query: "openai compatible api", num: 1 }),
+        new Promise((_, rej) =>
+          setTimeout(() => rej(new Error(`probe timed out after ${PROBE_TIMEOUT_MS / 1000}s`)), PROBE_TIMEOUT_MS),
+        ),
+      ])) as unknown;
+      const text = typeof res === "string" ? res : JSON.stringify(res);
+      if (!text || text === "[]" || text === "null") {
+        error = "probe returned empty result";
+      } else {
+        return { ok: true, ms: Date.now() - t0, error: null, class: "ok", attempts };
+      }
+    } catch (e) {
+      error = trunc(e instanceof Error ? e.message : String(e), 160);
     }
-    return { ok: true, ms: Date.now() - t0, error: null };
-  } catch (e) {
-    return {
-      ok: false,
-      ms: Date.now() - t0,
-      error: trunc(e instanceof Error ? e.message : String(e), 160),
-    };
+    if (classifyProbeError(error ?? "") === "auth") break; // deterministic — retry teaches nothing
+    if (attempts < 2) await new Promise((r) => setTimeout(r, PROBE_RETRY_MS)); // let a congested bucket breathe
   }
+  return {
+    ok: false,
+    ms: Date.now() - t0,
+    error,
+    class: error ? classifyProbeError(error) : "down",
+    attempts,
+  };
 }
 
 /** Run one radar check: scan → rules → findings/seeds → idempotent upsert. */
@@ -225,30 +268,55 @@ export async function runCapabilityCheck(): Promise<RadarDigest> {
   const F = digest.findings;
 
   // R1 — the r497 witnessed failure class: upstream gateway auth streak.
+  // r500: the probe's class now decides severity honestly — a 429 means the
+  // gateway is UP and congesting (warning, space the schedules), only an
+  // auth/down probe with an active 401 streak stays critical.
   if (gatewayAuthFailures >= 3) {
     const share = total > 0 ? gatewayAuthFailures / total : 0;
-    const healed = probe.ok;
-    F.push({
-      severity: healed ? "warning" : "critical",
-      area: "gateway",
-      title: healed
-        ? `Gateway auth streak healed — ${gatewayAuthFailures} of ${total} runs hit 401 "missing X-Token" in ${WINDOW_HOURS}h`
-        : `Search gateway auth failing — ${gatewayAuthFailures} of ${total} runs hit 401 "missing X-Token" in ${WINDOW_HOURS}h, probe still failing`,
-      evidence: healed
-        ? `The live probe just answered in ${probe.ms}ms — the upstream auth outage (e.g. the 13:33–17:03Z window, r497) is over. Quiet-cycle runs were honest stops, not data loss.`
-        : `Live probe error: ${probe.error ?? "unknown"}. Runs honestly stopped ("quiet cycle") instead of fabricating — but research pipelines produced no new data while the streak lasted.`,
-      tryable: healed
-        ? "Re-arm any schedules you paused during the outage; consider a retry-backoff step before the first research step so a dead gateway costs one cheap probe, not a full run."
-        : "Pause research-heavy schedules until the probe passes (each run currently burns quota to re-discover the outage), or point first steps at no-fetch tools (arxiv/wikipedia fallbacks already rotate automatically).",
-    });
+    const retryNote = probe.attempts > 1 ? ` (probe retried ${probe.attempts}× this pass)` : "";
+    if (probe.ok) {
+      F.push({
+        severity: "warning",
+        area: "gateway",
+        title: `Gateway auth streak healed — ${gatewayAuthFailures} of ${total} runs hit 401 "missing X-Token" in ${WINDOW_HOURS}h`,
+        evidence: `The live probe just answered in ${probe.ms}ms — the upstream auth outage (e.g. the 13:33–17:03Z window, r497) is over. Quiet-cycle runs were honest stops, not data loss.`,
+        tryable: "Re-arm any schedules you paused during the outage; consider a retry-backoff step before the first research step so a dead gateway costs one cheap probe, not a full run.",
+      });
+    } else if (probe.class === "congestion") {
+      F.push({
+        severity: "warning",
+        area: "gateway",
+        title: `Search gateway auth streak (${gatewayAuthFailures} of ${total} runs hit 401 "missing X-Token" in ${WINDOW_HOURS}h) — live probe is rate-limited (429), not dead`,
+        evidence: `Live probe: ${probe.error ?? "unknown"}${retryNote}. A 429 is the gateway ANSWERING — auth passed, the shared bucket is full. That is congestion, not the auth outage repeating: the honest read is "lane up, load high", and the 401 streak is trailing-window history, not a live failure.`,
+        tryable: "Treat as congestion, not outage: keep schedules on (the stagger already spreads same-minute fires), lean on the arxiv/wikipedia fallback rotation, and only pause if a probe comes back 401/403 — the class label on this line tells you which world you are in.",
+      });
+    } else {
+      F.push({
+        severity: "critical",
+        area: "gateway",
+        title: `Search gateway auth failing — ${gatewayAuthFailures} of ${total} runs hit 401 "missing X-Token" in ${WINDOW_HOURS}h, probe still failing`,
+        evidence: `Live probe (${probe.class}): ${probe.error ?? "unknown"}${retryNote}. Runs honestly stopped ("quiet cycle") instead of fabricating — but research pipelines produced no new data while the streak lasted.`,
+        tryable: "Pause research-heavy schedules until the probe passes (each run currently burns quota to re-discover the outage), or point first steps at no-fetch tools (arxiv/wikipedia fallbacks already rotate automatically).",
+      });
+    }
   } else if (!probe.ok) {
-    F.push({
-      severity: "critical",
-      area: "gateway",
-      title: "Live gateway probe failing right now",
-      evidence: `web_search probe error: ${probe.error ?? "unknown"} (${probe.ms}ms). Recent archive does not yet show a 401 streak.`,
-      tryable: "If the next check still fails, treat the built-in search lane as down: schedule steps should lean on arxiv/wikipedia fallbacks (they auto-rotate) until this clears.",
-    });
+    if (probe.class === "congestion") {
+      F.push({
+        severity: "warning",
+        area: "gateway",
+        title: "Live gateway probe rate-limited (429) — lane up, bucket congesting",
+        evidence: `web_search probe: ${probe.error ?? "unknown"} (${probe.ms}ms${probe.attempts > 1 ? `, ${probe.attempts} tries` : ""}). A 429 is the gateway answering — this is congestion, not an outage, and the recent archive shows no 401 streak.`,
+        tryable: "No auth action needed. If completion dials also 429 this hour, the pulse chip tracks the shared bucket; spacing schedules further is the only lever that helps congestion.",
+      });
+    } else {
+      F.push({
+        severity: "critical",
+        area: "gateway",
+        title: "Live gateway probe failing right now",
+        evidence: `web_search probe error (${probe.class}): ${probe.error ?? "unknown"} (${probe.ms}ms). Recent archive does not yet show a 401 streak.`,
+        tryable: "If the next check still fails, treat the built-in search lane as down: schedule steps should lean on arxiv/wikipedia fallbacks (they auto-rotate) until this clears.",
+      });
+    }
   }
 
   // R2 — quiet cycles (honest no-data cycles are expected during outages).
@@ -356,10 +424,13 @@ export async function runCapabilityCheck(): Promise<RadarDigest> {
       why: "Zero vault slots: the hourly schedules only run while a tab is open. Seeding one key turns every schedule into true 24/7 automation — the single highest-leverage experiment right now.",
     });
   }
-  if (gatewayAuthFailures >= 3 && probe.ok) {
+  if (gatewayAuthFailures >= 3 && (probe.ok || probe.class === "congestion")) {
     X.push({
       name: "Probe-first research step",
-      why: "The gateway healed after the outage — a pipeline whose first step is a 1-token probe (and stops early on failure) converts outage hours from burned runs into free quiet cycles.",
+      why:
+        probe.ok
+          ? "The gateway healed after the outage — a pipeline whose first step is a 1-token probe (and stops early on failure) converts outage hours from burned runs into free quiet cycles."
+          : "The probe is coming back 429 (congested, not dead) — a probe-first first step still pays: it costs one cheap call and stops early, instead of burning a full research run into a full bucket.",
     });
   }
   if (digest.catalog.newModels48h.length > 0) {

@@ -104,7 +104,16 @@ type RadarDigestView = {
   registry: { enabled: number; parked: string[]; overdue: string[] };
   vault: { slots: number; closedTabLane: string };
   catalog: { newModels48h: string[]; removed48h: number };
-  gateway: { probe: { ok: boolean; ms: number; error: string | null } };
+  gateway: {
+    probe: {
+      ok: boolean;
+      ms: number;
+      error: string | null;
+      /** r500 class label — older persisted digests predate it, hence optional. */
+      class?: "ok" | "congestion" | "auth" | "down";
+      attempts?: number;
+    };
+  };
   experiments: { name: string; why: string }[];
   findings: RadarFindingView[];
   seeds: { label: string; prompt: string }[];
@@ -137,6 +146,56 @@ function fmtAgo(iso: string | null): string {
   const m = Math.round(s / 60);
   if (m < 60) return `${m}m ago`;
   return `${(m / 60).toFixed(1)}h ago`;
+}
+
+// ─── r500: class-aware probe span ────────────────────────────────────────────
+// The old span was binary ok/failing, so a 429 (the gateway ANSWERING — auth
+// passed, bucket full) rendered in outage red and read as "auth broken again".
+// The radar now labels the class server-side; this span colors by class:
+// emerald = answered · amber = congested (429) · red = auth/down. Hover tells
+// the owner which response each class wants (pause schedules vs space them).
+function ProbeSpan({
+  ok,
+  ms,
+  error,
+  cls,
+  attempts,
+}: {
+  ok: boolean;
+  ms: number;
+  error: string | null;
+  cls?: "ok" | "congestion" | "auth" | "down";
+  attempts?: number;
+}) {
+  const klass = cls ?? (ok ? "ok" : "down");
+  const tone =
+    ok || klass === "ok"
+      ? "text-emerald-400"
+      : klass === "congestion"
+        ? "text-amber-400"
+        : "text-red-400";
+  const label =
+    klass === "ok"
+      ? `ok (${ms}ms)`
+      : klass === "congestion"
+        ? `rate-limited (429 · ${ms}ms)`
+        : klass === "auth"
+          ? `auth failing (${error ?? "unknown"})`
+          : `failing (${error ?? "unknown"})`;
+  const hint =
+    klass === "ok"
+      ? "The live search probe answered — the built-in gateway lane is up."
+      : klass === "congestion"
+        ? "429 = the gateway ANSWERED (auth passed, shared bucket full). Congestion, not an outage — keep schedules on, lean on fallbacks, only pause on a 401/403 probe."
+        : klass === "auth"
+          ? "401/403 = upstream auth is rejecting calls. Treat the search lane as down; pause research-heavy schedules until a probe passes."
+          : "Timeout / network / empty answer — the gateway is not usable right now; lean on no-fetch fallback tools until it clears.";
+  return (
+    <span className={tone} title={hint}>
+      {label}
+      {attempts !== undefined && attempts > 1 ? ` · ${attempts} tries` : ""}
+    </span>
+  );
 }
 
 export function ServerAutopilot() {
@@ -677,9 +736,13 @@ export function ServerAutopilot() {
               {radar.latest.runs.quietCycles > 0 ? ` · ${radar.latest.runs.quietCycles} quiet` : ""}
               {radar.latest.runs.gatewayAuthFailures > 0 ? ` · ${radar.latest.runs.gatewayAuthFailures} hit gateway-auth failures` : ""}
               {" · probe "}
-              <span className={radar.latest.gateway.probe.ok ? "text-emerald-400" : "text-red-400"}>
-                {radar.latest.gateway.probe.ok ? `ok (${radar.latest.gateway.probe.ms}ms)` : `failing (${radar.latest.gateway.probe.error ?? "unknown"})`}
-              </span>
+              <ProbeSpan
+                ok={radar.latest.gateway.probe.ok}
+                ms={radar.latest.gateway.probe.ms}
+                error={radar.latest.gateway.probe.error}
+                cls={radar.latest.gateway.probe.class}
+                attempts={radar.latest.gateway.probe.attempts}
+              />
             </p>
 
             {radar.latest.findings.length > 0 ? (
