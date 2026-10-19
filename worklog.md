@@ -11924,3 +11924,31 @@ Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if pu
 Open risks: (1) the 401-streak evidence window rolls off naturally as new runs land — the congestion warning should resolve within ~24h of healthy runs; (2) if the probe starts returning 401/403 again, the finding flips back to critical by design; (3) owner still owes a re-mirror click on the 3 drifted vault slots (r499).
 Blockers: none
 Next recommended action: r501 — (1) cron list; (2) candidates from the radar: probe-first Studio template (one-click "Apply as template" on the radar's probe seed → creates a 2-step workflow: probe gate + research body), free-catalog freshness pinning UX in Model relay, weekly radar-seed auto-import; (3) keep watching console/lint baselines.
+
+---
+Task ID: r501
+Agent: main (Z.ai Code)
+Task: Owner directives — absorb new free models into the arsenal; replace the stale WebGPU local-models catalog with current trending small HF models (≤12B/9B/≤6B, quantized); install the provided HF PAT properly; deep-dive HF Hub docs (buckets/spaces/ssh) and propose platform adaptations.
+
+Work Log:
+- cron registry purged a 7th time → rebuilt as job 468000 (same `0 */15 * * * ?` shape). HEAD was an auto-snapshot commit (db26b73ac) on top of r500 — no origin divergence.
+- HF PAT ("webGUItest1", fine-grained: inference providers + the owner's 8 buckets/3 spaces/1 dataset) stored at db/hf-token.txt — chmod 600, gitignored (same discipline as the r498 git credentials). Verified `git check-ignore` + `git status` + a staged-diff secret scan (0 hits) before every commit.
+- NEW src/lib/server/hf-token.ts: mtime-cached file reader (rotate the token by editing the file — no restart), exposes hfAuthHeaders()/hfToken(). Server-side only; the token never reaches the browser bundle.
+- WIRED: tracker-sources.ts fetchHuggingFaceSignals + /api/radar/hf proxy now send `Authorization: Bearer` when the token exists; route response gained `authed: boolean`. Witnessed live: `/api/radar/hf?kind=models` → `authed:true`.
+- UI: HF Trending tab renders a green "HF auth" pill (title explains rotate-by-edit). agent-browser QA: chip renders next to the Hub section radios, trending rows flow (DeepSeek-V4.1-Flash-1017, LiquidAI/LFM2.5-24B-A2B …), console 0 errors/warnings.
+- LOCAL-MODELS CATALOG REBUILT (src/lib/webgpu.ts): the old list predated Qwen3.5 entirely. New list generated from the INSTALLED @mlc-ai/web-llm 0.2.85 prebuiltAppConfig (163 entries) — 26 WebLLM rows with the package's own vram_required_MB (zero fabrication): Qwen3.5 0.8B/2B/4B/9B, Ministral-3-3B Instruct/Reasoning/Base (Dec-25), Qwen3 1.7B, Qwen2.5-3B, OLMo-2-1B, R1-Distill-7B, Llama-3.1-8B(1k), plus the kept classics; 4 transformers.js fallback rows now include onnx-community/LFM2-350M-ONNX and onnx-community/Qwen3-0.6B-ONNX (both verified HTTP 200 on the Hub; SmolLM3-ONNX is 401 → excluded). `fresh?: boolean` + emerald "new gen" badge renders for the 6 December-2025 entries. Browser QA (no-WebGPU headless device): "4 models fit your budget" = exactly the 4 CPU fallbacks; "Show 25 above budget" reveals all WebLLM rows with 6 "new gen" badges.
+- MTP/DFLASH honesty: in-browser engines stream only MLC-compiled weights (q4f16 IS the quantization); trending GGUF/MTP/DFLASH/MLX fleets (LFM2.5, Dory1.0-4B, Mellum2.1-12B, Kolibri-1) are llama.cpp/vLLM/MLX server formats — documented in the catalog header comment and the research doc, with the server-side paths to reach them.
+- DEEP-DIVE doc: docs/research/hf-hub-capabilities-r501.md — live-fetched HF docs (storage-buckets returns 200): Buckets = S3-like Xet-backed NON-VERSIONED repo type, S3-compatible API (AWS CLI/boto3/s5cmd), hf:// paths, volume mounts in Jobs/Spaces. Ranked adaptations: (A) bucket-backed archive backups via S3 API — needs owner's S3 key/choice of canonical bucket; (B) Spaces-as-MCP-servers for the 3 nexus spaces; (C) HF Inference Providers as an opt-in vault lane; (D) HF Jobs for heavy research (parked); (E) SSH/GPG deliberately NOT adopted (HTTPS PAT covers everything; one credential type per lane).
+- GATES: tsc --noEmit 0 errors; lint 0/33 EXACT baseline; dev.log's only "error" grep is the pre-existing instrumentation.ts Edge-Runtime node:path warning (92 occurrences predate r501 — benign, known noise).
+- PUSHED b925847d6 to origin AND fork.
+
+Stage Summary:
+- HF is now a first-class authenticated source: higher rate limits, gated repos visible, rotation without restart, UI truth-chip. Local-models card went from a 2024-era snapshot to the actual installed engine's newest prebuilts (9B flagship included) with honest VRAM math and generation badges.
+- The owner's "smarter approaches" question is answered concretely in the research doc: bucket backups (A) is the highest-leverage next build and needs only an S3 key + bucket choice from him.
+
+Round Handoff:
+Round ID: r502
+Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if purged — 7 purges so far)
+Open risks: (1) HF token rotation = edit db/hf-token.txt (documented in the UI tooltip); (2) the staged-diff secret-scan habit should stay mandatory while tokens live in db/; (3) instrumentation.ts Edge warning remains benign noise.
+Blockers: none for the platform; owner input pending for adaptation A (S3 keys + canonical bucket choice).
+Next recommended action: r502 — (1) cron list; (2) if owner provided S3 keys → build bucket-backed archive backups (A); else build (B) Spaces-as-MCP tool surfacing or the probe-first Studio template from r500's handoff; (3) keep lint/tsc baselines exact.
