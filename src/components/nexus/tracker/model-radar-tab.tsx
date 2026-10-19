@@ -367,11 +367,11 @@ export function ModelRadarTab() {
             )}
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="max-h-56 overflow-y-auto pr-1">
+            <div className="max-h-56 overflow-x-hidden overflow-y-auto pr-1">
               <ul className="grid gap-1.5 sm:grid-cols-2">
                 {data!.signals.slice(0, SIGNALS_CAP).map((s) => (
-                  <li key={s.id} className="rounded-md border px-2.5 py-1.5">
-                    <p className="truncate font-mono text-[11.5px] font-medium">{s.modelId}</p>
+                  <li key={s.id} className="min-w-0 rounded-md border px-2.5 py-1.5">
+                    <p className="truncate font-mono text-[11.5px] font-medium" title={s.modelId}>{s.modelId}</p>
                     <p className="text-[10px] text-muted-foreground">
                       {typeof s.meta?.downloads === "number" ? `${s.meta.downloads.toLocaleString()} dl · ` : ""}
                       {typeof s.meta?.likes === "number" ? `${s.meta.likes} ★ · ` : ""}

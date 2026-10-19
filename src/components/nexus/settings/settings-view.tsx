@@ -186,6 +186,7 @@ const SETTINGS_SECTIONS = [
   { id: "vault", label: "Vault" },
   { id: "gh-ops", label: "GitHub" },
   { id: "referrals", label: "Referrals" },
+  { id: "byok", label: "BYOK" },
   { id: "behavior", label: "Behavior" },
   { id: "evolution", label: "Evolution" },
   { id: "profile", label: "Profile" },
@@ -599,7 +600,11 @@ export function SettingsView() {
           <div id="referrals" className="scroll-mt-14">
             <ReferralCard />
           </div>
-          <ProviderCard />
+          {/* r502: the r502-b audit flagged this card as the only section
+              unreachable from the sticky nav (no id, free-scroll only). */}
+          <div id="byok" className="scroll-mt-14">
+            <ProviderCard />
+          </div>
 
           {/* ── Behavior ─────────────────────────────────────────────── */}
           <div id="behavior" className="scroll-mt-14">

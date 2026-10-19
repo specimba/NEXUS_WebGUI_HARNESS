@@ -117,6 +117,13 @@ function fleetRel(ts: number | undefined): string {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+// r502: the router's pricing JSON carries upstream float garbage
+// (0.12000000000000001, 2.5999999999999996) — 3 significant digits renders
+// the honest value without the noise.
+function fmtPrice(v: number): string {
+  return `$${parseFloat(v.toPrecision(3))}`;
+}
+
 function HubFleetSection() {
   const [fleet, setFleet] = React.useState<FleetData | null>(null);
   const [open, setOpen] = React.useState(false);
@@ -351,9 +358,18 @@ function HubFleetSection() {
                       <tbody>
                         {fleet.router.data.topLanes.map((lane) => (
                           <tr key={`${lane.id}:${lane.provider}`} className="border-t">
-                            <td className="max-w-44 truncate px-2 py-1 font-mono" title={lane.id}>
-                              {lane.id}
-                              {lane.tools ? <span className="ml-1 text-[9px] text-emerald-500">tools</span> : null}
+                            <td className="max-w-44 px-2 py-1 font-mono" title={lane.id}>
+                              <span className="flex items-center gap-1.5">
+                                <span className="truncate">{lane.id}</span>
+                                {lane.tools ? (
+                                  <span
+                                    className="shrink-0 rounded border border-emerald-500/40 bg-emerald-500/10 px-1 py-px text-[9px] font-medium text-emerald-500 dark:text-emerald-400"
+                                    title="Provider supports tool calling"
+                                  >
+                                    tools
+                                  </span>
+                                ) : null}
+                              </span>
                             </td>
                             <td className="px-2 py-1">{lane.provider}</td>
                             <td className="px-2 py-1 tabular-nums">{lane.ms != null ? `${Math.round(lane.ms)}ms` : "—"}</td>
@@ -362,7 +378,7 @@ function HubFleetSection() {
                             </td>
                             <td className="hidden px-2 py-1 tabular-nums md:table-cell">
                               {lane.inPrice != null && lane.outPrice != null
-                                ? `$${lane.inPrice}/$${lane.outPrice}`
+                                ? `${fmtPrice(lane.inPrice)}/${fmtPrice(lane.outPrice)}`
                                 : "—"}
                             </td>
                           </tr>
@@ -627,13 +643,19 @@ export function HfTrendingTab() {
       {loading && !cache ? (
         <CardGridSkeleton count={6} />
       ) : (
-        <>
-        <HubFleetSection />
         <div
-          className="max-h-[62vh] overflow-y-auto pr-1"
+          className="min-h-0 flex-1 overflow-y-auto pr-1"
           role="region"
           aria-label={`Trending ${kind}`}
         >
+        <HubFleetSection />
+        {/* r502 wiring fix: the fleet + grid + count line now share ONE
+            scroll container (this flex-1 region). Previously the grid kept
+            the only max-h scroller while the expanded fleet sat OUTSIDE it
+            in a non-scrolling flex column — anything taller than the
+            viewport (fleetBottom 977px in an 800px viewport) was clipped
+            with no scroll path at all. */}
+        <div className="mt-3">
           {items.length === 0 ? (
             <EmptyState
               emoji="🤗"
@@ -689,12 +711,12 @@ export function HfTrendingTab() {
           )}
         </div>
         {items.length > 0 ? (
-          <p className="text-[11px] text-muted-foreground" aria-live="polite">
+          <p className="mt-3 text-[11px] text-muted-foreground" aria-live="polite">
             {filtered.length} of {items.length} {kindMeta.label.toLowerCase()}
             {hfQuery.trim() ? <> matching &ldquo;{hfQuery.trim()}&rdquo;</> : null}
           </p>
         ) : null}
-        </>
+        </div>
       )}
     </div>
   );

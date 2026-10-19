@@ -116,6 +116,7 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", note: "OpenAI fast flagship · 1.05M ctx · $0.20/$1.20" },
       { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", note: "Google current-gen · 1M ctx · thinking + tools · $1.50/$7.50" },
       { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", note: "Budget frontier · 1M ctx · $0.142/$0.284" },
+      { id: "minimax-m3.1-flash", label: "MiniMax M3.1 Flash", note: "NEW · 1M ctx · $0.17/$0.66 · fast lane" },
       { id: "glm-5.3-flash", label: "GLM 5.3 Flash", note: "Z.ai fast lane · 1M ctx · $0.11/$0.39" },
     ],
   },
@@ -141,6 +142,8 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     liveCatalog: "orcarouter",
     models: [
       { id: "orcarouter/free", label: "OrcaRouter Free", note: "Difficulty-routed free pool · never bills · the no-brainer default" },
+      { id: "deepseek/deepseek-v4.1-flash-1017", label: "DeepSeek V4.1 Flash 1017", note: "NEW · latest V4.1 flash cut · OrcaRouter free roster" },
+      { id: "tencent/hy4-preview-free", label: "Hunyuan Hy4 Preview (Free)", note: "NEW · Tencent next-gen MoE · free roster" },
       { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash", note: "Current-gen Gemini · fast + vision + 1M ctx" },
       { id: "z-ai/glm-5.3-flash-free", label: "GLM 5.3 Flash (Free)", note: "Z.ai flagship class · 1M ctx · free tier" },
       { id: "deepseek/deepseek-v4-flash-free", label: "DeepSeek V4 Flash (Free)", note: "284B MoE · 1M ctx · tools · free tier" },
@@ -220,6 +223,11 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       "Use the “Refresh models” button below — the free roster rotates weekly.",
     ],
     models: [
+      // r502: radar-new lanes absorbed (owner directive — "add new models
+      // properly into our arsenal"). minimax-m3.1-flash:free = 1M ctx, $0/$0,
+      // tracker-flagged "new"; deepseek-v4.1-flash-1017 = the new OrcaRouter
+      // DeepSeek V4.1 flash cut; hy4-preview = fresh Tencent free MoE.
+      { id: "minimax/minimax-m3.1-flash:free", label: "MiniMax M3.1 Flash", note: "NEW · 1M ctx · $0/$0 · free tier" },
       { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning", note: "1M ctx · NVIDIA" },
       { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B", note: "Google open model" },
       { id: "inclusionai/ling-3.0-flash-vl:free", label: "Ling 3.0 Flash VL", note: "Vision-language" },

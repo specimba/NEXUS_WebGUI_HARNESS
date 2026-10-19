@@ -85,6 +85,8 @@ const ARENA_CATALOG: Record<
       { id: "qwen3.8-max-free", tier: 1, elo: 0.945, note: "Qwen 3.8 Max free lane · 1M ctx · $0 · peak TTFT ~55s / 9 tok/s" },
       { id: "qwen3.8-flash-free", tier: 1, elo: 0.912, note: "Qwen 3.8 Flash free lane · 1M ctx · $0 · healthy ~5.4s / 36 tok/s" },
       { id: "deepseek-v4-flash", tier: 2, elo: 0.93, note: "Budget frontier · 1M ctx · $0.142/$0.284" },
+      // r502: radar-new lanes absorbed into the dials-first order.
+      { id: "minimax-m3.1-flash", tier: 2, elo: 0.92, note: "NEW · 1M ctx · $0.17/$0.66" },
       { id: "glm-5.3-flash", tier: 2, elo: 0.925, note: "Z.ai fast lane · 1M ctx · $0.11/$0.39" },
       { id: "coding-glm-5.3-free", tier: 2, elo: 0.912, note: "FREE coding lane · 1M ctx · tools" },
       { id: "coding-kimi-k3-free", tier: 2, elo: 0.905, note: "FREE · Kimi coding · 1M ctx" },
@@ -99,6 +101,9 @@ const ARENA_CATALOG: Record<
       { id: "kimi/kimi-k3", tier: 1, elo: 0.975, note: "Moonshot frontier" },
       { id: "z-ai/glm-5.3", tier: 1, elo: 0.97, note: "GLM 5.3 flagship" },
       { id: "minimax/minimax-m3", tier: 1, elo: 0.92, note: "Long-horizon agentic" },
+      // r502: radar-new OrcaRouter lanes.
+      { id: "deepseek/deepseek-v4.1-flash-1017", tier: 2, elo: 0.925, note: "NEW · latest V4.1 flash cut · free roster" },
+      { id: "tencent/hy4-preview-free", tier: 2, elo: 0.9, note: "NEW · Hy4 preview MoE · free roster" },
       // r27: the $0 GLM-5.3-Flash lane (verified against the live 197-model roster).
       { id: "z-ai/glm-5.3-flash-free", tier: 2, elo: 0.91, note: "$0 · GLM 5.3 Flash" },
       { id: "deepseek/deepseek-v4-flash-free", tier: 2, elo: 0.915, note: "Free · 1M ctx" },
@@ -172,6 +177,8 @@ const ARENA_CATALOG: Record<
   openrouter: {
     label: "OpenRouter",
     models: [
+      // r502: minimax-m3.1-flash:free absorbed (tracker "new", 1M ctx, $0/$0).
+      { id: "minimax/minimax-m3.1-flash:free", tier: 2, elo: 0.918, note: "NEW · 1M ctx · $0/$0" },
       { id: "nvidia/nemotron-3.5-lightning:free", tier: 2, elo: 0.88, note: "1M ctx · rotating :free" },
       { id: "google/gemma-4-31b-it:free", tier: 2, elo: 0.84, note: "Google open model" },
     ],
