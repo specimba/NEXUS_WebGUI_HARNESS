@@ -7,6 +7,7 @@ import { PageHeader, ThemeToggle } from "@/components/nexus/atoms";
 import { ThemePicker } from "@/components/nexus/settings/theme-picker";
 import { AutomationVaultCard } from "@/components/nexus/settings/automation-vault-card";
 import { DeepLinkShare } from "@/components/nexus/settings/deep-link-share";
+import { GitHubOpsCard } from "@/components/nexus/settings/github-ops-card";
 import { LocalModelsPanel } from "@/components/nexus/settings/local-models";
 import { ModelRelayCard } from "@/components/nexus/settings/model-relay";
 import { ProviderCard } from "@/components/nexus/settings/provider-card";
@@ -183,6 +184,7 @@ const SETTINGS_SECTIONS = [
   { id: "local-models", label: "Local models" },
   { id: "relay", label: "Model Relay" },
   { id: "vault", label: "Vault" },
+  { id: "gh-ops", label: "GitHub" },
   { id: "referrals", label: "Referrals" },
   { id: "behavior", label: "Behavior" },
   { id: "evolution", label: "Evolution" },
@@ -590,6 +592,9 @@ export function SettingsView() {
           </div>
           <div id="vault" className="scroll-mt-14">
             <AutomationVaultCard />
+          </div>
+          <div id="gh-ops" className="scroll-mt-14">
+            <GitHubOpsCard />
           </div>
           <div id="referrals" className="scroll-mt-14">
             <ReferralCard />

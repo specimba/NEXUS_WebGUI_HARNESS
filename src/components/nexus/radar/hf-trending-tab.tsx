@@ -5,6 +5,13 @@
 // types, HF cache keys, the Hub-section radio config, and the tab component,
 // verbatim. No code edits beyond the move: this tab's catch block was already
 // rewired to the shared isTimeoutError() predicate in radar-shared (r423).
+//
+// r501-p2: a second panel lives at the top of the scroll region — the Hub
+// FLEET sweep (/api/hub/fleet): the owner's spaces runtime stages, webhook
+// health (HF auto-suspends silently — surfaced red), owned artifacts and the
+// Inference-Providers router catalog with per-provider latency/throughput.
+// Explicit load only (it fans out ~10 upstream calls); cached in localStorage
+// like every other radar board.
 
 import * as React from "react";
 import {
@@ -14,9 +21,12 @@ import {
   Download,
   ExternalLink,
   Heart,
+  RefreshCw,
+  Rocket,
   Search,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/nexus/atoms";
 import { cn } from "@/lib/utils";
@@ -56,6 +66,325 @@ interface HfCache {
 }
 
 type HfKind = "models" | "datasets" | "spaces";
+
+// ─── Hub Fleet types (r501-p2) ───────────────────────────────────────────────
+
+interface FleetSection<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+}
+
+interface FleetData {
+  authed: boolean;
+  identity: FleetSection<{ name: string; isPro: boolean; canPay: boolean; billingMode: string }>;
+  spaces: FleetSection<{ id: string; likes: number; stage: string | null; hardware: string | null }[]>;
+  artifacts: FleetSection<{ models: string[]; datasets: string[]; collections: { slug: string; title: string }[] }>;
+  webhooks: FleetSection<{ id: string; url: string; disabled: string | null; watched: number }[]>;
+  router: FleetSection<{
+    total: number;
+    liveProviders: string[];
+    freeCount: number;
+    topLanes: {
+      id: string;
+      provider: string;
+      context: number | null;
+      inPrice: number | null;
+      outPrice: number | null;
+      ms: number | null;
+      tps: number | null;
+      tools: boolean;
+    }[];
+  }>;
+  probedAt: number;
+}
+
+const FLEET_CACHE_KEY = "nexus-radar-hf-fleet";
+
+function stageTone(stage: string | null): string {
+  if (stage === "RUNNING") return "border-emerald-500/40 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400";
+  if (stage === "SLEEPING") return "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400";
+  if (stage) return "border-violet-500/40 bg-violet-500/10 text-violet-500 dark:text-violet-400";
+  return "border-muted bg-muted text-muted-foreground";
+}
+
+function fleetRel(ts: number | undefined): string {
+  if (!ts) return "never";
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+function HubFleetSection() {
+  const [fleet, setFleet] = React.useState<FleetData | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const didAuto = React.useRef(false);
+
+  const load = React.useCallback(async () => {
+    if (loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/hub/fleet", { signal: AbortSignal.timeout(35_000) });
+      const body = (await res.json().catch(() => null)) as FleetData | { error?: string } | null;
+      if (!res.ok) {
+        throw new Error(
+          (body && "error" in body && body.error) || `Hub fleet returned HTTP ${res.status}.`
+        );
+      }
+      const data = body as FleetData;
+      setFleet(data);
+      try {
+        localStorage.setItem(FLEET_CACHE_KEY, JSON.stringify(data));
+      } catch {
+        /* best-effort cache */
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error && /timeout|timed? ?out|aborted/i.test(err.message)
+          ? "The Hub took too long to answer — try again."
+          : err instanceof Error
+            ? err.message
+            : "Could not sweep the Hub fleet."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [loading]);
+
+  React.useEffect(() => {
+    if (didAuto.current) return;
+    didAuto.current = true;
+    try {
+      const raw = localStorage.getItem(FLEET_CACHE_KEY);
+      if (raw) setFleet(JSON.parse(raw) as FleetData);
+    } catch {
+      /* stale junk — explicit probe only */
+    }
+  }, []);
+
+  const suspended = (fleet?.webhooks.data ?? []).filter((w) => !!w.disabled);
+
+  return (
+    <div className="rounded-lg border">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full flex-wrap items-center gap-2 px-3 py-2 text-left"
+      >
+        <Rocket className="h-3.5 w-3.5 text-violet-500" aria-hidden />
+        <span className="text-xs font-semibold">Hub fleet</span>
+        <span className="text-[11px] text-muted-foreground">
+          spaces · webhooks · router lanes — the authenticated ops surface
+        </span>
+        {suspended.length > 0 ? (
+          <span
+            className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-500 dark:text-red-400"
+            title="HF auto-suspends a webhook after delivery failures — it fails silently unless polled. Open the fleet for details."
+          >
+            {suspended.length} webhook suspended
+          </span>
+        ) : null}
+        <span className="ml-auto flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground">
+            {fleet ? `swept ${fleetRel(fleet.probedAt)}` : "not swept"}
+          </span>
+          <RefreshCw
+            className={cn("h-3 w-3 text-muted-foreground", open && !loading && "opacity-60")}
+            aria-hidden
+          />
+        </span>
+      </button>
+      {open ? (
+        <div className="space-y-3 border-t px-3 py-3">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden />
+              {loading ? "Sweeping the Hub…" : fleet ? "Re-sweep fleet" : "Load fleet"}
+            </Button>
+            {error ? (
+              <span className="text-[11px] text-red-500 dark:text-red-400" role="alert">
+                {error}
+              </span>
+            ) : null}
+          </div>
+
+          {fleet ? (
+            <>
+              {/* identity + billing truth */}
+              {fleet.identity.ok && fleet.identity.data ? (
+                <p className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">{fleet.identity.data.name}</span>
+                  <span
+                    className="rounded-full border border-muted bg-muted px-1.5 py-0.5 text-[10px]"
+                    title="Billing reality verified r501-p2: prepaid mode with 0 credits — /v1/chat/completions answers 402 until credits or PRO."
+                  >
+                    {fleet.identity.data.billingMode}
+                  </span>
+                  {fleet.identity.data.canPay ? null : (
+                    <span title="Inference dialing is credit-gated — the router below is a CATALOG lane, not an inference lane.">
+                      · no prepaid balance → router lanes are catalog-only
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">{fleet.identity.error}</p>
+              )}
+
+              {/* spaces fleet */}
+              {fleet.spaces.ok && fleet.spaces.data ? (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Spaces ({fleet.spaces.data.length})
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {fleet.spaces.data.map((s) => (
+                      <a
+                        key={s.id}
+                        href={`https://huggingface.co/spaces/${s.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group"
+                        aria-label={`Open ${s.id} on Hugging Face`}
+                      >
+                        <span
+                          className={cn(
+                            "inline-flex max-w-56 items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] transition-colors group-hover:border-violet-500/40",
+                            stageTone(s.stage)
+                          )}
+                          title={`${s.id} — stage ${s.stage ?? "unknown"}${s.hardware ? ` · ${s.hardware}` : ""}`}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 shrink-0 rounded-full",
+                              s.stage === "RUNNING" ? "bg-emerald-400" : s.stage === "SLEEPING" ? "bg-amber-400" : "bg-muted-foreground"
+                            )}
+                            aria-hidden
+                          />
+                          <span className="truncate">{s.id.split("/")[1] ?? s.id}</span>
+                          {s.stage ? <span className="opacity-70">{s.stage.toLowerCase()}</span> : null}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">{fleet.spaces.error}</p>
+              )}
+
+              {/* webhooks */}
+              {fleet.webhooks.ok && fleet.webhooks.data ? (
+                fleet.webhooks.data.length > 0 ? (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Webhooks ({fleet.webhooks.data.length})
+                    </p>
+                    <ul className="mt-1 space-y-1 text-[11px]">
+                      {fleet.webhooks.data.map((w) => (
+                        <li key={w.id} className="flex flex-wrap items-center gap-1.5">
+                          <span className="max-w-64 truncate font-mono text-muted-foreground" title={w.url}>
+                            {w.url.replace(/^https?:\/\//, "")}
+                          </span>
+                          <span className="text-muted-foreground">· {w.watched} watched</span>
+                          {w.disabled ? (
+                            <span
+                              className="rounded-full border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-500 dark:text-red-400"
+                              title="HF auto-suspended this webhook after delivery failures. Re-enable it from the Hub settings — it fails silently otherwise."
+                            >
+                              {w.disabled}
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500 dark:text-emerald-400">
+                              active
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">No webhooks registered.</p>
+                )
+              ) : (
+                <p className="text-[11px] text-muted-foreground">{fleet.webhooks.error}</p>
+              )}
+
+              {/* artifacts */}
+              {fleet.artifacts.ok && fleet.artifacts.data ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Owns {fleet.artifacts.data.models.length} models ·{" "}
+                  {fleet.artifacts.data.datasets.length} datasets ·{" "}
+                  {fleet.artifacts.data.collections.length} collection
+                  {fleet.artifacts.data.collections.length === 1 ? "" : "s"}
+                  {fleet.artifacts.data.collections[0] ? (
+                    <>
+                      {" "}({fleet.artifacts.data.collections[0].title})
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
+
+              {/* router catalog */}
+              {fleet.router.ok && fleet.router.data ? (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Inference Providers router — {fleet.router.data.total} models ·{" "}
+                    {fleet.router.data.liveProviders.length} live providers ·{" "}
+                    {fleet.router.data.freeCount} free lanes
+                  </p>
+                  <div className="mt-1.5 overflow-hidden rounded-md border">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <tr>
+                          <th className="px-2 py-1 font-medium">Model</th>
+                          <th className="px-2 py-1 font-medium">Provider</th>
+                          <th className="px-2 py-1 font-medium">TTFT</th>
+                          <th className="hidden px-2 py-1 font-medium sm:table-cell">Ctx</th>
+                          <th className="hidden px-2 py-1 font-medium md:table-cell">$/M in-out</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fleet.router.data.topLanes.map((lane) => (
+                          <tr key={`${lane.id}:${lane.provider}`} className="border-t">
+                            <td className="max-w-44 truncate px-2 py-1 font-mono" title={lane.id}>
+                              {lane.id}
+                              {lane.tools ? <span className="ml-1 text-[9px] text-emerald-500">tools</span> : null}
+                            </td>
+                            <td className="px-2 py-1">{lane.provider}</td>
+                            <td className="px-2 py-1 tabular-nums">{lane.ms != null ? `${Math.round(lane.ms)}ms` : "—"}</td>
+                            <td className="hidden px-2 py-1 tabular-nums sm:table-cell">
+                              {lane.context != null ? `${Math.round(lane.context / 1024)}k` : "—"}
+                            </td>
+                            <td className="hidden px-2 py-1 tabular-nums md:table-cell">
+                              {lane.inPrice != null && lane.outPrice != null
+                                ? `$${lane.inPrice}/$${lane.outPrice}`
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Sorted by first-token latency among live providers. Catalog only while the
+                    account holds no prepaid credits — dialing answers 402.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">{fleet.router.error}</p>
+              )}
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 // ─── HF Trending tab ─────────────────────────────────────────────────────────
 
@@ -299,6 +628,7 @@ export function HfTrendingTab() {
         <CardGridSkeleton count={6} />
       ) : (
         <>
+        <HubFleetSection />
         <div
           className="max-h-[62vh] overflow-y-auto pr-1"
           role="region"
