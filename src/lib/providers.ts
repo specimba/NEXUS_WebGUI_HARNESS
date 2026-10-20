@@ -441,6 +441,67 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       { id: "qwen-3.8-27b", label: "Qwen 3.8 27B", note: "Multilingual" },
     ],
   },
+  {
+    // r509 (owner curation drive): Mercury 3 — Inception Labs' diffusion LM.
+    // 100,000,000 FREE tokens per account (no card), 1M-token chat context,
+    // native tool calling, and planning turns run ~300ms — the strongest
+    // free-agentic deal in the roster. Live-probed 2026-10-20: /v1/models
+    // answers with the real catalog from this sandbox.
+    id: "inception",
+    name: "Inception Labs",
+    glyph: "◐",
+    tagline:
+      "Diffusion LM frontier — mercury-3 with 1M ctx + tools. 100M free tokens per account, no card.",
+    baseUrl: "https://api.inceptionlabs.ai/v1",
+    keyPrefix: "sk_",
+    signupUrl: "https://docs.inceptionlabs.ai/get-started",
+    docsUrl: "https://docs.inceptionlabs.ai/llms.txt",
+    featured: true,
+    limits: "Free: 100M tokens/account · 1,000 req/min · 3M input TPM · 100K output TPM (429 above)",
+    guide: [
+      "Open docs.inceptionlabs.ai/get-started and create a platform account.",
+      "Create an API key — starts with sk_. 100M free tokens land on the account automatically.",
+      "Paste it here and hit Validate — mercury-3 dials like any OpenAI-compatible lane.",
+      "mercury-3 accepts reasoning_effort (instant/low/medium/high) — instant is the fast-lane sweet spot.",
+    ],
+    models: [
+      { id: "mercury-3", label: "Mercury 3", note: "NEW · diffusion LM · 1M ctx · tools · reasoning_effort · $0.10/$0.35 · 100M free tokens" },
+      { id: "mercury-2", label: "Mercury 2", note: "128K ctx · tools · json_mode · $0.25/$0.75" },
+      { id: "mercury-decide", label: "Mercury Decide", note: "Typed decisions endpoint · $0.02/M in · output free — router/judge class" },
+    ],
+  },
+  {
+    // r509 (owner curation drive): Shanghai AI Lab's Intern TokenPlan — the
+    // grant console behind the Atria/Discovery lanes of the tier advisory.
+    // Several TRUE 1M-context deep lanes on ink-dot credits (10k per 5h +
+    // 50k per 7d — 1 dot ≈ up to 50M tokens on V4-Flash). RPM/TPM are
+    // ACCOUNT-wide (all keys share one bucket — never key-rotate this one).
+    id: "intern-discovery",
+    name: "Intern TokenPlan",
+    glyph: "◉",
+    tagline:
+      "Shanghai AI Lab grant plan — DeepSeek-V4 / GLM-5.3 / MiniMax-M3 at 1M ctx on ink-dot credits.",
+    baseUrl: "https://discovery-api.intern-ai.org.cn/v1",
+    keyPrefix: "sk-",
+    signupUrl: "https://intern-ai.org.cn",
+    docsUrl: "https://discovery-api.intern-ai.org.cn",
+    limits:
+      "Grant: 10,000 ink-dots / 5h + 50,000 / 7d (1 dot ≈ up to 50M tokens on V4-Flash) · 50 RPM · 2M TPM shared across ALL your keys",
+    guide: [
+      "Join the TokenPlan grant console (Shanghai AI Lab) and create an API key — starts with sk-. Up to 10 keys, but they share ONE quota bucket.",
+      "Paste it here and hit Validate — the 1M-ctx deep lanes answer on the OpenAI protocol.",
+      "Mind the ink-dot windows (5h / 7d resets are visible in the console) — pace deep passes, don't hammer.",
+      "Quota increases: tokenplan@pjlab.org.cn.",
+    ],
+    models: [
+      { id: "deepseek-v4-flash-0731", label: "DeepSeek V4 Flash", note: "1M ctx · deep thinking + tools · grant tier" },
+      { id: "glm-5.3", label: "GLM 5.3", note: "1M ctx · Z.ai flagship class · grant tier" },
+      { id: "minimax-m3", label: "MiniMax M3", note: "1M ctx · efficiency frontier · grant tier" },
+      { id: "deepseek-v4-pro-0813", label: "DeepSeek V4 Pro", note: "1M ctx · deep-reasoning overflow" },
+      { id: "Agents-A1", label: "Agents A1", note: "256K ctx · multimodal (text+image) · tool calling · scientific reasoning" },
+      { id: "kimi-k2.6", label: "Kimi K2.6", note: "256K ctx · multimodal · long-horizon agentic" },
+    ],
+  },
 ];
 
 export function providerById(id: string | undefined): FreeProvider | undefined {

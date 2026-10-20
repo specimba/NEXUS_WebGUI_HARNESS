@@ -304,8 +304,20 @@ function readWorkflowDefs(): MirrorWorkflowPayload[] {
   try {
     const raw = window.localStorage.getItem("nexus-workflows");
     if (!raw) return [];
-    const list = JSON.parse(raw) as Array<Record<string, unknown>>;
-    return list
+    const parsed: unknown = JSON.parse(raw);
+    // r509: the live key is a ZUSTAND PERSIST blob — {state:{workflows:[…]},
+    // version} (r508 shipped an array-only read: `.filter` on the wrapper
+    // threw → silent catch → 0 defs mirrored with no error; the owner's
+    // live paste showed exactly that: 27 runs · 0 defs). Read all three
+    // shapes: raw array, zustand wrapper, plain {workflows:[…]} export.
+    const list: unknown = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray((parsed as { state?: { workflows?: unknown } })?.state?.workflows)
+        ? (parsed as { state: { workflows: unknown[] } }).state.workflows
+        : Array.isArray((parsed as { workflows?: unknown })?.workflows)
+          ? (parsed as { workflows: unknown[] }).workflows
+          : [];
+    return (list as Array<Record<string, unknown>>)
       .filter((w) => typeof w?.id === "string")
       .map((w) => ({
         id: w.id as string,

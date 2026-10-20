@@ -144,6 +144,15 @@ export function resolveServerDialFromSlots(
   const list = Array.isArray(slots) ? slots : [];
   let sawKey = false;
   let sawQuarantined = false;
+  // r509: 429-cooling slots no longer win the oldest-first scan. The vault
+  // went 1 → 17 slots this round (owner's full provider fleet synced), and
+  // the strict oldest-first rule kept handing the tick to a Vyce slot that
+  // was mid-cooldown from its own last 429 — the exact corpse-dialing the
+  // browser lane's dock/rotate stack abolished. Two passes: first READY
+  // slot (oldest first) wins; when every keyed slot is cooling, the
+  // SOONEST-ready one is returned so the tick still dials the least-bad
+  // lane instead of nothing (a cooldown is a heuristic, not a wall).
+  let soonest: { dial: ResolvedDial; slot: SlotRef; left: number } | null = null;
   for (const slot of list) {
     if (!slot.key.trim()) continue; // empty slot: skip, keep scanning
     sawKey = true;
@@ -160,8 +169,11 @@ export function resolveServerDialFromSlots(
       sawQuarantined = true;
       continue;
     }
-    return { dial: resolved.dial, slot };
+    const left = provider429CooldownLeftMs(resolved.dial.providerId);
+    if (left <= 0) return { dial: resolved.dial, slot };
+    if (!soonest || left < soonest.left) soonest = { dial: resolved.dial, slot, left };
   }
+  if (soonest) return { dial: soonest.dial, slot: soonest.slot };
   return {
     dial: null,
     why: sawKey ? (sawQuarantined ? "billing-quarantined" : "no-resolvable-provider") : "no-vault-key",

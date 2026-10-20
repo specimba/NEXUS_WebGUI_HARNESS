@@ -1365,16 +1365,59 @@ export async function executeWorkflowRun(
           }
         }
         if (dialLlm === llm) {
-          const auto = resolveLlm(settings.settings, "auto");
-          dialLlm = {
-            ...llm,
-            provider: auto.provider,
-            apiKey: undefined,
-            baseUrl: undefined,
-            model: undefined,
-            providerId: "auto",
-            label: `${llm.label} → auto (primary demoted)`,
-          };
+          // r509 (owner directive): the built-in engine is a LOCAL sandbox
+          // privilege (the z-ai SDK gateway) — other deployments don't have
+          // it, and dev.log proves it 429-saturates under the schedule
+          // fleet's own load ("Too many requests" ×3 behind a 200 SSE). A
+          // demoted primary now LEADS with the healthiest EXTERNAL lane
+          // (rescue-lane + 429-cooldown aware) and reserves the built-in
+          // engine as the LAST rung — it is dialed only when no external
+          // lane exists at all.
+          const pick = nextRotation(settings.settings, llm.providerId);
+          if (pick && pick.llm.providerId && pick.llm.providerId !== "auto") {
+            if (pick.waitMs > 0) {
+              // The picked lane is cooling — wait exactly its remaining
+              // window (the r306 final-attempt pattern) instead of burning
+              // this attempt on a 429ing built-in engine.
+              patchRunStep(runStep.stepId, {
+                backoffUntil: Date.now() + pick.waitMs,
+                backoffKind: "cooldown",
+              });
+              toast.info(
+                `"${runStep.label}" rotating to ${pick.llm.label} — waiting ${Math.round(pick.waitMs / 1000)}s for its quota window…`,
+                {
+                  icon: "🔁",
+                  description:
+                    "External lanes lead — the built-in engine is the last rung, not the default.",
+                }
+              );
+              await new Promise((r) => setTimeout(r, pick.waitMs));
+              if (signal.aborted) {
+                throw new DOMException("Aborted during rotation wait", "AbortError");
+              }
+            }
+            dialLlm = {
+              ...llm,
+              provider: pick.llm.provider,
+              apiKey: pick.llm.apiKey,
+              baseUrl: pick.llm.baseUrl,
+              model: pick.llm.model,
+              providerId: pick.llm.providerId,
+              label: `${llm.label} → ${pick.llm.label} (healthy lane leads — built-in reserved)`,
+            };
+            rotationNote = `healthy-lane lead — ${pick.llm.label} dialed instead of the built-in engine (external lanes first; built-in is the last rung)`;
+          } else {
+            const auto = resolveLlm(settings.settings, "auto");
+            dialLlm = {
+              ...llm,
+              provider: auto.provider,
+              apiKey: undefined,
+              baseUrl: undefined,
+              model: undefined,
+              providerId: "auto",
+              label: `${llm.label} → auto (primary demoted)`,
+            };
+          }
         }
       }
       // r306 registry rotation (the reconciliation half): on the FINAL attempt,
@@ -1501,7 +1544,7 @@ export async function executeWorkflowRun(
           relayNotes.push(
             attempt === 1
               ? `primary skipped — sick window active (${sickLeft}s left; mid-stream drop, 429 saturation or billing quarantine)`
-              : `primary demoted — built-in engine dialed first, ${llm.label} parked as last hop (mid-stream drop, 429 saturation or billing quarantine)`
+              : `primary demoted — no external lane ready; built-in engine leads, ${llm.label} parked as last hop (mid-stream drop, 429 saturation or billing quarantine)`
           );
         }
         const res = await runAgentChat(
@@ -1792,7 +1835,7 @@ export async function executeWorkflowRun(
           toast.info(`"${runStep.label}" hit a ${kind} hiccup — auto-retry ${attempt + 1}/${MAX_STEP_ATTEMPTS} on a fresh lane…`, {
             icon: "🛟",
             description: demotePrimary
-              ? "Primary demoted after its mid-stream drop — this retry dials the built-in engine first. Tool results already gathered are re-run safely."
+              ? "Primary demoted — this retry leads with the best available lane (external lanes first, the built-in engine stays the last rung). Tool results already gathered are re-run safely."
               : "The engine dropped the call mid-step. Tool results already gathered are re-run safely.",
           });
           patchRunStep(runStep.stepId, {
