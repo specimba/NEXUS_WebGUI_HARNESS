@@ -38,7 +38,7 @@ import {
   rotateHops,
   type LaneSaturation,
 } from "@/lib/lane-rotation";
-import { resolveLlm, type ResolvedLlm } from "@/lib/llm-config";
+import { resolveExplicitLlm, resolveLlm, type ResolvedLlm } from "@/lib/llm-config";
 import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
 import { buildRelayWire, recordRelayStatusLine, stripRelayMarkers, type RelayTaskFit, type RelayWireHop } from "@/lib/relay";
 import {
@@ -536,6 +536,9 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[], depthOverr
       // r182: explicit role travels with the run so run rows prefer it over
       // the parsed "[Tag]" label prefix (directive item (a) completion).
       roleId: s.roleId,
+      // r503: the lane this step dials — step pin wins, pipeline default
+      // second, absent = follow the agent/global (chip shows only when set).
+      lane: s.lane?.trim() ? s.lane.trim() : wf.lane?.trim() ? wf.lane.trim() : undefined,
       output: "",
       toolCalls: [],
       // r80: honest queue state — the engine loop flips the executing step to
@@ -572,6 +575,9 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[], depthOverr
       // r182: deep passes clone the first step's worker — its explicit role
       // travels too, so the clone rows stay honest about who is working.
       roleId: first.roleId,
+      // r503: deep passes inherit the first step's lane pin as well — the
+      // clone IS that step's agent, it dials the same lane.
+      lane: first.lane,
       output: "",
       toolCalls: [],
       status: "pending" as const,
@@ -595,6 +601,9 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[], depthOverr
         agentName: lastAgent?.name ?? last.agentName,
         agentEmoji: lastAgent?.emoji ?? last.agentEmoji,
         label: "Verification & synthesis",
+        // r503: the verify pass audits the last step — it dials the last
+        // step's lane too (one consistent brain for the audit).
+        lane: last.lane,
         output: "",
         toolCalls: [],
         status: "pending" as const,
@@ -1265,7 +1274,11 @@ export async function executeWorkflowRun(
     const stepStart = Date.now();
     let draft = "";
     let localToolCalls: ToolCallInfo[] = [];
-    const llm = resolveLlm(settings.settings, agent.model);
+    // r503: step-level lane pins resolve FIRST (explicit "providerId::model"
+    // or "auto::builtin"), then the agent's own model, then the global
+    // provider — the owner's lane-spread directive. resolveExplicitLlm never
+    // dead-ends: unknown/keyless pins fall back with an honest note.
+    const llm = resolveExplicitLlm(settings.settings, runStep.lane, agent.model);
     // Synthetic deep-research passes carry a merged tool set (base tools +
     // web_search + arxiv_search) materialized on the run step itself.
     const effectiveTools: ToolId[] = runStep.tools ?? agent.tools ?? [];

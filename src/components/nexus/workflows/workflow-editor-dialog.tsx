@@ -35,7 +35,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ModelPicker } from "@/components/nexus/model-picker";
 import { AUTO_PLAN_SYSTEM } from "@/lib/constants";
+// r503 (owner directive): quality-marked lane pool for pipeline/step pins.
+import { buildLaneCatalog, laneShortName } from "@/lib/lane-catalog";
 import { extractJsonArray, roleMatchesAgent, uid } from "@/lib/helpers";
 import {
   useAgentsStore,
@@ -89,10 +92,14 @@ export function WorkflowEditorDialog({
   const agents = useAgentsStore((s) => s.agents);
   const addWf = useWorkflowsStore((s) => s.add);
   const updateWf = useWorkflowsStore((s) => s.update);
+  const settings = useSettingsStore((s) => s.settings);
 
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [depth, setDepth] = React.useState<PipelineDepth>("standard");
+  // r503 (owner directive): pipeline-default lane pin — "" = follow agents
+  // (each step dials its agent's model + the global provider, as before).
+  const [lane, setLane] = React.useState<string>("");
   const [steps, setSteps] = React.useState<WorkflowStep[]>([]);
   const [planOpen, setPlanOpen] = React.useState(false);
   const [planTask, setPlanTask] = React.useState("");
@@ -125,6 +132,8 @@ export function WorkflowEditorDialog({
     setDescription(workflow?.description ?? "");
     // Old workflows read depth = undefined → treat as "standard".
     setDepth(workflow?.depth ?? "standard");
+    // r503: pipeline lane pin hydrates like depth — old workflows = "".
+    setLane(workflow?.lane ?? "");
     setSteps(
       workflow
         ? workflow.steps.map((s) => ({ ...s }))
@@ -135,6 +144,41 @@ export function WorkflowEditorDialog({
     setPlanning(false);
     setSaveAttempted(false);
   }, [open, workflow]);
+
+  // r503: the dialable lane pool with LIVE quality marks (Generation-Era
+  // tier, arena Elo, usage ok/failed counts, rotator trust badges) is built
+  // ONCE per dialog open — buildLaneCatalog reads localStorage (rotator
+  // health, live rosters), so per-render/per-step calls would thrash. Every
+  // picker shares these arrays; the synthetic head row of each names its
+  // "no pin" default.
+  const laneCatalogOptions = React.useMemo(() => {
+    if (!open) return [];
+    return buildLaneCatalog(settings).options;
+  }, [open, settings]);
+  const pipelineLaneOptions = React.useMemo(
+    () => [
+      {
+        id: "",
+        label: "Follow agents (default)",
+        note: "each step dials its agent's model + the global provider",
+        group: "Pipeline lane",
+      },
+      ...laneCatalogOptions,
+    ],
+    [laneCatalogOptions]
+  );
+  const stepLaneOptions = React.useMemo(
+    () => [
+      {
+        id: "",
+        label: "Pipeline default",
+        note: "dials the pipeline lane / agent model",
+        group: "Step lane",
+      },
+      ...laneCatalogOptions,
+    ],
+    [laneCatalogOptions]
+  );
 
   const patchStep = (id: string, patch: Partial<WorkflowStep>) => {
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -315,25 +359,32 @@ export function WorkflowEditorDialog({
         // r182: normalize the explicit role — whitespace-only collapses to
         // absent so the parsed-label fallback stays the live signal.
         roleId: s.roleId?.trim() ? s.roleId.trim() : undefined,
+        // r503: same normalization for per-step lane pins — whitespace-only
+        // collapses to absent so "pipeline default" stays the live signal.
+        lane: s.lane?.trim() ? s.lane.trim() : undefined,
       }));
     if (validSteps.length === 0) {
       toast.error("Add at least one step with an agent");
       return;
     }
     const descriptionTrim = description.trim();
+    // r503: pipeline lane pin saves with the workflow (undefined = follow
+    // agents) — mirrors depth.
+    const laneTrim = lane.trim();
     if (workflow) {
       updateWf(workflow.id, {
         name: trimmedName,
         description: descriptionTrim,
         steps: validSteps,
         depth,
+        lane: laneTrim || undefined,
       });
       toast.success("Workflow updated");
     } else {
       const newId = addWf({ name: trimmedName, description: descriptionTrim, steps: validSteps });
-      // The store's add() only materializes known fields — persist depth via a
-      // follow-up patch so new workflows carry their depth setting too.
-      updateWf(newId, { depth });
+      // The store's add() only materializes known fields — persist depth and
+      // the lane pin via a follow-up patch so new workflows carry them too.
+      updateWf(newId, { depth, lane: laneTrim || undefined });
       toast.success("Workflow created");
     }
     onOpenChange(false);
@@ -444,6 +495,31 @@ export function WorkflowEditorDialog({
                 );
               })}
             </div>
+          </div>
+
+          {/* r503 (owner directive): pipeline-default lane — pin the whole
+              pipeline (deep passes inherit step 1's lane, verification the
+              last step's) to one provider::model, or leave it on "Follow
+              agents". Options ARE the relay chain the runner walks, with
+              quality marks per lane: tier + Elo (quality), usage counts,
+              rotator trust (free / blocked / sick / throttled badges). */}
+          <div className="space-y-2">
+            <Label>Pipeline lane</Label>
+            <ModelPicker
+              value={lane}
+              options={pipelineLaneOptions}
+              onSelect={setLane}
+              placeholder="Follow agents (default)"
+              searchPlaceholder="Search lanes — provider, model, tier, free…"
+              emptyTitle="No lane matches"
+              emptyHint="Labels, lane ids, notes and quality keywords all count."
+              ariaLabel="Pipeline lane"
+            />
+            <p className="text-[11px] text-muted-foreground" aria-live="polite">
+              {lane
+                ? `Pinned: every step dials ${laneShortName(lane)} (${lane}) — spread load instead with per-step lanes below.`
+                : "Each step dials its agent's model via the global provider. Pin one lane here to stop exhausting a single API source."}
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -617,6 +693,29 @@ export function WorkflowEditorDialog({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                  </div>
+
+                  {/* r503 (owner directive): per-step lane override — empty =
+                      pipeline default. A pinned step dials that exact
+                      provider::model even when the pipeline lane or the
+                      agent's model differ; the note on each option carries
+                      the quality marks (no vault key → the catalog says so).
+                      The picker trigger never starts a drag — dragstart is
+                      gated on [data-drag-handle]. */}
+                  <div className="flex items-center gap-2">
+                    <Label className="w-12 shrink-0 text-[11px] font-normal text-muted-foreground">
+                      Lane
+                    </Label>
+                    <ModelPicker
+                      value={step.lane ?? ""}
+                      options={stepLaneOptions}
+                      onSelect={(id) => patchStep(step.id, { lane: id || undefined })}
+                      placeholder="Pipeline default"
+                      searchPlaceholder="Search lanes…"
+                      emptyTitle="No lane matches"
+                      ariaLabel={`Lane for step ${i + 1}`}
+                      className="h-8 flex-1 text-xs"
+                    />
                   </div>
 
                   <Input

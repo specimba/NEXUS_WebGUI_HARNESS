@@ -28,6 +28,9 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
+// r503: lane witness chip on run steps — short name + shared provider glyph.
+import { laneShortName } from "@/lib/lane-catalog";
+import { providerMeta } from "@/lib/tracker-types";
 import { truncate } from "@/lib/helpers";
 import { angleOfProposal } from "@/lib/spawn-proposal-engine";
 import { Button } from "@/components/ui/button";
@@ -1689,6 +1692,21 @@ export function WorkflowRunPanel({
                     agentName: agents.find((a) => a.id === s.agentId)?.name ?? s.agentName ?? null,
                   }))
                 ).universal;
+                // r503: lane witness — when this step materialized with an
+                // explicit lane pin ("providerId::model"), a compact mono chip
+                // beside the label shows which lane actually dialed, so the
+                // run's lane spread is visible at a glance and the owner's
+                // "everything funnels into one provider" complaint is
+                // answerable per step. Hover reveals the exact pin; the glyph
+                // is the provider's shared tracker/relay glyph (◈ for the
+                // built-in engine lane).
+                const lanePin = step.lane;
+                const laneColon = lanePin ? lanePin.indexOf("::") : -1;
+                const laneProviderId = lanePin && laneColon > 0 ? lanePin.slice(0, laneColon) : "";
+                const laneGlyph =
+                  lanePin && laneProviderId && laneProviderId !== "auto"
+                    ? providerMeta(laneProviderId).glyph
+                    : "◈";
                 return (
                   <Card
                     key={`${viewedRun.id}-${step.stepId}-${i}`}
@@ -1725,6 +1743,14 @@ export function WorkflowRunPanel({
                             }
                           >
                             {roleInfo.source === "explicit" ? "role" : "tag"} [{roleInfo.role}] ≠ worker
+                          </span>
+                        ) : null}
+                        {lanePin ? (
+                          <span
+                            className="ml-1.5 shrink-0 rounded border border-border bg-muted/40 px-1.5 py-px align-middle font-mono text-[10px] text-muted-foreground"
+                            title={`Pinned lane — ${lanePin}`}
+                          >
+                            {laneGlyph} {laneShortName(lanePin)}
                           </span>
                         ) : null}
                       </div>

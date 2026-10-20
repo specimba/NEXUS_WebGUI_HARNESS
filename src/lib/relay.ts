@@ -19,6 +19,7 @@
 
 import { FREE_PROVIDERS, providerBaseUrl, providerById } from "./providers";
 import { loadLiveCatalog } from "./providers";
+import { enabledAdoptedLanes } from "./lane-adopt";
 import type { Settings } from "./types";
 
 export interface RelayHop {
@@ -585,6 +586,46 @@ export function buildRelayChain(
       tier: 2,
       elo: 0.7,
       note: "no-key free lane",
+    });
+  }
+
+  // r503: radar-ADOPTED lanes join as real hops (the lane-adopt pipeline —
+  // tracker first-seen → registry → chain). This is the wiring that stops
+  // every run funneling into one saturated primary while fresh free capacity
+  // sits un dialed in the radar: an adopted lane dials on the very next chain
+  // build, and the rotator's health memory demotes it if it disappoints.
+  for (const lane of enabledAdoptedLanes()) {
+    if (hops.some((h) => h.key === lane.key)) continue; // keyed/live pass covered it
+    const reg = providerById(lane.providerId);
+    if (!reg) continue;
+    const entry = settings.providerKeys?.[lane.providerId];
+    // Dialability gate — an adopted lane from a keyed provider WITHOUT a
+    // vault key is a corpse rung (the engine would burn a rotation hop on
+    // it every dial). Adopted lanes join only when they can actually answer;
+    // the settings card still lists them (the registry is the audit trail).
+    const key = entry?.key?.trim() ?? "";
+    if (!key && !reg.noKey) continue;
+    const ageH = Math.max(
+      0,
+      Math.round((Date.now() - new Date(lane.firstSeenAt).getTime()) / 3_600_000)
+    );
+    const ctxNote = lane.contextWindow
+      ? lane.contextWindow >= 1_000_000
+        ? `${+(lane.contextWindow / 1_000_000).toFixed(1)}M ctx`
+        : `${Math.round(lane.contextWindow / 1000)}K ctx`
+      : null;
+    hops.push({
+      key: lane.key,
+      providerId: lane.providerId,
+      model: lane.modelId,
+      label: `${reg.name} · ${lane.modelId}`,
+      baseUrl: providerBaseUrl(reg, entry?.accountId),
+      apiKey: key || undefined,
+      tier: 2,
+      elo: 0.86,
+      note:
+        `radar adopt · ${lane.free ? "free" : "paid"} · first seen ${ageH}h ago` +
+        (ctxNote ? ` · ${ctxNote}` : ""),
     });
   }
 

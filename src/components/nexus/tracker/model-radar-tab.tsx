@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw, Satellite, Search, Signal } from "lucide-react";
+import { Check, RefreshCw, Satellite, Search, Signal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { copyText } from "@/lib/helpers";
 import { useSettingsStore } from "@/lib/stores";
+// r503: the Radar → Relay adoption pipeline — absorb on every tracker load,
+// plus the manual Adopt affordance per watched-lane row (lane-adopt.ts is the
+// single registry; Settings → Model relay renders and manages the same list).
+import { absorbTrackerLanes, adoptLane, adoptedLanesSnapshot } from "@/lib/lane-adopt";
+import { providerById } from "@/lib/providers";
 import {
   fmtAge,
   fmtCtx,
@@ -16,6 +21,7 @@ import {
   providerMeta,
   type TrackerData,
   type TrackerSourceHealth,
+  type TrackedModelRow,
 } from "@/lib/tracker-types";
 import { usePinModel } from "./use-pin-model";
 
@@ -61,12 +67,54 @@ export function ModelRadarTab() {
   // moved the shared contract into usePinModel, one hook for ticker + radar.
   const pinModel = usePinModel("the model radar");
 
+  // ── r503: Radar → Relay adoption pipeline ──────────────────────────────
+  // Owner directive: "free radar new findings should be added related
+  // locations and providers with correct tags in first seen automatically —
+  // we need that pipeline automation". Tracker rows landing HERE is the
+  // "first seen" moment, so every successful load runs the absorb step from
+  // lane-adopt.ts: brand-new FREE lanes of KNOWN providers register into the
+  // relay lane registry with their full tag set (provider, ctx, $-per-M,
+  // first-seen age) and the very next buildRelayChain() dials them. The
+  // toast makes the automation visible instead of silent. autoAdopt reads
+  // the live setting (default ON when undefined) via getState() so load()
+  // keeps its stable deps.
+  const toastedAbsorbRef = React.useRef<Set<string>>(new Set());
+  const [adoptTick, setAdoptTick] = React.useState(0);
+
+  const absorb = React.useCallback((rows: TrackedModelRow[]) => {
+    const report = absorbTrackerLanes(rows, {
+      autoAdopt: useSettingsStore.getState().settings.radarAutoAdopt !== false,
+    });
+    // Double-toast guard: the tracker re-sends the same rows on every poll
+    // and the registry already dedupes the ADD itself — this ref keeps the
+    // announcement honest about what THIS session hasn't toasted yet.
+    const fresh = report.addedKeys.filter((k) => !toastedAbsorbRef.current.has(k));
+    for (const k of fresh) toastedAbsorbRef.current.add(k);
+    if (fresh.length > 0) {
+      const modelIds = rows.filter((r) => fresh.includes(r.id)).map((r) => r.modelId);
+      toast.success(
+        `Radar pipeline: ${fresh.length} new free lane${fresh.length === 1 ? "" : "s"} joined the relay`,
+        {
+          description:
+            modelIds.slice(0, 3).join(" · ") +
+            (fresh.length > 3 ? ` · +${fresh.length - 3} more` : ""),
+        }
+      );
+    }
+    setAdoptTick((t) => t + 1); // "in relay" chips re-evaluate immediately
+  }, []);
+
   const load = React.useCallback(async () => {
     try {
       const res = await fetch("/api/tracker", { cache: "no-store" });
       if (res.ok) {
-        setData((await res.json()) as TrackerData);
+        const next = (await res.json()) as TrackerData;
+        setData(next);
         setLoadFailed(false);
+        // r503: the first-seen → registry → relay-chain wiring, run on the
+        // same success path for boot load, visibility refetch, poll, and the
+        // post-sync reload (single choke point, no double registration).
+        absorb(next.tracked);
       } else {
         setLoadFailed(true);
       }
@@ -75,7 +123,7 @@ export function ModelRadarTab() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [absorb]);
 
   React.useEffect(() => {
     void load();
@@ -143,6 +191,16 @@ export function ModelRadarTab() {
   const freeCount = tracked.filter((m) => m.free).length;
   const sources: TrackerSourceHealth[] = data?.sources ?? [];
   const firstLoadFailed = loadFailed && !data;
+
+  // r503: which watched lanes already ride the relay — they render the
+  // emerald "in relay" chip instead of the Adopt button. One registry read
+  // per render (snapshot Set) instead of isLaneAdopted() ×120 rows; recomputes
+  // when fresh tracker data lands (auto-adoptions included) or a manual
+  // Adopt bumps adoptTick.
+  const adoptedKeys = React.useMemo(
+    () => new Set(adoptedLanesSnapshot().map((l) => l.key)),
+    [data, adoptTick]
+  );
 
   return (
     <div className="space-y-4">
@@ -341,6 +399,39 @@ export function ModelRadarTab() {
                     >
                       Pin
                     </Button>
+                    {/* r503: Adopt / in-relay affordance — dialable providers
+                        only (providerById gate); HuggingFace signal rows and
+                        other non-registry lanes stay display-only, matching
+                        the lane-adopt policy. Same h-7 density as Copy/Pin. */}
+                    {providerById(m.providerId) &&
+                      (adoptedKeys.has(m.id) ? (
+                        <Badge
+                          variant="outline"
+                          title={`${m.modelId} dials in the Model Relay chain — manage it in Settings → Model relay`}
+                          className="h-7 shrink-0 gap-1 border-emerald-500/40 bg-emerald-500/10 px-2 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
+                        >
+                          <Check className="h-3 w-3" aria-hidden />
+                          in relay
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 shrink-0 text-[11px]"
+                          aria-label={`Adopt ${m.modelId} into the relay chain`}
+                          onClick={() => {
+                            const res = adoptLane(m, "manual");
+                            if (res.added) {
+                              setAdoptTick((t) => t + 1);
+                              toast.success(`${m.modelId} joined the relay chain`, {
+                                description: "Settings → Model relay lists it",
+                              });
+                            }
+                          }}
+                        >
+                          Adopt
+                        </Button>
+                      ))}
                   </li>
                 ))}
               </ul>

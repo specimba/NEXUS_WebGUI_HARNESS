@@ -12,9 +12,11 @@ import {
   CircleCheck,
   CircleAlert,
   Info,
+  Radar,
   RotateCcw,
   ShieldCheck,
   Sparkles,
+  Trash2,
   Waypoints,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +41,19 @@ import {
   type RelayHop,
 } from "@/lib/relay";
 import { useSettingsStore } from "@/lib/stores";
+// r503: Radar → Relay adoption pipeline — this card renders and manages the
+// adopted-lane registry (localStorage `nexus-relay-adopted`, written by the
+// radar tab's auto-pipeline AND the row actions below) plus the auto-adopt
+// switch. buildRelayChain() above already appends the enabled ones as hops.
+import {
+  MAX_ADOPTED_LANES,
+  adoptedLanesSnapshot,
+  clearAdoptedLanes,
+  removeAdoptedLane,
+  setAdoptedLaneEnabled,
+  type AdoptedLane,
+} from "@/lib/lane-adopt";
+import { fmtAge, fmtCtx, fmtPrice, providerMeta } from "@/lib/tracker-types";
 import { cn } from "@/lib/utils";
 
 const TIER_STYLE: Record<1 | 2 | 3, string> = {
@@ -57,6 +72,22 @@ export function ModelRelayCard() {
   React.useEffect(() => {
     const t = window.setInterval(() => setHealth(relayHealthSnapshot()), 15_000);
     const onVis = () => setHealth(relayHealthSnapshot());
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
+  // ── r503: adopted-lane registry — same refresh doctrine as the health
+  // memory above (15s cadence + on visibility). The registry lives in
+  // localStorage and is written by the radar tab's auto-pipeline too, so a
+  // snapshot poll keeps this list in step without a cross-component store;
+  // row mutations below set it synchronously from the action's return value.
+  const [lanes, setLanes] = React.useState<AdoptedLane[]>(() => adoptedLanesSnapshot());
+  React.useEffect(() => {
+    const t = window.setInterval(() => setLanes(adoptedLanesSnapshot()), 15_000);
+    const onVis = () => setLanes(adoptedLanesSnapshot());
     document.addEventListener("visibilitychange", onVis);
     return () => {
       window.clearInterval(t);
@@ -224,6 +255,77 @@ export function ModelRelayCard() {
           </p>
         </div>
 
+        {/* ── r503: Radar → Relay adoption pipeline ────────────────────────
+            Placed after the chain list: it explains WHERE the fresh hops
+            come from and manages the registry — the chain's supply line,
+            read best once the chain itself is on screen. Styling mirrors
+            the sky "Prefer server relay" row, in emerald (radar = fresh
+            free capacity). */}
+        <section
+          className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] p-3"
+          aria-label="Radar to relay adoption pipeline"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-0.5">
+              <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
+                <Radar className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
+                Radar → Relay pipeline
+              </p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Brand-new FREE models the Model Tracker sees at first sight
+                automatically join this chain with their provider tags — fresh
+                capacity dials before it goes stale. Failures self-demote via
+                the health memory. Turn off to adopt manually only.
+              </p>
+            </div>
+            <Switch
+              aria-label="Auto-adopt new free radar lanes into the relay"
+              checked={settings.radarAutoAdopt !== false}
+              onCheckedChange={(v) => update({ radarAutoAdopt: v })}
+              className="mt-0.5 shrink-0"
+            />
+          </div>
+
+          {/* Adopted-lane registry (audit + per-lane control). */}
+          <div className="mt-2.5">
+            {lanes.length === 0 ? (
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                No adopted lanes yet — the radar fills this list as the tracker
+                sees new free models (or use Adopt on a radar row).
+              </p>
+            ) : (
+              <div className="max-h-48 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-emerald-500/30">
+                <ul className="divide-y rounded-md border border-emerald-500/20 bg-background/40">
+                  {lanes.map((lane) => (
+                    <AdoptedLaneRow key={lane.key} lane={lane} onLanes={setLanes} />
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[10.5px] text-muted-foreground">
+                {lanes.length}/{MAX_ADOPTED_LANES} adopted lanes ride the chain · oldest evicted
+                past the cap
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 gap-1 px-2 text-[11px] text-red-500/90 hover:text-red-500"
+                disabled={lanes.length === 0}
+                onClick={() => {
+                  clearAdoptedLanes();
+                  setLanes([]);
+                  toast.success("Adopted lanes cleared");
+                }}
+              >
+                <Trash2 className="h-3 w-3" aria-hidden />
+                Clear all
+              </Button>
+            </div>
+          </div>
+        </section>
+
         {/* r27 System-One decisions (Jev) — the cheap calibrated judging tier */}
         <div className="rounded-lg border border-border/80 bg-muted/20 p-3">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -344,5 +446,89 @@ function HopRow({
         </div>
       )}
     </div>
+  );
+}
+
+// ─── r503: one adopted-lane registry row (Radar → Relay pipeline section) ────
+// Tags are the "correct tags in first seen" the owner asked for: provider
+// glyph + free/paid + ctx + $in/$out + first-seen age + origin, and when the
+// lane is disabled a red chip carries the reason (audit trail, not deletion).
+function AdoptedLaneRow({
+  lane,
+  onLanes,
+}: {
+  lane: AdoptedLane;
+  /** Registry setter — fed straight from the action's return value. */
+  onLanes: (lanes: AdoptedLane[]) => void;
+}) {
+  const price = fmtPrice({ priceIn: lane.priceIn ?? null, priceOut: lane.priceOut ?? null });
+  const ctx = fmtCtx(lane.contextWindow ?? null);
+  return (
+    <li className={cn("flex items-center gap-2 px-2.5 py-1.5", !lane.enabled && "opacity-70")}>
+      <span aria-hidden className="w-5 shrink-0 text-center text-sm" title={providerMeta(lane.providerId).label}>
+        {providerMeta(lane.providerId).glyph}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="truncate font-mono text-[11.5px] font-medium" title={lane.modelId}>
+            {lane.modelId}
+          </span>
+          {lane.free ? (
+            <Badge variant="secondary" className="h-4 shrink-0 rounded bg-emerald-500/15 px-1 text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400">
+              free
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="h-4 shrink-0 rounded bg-muted px-1 text-[9px] font-bold uppercase text-muted-foreground">
+              paid
+            </Badge>
+          )}
+          {!lane.enabled && (
+            <Badge
+              variant="outline"
+              title={lane.disabledReason ?? "disabled"}
+              className="h-4 min-w-0 max-w-44 rounded border-red-500/40 bg-red-500/10 px-1 text-[9px] font-semibold uppercase text-red-600 dark:text-red-400"
+            >
+              <span className="truncate">{lane.disabledReason ?? "disabled"}</span>
+            </Badge>
+          )}
+        </div>
+        <p className="truncate text-[10px] text-muted-foreground">
+          {[ctx, price, `first seen ${fmtAge(lane.firstSeenAt)}`].filter(Boolean).join(" · ") ||
+            "tags n/a"}
+        </p>
+      </div>
+      <Badge
+        variant="outline"
+        className="shrink-0 font-mono text-[9px] font-normal uppercase text-muted-foreground"
+      >
+        {lane.origin === "radar-auto" ? "auto" : "manual"}
+      </Badge>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-6 shrink-0 px-1.5 text-[10.5px] text-muted-foreground"
+        aria-label={lane.enabled ? `Mute ${lane.modelId} in the relay` : `Re-enable ${lane.modelId} in the relay`}
+        onClick={() => {
+          onLanes(setAdoptedLaneEnabled(lane.key, !lane.enabled));
+          toast.success(lane.enabled ? `${lane.modelId} muted` : `${lane.modelId} back in the chain`);
+        }}
+      >
+        {lane.enabled ? "Mute" : "Enable"}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-red-500"
+        aria-label={`Remove ${lane.modelId} from adopted lanes`}
+        onClick={() => {
+          onLanes(removeAdoptedLane(lane.key));
+          toast.success(`${lane.modelId} removed from the relay registry`);
+        }}
+      >
+        <Trash2 className="h-3 w-3" aria-hidden />
+      </Button>
+    </li>
   );
 }

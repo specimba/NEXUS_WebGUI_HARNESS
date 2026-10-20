@@ -214,6 +214,14 @@ export interface WorkflowStep {
   instruction?: string;
   /** "review" steps audit the previous step's output and can force a rework. */
   kind?: StepKind;
+  /**
+   * r503 (owner directive): per-step lane pin — "providerId::model" (e.g.
+   * "aihubmix::minimax-m3.1-flash") or "auto::builtin". Empty/missing = the
+   * pipeline default lane, then the agent's own model, then the global
+   * provider. Lets a pipeline spread its steps across providers instead of
+   * funneling every dial into one saturated connection.
+   */
+  lane?: string;
 }
 
 export type StepKind = "generate" | "review";
@@ -238,6 +246,12 @@ export interface WorkflowRunStep {
   ms?: number;
   /** Mirrors the step definition kind (missing = "generate"). */
   kind?: StepKind;
+  /**
+   * r503: the lane pin this step materialized with ("providerId::model" or
+   * "auto::builtin") — displayed as a chip on the run row so the lane spread
+   * of a pipeline is visible in the run panel, not just in the editor.
+   */
+  lane?: string;
   /**
    * Per-run instruction for SYNTHETIC steps injected by depth materialization
    * (deep-research / verification passes have no authored WorkflowStep def, so
@@ -380,6 +394,13 @@ export interface Workflow {
   updatedAt: number;
   /** Pipeline depth (r26) — missing = "standard" for pre-existing workflows. */
   depth?: PipelineDepth;
+  /**
+   * r503 (owner directive): pipeline DEFAULT lane — "providerId::model" or
+   * "auto::builtin". Every step dials it unless the step carries its own
+   * `lane` pin. Missing = each step follows its agent's model + the global
+   * provider (pre-r503 behavior, untouched).
+   */
+  lane?: string;
   /** Recurring in-app schedule (runs fire while the app tab is open). */
   schedule?: WorkflowSchedule;
   /**
@@ -482,6 +503,12 @@ export interface Settings {
   preferRelay?: boolean;
   /** Saved hop ordering (keys "providerId::model"); missing = recommended Generation-Era order. */
   relayOrder?: string[];
+  /**
+   * r503: radar→relay adoption pipeline — brand-new FREE lanes the tracker
+   * sees (first seen) auto-join the relay chain with their provider tags.
+   * Default ON (that is the point); false = manual Adopt actions only.
+   */
+  radarAutoAdopt?: boolean;
   /**
    * r27 System-One (Jev, typesafe.ai) API key for the decision tier —
    * classification / judging / routing at ~$0.042/Mtok. Optional: without it
