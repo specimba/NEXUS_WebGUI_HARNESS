@@ -581,32 +581,74 @@ export function ModelRelayCard() {
           </div>
         </section>
 
-        {/* r27 System-One decisions (Jev) — the cheap calibrated judging tier */}
+        {/* r510 System-One decisions — FREE provider decision primitives first */}
         <div className="rounded-lg border border-border/80 bg-muted/20 p-3">
           <div className="flex flex-wrap items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-fuchsia-400" aria-hidden />
-            <p className="text-xs font-semibold">System-One decisions (Jev)</p>
+            <p className="text-xs font-semibold">System-One decisions (free lanes)</p>
             <Badge variant="outline" className="text-[10px] font-normal">
-              optional
+              $0 · automated
             </Badge>
           </div>
           <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
             Classification, judging and verification gates run on a fast
-            "System One" primitive instead of a frontier model — decision-fit
-            relay lanes (flash models) are tried first. Paste a typesafe.ai key
-            to use Jev natively (choice/noul decisions, ~$0.042/Mtok,
-            input-only); without a key the ladder falls back to the fastest
-            lane in your vault — everything keeps working either way.
+            &quot;System One&quot; primitive instead of a frontier model. r510
+            ladder: ① the <strong>free</strong> Intern SystemOne primitive
+            (书生 Decision 4B — 200 RPM decision quota, separate from the
+            generative 50 RPM) → ② the fastest free flash lane in your vault →
+            ③ paid typesafe Jev only if you ever paste its key (you don&apos;t
+            need it). No key below is an SSL/GPG certificate — they are plain
+            provider API keys, exactly like the ones in the Providers vault.
           </p>
-          <Input
-            type="password"
-            value={settings.typesafeKey ?? ""}
-            onChange={(e) => update({ typesafeKey: e.target.value })}
-            placeholder="typesafe.ai API key (optional)"
-            aria-label="System-One (Jev) API key"
-            autoComplete="off"
-            className="mt-2 h-8 border-border/70 bg-background/60 font-mono text-xs"
-          />
+          {(() => {
+            const internKey = settings.providerKeys?.["intern-discovery"]?.key?.trim();
+            return internKey ? (
+              <div className="mt-2 flex items-start gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-2 py-1.5">
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" aria-hidden />
+                <p className="text-[11px] leading-relaxed text-emerald-300/90">
+                  Intern TokenPlan key detected in your vault — decision gates
+                  dial the <span className="font-medium">free SystemOne primitive</span>{" "}
+                  (intern-decision-4b) and never bill a token. The generative
+                  quota stays untouched.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden />
+                <p className="text-[11px] leading-relaxed text-amber-300/90">
+                  Add an <span className="font-medium">Intern TokenPlan</span> key
+                  in the Providers vault to arm the free decision primitive —
+                  until then the ladder uses the fastest flash lane in your
+                  vault, which also works and stays $0.
+                </p>
+              </div>
+            );
+          })()}
+          <details className="group mt-2 rounded-md border border-border/60 bg-background/40">
+            <summary className="cursor-pointer list-none px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground">
+              Legacy paid option — typesafe.ai Jev (not needed) ▾
+            </summary>
+            <div className="px-2 pb-2">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Kept only for completeness: Jev is typesafe.ai&apos;s paid
+                decision API (~$0.042/Mtok, input-only). If you ever want it,
+                paste that provider&apos;s <span className="font-medium">API key</span> here
+                (it starts with <code className="font-mono">sk-</code> and comes
+                from typesafe.ai&apos;s console — it is NOT an SSL/GPG key and
+                never leaves your browser). Without it the ladder above already
+                covers everything for free.
+              </p>
+              <Input
+                type="password"
+                value={settings.typesafeKey ?? ""}
+                onChange={(e) => update({ typesafeKey: e.target.value })}
+                placeholder="typesafe.ai API key — optional, not required"
+                aria-label="Legacy typesafe.ai (Jev) API key — optional"
+                autoComplete="off"
+                className="mt-2 h-8 border-border/70 bg-background/60 font-mono text-xs"
+              />
+            </div>
+          </details>
         </div>
       </CardContent>
     </Card>

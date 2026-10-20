@@ -164,9 +164,13 @@ const ARENA_CATALOG: Record<
   },
   mistral: {
     label: "Mistral",
+    // r510: re-grounded — devstral-latest retired upstream; leanstral joins
+    // (5M TPM makes it the throughput lane of the whole free fleet).
     models: [
       { id: "mistral-medium-latest", tier: 2, elo: 0.89, note: "Stronger, still free" },
       { id: "mistral-small-latest", tier: 2, elo: 0.87, note: "Best free default" },
+      { id: "labs-leanstral-1-5-1", tier: 2, elo: 0.86, note: "NEW · 262K ctx · 5M TPM" },
+      { id: "codestral-latest", tier: 2, elo: 0.85, note: "Code specialist" },
     ],
   },
   sambanova: {
@@ -208,6 +212,36 @@ const ARENA_CATALOG: Record<
   pollinations: {
     label: "Pollinations",
     models: [{ id: "openai-fast", tier: 3, elo: 0.85, note: "Keyed free tier" }],
+  },
+  // r510: the two r509 providers never joined the relay chain — no arena
+  // entries AND a broken refresh path meant their live-roster extras never
+  // materialized either. The owner dialed workflows THROUGH these grants.
+  inception: {
+    label: "Inception Labs",
+    models: [
+      { id: "mercury-3", tier: 1, elo: 0.95, note: "Diffusion LM · 1M ctx · tools · 100M free tokens" },
+      { id: "mercury-2", tier: 2, elo: 0.88, note: "128K ctx · json_mode" },
+      // r510: the typed decision primitive rides the chat wire too — it joins
+      // the fastJudge chain (taskFit "decision") as the SECOND free decision
+      // model next to the Intern SystemOne primitive (owner: "not only
+      // discovery internal — most providers have special decision models").
+      { id: "mercury-decide", tier: 3, elo: 0.84, note: "Typed decisions lane · $0.02/M · router/judge class" },
+    ],
+  },
+  "intern-discovery": {
+    label: "Intern TokenPlan",
+    models: [
+      { id: "deepseek-v4-flash-0731", tier: 1, elo: 0.94, note: "1M ctx · deep thinking · grant tier" },
+      { id: "glm-5.3", tier: 1, elo: 0.94, note: "1M ctx · Z.ai flagship class" },
+      { id: "deepseek-v4-pro-0813", tier: 1, elo: 0.945, note: "1M ctx · deep-reasoning" },
+      { id: "minimax-m3", tier: 2, elo: 0.92, note: "1M ctx · efficiency frontier" },
+      { id: "Atria-Dawn", tier: 2, elo: 0.91, note: "512K ctx · scientific reasoning" },
+      { id: "kimi-k2.6", tier: 2, elo: 0.9, note: "256K ctx · agentic multimodal" },
+      { id: "Agents-A1", tier: 2, elo: 0.9, note: "256K ctx · multimodal · tool calling" },
+      // NOTE: intern-decision-4b is deliberately NOT here — it speaks only the
+      // SystemOne decision protocol (systemone.ts), not chat. It powers the
+      // FREE System-One decision rung via settings.providerKeys, not the relay.
+    ],
   },
 };
 
@@ -630,8 +664,10 @@ export function buildRelayChain(
       });
     }
     // Live-roster extras (Refresh models button) join as generic T2 hops.
+    // r510: also exclude SystemOne decision primitives (intern-decision-4b) —
+    // they 404 on openai_chat; they are wired as decision gates, not hops.
     const liveExtras = (loadLiveCatalog()[providerId] ?? []).filter(
-      (m) => !seen.has(m.id) && !/imagine|embed|whisper|tts|image/i.test(m.id)
+      (m) => !seen.has(m.id) && !/imagine|embed|whisper|tts|image|decision|system-?one/i.test(m.id)
     );
     for (const m of liveExtras.slice(0, 6)) {
       hops.push({

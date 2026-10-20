@@ -243,18 +243,30 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     baseUrl: "https://api.mistral.ai/v1",
     signupUrl: "https://console.mistral.ai",
     docsUrl: "https://docs.mistral.ai",
-    limits: "Free Experiment plan: ~1 req/s, low priority (can queue at peak)",
+    // r510: limits page now publishes per-model TPM (mistral-large-4 20K TPM
+    // … labs-leanstral 5M TPM) — the Experiment plan stays ~1 req/s low-prio.
+    limits:
+      "Free Experiment plan: ~1 req/s low priority (can queue at peak) · per-model TPM published in console (20K–5M) · admin → Limits",
     liveCatalog: "mistral",
     guide: [
       "Open console.mistral.ai and sign up (no card required).",
       "Accept the Experiment (free) plan when asked during onboarding.",
-      "API Keys → create one (32-char string, no prefix).",
+      "API Keys → create one (starts with mstrl_ these days — both legacy 32-char and mstrl_ keys dial fine).",
+      // r510: owner refreshed their key and still hit “connection not possible”
+      // — the real culprit was our stale catalog/refresh (see provider-refresh
+      // r510 note), not the endpoint. api.mistral.ai/v1 is still THE endpoint.
+      "Endpoint is unchanged (https://api.mistral.ai/v1) — if a fresh key “won't connect”, hit Refresh models and pick a live id: the roster rotated (devstral-latest is gone; codestral-latest now aliases codestral-2508).",
     ],
+    // r510: re-grounded against the LIVE /v1/models roster (probed with the
+    // owner's refreshed key — chat=True rows only; embed/ocr/moderation/voxtral
+    // audio rows excluded). devstral-latest is no longer served → dropped.
     models: [
-      { id: "mistral-small-latest", label: "Mistral Small", note: "Best free default" },
-      { id: "mistral-medium-latest", label: "Mistral Medium", note: "Stronger, still free" },
-      { id: "codestral-latest", label: "Codestral", note: "Code specialist" },
-      { id: "devstral-latest", label: "Devstral", note: "Agentic coding" },
+      { id: "mistral-medium-latest", label: "Mistral Medium 3.5", note: "262K ctx · best free default (mistral-medium-3.5)" },
+      { id: "mistral-small-latest", label: "Mistral Small", note: "262K ctx · fastest full-family lane" },
+      { id: "codestral-latest", label: "Codestral", note: "Code specialist · 256K ctx · FIM + tools (2508)" },
+      { id: "labs-leanstral-1-5-1", label: "Leanstral 1.5.1", note: "NEW · 262K ctx · 5M TPM — highest-throughput free lane" },
+      { id: "magistral-medium-latest", label: "Magistral Medium", note: "Reasoning · 262K ctx" },
+      { id: "ministral-8b-2512", label: "Ministral 8B", note: "262K ctx · edge tier" },
     ],
   },
   {
@@ -486,20 +498,29 @@ export const FREE_PROVIDERS: FreeProvider[] = [
     signupUrl: "https://intern-ai.org.cn",
     docsUrl: "https://discovery-api.intern-ai.org.cn",
     limits:
-      "Grant: 10,000 ink-dots / 5h + 50,000 / 7d (1 dot ≈ up to 50M tokens on V4-Flash) · 50 RPM · 2M TPM shared across ALL your keys",
+      "Grant: 10,000 ink-dots / 5h + 50,000 / 7d (1 dot ≈ up to 50M tokens on V4-Flash) · 50 RPM + 2M TPM GENERATIVE · 200 RPM DECISION (separate bucket) — shared across ALL your keys",
     guide: [
       "Join the TokenPlan grant console (Shanghai AI Lab) and create an API key — starts with sk-. Up to 10 keys, but they share ONE quota bucket.",
       "Paste it here and hit Validate — the 1M-ctx deep lanes answer on the OpenAI protocol.",
-      "Mind the ink-dot windows (5h / 7d resets are visible in the console) — pace deep passes, don't hammer.",
-      "Quota increases: tokenplan@pjlab.org.cn.",
+      "intern-decision-4b is the SystemOne decision primitive (200 RPM — separate from the 50 generative RPM): it powers the FREE decision gates, it is NOT a chat lane.",
+      "Protocols: OpenAI Chat + Anthropic Messages + OpenAI Responses on the big lanes; base without /v1 for Anthropic-style calls. Quota increases: tokenplan@pjlab.org.cn.",
     ],
+    // r510: re-grounded against the live /v1/models (schema_version 2.4,
+    // probed keyless+keyed from this sandbox). All 13 rows verified.
     models: [
       { id: "deepseek-v4-flash-0731", label: "DeepSeek V4 Flash", note: "1M ctx · deep thinking + tools · grant tier" },
+      { id: "deepseek-v4-flash-vision", label: "DeepSeek V4 Flash Vision", note: "1M ctx · multimodal (text+image) + tools" },
+      { id: "deepseek-v4-pro-0813", label: "DeepSeek V4 Pro", note: "1M ctx · deep-reasoning overflow" },
       { id: "glm-5.3", label: "GLM 5.3", note: "1M ctx · Z.ai flagship class · grant tier" },
       { id: "minimax-m3", label: "MiniMax M3", note: "1M ctx · efficiency frontier · grant tier" },
-      { id: "deepseek-v4-pro-0813", label: "DeepSeek V4 Pro", note: "1M ctx · deep-reasoning overflow" },
-      { id: "Agents-A1", label: "Agents A1", note: "256K ctx · multimodal (text+image) · tool calling · scientific reasoning" },
+      { id: "Atria-Dawn", label: "Atria Dawn", note: "512K ctx · scientific reasoning · native TokenPlan lane" },
+      { id: "Atria-Dawn-Preview", label: "Atria Dawn Preview", note: "512K ctx · preview cut" },
+      { id: "Agents-A1", label: "Agents A1", note: "256K ctx · multimodal · tool calling + scientific reasoning" },
+      { id: "Sage-A1.5", label: "Sage A1.5", note: "256K ctx · multimodal · scientific reasoning" },
+      { id: "intern-s2", label: "Intern S2", note: "256K ctx · multimodal · SystemOne protocol too" },
       { id: "kimi-k2.6", label: "Kimi K2.6", note: "256K ctx · multimodal · long-horizon agentic" },
+      { id: "qwen3.8-27b", label: "Qwen 3.8 27B", note: "256K ctx · multimodal" },
+      { id: "intern-decision-4b", label: "书生 Decision 4B", note: "SystemOne decisions ONLY (not a chat lane) · 200 RPM free decision quota · powers the decision gates" },
     ],
   },
 ];

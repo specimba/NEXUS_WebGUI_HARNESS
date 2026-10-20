@@ -1,18 +1,26 @@
-// ─── System-One decision tier (r27 — Jev grounding, elvis/omarsar0 doctrine) ─
+// ─── System-One decision tier (r27 Jev doctrine · r510 free-lane rework) ─────
 // "Not everything requires a frontier model." Classification, judging and
 // routing decisions inside the harness are System-One jobs: fast, cheap,
 // deterministic, structured. This module is the NEXUS decision ladder:
 //
-//   ① Jev native  — POST api.typesafe.ai/v1/systemone (choice/score/noul,
-//                   ~$0.042/Mtok input-only, 250K tok/s) when a key is set
-//   ② Fast-model  — a strict JSON judge call against the BEST FAST lane in
+//   ① Intern       — POST discovery-api.intern-ai.org.cn/v1/systemone with
+//      SystemOne     intern-decision-4b (书生 Decision 4B): choice/noul
+//                    decisions, 200 RPM DECISION quota SEPARATE from the 50
+//                    generative RPM — near-unlimited for gating. FREE on the
+//                    TokenPlan grant; uses the intern-discovery vault key.
+//                    Wire format live-probed r510 (both variants, HTTP 200).
+//   ② Fast-model   — a strict JSON judge call against the BEST FAST lane in
 //      JSON judge   the vault (relay taskFit "decision": flash lanes first,
-//                   flagships demoted) — works today with existing keys
-//   ③ none        — caller keeps its current behavior (worst case = status quo)
+//                   flagships demoted) — works today with existing keys.
+//   ③ Jev (PAID)   — api.typesafe.ai/v1/systemone, ~$0.042/Mtok. DEMOTED to
+//                    last per owner doctrine r510: "we do not need that paid
+//                    option — use the providers' free decision models". Only
+//                    dials when a typesafe.ai key is explicitly pasted.
+//   ④ none         — caller keeps its current behavior (worst case = status quo)
 //
 // Zero telemetry: every request goes from the user's browser straight to the
 // provider they chose; nothing is logged anywhere else. Jev may reject browser
-// CORS — the ladder simply falls through to ②, never breaks the harness.
+// CORS — the ladder simply falls through, never breaks the harness.
 
 import { buildRelayChain, type RelayHop } from "./relay";
 import type { Settings } from "./types";
@@ -22,6 +30,9 @@ const JEV_TIMEOUT_MS = 5_000;
 const FAST_JUDGE_TIMEOUT_MS = 9_000;
 /** Confidence bar for a PASS to actually skip a downstream flagship call. */
 export const SYSTEMONE_GATE_CONFIDENCE = 0.75;
+/** r510: the free decision primitive — Shanghai AI Lab's 书生 Decision 4B. */
+const INTERN_SYSTEMONE_MODEL = "intern-decision-4b";
+const INTERN_SYSTEMONE_TIMEOUT_MS = 8_000;
 
 export type SystemOneQuestionType = "noul" | "choice";
 
@@ -31,6 +42,10 @@ export interface SystemOneQuestion {
   prompt: string;
   /** choice only — ≤255 options per the Jev API. */
   options?: string[];
+  /** r510: optional calibration hints for the Intern noul wire
+   * (criteria: {true,false}) — when omitted, generic wording is used. */
+  criteriaTrue?: string;
+  criteriaFalse?: string;
 }
 
 export interface SystemOneAnswer {
@@ -39,8 +54,8 @@ export interface SystemOneAnswer {
 }
 
 export interface SystemOneVerdict {
-  via: "jev" | "fast-model";
-  /** Human label of the lane that answered ("Jev" or "Provider · model"). */
+  via: "intern-systemone" | "jev" | "fast-model";
+  /** Human label of the lane that answered ("Intern SystemOne · intern-decision-4b", "Jev", …). */
   judge: string;
   answer: string;
   /** Calibrated 0–1 confidence from the judge (Jev: version-sensitive — treat as a prior). */
@@ -48,7 +63,89 @@ export interface SystemOneVerdict {
   ms: number;
 }
 
-// ─── ① Jev native ─────────────────────────────────────────────────────────────
+// ─── ① Intern SystemOne (FREE — intern-decision-4b on the decision quota) ────
+
+// Wire format verified LIVE r510 against discovery-api.intern-ai.org.cn:
+//   noul:   questions[q] = { type:"noul", instructions, criteria:{true,false} }
+//           → answers[q] = { type:"noul", noul: 0.963 }
+//   choice: questions[q] = { type:"choice", instructions, criteria:{opt:desc} }
+//           → answers[q] = { type:"choice", choice, probabilities, confidence }
+// NOTE: criteria is REQUIRED on both — noul wants the true/false object,
+// choice wants an options OBJECT (not an array; the array form 400s).
+interface InternSystemOneResponse {
+  answers?: Record<
+    string,
+    { type?: string; choice?: string; noul?: number; confidence?: number }
+  >;
+}
+
+/** One decision round-trip against the free Intern decision primitive.
+ * Throws on anything non-2xx (caller falls through the ladder). */
+export async function askInternSystemOne(
+  state: string,
+  questions: SystemOneQuestion[],
+  apiKey: string,
+  signal?: AbortSignal
+): Promise<Record<string, SystemOneAnswer>> {
+  const body = {
+    model: INTERN_SYSTEMONE_MODEL,
+    state,
+    questions: Object.fromEntries(
+      questions.map((q) => {
+        if (q.type === "choice") {
+          const opts = (q.options ?? []).slice(0, 255);
+          return [
+            q.id,
+            {
+              type: "choice",
+              instructions: q.prompt,
+              // object of options — descriptions default to the option itself
+              criteria: Object.fromEntries(opts.map((o) => [o, o])),
+            },
+          ];
+        }
+        return [
+          q.id,
+          {
+            type: "noul",
+            instructions: q.prompt,
+            criteria: {
+              true: q.criteriaTrue ?? "the statement holds for the given state",
+              false: q.criteriaFalse ?? "the statement does not hold for the given state",
+            },
+          },
+        ];
+      })
+    ),
+  };
+  const res = await fetch("https://discovery-api.intern-ai.org.cn/v1/systemone", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+    signal: composeTimeout(signal, INTERN_SYSTEMONE_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`Intern SystemOne ${res.status}`);
+  const json = (await res.json()) as InternSystemOneResponse;
+  const out: Record<string, SystemOneAnswer> = {};
+  for (const q of questions) {
+    const a = json.answers?.[q.id];
+    if (!a) continue;
+    if (q.type === "noul") {
+      const n = typeof a.noul === "number" ? a.noul : null;
+      if (n === null) continue;
+      out[q.id] = { answer: n >= 0.5 ? "yes" : "no", confidence: n };
+    } else {
+      if (!a.choice) continue;
+      out[q.id] = {
+        answer: a.choice,
+        confidence: typeof a.confidence === "number" ? a.confidence : 0,
+      };
+    }
+  }
+  return out;
+}
+
+// ─── ③ Jev native (PAID — demoted to the legacy rung, r510 owner doctrine) ────
 
 // Wire shape per docs.typesafe.ai (r26.2 verified): questions map to
 // { type, instructions, criteria } and answers come back as
@@ -205,16 +302,50 @@ export interface DecideOptions {
   signal?: AbortSignal;
 }
 
+/** The intern-discovery vault key, when the owner saved one. */
+function internSystemOneKey(settings: Settings): string {
+  return settings.providerKeys?.["intern-discovery"]?.key?.trim() ?? "";
+}
+
 /**
  * Run one System-One decision through the ladder. Returns null when every
  * rung fails — callers MUST treat null as "no opinion" and keep their
  * existing behavior (the gate never blocks, it only saves work).
+ *
+ * r510 order: FREE rungs first (Intern SystemOne → vault fast judge); the
+ * PAID typesafe Jev dials LAST and only when its key was explicitly pasted
+ * (owner doctrine: "we do not need that paid option — use the providers'
+ * free decision models").
  */
 export async function decide(opts: DecideOptions): Promise<SystemOneVerdict | null> {
   const { settings, state, question, signal } = opts;
   const started = Date.now();
 
-  // ① Jev native — only when the user opted in with a key.
+  // ① Intern SystemOne — FREE decision primitive, 200 RPM decision quota.
+  const internKey = internSystemOneKey(settings);
+  if (internKey) {
+    try {
+      const answers = await askInternSystemOne(state, [question], internKey, signal);
+      const a = answers[question.id];
+      if (a && a.answer) {
+        return {
+          via: "intern-systemone",
+          judge: `Intern SystemOne · ${INTERN_SYSTEMONE_MODEL}`,
+          answer: a.answer,
+          confidence: a.confidence,
+          ms: Date.now() - started,
+        };
+      }
+    } catch {
+      // offline / quota / wire drift → fall through to ②
+    }
+  }
+
+  // ② Fast-model JSON judge over the vault.
+  const judged = await fastJudge(settings, state, question, signal);
+  if (judged) return { ...judged, ms: Date.now() - started };
+
+  // ③ Jev (PAID) — legacy rung, only when explicitly opted in.
   const jevKey = settings.typesafeKey?.trim();
   if (jevKey) {
     try {
@@ -224,15 +355,11 @@ export async function decide(opts: DecideOptions): Promise<SystemOneVerdict | nu
         return { via: "jev", judge: "Jev (jev-latest)", answer: a.answer, confidence: a.confidence, ms: Date.now() - started };
       }
     } catch {
-      // CORS / timeout / quota → fall through to ②
+      // CORS / timeout / quota → no opinion
     }
   }
 
-  // ② Fast-model JSON judge over the vault.
-  const judged = await fastJudge(settings, state, question, signal);
-  if (judged) return { ...judged, ms: Date.now() - started };
-
-  // ③ No opinion.
+  // ④ No opinion.
   return null;
 }
 

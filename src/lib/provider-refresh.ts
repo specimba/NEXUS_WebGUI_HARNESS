@@ -13,8 +13,9 @@ export interface RefreshedModel {
 
 interface KeyedEndpoint {
   url: string;
-  /** Response shape: OpenAI-compatible "openai" | Cloudflare search "cf". */
-  shape: "openai" | "cf";
+  /** Response shape: OpenAI-compatible "openai" | Cloudflare search "cf" |
+   * Intern TokenPlan schema-2.4 "intern" (context nested per-modality). */
+  shape: "openai" | "cf" | "intern";
   /** Some providers accept a key but work without one. */
   keyOptional?: boolean;
 }
@@ -35,6 +36,11 @@ export const KEYED_ENDPOINTS: Record<string, KeyedEndpoint> = {
   cohere: { url: "https://api.cohere.ai/compatibility/v1/models", shape: "openai" },
   together: { url: "https://api.together.xyz/v1/models", shape: "openai", keyOptional: true },
   cerebras: { url: "https://api.cerebras.ai/v1/models", shape: "openai" },
+  // r509 catalog · r510 refresh wiring: the two new providers had NO keyed
+  // endpoint — "Refresh models" answered 400 "has no live models endpoint"
+  // (owner: "refresh is broken as like at mistral"). Both verified live.
+  inception: { url: "https://api.inceptionlabs.ai/v1/models", shape: "openai" },
+  "intern-discovery": { url: "https://discovery-api.intern-ai.org.cn/v1/models", shape: "intern" },
   // r23 fix: the old /ai/v1/models path answered 405 "GET not supported" —
   // the search endpoint is the documented roster API.
   cloudflare: {
@@ -43,8 +49,10 @@ export const KEYED_ENDPOINTS: Record<string, KeyedEndpoint> = {
   },
 };
 
-/** Non-text / internal models we never want in a chat picker. */
-const NON_TEXT_RE = /embed|whisper|\btts\b|guard|rerank|moderation|sdxl|imagen|imagine|diffusion|vision-?(?:enc|only)/i;
+/** Non-text / internal models we never want in a chat picker.
+ * r510: +ocr +voxtral (Mistral audio family — chat=False but no name match). */
+const NON_TEXT_RE =
+  /embed|whisper|\btts\b|guard|rerank|moderation|sdxl|imagen|imagine|diffusion|vision-?(?:enc|only)|\bocr\b|voxtral/i;
 
 interface RawModelRow {
   id?: string;
@@ -54,6 +62,11 @@ interface RawModelRow {
   type?: string;
   owned_by?: string;
   description?: string;
+  /** Mistral-style capability flags — when present, completion_chat is law. */
+  capabilities?: { completion_chat?: boolean } | null;
+  /** Intern TokenPlan schema-2.4: context lives per input modality. */
+  input_modalities?: { supported_inputs?: { max_context_length?: { value?: number } } }[];
+  is_ready?: boolean;
 }
 
 export function normalizeOpenAI(data: unknown): RefreshedModel[] {
@@ -62,7 +75,13 @@ export function normalizeOpenAI(data: unknown): RefreshedModel[] {
   for (const m of rows) {
     const id = typeof m.id === "string" ? m.id : typeof m.name === "string" ? m.name : "";
     if (!id || NON_TEXT_RE.test(id)) continue;
-    if (m.type && m.type !== "model" && m.type !== "text") continue; // e.g. vyce type:"image"
+    // r510 ROOT-CAUSE (owner: "refresh is broken as like at mistral"): Mistral
+    // now tags every text model `type:"base"` — the old allow-list
+    // (model|text|undefined) rejected ALL of them → "Upstream returned no chat
+    // models". Flip to a deny-list of known non-chat types + the capability
+    // flag when the provider publishes it.
+    if (m.type && /^(image|ocr|embed|audio|moderation|classifier|function)/i.test(m.type)) continue;
+    if (m.capabilities && m.capabilities.completion_chat === false) continue;
     const ctx =
       typeof m.context_window === "number"
         ? m.context_window
@@ -70,6 +89,24 @@ export function normalizeOpenAI(data: unknown): RefreshedModel[] {
           ? m.context_length
           : undefined;
     out.push({ id, label: prettifyLabel(id), contextLength: ctx });
+  }
+  return out;
+}
+
+/** Intern TokenPlan schema-2.4 roster: id + per-modality context window. */
+export function normalizeIntern(data: unknown): RefreshedModel[] {
+  const rows = (data as { data?: RawModelRow[] } | null)?.data ?? [];
+  const out: RefreshedModel[] = [];
+  for (const m of rows) {
+    const id = typeof m.id === "string" ? m.id : "";
+    if (!id || NON_TEXT_RE.test(id)) continue;
+    if (m.is_ready === false) continue;
+    const ctx = m.input_modalities?.[0]?.supported_inputs?.max_context_length?.value;
+    out.push({
+      id,
+      label: prettifyLabel(id),
+      contextLength: typeof ctx === "number" ? ctx : undefined,
+    });
   }
   return out;
 }
@@ -140,7 +177,12 @@ export async function browserRefreshModels(
   } catch {
     throw new Error("Provider returned non-JSON roster");
   }
-  const models = ep.shape === "cf" ? normalizeCf(data) : normalizeOpenAI(data);
+  const models =
+    ep.shape === "cf"
+      ? normalizeCf(data)
+      : ep.shape === "intern"
+        ? normalizeIntern(data)
+        : normalizeOpenAI(data);
   if (models.length === 0) throw new Error("Upstream returned no chat models");
   return models;
 }

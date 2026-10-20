@@ -414,7 +414,14 @@ function StorageTiers() {
       if (granted) {
         toast.success("Durable storage granted — the browser will not evict this site's data under pressure.");
       } else {
-        toast.info("Durable storage not granted (browser decision) — data still works, eviction rules stay default.");
+        // r510: make the DENIAL actionable instead of a shrug — Firefox only
+        // auto-grants persist() to frequently-used/installed sites, and some
+        // Chromium builds deny it for localhost-ish origins. The warm tier
+        // already absorbs the risk; this copy tells the Owner how to win it.
+        toast.info(
+          "Durable storage not granted (browser decision) — data still works, eviction rules stay default. Tip: bookmark this app and reopen it daily; browsers grant persistence to sites you keep using. All critical data also mirrors to the server archive (and Supabase below) regardless.",
+          { duration: 9_000 }
+        );
       }
     } finally {
       setBusy("none");
@@ -668,7 +675,19 @@ function StorageTiers() {
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground" aria-live="polite">
             Origin quota (all tiers combined): {fmtBytes(est.usageBytes)} used of {fmtBytes(est.quotaBytes)} the browser
-            grants this site {est.persisted === true ? "· persistent ✓" : est.persisted === false ? "· eviction allowed" : ""}
+            grants this site{" "}
+            {est.persisted === true ? (
+              "· persistent ✓"
+            ) : est.persisted === false ? (
+              <span
+                title="The browser declined durable storage (its decision, not an error). Bookmark this app and reopen it daily — browsers grant persistence to sites you keep using. Critical data still reaches the server archive and the Supabase mirror regardless."
+                className="cursor-help underline decoration-dotted underline-offset-2"
+              >
+                · eviction allowed (click Enable durable storage to re-ask)
+              </span>
+            ) : (
+              ""
+            )}
           </p>
         </div>
       )}

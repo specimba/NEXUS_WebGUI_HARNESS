@@ -811,60 +811,54 @@ export function AutomationVaultCard() {
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             Reading vault…
           </p>
-        ) : builtin || !loadFailed ? (
+        ) : builtin ? (
           <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-            {builtin ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <KeyRound className="h-3.5 w-3.5 shrink-0 text-cyan-500" aria-hidden />
-                <span className="text-xs font-semibold">
-                  {PROVIDER_LABELS[builtin.provider] ?? builtin.provider}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <KeyRound className="h-3.5 w-3.5 shrink-0 text-cyan-500" aria-hidden />
+              <span className="text-xs font-semibold">
+                {PROVIDER_LABELS[builtin.provider] ?? builtin.provider}
+              </span>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {revealed?.provider === "builtin" ? revealed.key : builtin.maskedKey}
+              </span>
+              <button
+                type="button"
+                onClick={() => void revealSlot("builtin")}
+                disabled={revealingProvider === "builtin"}
+                aria-label={
+                  revealed?.provider === "builtin"
+                    ? "Hide stored key"
+                    : "Reveal stored key (auto-hides after 8 seconds)"
+                }
+                title="Deliberate reveal: shows the stored key for 8 seconds, then re-masks itself. Uses the same localhost-only handoff the headless scheduler uses — it changes who can see the key on screen, not who can already get it."
+                className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {revealingProvider === "builtin" ? (
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                ) : revealed?.provider === "builtin" ? (
+                  <EyeOff className="h-3 w-3" aria-hidden />
+                ) : (
+                  <Eye className="h-3 w-3" aria-hidden />
+                )}
+              </button>
+              {revealed?.provider === "builtin" ? (
+                <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                  visible — auto-hides
                 </span>
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {revealed?.provider === "builtin" ? revealed.key : builtin.maskedKey}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void revealSlot("builtin")}
-                  disabled={revealingProvider === "builtin"}
-                  aria-label={
-                    revealed?.provider === "builtin"
-                      ? "Hide stored key"
-                      : "Reveal stored key (auto-hides after 8 seconds)"
-                  }
-                  title="Deliberate reveal: shows the stored key for 8 seconds, then re-masks itself. Uses the same localhost-only handoff the headless scheduler uses — it changes who can see the key on screen, not who can already get it."
-                  className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {revealingProvider === "builtin" ? (
-                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                  ) : revealed?.provider === "builtin" ? (
-                    <EyeOff className="h-3 w-3" aria-hidden />
-                  ) : (
-                    <Eye className="h-3 w-3" aria-hidden />
-                  )}
-                </button>
-                {revealed?.provider === "builtin" ? (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400">
-                    visible — auto-hides
-                  </span>
-                ) : null}
-                <span className="text-[10px] text-muted-foreground/70">
-                  {builtin.createdAt
-                    ? `stored ${fmtSlotAge(builtin.createdAt)} (the executor skips this slot)`
-                    : `updated ${new Date(builtin.updatedAt).toLocaleString()}`}
-                </span>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                No built-in slot stored — this legacy handoff is unused by the server
-                lane; closed-tab runs dial with a registry-provider key above.
-              </p>
-            )}
+              ) : null}
+              <span className="text-[10px] text-muted-foreground/70">
+                {builtin.createdAt
+                  ? `stored ${fmtSlotAge(builtin.createdAt)} (the executor skips this slot)`
+                  : `updated ${new Date(builtin.updatedAt).toLocaleString()}`}
+              </span>
+            </div>
           </div>
         ) : null}
 
+        {builtin ? (
         <div className="space-y-2">
           <Label htmlFor="vault-key" className="text-xs text-muted-foreground">
-            Key for the built-in engine lane
+            Key for the built-in engine lane (legacy slot — stored keys can be updated or removed here)
           </Label>
           <div className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
@@ -945,6 +939,15 @@ export function AutomationVaultCard() {
             built-in slot once for ~8 seconds, then re-masks.
           </p>
         </div>
+        ) : (
+          <p className="text-[11px] leading-relaxed text-muted-foreground/70">
+            <span className="font-medium">Vestigial built-in lane — nothing to do here.</span> This
+            handoff predates the registry-provider vault and is unused by the server lane;
+            closed-tab runs dial the registry-provider slots above. No key is stored, so
+            the legacy input stays out of your way (it only reappears if a legacy slot
+            ever exists to remove).
+          </p>
+        )}
       </CardContent>
     </Card>
     </div>

@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 // network). OrcaRouter added (public keyless /v1/models); Cloudflare URL fixed
 // to /ai/models/search (the old /ai/v1/models answered 405).
 
-import { KEYED_ENDPOINTS, normalizeCf, normalizeOpenAI } from "@/lib/provider-refresh";
+import { KEYED_ENDPOINTS, normalizeCf, normalizeIntern, normalizeOpenAI } from "@/lib/provider-refresh";
 
 interface CacheEntry {
   at: number;
@@ -181,7 +181,12 @@ export async function POST(req: NextRequest) {
       );
     }
     const data = JSON.parse(text) as unknown;
-    const models = ep.shape === "cf" ? normalizeCf(data) : normalizeOpenAI(data);
+    const models =
+      ep.shape === "cf"
+        ? normalizeCf(data)
+        : ep.shape === "intern"
+          ? normalizeIntern(data)
+          : normalizeOpenAI(data);
     if (models.length === 0) throw new Error("Upstream returned no chat models");
     cache.set(providerId, { at: Date.now(), models });
     return NextResponse.json({ providerId, models, fetchedAt: Date.now(), cached: false });

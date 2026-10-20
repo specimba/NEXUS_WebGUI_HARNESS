@@ -2080,7 +2080,9 @@ export async function executeWorkflowRun(
             });
             toast("System-One gate passed", {
               icon: "✓",
-              description: `${(gate.confidence * 100).toFixed(0)}% confident via ${gate.via === "jev" ? "Jev" : "fast judge"} — verification pass skipped`,
+              description: `${(gate.confidence * 100).toFixed(0)}% confident via ${
+                gate.via === "intern-systemone" ? "free Intern SystemOne" : gate.via === "jev" ? "Jev" : "fast judge"
+              } — verification pass skipped`,
             });
             prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(draft) || undefined, output: draft });
             continue;

@@ -30,6 +30,14 @@
 //  · Chunked BATCH sync (mirrorRunsToCloud) — the whole archive, not "last 25".
 //  · Workflow definitions mirror (workflow_defs) — the off-site backup now
 //    covers the automations themselves, not only their run reports.
+//
+// r510 (owner paste: "Last mirror error: unsupported Unicode escape sequence"):
+//  LLM output routinely contains LONE UTF-16 surrogates (a high \uD800-\uDBFF
+//  without its low pair or vice versa). JSON.stringify happily encodes them
+//  as \\udXXX escapes, but PostgREST/PostgreSQL rejects the whole batch with
+//  "unsupported Unicode escape sequence" — one bad character in one step
+//  output poisoned the ENTIRE sync. Fix: every payload is deep-sanitized to
+//  well-formed UTF-16 (lone surrogates → U+FFFD) before it leaves the browser.
 
 /** One-time schema setup. Idempotent (safe to re-run). Paste into
  * https://supabase.com/dashboard/project/<ref>/sql/new and press RUN. */
@@ -164,6 +172,36 @@ function clamp(s: string | undefined | null): string {
   return typeof s === "string" && s.length > MAX_FIELD ? s.slice(0, MAX_FIELD) : (s ?? "");
 }
 
+// ─── r510: lone-surrogate sanitation — the "unsupported Unicode escape" fix ──
+
+/** Well-formed UTF-16: lone surrogates become U+FFFD (replacement char).
+ * ES2024 String.prototype.toWellFormed when present; TextEncoder round-trip
+ * otherwise (the WHATWG encoder replaces lone surrogates with U+FFFD too). */
+function wellFormed(s: string): string {
+  const w = s as { toWellFormed?: () => string };
+  if (typeof w.toWellFormed === "function") return w.toWellFormed();
+  try {
+    return new TextDecoder().decode(new TextEncoder().encode(s));
+  } catch {
+    return s;
+  }
+}
+
+/** Recursively make a payload PostgREST-safe: every string value (at any
+ * depth — steps arrays, workflow `data` jsonb, notes) is well-formed, and
+ * oversized strings are clamped. Never mutates the input. */
+export function sanitizeMirrorValue(value: unknown, depth = 0): unknown {
+  if (typeof value === "string") return wellFormed(clamp(value));
+  if (value === null || typeof value !== "object") return value;
+  if (depth > 12) return null; // pathological nesting guard
+  if (Array.isArray(value)) return value.map((v) => sanitizeMirrorValue(v, depth + 1));
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    out[k] = sanitizeMirrorValue(v, depth + 1);
+  }
+  return out;
+}
+
 // ─── r508: error classification — the 404 body becomes a verdict ─────────────
 
 /** PostgREST error body → { kind, message }. The message field of the JSON is
@@ -180,6 +218,9 @@ export function classifyMirrorError(status: number, body: string): { kind: Mirro
   const lower = `${message} ${body}`.toLowerCase();
   if (lower.includes("pgrst205") || lower.includes("could not find the table")) {
     return { kind: "missing-table", message: "Mirror table missing in the project schema (PGRST205) — run the one-time setup SQL" };
+  }
+  if (lower.includes("unsupported unicode escape")) {
+    return { kind: "unknown", message: "Payload carried invalid Unicode (lone surrogate) — now sanitized automatically; sync again" };
   }
   if (status === 401 || status === 403) {
     return { kind: "auth", message: `Key rejected (HTTP ${status}) — use this project's anon/publishable or service key` };
@@ -259,7 +300,9 @@ async function postMirrorRows(
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify(rows),
+      // r510: deep-sanitize BEFORE stringify — one lone surrogate anywhere in
+      // one step output used to reject the whole batch at the Postgres gate.
+      body: JSON.stringify(rows.map((r) => sanitizeMirrorValue(r))),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
