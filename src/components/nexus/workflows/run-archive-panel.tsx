@@ -30,7 +30,8 @@ import {
   buildMarkdownPack,
   clearArchive,
   downloadText,
-  listArchive,
+  listArchiveFull,
+  restoreArchiveFromIdb,
   removeRun,
   runToMarkdown,
   RUN_ARCHIVE_EVENT,
@@ -71,7 +72,11 @@ export function RunArchivePanel() {
   // (flag key + getRun dedupe); the ref just avoids re-invoking per remount.
   const backfilledRef = React.useRef(false);
 
-  const reload = React.useCallback(() => setEntries(listArchive()), []);
+  // r507: the merged view — hot localStorage index + IndexedDB warm tier —
+  // so runs the hot tier shed under quota pressure re-appear instead of
+  // vanishing. Still instant: the hot tier renders first, the warm merge
+  // lands a tick later via the async reload.
+  const reload = React.useCallback(() => void listArchiveFull().then(setEntries), []);
 
   React.useEffect(() => {
     if (!backfilledRef.current) {
@@ -84,6 +89,11 @@ export function RunArchivePanel() {
       } catch {
         /* backfill is best-effort */
       }
+      // r507 warm-tier rescue: if the hot index was ever cleared/lost while
+      // IndexedDB still holds the history, pull the newest runs back. No-op
+      // when the hot tier already has data; the write emits the archive
+      // event, so reload() below picks it up.
+      void restoreArchiveFromIdb();
     }
     reload();
     const onUpdated = () => reload();

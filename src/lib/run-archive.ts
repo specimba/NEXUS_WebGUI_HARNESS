@@ -1,6 +1,16 @@
 "use client";
 
 import "@/lib/migration";
+import {
+  idbAvailable as idbAvailableFn,
+  idbDeleteRun,
+  idbCountRuns,
+  idbClearRuns,
+  idbGetRun,
+  idbListRuns,
+  idbPutRun,
+} from "./storage-tiers";
+import { mirrorRunToCloud } from "./cloud-mirror";
 
 // ─── r486-a: Run Archive — the local persistence + export wire ───────────────
 // The owner's ask: "the works are getting lost in the thin air due to no
@@ -17,6 +27,13 @@ import "@/lib/migration";
 // and QuotaExceeded sheds the oldest 25% instead of failing the write.
 // Dependency-free by design: no store imports, no npm deps — callers hand in
 // whatever shape they have (WorkflowRun rows, server-lane poll rows).
+//
+// r507 TIERING: the 5MB localStorage wall kept firing the "storage is full"
+// warning because this single key held up to 300 runs with FULL step outputs.
+// Every settled run is now MIRRORED to IndexedDB (src/lib/storage-tiers.ts —
+// a ~hundreds-of-MB browser tier) the moment it lands, so a hot-tier shed is
+// no longer data loss: `listArchiveFull()` merges both tiers back together.
+// The hot index stays deliberately small; the warm tier keeps everything.
 
 /** How a run was launched — provenance kept so successors can weigh context. */
 export type RunArchiveTrigger = "manual" | "schedule" | "server";
@@ -59,6 +76,9 @@ const MAX_ARCHIVE_RUNS = 300;
 /** Continuity digest budget (chars) — mirrors the r457 PRIOR_TOTAL_CAP. */
 const DIGEST_TOTAL_CAP = 4000;
 const DIGEST_STEP_CAP = 240;
+/** Warm-tier FIFO cap — IndexedDB holds hundreds of MB; 2000 runs is years
+ * of scheduled pipelines and still trivially small for the disk. */
+const MAX_IDB_RUNS = 2000;
 /** Dispatched on every mutation so open surfaces live-refresh. */
 export const RUN_ARCHIVE_EVENT = "nexus:run-archive-updated";
 /** Exported for the panel's `storage`-event key filter. */
@@ -128,7 +148,9 @@ function emitUpdated(): void {
 // ─── core API ────────────────────────────────────────────────────────────────
 
 /** Upsert one run (by id) and enforce the 300-entry FIFO cap by finishedAt.
- * NEVER throws — an archiving failure must not propagate into a run. */
+ * NEVER throws — an archiving failure must not propagate into a run.
+ * r507: every write is also mirrored to the IndexedDB warm tier (fire-and-
+ * forget; the hot write is never delayed or blocked by it). */
 export function archiveRun(entry: RunArchiveEntry): void {
   try {
     const store = readStore();
@@ -141,14 +163,49 @@ export function archiveRun(entry: RunArchiveEntry): void {
   } catch {
     /* archiving must never break or alter a run */
   }
+  mirrorRunToIdb(entry);
+  // r507 tier 3: optional BYO Supabase off-site mirror (never blocks, never
+  // throws — a cloud outage is invisible to the run).
+  void mirrorRunToCloud(entry);
 }
 
-/** All archived runs, newest-first. */
+/** Fire-and-forget warm-tier mirror. Failure is invisible by design — the
+ * hot tier and the SQLite tier carry on without it. */
+function mirrorRunToIdb(entry: RunArchiveEntry): void {
+  try {
+    void idbPutRun(entry).then(async (ok) => {
+      if (!ok) return;
+      // Keep the warm tier inside its own generous FIFO cap.
+      const all = await idbListRuns<RunArchiveEntry>();
+      if (all.length > MAX_IDB_RUNS) {
+        for (const stale of all.slice(MAX_IDB_RUNS)) void idbDeleteRun(stale.id);
+      }
+    });
+  } catch {
+    /* mirror is best-effort */
+  }
+}
+
+/** All archived runs in the HOT tier, newest-first. (Sync on purpose — the
+ * live panels read it during render. Full history incl. shed runs lives in
+ * `listArchiveFull()`.) */
 export function listArchive(): RunArchiveEntry[] {
   try {
     return readStore().runs;
   } catch {
     return [];
+  }
+}
+
+/** One run from either tier (hot first, warm as fallback). Async because the
+ * warm tier is IndexedDB. */
+export async function getRunFull(id: string): Promise<RunArchiveEntry | undefined> {
+  const hot = getRun(id);
+  if (hot) return hot;
+  try {
+    return (await idbGetRun<RunArchiveEntry>(id)) ?? undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -169,6 +226,7 @@ export function removeRun(id: string): void {
   } catch {
     /* best-effort */
   }
+  void idbDeleteRun(id);
 }
 
 export function clearArchive(): void {
@@ -177,6 +235,106 @@ export function clearArchive(): void {
   } catch {
     /* best-effort */
   }
+  void idbClearRuns();
+}
+
+// ─── r507: warm-tier reads — the full-history surface ────────────────────────
+
+/** Newest-first merge of the hot index (≤300) and the warm tier (≤2000).
+ * This is what Archive surfaces should render: runs the hot tier shed under
+ * quota pressure re-appear from IndexedDB instead of vanishing. */
+export async function listArchiveFull(): Promise<RunArchiveEntry[]> {
+  const hot = listArchive();
+  let warm: RunArchiveEntry[] = [];
+  try {
+    warm = await idbListRuns<RunArchiveEntry>();
+  } catch {
+    warm = [];
+  }
+  if (warm.length === 0) return hot;
+  const seen = new Set(hot.map((r) => r.id));
+  const merged = [...hot];
+  for (const r of warm) {
+    if (!seen.has(r.id)) {
+      seen.add(r.id);
+      merged.push(r);
+    }
+  }
+  merged.sort((a, b) => (b.finishedAt || "").localeCompare(a.finishedAt || ""));
+  return merged;
+}
+
+/** One-time hydration: the warm tier only sees runs archived after r507 —
+ * mirror the hot index into IndexedDB so the merge view is complete on day
+ * one. Flagged (HYDRATE_KEY), dedupe-safe (put is an upsert), never throws. */
+const HYDRATE_KEY = "nexus.run-archive.hydrate.v1";
+
+export async function hydrateIdbFromHot(): Promise<number> {
+  try {
+    if (typeof window === "undefined") return 0;
+    if (window.localStorage.getItem(HYDRATE_KEY) === "1") return 0;
+    const hot = readStore();
+    if (hot.runs.length === 0) return 0;
+    let n = 0;
+    for (const r of hot.runs) {
+      const ok = await idbPutRun(r);
+      if (ok) n += 1;
+    }
+    try {
+      window.localStorage.setItem(HYDRATE_KEY, "1");
+    } catch {
+      /* flag write failed → next mount re-runs; put is idempotent */
+    }
+    return n;
+  } catch {
+    return 0;
+  }
+}
+
+/** Rescue path: localStorage was cleared/lost but IndexedDB still holds the
+ * history — pull the newest `n` back into the hot index. Returns how many
+ * entries were restored (0 when the hot tier already has data). */
+export async function restoreArchiveFromIdb(n = 100): Promise<number> {
+  try {
+    const hot = readStore();
+    if (hot.runs.length > 0) return 0; // hot tier alive — nothing to rescue
+    const warm = await idbListRuns<RunArchiveEntry>();
+    if (warm.length === 0) return 0;
+    const restored = warm.slice(0, Math.max(1, n));
+    writeStore({ v: 1, runs: restored });
+    return restored.length;
+  } catch {
+    return 0;
+  }
+}
+
+export interface ArchiveTierStats {
+  hotRuns: number;
+  warmRuns: number;
+  idbAvailable: boolean;
+  /** Runs visible through the merged view (dedupe by id). */
+  totalRuns: number;
+}
+
+export async function archiveTierStats(): Promise<ArchiveTierStats> {
+  const hot = listArchive();
+  let warm = 0;
+  let idbAvailable = false;
+  try {
+    if (idbAvailableFn()) {
+      warm = await idbCountRuns();
+      idbAvailable = true;
+    }
+  } catch {
+    idbAvailable = false;
+  }
+  const warmList = idbAvailable && warm > 0 ? await idbListRuns<RunArchiveEntry>() : [];
+  const seen = new Set(hot.map((r) => r.id));
+  let total = hot.length;
+  for (const r of warmList) {
+    if (!seen.has(r.id)) total += 1;
+  }
+  return { hotRuns: hot.length, warmRuns: warm, idbAvailable, totalRuns: total };
 }
 
 // ─── status compression (shared by the runner wire and the server lane) ─────

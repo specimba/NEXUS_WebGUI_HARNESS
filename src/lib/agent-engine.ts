@@ -616,6 +616,7 @@ export async function runCustomEngine(
   ];
 
   let graceUsed = 0; // tool-calls salvaged from the FINAL pass (max 2)
+  let synthesisRetried = false; // r507: one synthesis order after a degenerate empty final
   for (let iteration = 1; iteration <= maxIterations + 3 && iteration <= 13; iteration++) {
     // Cancelled runs bail before starting another LLM iteration (r252).
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
@@ -923,6 +924,33 @@ export async function runCustomEngine(
     const isSentinel = /^_The model ended/.test(stripped);
     const isTrivialAnswer =
       !isSentinel && collected.length > 0 && /^(["'`\s]*|(null|undefined|nan))$/i.test(stripped.trim());
+    // r507 SYNTHESIS RESCUE (owner: "some steps are empty"): a degenerate
+    // final after healthy tool rounds is usually the model "forgetting" to
+    // write prose — the material is all there in `collected`. Before falling
+    // back to the raw auto-digest, grant ONE no-tools synthesis round that
+    // hands the gathered material back with an explicit write order. Only
+    // when that round ALSO comes back degenerate does the digest fallback
+    // fire (so the rescue can never end worse than before).
+    if ((isSentinel || isTrivialAnswer) && collected.length > 0 && !synthesisRetried && iteration < 13) {
+      synthesisRetried = true;
+      send({
+        type: "status",
+        message: `Material gathered but the answer came back empty — synthesizing a final deliverable from ${collected.length} tool result${collected.length === 1 ? "" : "s"}…`,
+      });
+      msgs.push({ role: "assistant", content: content || null });
+      msgs.push({
+        role: "user",
+        content: [
+          "You gathered research material with your tool calls but your final answer came back empty.",
+          "Here is what the tools actually returned:",
+          "",
+          buildMaterialsDigest(collected),
+          "",
+          "TASK: write your FINAL markdown deliverable NOW from this material — full prose/markdown, organized, with the key findings and concrete details. Plain markdown only: no tool calls, no JSON, no placeholders. If the material is thin or partially failed, say so honestly and still deliver the best answer you can from what you have.",
+        ].join("\n"),
+      });
+      continue;
+    }
     const finalContent =
       isSentinel || isTrivialAnswer
         ? `${

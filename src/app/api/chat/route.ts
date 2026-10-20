@@ -239,6 +239,7 @@ async function runAutoEngine(
   const maxIterations = clampIter(body.maxIterations);
   const collected: ToolCallInfo[] = [];
   let graceUsed = false; // r29: one final-pass leak execution
+  let synthesisRetried = false; // r507: one synthesis order after a degenerate empty final
 
   const toolBlock =
     toolDefs.length > 0
@@ -371,9 +372,35 @@ async function runAutoEngine(
     // r29: a "clean" final that is STILL a JSON tool object is not an answer —
     // demote it to the materials digest so downstream steps get real material.
     // Same for degenerate empty finals (`""` seen in production).
-    if (/^\s*\{[\s\S]*"[tT]ool"\s*:/.test(final) && collected.length > 0) {
+    const jsonLeakFinal = /^\s*\{[\s\S]*"[tT]ool"\s*:/.test(final) && collected.length > 0;
+    const emptyFinal = collected.length > 0 && /^(["'`\s]*|(null|undefined|nan))$/i.test(final.trim());
+    // r507 SYNTHESIS RESCUE (owner: "some steps are empty"): before shipping
+    // the raw auto-digest, grant ONE no-tools synthesis round that hands the
+    // gathered material back with an explicit write order. Only when that
+    // round ALSO comes back degenerate does the digest fallback fire.
+    if ((jsonLeakFinal || emptyFinal) && !synthesisRetried && iteration < maxIterations + 2) {
+      synthesisRetried = true;
+      send({
+        type: "status",
+        message: `Material gathered but the answer came back empty — synthesizing a final deliverable from ${collected.length} tool result${collected.length === 1 ? "" : "s"}…`,
+      });
+      msgs.push({ role: "assistant", content: raw });
+      msgs.push({
+        role: "user",
+        content: [
+          "You gathered research material with your tool calls but your final answer came back empty.",
+          "Here is what the tools actually returned:",
+          "",
+          buildMaterialsDigest(collected),
+          "",
+          "TASK: write your FINAL markdown deliverable NOW from this material — full prose/markdown, organized, with the key findings and concrete details. Plain text only: no JSON, no tool-call objects, no placeholders. If the material is thin or partially failed, say so honestly and still deliver the best answer you can from what you have.",
+        ].join("\n"),
+      });
+      continue;
+    }
+    if (jsonLeakFinal) {
       final = `_The model ended with another tool call after the tool budget was spent._\n\n${buildMaterialsDigest(collected)}`;
-    } else if (collected.length > 0 && /^(["'`\s]*|(null|undefined|nan))$/i.test(final.trim())) {
+    } else if (emptyFinal) {
       final = `_The model ended with an empty final answer after its tool rounds — the auto-digest below is what the tools actually gathered. Retry the step for a fuller synthesized answer._\n\n${buildMaterialsDigest(collected)}`;
     }
     await simulateStream(final, send, signal);

@@ -10,9 +10,42 @@
 // demand; nothing is estimated, cached, or invented.
 
 import * as React from "react";
-import { History, RefreshCw } from "lucide-react";
+import {
+  CloudUpload,
+  Copy,
+  Database,
+  HardDriveDownload,
+  History,
+  RefreshCw,
+  ServerCog,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import {
+  STORAGE_TIER_NOTES,
+  fmtBytes,
+  requestDurableStorage,
+  storageEstimate,
+  type StorageEstimateInfo,
+} from "@/lib/storage-tiers";
+import {
+  SUPABASE_TABLE_SQL,
+  mirrorRunToCloud,
+  readCloudMirrorConfig,
+  readCloudMirrorStatus,
+  testCloudMirror,
+  writeCloudMirrorConfig,
+  type CloudMirrorConfig,
+  type CloudMirrorStatus,
+} from "@/lib/cloud-mirror";
+import {
+  archiveTierStats,
+  hydrateIdbFromHot,
+  listArchiveFull,
+  type ArchiveTierStats,
+} from "@/lib/run-archive";
 
 const KNOWN_KEYS: Record<string, string> = {
   "nexus-workflows": "Workflows",
@@ -50,6 +83,12 @@ const KNOWN_KEYS: Record<string, string> = {
   "nexus-migrated-from-praison-v1": "Rebrand migration stamp",
   // r498: tombstone written by the legacy reclaimer (small JSON receipt).
   "nexus-legacy-reclaimed": "Legacy reclaim receipt",
+  // r507: the run archive keys were never labeled — the warm history is
+  // often the single biggest eater and it showed up as a raw identifier.
+  "nexus.run-archive.v1": "Run archive (hot tier)",
+  "nexus.run-archive.backfill.v1": "Run archive backfill stamp",
+  "nexus.cloud-mirror.v1": "Cloud mirror config (Supabase)",
+  "nexus.cloud-mirror.status.v1": "Cloud mirror status",
 };
 
 // Keys written before the NEXUS rebrand (praison-* / praisonai.*). The
@@ -249,6 +288,367 @@ function fmt(chars: number): string {
   if (chars < 1024) return `${chars}`;
   if (chars < 1024 * 1024) return `${(chars / 1024).toFixed(1)} KB`;
   return `${(chars / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+
+// ─── r507: Storage tiers — the doctor's verdict section ──────────────────────
+// Renders the four-tier architecture (hot → warm → durable → optional cloud),
+// the durable-storage request, the Supabase mirror configuration (BYO), and
+// the explicit "why not Redis" verdict the owner asked for. Live numbers come
+// from archiveTierStats() + navigator.storage; nothing is estimated.
+
+function TierRow({
+  icon,
+  title,
+  badge,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className="rounded-md border px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2 text-xs font-medium">
+          <span className="text-muted-foreground" aria-hidden>
+            {icon}
+          </span>
+          {title}
+        </span>
+        {badge}
+      </div>
+      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{children}</p>
+    </li>
+  );
+}
+
+function StorageTiers() {
+  const [tiers, setTiers] = React.useState<ArchiveTierStats | null>(null);
+  const [est, setEst] = React.useState<StorageEstimateInfo>({
+    supported: false,
+    usageBytes: 0,
+    quotaBytes: 0,
+    persisted: null,
+  });
+  const [cfg, setCfg] = React.useState<CloudMirrorConfig | null>(null);
+  const [mirrorStatus, setMirrorStatus] = React.useState<CloudMirrorStatus>({ mirroredRuns: 0 });
+  const [url, setUrl] = React.useState("");
+  const [apiKey, setApiKey] = React.useState("");
+  const [table, setTable] = React.useState("run_reports");
+  const [busy, setBusy] = React.useState<"none" | "persist" | "test" | "save" | "sync">("none");
+
+  const recheckTiers = React.useCallback(async () => {
+    try {
+      setTiers(await archiveTierStats());
+    } catch {
+      setTiers(null);
+    }
+    try {
+      setEst(await storageEstimate());
+    } catch {
+      /* estimate stays default */
+    }
+  }, []);
+
+  const loadCfg = React.useCallback(() => {
+    const c = readCloudMirrorConfig();
+    setCfg(c);
+    setMirrorStatus(readCloudMirrorStatus());
+    setUrl(c?.url ?? "");
+    setApiKey(c?.apiKey ?? "");
+    setTable(c?.table ?? "run_reports");
+  }, []);
+
+  React.useEffect(() => {
+    // One-time warm-tier hydration (pre-r507 runs never saw IndexedDB), then
+    // the tier numbers refresh with it. Both fire-and-forget.
+    void hydrateIdbFromHot().then(() => recheckTiers());
+    loadCfg();
+  }, [recheckTiers, loadCfg]);
+
+  const onPersist = React.useCallback(async () => {
+    setBusy("persist");
+    try {
+      const granted = await requestDurableStorage();
+      if (granted) {
+        toast.success("Durable storage granted — the browser will not evict this site's data under pressure.");
+      } else {
+        toast.info("Durable storage not granted (browser decision) — data still works, eviction rules stay default.");
+      }
+    } finally {
+      setBusy("none");
+      void recheckTiers();
+    }
+  }, [recheckTiers]);
+
+  const onSaveCfg = React.useCallback(
+    (enabled: boolean) => {
+      setBusy("save");
+      try {
+        if (!url.trim() || !apiKey.trim()) {
+          toast.error("Supabase URL and anon key are both required.");
+          return;
+        }
+        const next: CloudMirrorConfig = {
+          kind: "supabase",
+          url: url.trim().replace(/\/+$/, ""),
+          apiKey: apiKey.trim(),
+          table: table.trim() || "run_reports",
+          enabled,
+        };
+        writeCloudMirrorConfig(next);
+        setCfg(next);
+        toast.success(enabled ? "Cloud mirror saved and enabled." : "Cloud mirror saved (disabled).");
+      } finally {
+        setBusy("none");
+      }
+    },
+    [url, apiKey, table],
+  );
+
+  const onTest = React.useCallback(async () => {
+    setBusy("test");
+    try {
+      // Test what is in the form FIRST (unsaved edits should test too).
+      writeCloudMirrorConfig({
+        kind: "supabase",
+        url: url.trim().replace(/\/+$/, ""),
+        apiKey: apiKey.trim(),
+        table: table.trim() || "run_reports",
+        enabled: cfg?.enabled ?? false,
+      });
+      const r = await testCloudMirror();
+      if (r.ok) toast.success("Supabase reachable — table responds to reads.");
+      else toast.error(`Supabase test failed: ${r.error ?? "unknown error"}`);
+    } finally {
+      setBusy("none");
+    }
+  }, [url, apiKey, table, cfg]);
+
+  const onSyncNow = React.useCallback(async () => {
+    setBusy("sync");
+    try {
+      const active = readCloudMirrorConfig();
+      if (!active?.enabled || !active.apiKey) {
+        toast.info("The cloud mirror is off — add a URL + anon key below and switch it on first.");
+        return;
+      }
+      const all = await listArchiveFull();
+      if (all.length === 0) {
+        toast.info("Nothing to sync yet — no archived runs.");
+        return;
+      }
+      let ok = 0;
+      let lastErr = "";
+      for (const run of all.slice(0, 25)) {
+        const r = await mirrorRunToCloud(run);
+        if (r.ok) ok += 1;
+        else lastErr = r.error ?? "unknown";
+      }
+      if (ok > 0) {
+        toast.success(`Mirrored ${ok} run${ok === 1 ? "" : "s"} to Supabase${ok < Math.min(all.length, 25) ? ` (${lastErr.slice(0, 80)})` : ""}.`);
+      } else {
+        toast.error(`Mirror failed: ${lastErr.slice(0, 120)}`);
+      }
+    } finally {
+      setBusy("none");
+      loadCfg();
+    }
+  }, [loadCfg]);
+
+  const copySql = React.useCallback(() => {
+    try {
+      void navigator.clipboard.writeText(SUPABASE_TABLE_SQL);
+      toast.success("Table SQL copied — paste it into the Supabase SQL editor once.");
+    } catch {
+      toast.error("Clipboard unavailable — copy the SQL manually.");
+    }
+  }, []);
+
+  const quotaPct = est.supported && est.quotaBytes > 0 ? Math.min(100, (est.usageBytes / est.quotaBytes) * 100) : 0;
+
+  return (
+    <div className="mt-3 rounded-lg border p-3" data-testid="storage-tiers">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium">Storage tiers</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 px-2 text-xs"
+          disabled={busy !== "none" || est.persisted === true}
+          onClick={onPersist}
+          aria-label="Request persistent storage from the browser"
+        >
+          <HardDriveDownload className="h-3 w-3" aria-hidden />
+          {est.persisted === true ? "Durable storage: granted" : busy === "persist" ? "Asking…" : "Enable durable storage"}
+        </Button>
+      </div>
+
+      <ul className="mt-2 space-y-1.5">
+        <TierRow
+          icon={<Database className="h-3.5 w-3.5" />}
+          title="Tier 0 · Hot — localStorage"
+          badge={
+            tiers ? (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                {tiers.hotRuns} runs
+              </span>
+            ) : null
+          }
+        >
+          {STORAGE_TIER_NOTES.hot}
+        </TierRow>
+
+        <TierRow
+          icon={<HardDriveDownload className="h-3.5 w-3.5" />}
+          title="Tier 1 · Warm — IndexedDB"
+          badge={
+            tiers?.idbAvailable ? (
+              <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] tabular-nums text-emerald-600 dark:text-emerald-400">
+                {tiers.warmRuns} runs mirrored
+              </span>
+            ) : (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">unavailable</span>
+            )
+          }
+        >
+          {STORAGE_TIER_NOTES.warm}{" "}
+          {tiers?.idbAvailable
+            ? `Merged view: ${tiers.totalRuns} runs visible across tiers.`
+            : "IndexedDB is blocked in this browser mode — the other tiers carry the archive."}
+        </TierRow>
+
+        <TierRow
+          icon={<ServerCog className="h-3.5 w-3.5" />}
+          title="Tier 2 · Durable — SQLite on the local server"
+          badge={
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              /api/runs/archive
+            </span>
+          }
+        >
+          {STORAGE_TIER_NOTES.durable}
+        </TierRow>
+
+        <TierRow
+          icon={<CloudUpload className="h-3.5 w-3.5" />}
+          title="Tier 3 · Optional cloud — Supabase (BYO)"
+          badge={
+            cfg?.enabled ? (
+              <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                on · {mirrorStatus.mirroredRuns} mirrored
+              </span>
+            ) : (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">off</span>
+            )
+          }
+        >
+          {STORAGE_TIER_NOTES.cloud}
+          {mirrorStatus.lastError ? (
+            <span className="mt-1 block text-destructive">Last mirror error: {mirrorStatus.lastError}</span>
+          ) : mirrorStatus.lastSyncAt ? (
+            <span className="mt-1 block">Last mirror {new Date(mirrorStatus.lastSyncAt).toLocaleString()}.</span>
+          ) : null}
+        </TierRow>
+
+        <TierRow icon={<span aria-hidden>🚫</span>} title="Evaluated & declined — Redis">
+          {STORAGE_TIER_NOTES.rejected}
+        </TierRow>
+      </ul>
+
+      {est.supported && est.quotaBytes > 0 && (
+        <div className="mt-2" data-testid="storage-quota-estimate">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted" role="img" aria-label={`Origin storage: ${fmtBytes(est.usageBytes)} of ${fmtBytes(est.quotaBytes)} quota used`}>
+            <div
+              className={`h-full ${quotaPct > 90 ? "bg-rose-500/80" : quotaPct > 70 ? "bg-amber-500/80" : "bg-emerald-500/80"}`}
+              style={{ width: `${quotaPct}%` }}
+            />
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground" aria-live="polite">
+            Origin quota (all tiers combined): {fmtBytes(est.usageBytes)} used of {fmtBytes(est.quotaBytes)} the browser
+            grants this site {est.persisted === true ? "· persistent ✓" : est.persisted === false ? "· eviction allowed" : ""}
+          </p>
+        </div>
+      )}
+
+      <details className="mt-2 rounded-md border px-3 py-2" data-testid="cloud-mirror-config">
+        <summary className="cursor-pointer text-xs font-medium">Configure the Supabase mirror (optional)</summary>
+        <div className="mt-2 space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1 text-[11px] text-muted-foreground">
+              Project URL
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://xxxx.supabase.co"
+                className="h-7 text-xs"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label className="grid gap-1 text-[11px] text-muted-foreground">
+              Anon key
+              <Input
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="eyJhbGciOi…"
+                className="h-7 text-xs"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs">
+              <Switch
+                checked={cfg?.enabled ?? false}
+                onCheckedChange={(v) => onSaveCfg(v)}
+                aria-label="Enable Supabase mirror"
+              />
+              Mirror new runs
+            </label>
+            <Input
+              value={table}
+              onChange={(e) => setTable(e.target.value)}
+              className="h-7 w-40 text-xs"
+              placeholder="run_reports"
+              autoComplete="off"
+              spellCheck={false}
+              aria-label="Supabase table name"
+            />
+            <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={busy !== "none"} onClick={onTest}>
+              {busy === "test" ? "Testing…" : "Test"}
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={busy !== "none"} onClick={onSyncNow}>
+              <CloudUpload className="h-3 w-3" aria-hidden />
+              {busy === "sync" ? "Syncing…" : "Sync now (last 25)"}
+            </Button>
+          </div>
+          <div className="rounded-md bg-muted/60 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-medium text-muted-foreground">One-time table SQL</p>
+              <Button type="button" variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-[11px]" onClick={copySql}>
+                <Copy className="h-3 w-3" aria-hidden />
+                Copy
+              </Button>
+            </div>
+            <pre className="mt-1 max-h-32 overflow-auto whitespace-pre text-[10px] leading-relaxed text-muted-foreground">
+              {SUPABASE_TABLE_SQL}
+            </pre>
+          </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Keys stay in this browser (BYOK) and the browser talks to Supabase directly — nothing transits the local
+            server. Free-tier projects pause after ~1 week without activity; the mirror is backup-grade, the app never
+            depends on it being awake.
+          </p>
+        </div>
+      </details>
+    </div>
+  );
 }
 
 export function StorageUsage() {
@@ -471,6 +871,8 @@ export function StorageUsage() {
           </p>
         </>
       )}
+
+      <StorageTiers />
     </div>
   );
 }
