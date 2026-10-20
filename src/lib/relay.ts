@@ -20,6 +20,16 @@
 import { FREE_PROVIDERS, providerBaseUrl, providerById } from "./providers";
 import { loadLiveCatalog } from "./providers";
 import { enabledAdoptedLanes } from "./lane-adopt";
+// r504: provider-level circuit breaker — N consecutive hard lane-fails dock
+// the provider's lanes to the back of the chain (fresh-ok lanes keep their
+// seat). Pure localStorage module, no import cycle.
+import {
+  FRESH_OK_WINDOW_MS,
+  isProviderQuarantined,
+  providerBreakerSnapshot,
+  recordProviderOutcome,
+  type ProviderBreakerMap,
+} from "./provider-breaker";
 import type { Settings } from "./types";
 
 export interface RelayHop {
@@ -65,9 +75,16 @@ const ARENA_CATALOG: Record<
       // r28: verified REAL (Vyce /v1/models owned_by:alibaba ctx:1000000 +
       // HF Qwen/Qwen3.8-Flash-Next + OpenRouter qwen/qwen3.8-flash) — $0.10/$0.40.
       { id: "qwen3.8-flash", tier: 1, elo: 0.965, note: "Alibaba Qwen 3.8 · 1M ctx · $0.10/$0.40" },
-      { id: "deepseek-v4-flash-lr", tier: 2, elo: 0.918, note: "Long-range" },
+      // r504: absorbed from the owner's live Vyce status-page roster — a
+      // degraded fleet still lists healthy lanes worth rotating onto, and the
+      // status page IS ground truth (uptime 58.3%, family 503s witnessed).
+      { id: "claude-sonnet-4-6-pro", tier: 1, elo: 0.975, note: "Sonnet 4.6 Pro · $3/$15 · status-page roster" },
+      { id: "gpt-5.6-terra", tier: 1, elo: 0.96, note: "GPT 5.6 Terra · $2.5/$15 · status-page roster" },
+      { id: "deepseek-v4-flash-lr", tier: 2, elo: 0.918, note: "Long-range · stayed online at 380ms during the family outage" },
+      { id: "glm-5.3-flash", tier: 2, elo: 0.92, note: "FREE · Z.ai flash via Vyce · $0 · ~10s TTFT" },
+      { id: "deepseek-v4-pro", tier: 2, elo: 0.92, note: "V4 Pro · $0.50/$2 · status-page roster" },
       { id: "deepseek-v4-flash", tier: 2, elo: 0.915, note: "Ultra-fast" },
-      { id: "agnes-3.0-flash", tier: 2, elo: 0.91, note: "Agentic · 512K ctx" },
+      { id: "agnes-3.0-flash", tier: 2, elo: 0.91, note: "Agentic · 512K ctx · $0.05/$0.15" },
     ],
   },
   aihubmix: {
@@ -297,12 +314,21 @@ export function recordRelayHopResult(
     e.lastError = undefined;
     e.soft = false;
     e.dead = false; // r187: a success proves the hop lives — rejoin the chain
+    // r504: one answer heals the provider breaker too (streak/trips/quarantine
+    // all reset — the next dial is a clean slate for the whole family).
+    const pidHeal = key.slice(0, key.indexOf("::"));
+    if (pidHeal) recordProviderOutcome(pidHeal, true, false);
   } else {
     e.fail += 1;
     e.lastFailAt = Date.now();
     e.soft = verdict === "soft" || (!verdict && isSoftRelayFailure(error));
     e.dead = verdict === "dead" || verdict === "auth" || (!verdict && isDeadlyRelayFailure(error));
     if (error) e.lastError = error.slice(0, 160);
+    // r504: feed the PROVIDER circuit breaker — hard/dead lane failures build
+    // a per-provider streak; 3 in a row dock the whole family to the back of
+    // the chain (soft capacity noise never counts — e.soft short-circuits).
+    const pidBreaker = key.slice(0, key.indexOf("::"));
+    if (pidBreaker) recordProviderOutcome(pidBreaker, false, !e.soft, error);
     // OrcaRouter gates are WORKSPACE-wide (all keys share one bucket —
     // docs.orcarouter.ai/operations/rate-limits): one lane's 429 means every
     // orca lane is throttled, and r310 adds the 402 credit drain — one lane's
@@ -477,6 +503,63 @@ function recentlyFailed(entry: RelayHealthEntry | undefined): boolean {
   return Date.now() - entry.lastFailAt < windowMs;
 }
 
+// ─── r504: smart failover policy — free frontiers + provider breaker ─────────
+// Owner directive (Vyce fleet degraded, 58.3% uptime): "we have to be prepared
+// for these problems and auto-rotate them to the best available alternative
+// FREE frontiers for continuation smartly." Two mechanisms answer it:
+//
+//  • PROVIDER BREAKER DOCK — a provider whose lanes hard-fail 3× in a row is
+//    quarantined (10m → 20m → 40m → 60m escalation) and its lanes sink to the
+//    back of the chain, so a degraded fleet stops burning 60s+ ladder rungs.
+//    EXCEPTION: a lane that ANSWERED inside the fresh-ok window keeps its
+//    seat — partial outages must not sink the family's healthy members
+//    (live evidence: deepseek-v4-flash-lr stayed online at 380ms while its
+//    siblings died).
+//  • FAILOVER POLICY — "smart" (default) keeps Generation-Era tiers but prefers
+//    FREE lanes within a tier; "free" prefers free lanes across tiers; "quality"
+//    is the classic tier→Elo order. Smart protects the wallet during an outage
+//    without sacrificing tier quality when a paid lane is genuinely better.
+
+/** r504 failover ordering policies. */
+export type RelayFailoverPolicy = "smart" | "quality" | "free";
+
+/** A hop is a FREE frontier lane when its note says so (adopted lanes carry
+ * "free"/"paid" verbatim; doctrine notes carry "$0"/"free"; no-key lanes are
+ * free by construction). "\$0" must not match "\$0.10" — negative lookahead. */
+export function hopIsFree(hop: RelayHop): boolean {
+  if (hop.providerId === "auto") return true;
+  return /\bfree\b|\$0(?![.\d])|no-key/i.test(hop.note ?? "");
+}
+
+/** r504: breaker-docked = the provider is quarantined AND this lane has not
+ * proven itself fresh. Snapshot passed in — callers building/sorting chains
+ * read the breaker map ONCE (same doctrine as the health snapshot). */
+function breakerDocked(
+  hop: RelayHop,
+  breaker: ProviderBreakerMap,
+  health: RelayHealth
+): boolean {
+  if (!isProviderQuarantined(hop.providerId, breaker)) return false;
+  const e = health[hop.key];
+  if (e?.lastOkAt && Date.now() - e.lastOkAt < FRESH_OK_WINDOW_MS) return false;
+  return true;
+}
+
+/** r504: read-only verdict for UI boards — same window math as the chain sort
+ * (one truth: boards must agree with what the rotator actually does). */
+export function laneRecentlyFailed(entry: RelayHealthEntry | undefined): boolean {
+  return recentlyFailed(entry);
+}
+
+/** r504: read-only breaker-dock verdict for UI rows (hop chip + fleet board). */
+export function hopBreakerDocked(
+  hop: RelayHop,
+  breaker: ProviderBreakerMap,
+  health: Record<string, RelayHealthEntry>
+): boolean {
+  return breakerDocked(hop, breaker, health);
+}
+
 // ─── Task fit heuristics ──────────────────────────────────────────────────────
 
 const FAST_RE = /flash|mini|lite|fast|turbo|lightning|instant|small|20b|8b|bonsai|compound/i;
@@ -629,14 +712,35 @@ export function buildRelayChain(
     });
   }
 
-  // Generation-Era doctrine: health first (don't queue recently-dead hops),
-  // then tier, then Elo, then task fit, stable within equal rank.
+  // Generation-Era doctrine, r504 hardened: breaker-docked providers sink
+  // FIRST (a quarantined fleet must not burn ladder rungs even when its tier
+  // is flagship), then recently-failed hops, then the failover policy's free-
+  // frontier preference, then tier → Elo → task fit, stable within equal rank.
   const health = loadHealth();
+  const breaker = providerBreakerSnapshot();
+  const policy: RelayFailoverPolicy = settings.relayFailoverPolicy ?? "smart";
+  const freeRank = (h: RelayHop) => (hopIsFree(h) ? 0 : 1);
   hops.sort((a, b) => {
+    const dp =
+      (breakerDocked(a, breaker, health) ? 1 : 0) -
+      (breakerDocked(b, breaker, health) ? 1 : 0);
+    if (dp) return dp;
     const hp = recentlyFailed(health[a.key]) ? 1 : 0;
     const hb = recentlyFailed(health[b.key]) ? 1 : 0;
     if (hp !== hb) return hp - hb;
+    // "free": free frontiers across tiers — during a paid-fleet outage the
+    // continuation rides free capacity before it spends a cent.
+    if (policy === "free") {
+      const fp = freeRank(a) - freeRank(b);
+      if (fp) return fp;
+    }
     if (a.tier !== b.tier) return a.tier - b.tier;
+    // "smart" (default): free-first WITHIN a tier — quality tiers preserved,
+    // wallet protected (a free lane beats a paid sibling of the same era).
+    if (policy === "smart") {
+      const fp = freeRank(a) - freeRank(b);
+      if (fp) return fp;
+    }
     if (b.elo !== a.elo) return b.elo - a.elo;
     const tb = taskBoost(b, fit);
     const ta = taskBoost(a, fit);
@@ -647,7 +751,8 @@ export function buildRelayChain(
   // Apply the user's saved ordering (if any): listed keys keep their index,
   // unlisted keys follow in default order — but demoted hops ALWAYS sink to
   // the back of the saved order (r25: the old override silently disabled
-  // health-demotion for anyone who had ever dragged a row).
+  // health-demotion for anyone who had ever dragged a row); r504 adds the
+  // breaker dock to that same invariant (health outranks human drag).
   const order = settings.relayOrder ?? [];
   if (order.length > 0) {
     const idx = (k: string) => {
@@ -655,9 +760,13 @@ export function buildRelayChain(
       return i === -1 ? order.length + hops.findIndex((h) => h.key === k) : i;
     };
     hops.sort((a, b) => {
-      const da = recentlyFailed(health[a.key]) ? 1 : 0;
-      const db = recentlyFailed(health[b.key]) ? 1 : 0;
-      if (da !== db) return da - db;
+      const da =
+        (breakerDocked(a, breaker, health) ? 1 : 0) -
+        (breakerDocked(b, breaker, health) ? 1 : 0);
+      if (da) return da;
+      const fa = recentlyFailed(health[a.key]) ? 1 : 0;
+      const fb = recentlyFailed(health[b.key]) ? 1 : 0;
+      if (fa !== fb) return fa - fb;
       return idx(a.key) - idx(b.key);
     });
   }
@@ -698,7 +807,12 @@ export function buildRelayWire(
     primary?.providerId && primary.providerId !== "auto" ? primary.providerId : undefined;
   if (affinityId) {
     const health = loadHealth();
-    const sick = (h: RelayHop) => recentlyFailed(health[h.key]);
+    // r504: a quarantined pinned provider's lanes sink within their own
+    // bucket too — the user's pin decides the provider dials FIRST among the
+    // chain, not that corpse lanes dial before healthy foreign ones.
+    const breaker = providerBreakerSnapshot();
+    const sick = (h: RelayHop) =>
+      recentlyFailed(health[h.key]) || breakerDocked(h, breaker, health);
     const buckets: RelayHop[][] = [[], [], [], []];
     for (const h of chain) {
       buckets[(sick(h) ? 2 : 0) + (h.providerId === affinityId ? 0 : 1)].push(h);

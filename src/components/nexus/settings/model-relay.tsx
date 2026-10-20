@@ -7,6 +7,7 @@
 
 import * as React from "react";
 import {
+  Activity,
   ArrowDown,
   ArrowUp,
   CircleCheck,
@@ -34,12 +35,26 @@ import { Input } from "@/components/ui/input";
 import { resolveLlm } from "@/lib/llm-config";
 import {
   buildRelayChain,
+  hopBreakerDocked,
+  hopIsFree,
+  laneRecentlyFailed,
   relayHealthSnapshot,
   resetRelayHealth,
   TIER_LABEL,
+  type RelayFailoverPolicy,
   type RelayHealthEntry,
   type RelayHop,
 } from "@/lib/relay";
+// r504: provider circuit breaker board — the fleet-level view of the same
+// health truth (streaks, quarantine countdowns, degradation banner).
+import {
+  BREAKER_STREAK_THRESHOLD,
+  fmtQuarantineLeft,
+  providerBreakerSnapshot,
+  quarantineLeftMs,
+  resetProviderBreakers,
+  type ProviderBreakerMap,
+} from "@/lib/provider-breaker";
 import { useSettingsStore } from "@/lib/stores";
 // r503: Radar → Relay adoption pipeline — this card renders and manages the
 // adopted-lane registry (localStorage `nexus-relay-adopted`, written by the
@@ -62,16 +77,95 @@ const TIER_STYLE: Record<1 | 2 | 3, string> = {
   3: "border-amber-500/40 bg-amber-500/10 text-amber-300",
 };
 
+// ── r504: failover policy copy (owner directive: "auto-rotate them to the
+// best available alternative free frontiers for continuation smartly") ──
+const POLICY_COPY: Record<RelayFailoverPolicy, { label: string; desc: string }> = {
+  smart: {
+    label: "Smart",
+    desc: "Keeps quality tiers, but a FREE lane outranks paid siblings of its era — outages ride free frontiers before spending a cent.",
+  },
+  quality: {
+    label: "Quality",
+    desc: "Classic doctrine: Generation-Era tier first, then arena Elo. Free/paid is not a factor.",
+  },
+  free: {
+    label: "Free first",
+    desc: "All free lanes dial before any paid lane (tiers still order within). Maximum cost protection during a degraded fleet.",
+  },
+};
+
+/** One aggregated provider row for the fleet board. */
+interface FleetRow {
+  providerId: string;
+  okLanes: number;
+  sickLanes: number;
+  throttledLanes: number;
+  answered: number;
+  quarantined: boolean;
+  leftMs: number;
+  streak: number;
+  lastError?: string;
+}
+
+function buildFleetRows(
+  health: Record<string, RelayHealthEntry>,
+  breaker: ProviderBreakerMap
+): FleetRow[] {
+  const byProvider = new Map<string, RelayHealthEntry[]>();
+  for (const [key, entry] of Object.entries(health)) {
+    const pid = key.slice(0, key.indexOf("::"));
+    if (!pid) continue;
+    const lanes = byProvider.get(pid) ?? [];
+    lanes.push(entry);
+    byProvider.set(pid, lanes);
+  }
+  const rows: FleetRow[] = [];
+  for (const [providerId, lanes] of byProvider) {
+    const b = breaker[providerId];
+    rows.push({
+      providerId,
+      okLanes: lanes.filter((e) => !laneRecentlyFailed(e) && e.ok > 0).length,
+      sickLanes: lanes.filter((e) => laneRecentlyFailed(e) && !e.soft).length,
+      throttledLanes: lanes.filter((e) => laneRecentlyFailed(e) && e.soft).length,
+      answered: lanes.reduce((n, e) => n + e.ok, 0),
+      quarantined: quarantineLeftMs(providerId, breaker) > 0,
+      leftMs: quarantineLeftMs(providerId, breaker),
+      streak: b?.streak ?? 0,
+      lastError:
+        lanes.find((e) => laneRecentlyFailed(e) && e.lastError)?.lastError ??
+        b?.lastError,
+    });
+  }
+  // Degradation first (quarantined → sick count → name) so the eye lands on
+  // the burning fleet without hunting.
+  rows.sort(
+    (a, b) =>
+      (b.quarantined ? 1 : 0) - (a.quarantined ? 1 : 0) ||
+      b.sickLanes - a.sickLanes ||
+      a.providerId.localeCompare(b.providerId)
+  );
+  return rows;
+}
+
 export function ModelRelayCard() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
   const enabled = settings.relayEnabled !== false;
 
-  // The rotator's health memory refreshes live (runs record hop outcomes).
+  // The rotator's health memory refreshes live (runs record hop outcomes) —
+  // and the r504 provider breaker rides the SAME cadence (one tick, both
+  // snapshots fresh; the breaker memory is written by the same hop outcomes).
   const [health, setHealth] = React.useState<Record<string, RelayHealthEntry>>(() => relayHealthSnapshot());
+  const [breaker, setBreaker] = React.useState<ProviderBreakerMap>(() => providerBreakerSnapshot());
   React.useEffect(() => {
-    const t = window.setInterval(() => setHealth(relayHealthSnapshot()), 15_000);
-    const onVis = () => setHealth(relayHealthSnapshot());
+    const t = window.setInterval(() => {
+      setHealth(relayHealthSnapshot());
+      setBreaker(providerBreakerSnapshot());
+    }, 15_000);
+    const onVis = () => {
+      setHealth(relayHealthSnapshot());
+      setBreaker(providerBreakerSnapshot());
+    };
     document.addEventListener("visibilitychange", onVis);
     return () => {
       window.clearInterval(t);
@@ -96,6 +190,12 @@ export function ModelRelayCard() {
   }, []);
 
   const primary = resolveLlm(settings);
+  const policy: RelayFailoverPolicy = settings.relayFailoverPolicy ?? "smart";
+  // r504: fleet board rows + per-hop dock verdicts — both read the SAME two
+  // snapshots the sort uses (one truth, no parallel verdict math here).
+  const fleet = React.useMemo(() => buildFleetRows(health, breaker), [health, breaker]);
+  const quarantinedCount = fleet.filter((r) => r.quarantined).length;
+  const degraded = quarantinedCount > 0 || fleet.some((r) => r.sickLanes >= 2);
   // Mirror buildRelayWire's exclusion: the primary is already shown in its own
   // row — don't list it twice. The auto hop is likewise excluded when the
   // built-in engine IS the primary.
@@ -178,6 +278,49 @@ export function ModelRelayCard() {
         />
       </div>
       <CardContent className="space-y-3">
+        {/* ── r504: failover policy — how the chain orders itself when it must
+            rotate. Amber row, matching the established row pattern (sky =
+            server relay, emerald = radar pipeline, amber = outage doctrine). */}
+        <div
+          className="rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-3"
+          data-testid="failover-policy"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
+              <CircleAlert className="h-3.5 w-3.5 text-amber-400" aria-hidden />
+              Failover policy
+            </p>
+            <div
+              role="group"
+              aria-label="Failover policy"
+              className="flex flex-wrap gap-1"
+            >
+              {(["smart", "quality", "free"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  aria-pressed={policy === p}
+                  aria-label={`${POLICY_COPY[p].label} failover policy`}
+                  onClick={() => update({ relayFailoverPolicy: p })}
+                  className={cn(
+                    "h-7 rounded-md border px-2.5 text-[11px] font-medium transition-colors",
+                    policy === p
+                      ? "border-amber-500/50 bg-amber-500/15 text-amber-300"
+                      : "border-border/70 bg-background/40 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {POLICY_COPY[p].label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            {POLICY_COPY[policy].desc} Three consecutive hard lane-fails trip a
+            provider circuit breaker: its lanes dial last until the quarantine
+            lapses, then one dial re-probes them.
+          </p>
+        </div>
+
         {/* Primary — always first, not reorderable */}
         <div className="flex items-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/5 px-2.5 py-2">
           <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-violet-400" aria-hidden />
@@ -216,6 +359,7 @@ export function ModelRelayCard() {
                 orderCount={reorderable.length}
                 enabled={enabled}
                 health={health[hop.key]}
+                docked={hopBreakerDocked(hop, breaker, health)}
                 onMove={(d) => move(orderIndex, d)}
               />
             );
@@ -242,8 +386,10 @@ export function ModelRelayCard() {
             disabled={Object.keys(health).length === 0}
             onClick={() => {
               resetRelayHealth();
+              resetProviderBreakers();
               setHealth({});
-              toast.success("Relay health memory cleared");
+              setBreaker({});
+              toast.success("Relay health & breaker memory cleared");
             }}
           >
             <RotateCcw className="h-3 w-3" aria-hidden />
@@ -254,6 +400,70 @@ export function ModelRelayCard() {
             Hops without a saved key are skipped automatically.
           </p>
         </div>
+
+        {/* ── r504: Fleet health — the owner pasted Vyce's own status page
+            (degraded, 58.3% uptime, a whole model family offline); this board
+            is the platform's mirror of that truth, per provider: lane verdicts,
+            breaker countdowns, and the “one more fail trips it” anticipation. */}
+        <section
+          className={cn(
+            "rounded-lg border p-3",
+            degraded
+              ? "border-amber-500/30 bg-amber-500/[0.05]"
+              : "border-border/80 bg-muted/20"
+          )}
+          aria-label="Provider fleet health"
+          data-testid="fleet-health"
+        >
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Activity
+              className={cn("h-3.5 w-3.5", degraded ? "text-amber-400" : "text-emerald-400")}
+              aria-hidden
+            />
+            <p className="text-xs font-semibold">Fleet health</p>
+            <span
+              className={cn(
+                "inline-block h-1.5 w-1.5 rounded-full",
+                degraded ? "animate-pulse bg-amber-400" : "bg-emerald-400"
+              )}
+              aria-hidden
+            />
+            <Badge variant="outline" className="text-[10px] font-normal">
+              {fleet.length === 0
+                ? "no dial history"
+                : `${fleet.length} provider${fleet.length === 1 ? "" : "s"} · live verdicts`}
+            </Badge>
+          </div>
+
+          {quarantinedCount > 0 && (
+            <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-300">
+              Circuit breaker open — {quarantinedCount} provider
+              {quarantinedCount === 1 ? "" : "s"} quarantined. Their lanes dial
+              last until the timer lapses, then the next dial re-probes them.
+              Lanes that answered in the last 15m keep their seat.
+            </p>
+          )}
+
+          {fleet.length === 0 ? (
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              No failures or answers recorded yet — rows appear here as the
+              rotator learns which lanes and fleets live.
+            </p>
+          ) : (
+            <div className="mt-2 max-h-44 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-amber-500/30">
+              <ul className="divide-y rounded-md border border-border/70 bg-background/40">
+                {fleet.map((row) => (
+                  <FleetHealthRow key={row.providerId} row={row} />
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">
+            Breaker arms at {BREAKER_STREAK_THRESHOLD} consecutive hard fails
+            (429/capacity noise never counts) — quarantine 10m → 20m → 40m → 60m
+            per repeat trip; any answer heals it instantly.
+          </p>
+        </section>
 
         {/* ── r503: Radar → Relay adoption pipeline ────────────────────────
             Placed after the chain list: it explains WHERE the fresh hops
@@ -365,6 +575,7 @@ function HopRow({
   orderCount,
   enabled,
   health,
+  docked,
   onMove,
 }: {
   hop: RelayHop;
@@ -375,17 +586,21 @@ function HopRow({
   orderCount: number;
   enabled: boolean;
   health?: RelayHealthEntry;
+  /** r504: the provider's circuit breaker is open and this lane is docked. */
+  docked: boolean;
   onMove: (dir: -1 | 1) => void;
 }) {
   const isAuto = hop.providerId === "auto";
   const cooling = !!health?.lastFailAt && Date.now() - health.lastFailAt < 5 * 60_000;
+  const free = hopIsFree(hop);
   return (
     <div
       role="listitem"
       className={cn(
         "flex items-center gap-2 rounded-lg border px-2.5 py-2",
         isAuto ? "border-dashed border-border/70" : "border-border",
-        cooling && "border-amber-500/40 bg-amber-500/5"
+        (cooling || docked) && "border-amber-500/40 bg-amber-500/5",
+        docked && "opacity-80"
       )}
     >
       <span className="w-5 shrink-0 text-center font-mono text-[10px] text-muted-foreground">
@@ -403,7 +618,25 @@ function HopRow({
           <Badge variant="outline" className="font-mono text-[10px] font-normal">
             Elo {hop.elo.toFixed(2)}
           </Badge>
-          {cooling ? (
+          {free && !isAuto && (
+            <Badge
+              variant="outline"
+              className="border-emerald-500/40 bg-emerald-500/10 text-[10px] font-normal text-emerald-400"
+              title="Free frontier lane — the failover policy may prefer it"
+            >
+              free
+            </Badge>
+          )}
+          {docked ? (
+            <Badge
+              variant="outline"
+              className="border-amber-500/40 bg-amber-500/10 text-[10px] font-normal text-amber-300"
+              title="Provider circuit breaker open — this lane dials last until the quarantine lapses"
+            >
+              <CircleAlert className="mr-0.5 h-2.5 w-2.5" aria-hidden />
+              breaker dock
+            </Badge>
+          ) : cooling ? (
             <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-[10px] font-normal text-amber-300">
               <CircleAlert className="mr-0.5 h-2.5 w-2.5" aria-hidden />
               demoted — failed recently
@@ -446,6 +679,68 @@ function HopRow({
         </div>
       )}
     </div>
+  );
+}
+
+// ─── r504: one fleet-health row (aggregated provider verdict) ────────────
+function FleetHealthRow({ row }: { row: FleetRow }) {
+  const meta = providerMeta(row.providerId);
+  const nearTrip = !row.quarantined && row.streak >= BREAKER_STREAK_THRESHOLD - 1;
+  return (
+    <li className="flex items-center gap-2 px-2.5 py-1.5">
+      <span aria-hidden className="w-5 shrink-0 text-center text-sm" title={meta.label}>
+        {meta.glyph}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="truncate text-xs font-medium">{meta.label}</span>
+          {row.quarantined ? (
+            <Badge
+              variant="outline"
+              className="border-amber-500/50 bg-amber-500/15 text-[10px] font-semibold text-amber-300"
+              title="Circuit breaker open — lanes dial last until the quarantine lapses"
+            >
+              <CircleAlert className="mr-0.5 h-2.5 w-2.5" aria-hidden />
+              breaker {fmtQuarantineLeft(row.leftMs)}
+            </Badge>
+          ) : nearTrip ? (
+            <Badge
+              variant="outline"
+              className="border-amber-500/40 bg-amber-500/10 text-[10px] font-normal text-amber-300"
+              title={`${row.streak} consecutive hard fails — one more trips the breaker`}
+            >
+              1 fail → breaker
+            </Badge>
+          ) : null}
+          {row.sickLanes > 0 && (
+            <Badge
+              variant="outline"
+              className="border-amber-500/40 bg-amber-500/10 text-[10px] font-normal text-amber-300"
+            >
+              {row.sickLanes} sick
+            </Badge>
+          )}
+          {row.throttledLanes > 0 && (
+            <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">
+              {row.throttledLanes} throttled
+            </Badge>
+          )}
+          {row.okLanes > 0 && (
+            <Badge
+              variant="outline"
+              className="border-emerald-500/40 bg-emerald-500/10 text-[10px] font-normal text-emerald-400"
+            >
+              {row.okLanes} ok · {row.answered}×
+            </Badge>
+          )}
+        </div>
+        {row.lastError && (
+          <p className="truncate text-[10px] text-muted-foreground" title={row.lastError}>
+            {row.lastError}
+          </p>
+        )}
+      </div>
+    </li>
   );
 }
 

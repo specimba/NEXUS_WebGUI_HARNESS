@@ -504,6 +504,17 @@ export interface Settings {
   /** Saved hop ordering (keys "providerId::model"); missing = recommended Generation-Era order. */
   relayOrder?: string[];
   /**
+   * r504: failover ordering policy for the relay chain.
+   *  - "smart" (default): Generation-Era tiers preserved, FREE lanes preferred
+   *    within a tier — wallet-protected continuation during a provider outage.
+   *  - "quality": classic tier → Elo order (free/paid not a factor).
+   *  - "free": free frontiers across tiers — maximal cost protection.
+   * The provider circuit breaker (nexus-relay-provider-breaker) sits ABOVE the
+   * policy in every mode: 3 consecutive hard lane-fails dock a provider's
+   * lanes until the quarantine lapses or a lane answers.
+   */
+  relayFailoverPolicy?: "smart" | "quality" | "free";
+  /**
    * r503: radar→relay adoption pipeline — brand-new FREE lanes the tracker
    * sees (first seen) auto-join the relay chain with their provider tags.
    * Default ON (that is the point); false = manual Adopt actions only.
