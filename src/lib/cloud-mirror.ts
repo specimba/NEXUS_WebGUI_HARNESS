@@ -1,9 +1,9 @@
 "use client";
 
-// ─── r507: Cloud mirror — OPTIONAL Supabase (BYO) off-site tier ──────────────
+// ─── r507→r508: Cloud mirror — OPTIONAL Supabase (BYO) off-site tier ─────────
 // Owner ask (r507): "should we move on with Supabase, like the simple free
 // SQL storage service thing, to secure things much more properly, and Redis
-// in between them?" The researched verdict (deep-searched this round):
+// in between them?" The researched verdict (deep-searched that round):
 //
 //  · Supabase free tier = real Postgres, 500MB, BUT projects auto-pause
 //    after ~1 week of inactivity and enter read-only freeze — so it is
@@ -13,13 +13,28 @@
 //    one more credential to lose. REJECTED for this app; the Doctor card
 //    renders that verdict so the decision stays visible.
 //
-// Doctrine fit (BYOK): the Supabase URL + anon key live in THIS browser
+// Doctrine fit (BYOK): the Supabase URL + key live in THIS browser
 // (localStorage, nexus.cloud-mirror.v1) and the browser talks PostgREST
 // directly — nothing transits our server. Mirror is upsert-on-id, best
 // effort, and never blocks archiving.
 //
-// Table SQL (pasted into the Supabase SQL editor once):
-export const SUPABASE_TABLE_SQL = `create table if not exists run_reports (
+// r508 (owner's live project came back PGRST205 — the one-time SQL was
+// never run and the failure only surfaced as a raw 404 toast):
+//  · SCHEMA SQL v2 — BOTH mirror tables (run_reports + workflow_defs),
+//    RLS + explicit anon policies (publishable-key safe), indexes, and a
+//    `notify pgrst, 'reload schema'` so the just-created tables are visible
+//    to PostgREST instantly (the classic post-DDL PGRST205 gotcha).
+//  · Structured error classification (missing-table / auth / too-large /
+//    network / unknown) so the Doctor card can render an actionable
+//    one-time-setup panel instead of a cryptic 404 body.
+//  · Chunked BATCH sync (mirrorRunsToCloud) — the whole archive, not "last 25".
+//  · Workflow definitions mirror (workflow_defs) — the off-site backup now
+//    covers the automations themselves, not only their run reports.
+
+/** One-time schema setup. Idempotent (safe to re-run). Paste into
+ * https://supabase.com/dashboard/project/<ref>/sql/new and press RUN. */
+export const SUPABASE_SCHEMA_SQL = `-- NEXUS cloud mirror · one-time setup (safe to re-run)
+create table if not exists run_reports (
   id text primary key,
   workflow_id text not null,
   workflow_name text not null,
@@ -32,7 +47,37 @@ export const SUPABASE_TABLE_SQL = `create table if not exists run_reports (
   steps jsonb default '[]'::jsonb,
   notes text,
   mirrored_at timestamptz default now()
-);`;
+);
+create index if not exists run_reports_started_idx on run_reports (started_at desc);
+
+create table if not exists workflow_defs (
+  id text primary key,
+  name text not null,
+  updated_at timestamptz,
+  data jsonb not null,
+  mirrored_at timestamptz default now()
+);
+
+-- The mirror dials with the project's anon/publishable key (BYOK: the key
+-- already lives in the owner's browser), so grant it explicit access to
+-- these two mirror tables ONLY. service_role always bypasses RLS.
+alter table run_reports enable row level security;
+alter table workflow_defs enable row level security;
+
+drop policy if exists "mirror_full_run_reports" on run_reports;
+create policy "mirror_full_run_reports" on run_reports
+  for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "mirror_full_workflow_defs" on workflow_defs;
+create policy "mirror_full_workflow_defs" on workflow_defs
+  for all to anon, authenticated using (true) with check (true);
+
+-- Make the fresh tables visible to PostgREST immediately (avoids the
+-- lingering PGRST205 "not in the schema cache" after DDL).
+notify pgrst, 'reload schema';`;
+
+/** @deprecated r507 name — kept so any stale import keeps working. */
+export const SUPABASE_TABLE_SQL = SUPABASE_SCHEMA_SQL;
 
 export type CloudMirrorKind = "supabase";
 
@@ -40,23 +85,28 @@ export interface CloudMirrorConfig {
   kind: CloudMirrorKind;
   /** Project REST base, e.g. https://xyzcompany.supabase.co */
   url: string;
-  /** anon (public) key — safe for RLS-enabled tables; owner chooses. */
+  /** anon (publishable) key — RLS policies scope it to the mirror tables. */
   apiKey: string;
-  /** target table, default run_reports */
+  /** target runs table, default run_reports */
   table: string;
   /** Mirror writes only when true — the card's switch, default off. */
   enabled: boolean;
 }
 
+export type MirrorErrorKind = "missing-table" | "auth" | "too-large" | "network" | "unknown";
+
 export interface CloudMirrorStatus {
   lastSyncAt?: string;
   lastError?: string;
+  lastErrorKind?: MirrorErrorKind;
   mirroredRuns: number;
+  mirroredWorkflows?: number;
 }
 
 const CFG_KEY = "nexus.cloud-mirror.v1";
 const STATUS_KEY = "nexus.cloud-mirror.status.v1";
 const MAX_FIELD = 1_000_000;
+const CHUNK = 10;
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -114,6 +164,57 @@ function clamp(s: string | undefined | null): string {
   return typeof s === "string" && s.length > MAX_FIELD ? s.slice(0, MAX_FIELD) : (s ?? "");
 }
 
+// ─── r508: error classification — the 404 body becomes a verdict ─────────────
+
+/** PostgREST error body → { kind, message }. The message field of the JSON is
+ * preferred; PGRST205 / "Could not find the table" maps to missing-table. */
+export function classifyMirrorError(status: number, body: string): { kind: MirrorErrorKind; message: string } {
+  let message = body || "";
+  try {
+    const j = JSON.parse(body) as { message?: unknown; error?: unknown; hint?: unknown };
+    if (typeof j.message === "string" && j.message) message = j.hint ? `${j.message} (hint: ${String(j.hint)})` : j.message;
+    else if (j.error) message = typeof j.error === "string" ? j.error : JSON.stringify(j.error);
+  } catch {
+    /* raw text is fine */
+  }
+  const lower = `${message} ${body}`.toLowerCase();
+  if (lower.includes("pgrst205") || lower.includes("could not find the table")) {
+    return { kind: "missing-table", message: "Mirror table missing in the project schema (PGRST205) — run the one-time setup SQL" };
+  }
+  if (status === 401 || status === 403) {
+    return { kind: "auth", message: `Key rejected (HTTP ${status}) — use this project's anon/publishable or service key` };
+  }
+  if (status === 413) return { kind: "too-large", message: "Batch too large — it will be retried in smaller chunks" };
+  if (status < 200) return { kind: "network", message: "Could not reach Supabase (offline, DNS, or the project is paused)" };
+  return { kind: "unknown", message: message.slice(0, 220) || `HTTP ${status}` };
+}
+
+export function errorIsMissingTable(err: string | undefined | null): boolean {
+  return !!err && (/pgrst205|could not find the table/i.test(err) || /setup sql/i.test(err));
+}
+
+// ─── r508: dashboard deep links — from the project URL to the SQL editor ─────
+
+/** "https://xyzcompany.supabase.co" → "vwott…zok (ref redacted)" */
+export function projectRefFromUrl(url: string): string | null {
+  try {
+    const host = new URL(url).hostname;
+    if (!host.endsWith(".supabase.co")) return null;
+    return host.split(".")[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+export function supabaseSqlEditorUrl(url: string): string {
+  const ref = projectRefFromUrl(url);
+  return ref
+    ? `https://supabase.com/dashboard/project/${ref}/sql/new`
+    : "https://supabase.com/dashboard";
+}
+
+// ─── payloads ────────────────────────────────────────────────────────────────
+
 /** Structural subset of RunArchiveEntry (avoids a circular import). */
 export interface MirrorRunPayload {
   id: string;
@@ -129,33 +230,28 @@ export interface MirrorRunPayload {
   steps: { name?: string; agent?: string; output?: string; ms?: number }[];
 }
 
-/** Upsert one run into the Supabase table via PostgREST
- * (`?on_conflict=id` + `Prefer: resolution=merge-duplicates`). Never throws;
- * resolves { ok, error? } and records status for the Doctor card. */
-export async function mirrorRunToCloud(entry: MirrorRunPayload): Promise<{ ok: boolean; error?: string }> {
-  const cfg = readCloudMirrorConfig();
-  if (!cfg || !cfg.enabled || !cfg.apiKey) return { ok: false, error: "mirror disabled" };
+/** Structural subset of Workflow — the full definition rides in `data`. */
+export interface MirrorWorkflowPayload {
+  id: string;
+  name: string;
+  updatedAt: number;
+  data: unknown;
+}
+
+interface MirrorResult {
+  ok: number;
+  failed: number;
+  error?: string;
+  kind?: MirrorErrorKind;
+}
+
+async function postMirrorRows(
+  cfg: CloudMirrorConfig,
+  table: string,
+  rows: unknown[],
+): Promise<{ ok: boolean; error?: string; kind?: MirrorErrorKind }> {
   try {
-    const row = {
-      id: entry.id,
-      workflow_id: entry.workflowId,
-      workflow_name: entry.workflowName,
-      trigger: entry.trigger ?? "manual",
-      status: entry.status,
-      started_at: entry.startedAt,
-      finished_at: entry.finishedAt,
-      total_ms: entry.totalMs ?? null,
-      model: entry.model ?? null,
-      steps: (entry.steps ?? []).map((s) => ({
-        name: clamp(s.name),
-        agent: clamp(s.agent),
-        output: clamp(s.output),
-        ms: s.ms ?? null,
-      })),
-      notes: clamp(entry.notes),
-      mirrored_at: new Date().toISOString(),
-    };
-    const res = await fetch(`${cfg.url}/rest/v1/${cfg.table}?on_conflict=id`, {
+    const res = await fetch(`${cfg.url}/rest/v1/${table}?on_conflict=id`, {
       method: "POST",
       headers: {
         apikey: cfg.apiKey,
@@ -163,30 +259,132 @@ export async function mirrorRunToCloud(entry: MirrorRunPayload): Promise<{ ok: b
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify([row]),
+      body: JSON.stringify(rows),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      const err = `Supabase mirror ${res.status}: ${text.slice(0, 160)}`;
-      noteStatus({ lastError: err, lastSyncAt: undefined });
-      return { ok: false, error: err };
+      const c = classifyMirrorError(res.status, text);
+      return { ok: false, kind: c.kind, error: c.message };
     }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, kind: "network", error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+function runToRow(entry: MirrorRunPayload): Record<string, unknown> {
+  return {
+    id: entry.id,
+    workflow_id: entry.workflowId,
+    workflow_name: entry.workflowName,
+    trigger: entry.trigger ?? "manual",
+    status: entry.status,
+    started_at: entry.startedAt,
+    finished_at: entry.finishedAt,
+    total_ms: entry.totalMs ?? null,
+    model: entry.model ?? null,
+    steps: (entry.steps ?? []).map((s) => ({
+      name: clamp(s.name),
+      agent: clamp(s.agent),
+      output: clamp(s.output),
+      ms: s.ms ?? null,
+    })),
+    notes: clamp(entry.notes),
+    mirrored_at: new Date().toISOString(),
+  };
+}
+
+/** Upsert ONE run (the archiveRun() hot path). Never throws. */
+export async function mirrorRunToCloud(entry: MirrorRunPayload): Promise<{ ok: boolean; error?: string }> {
+  const cfg = readCloudMirrorConfig();
+  if (!cfg || !cfg.enabled || !cfg.apiKey) return { ok: false, error: "mirror disabled" };
+  const r = await postMirrorRows(cfg, cfg.table, [runToRow(entry)]);
+  if (r.ok) {
     const st = readCloudMirrorStatus();
     noteStatus({
       lastSyncAt: new Date().toISOString(),
       lastError: undefined,
+      lastErrorKind: undefined,
       mirroredRuns: (st.mirroredRuns ?? 0) + 1,
     });
     return { ok: true };
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    noteStatus({ lastError: error });
-    return { ok: false, error };
   }
+  noteStatus({ lastError: r.error, lastErrorKind: r.kind });
+  return { ok: false, error: r.error };
 }
 
-/** One-row probe the Doctor card's "Test" button uses. */
-export async function testCloudMirror(): Promise<{ ok: boolean; error?: string }> {
+/** r508: upsert the WHOLE archive in chunks of 10 (was one POST per run,
+ * capped at 25). Aborts early on missing-table/auth — no point burning
+ * chunks against a schema that is not there yet. Never throws. */
+export async function mirrorRunsToCloud(entries: MirrorRunPayload[]): Promise<MirrorResult> {
+  const cfg = readCloudMirrorConfig();
+  if (!cfg || !cfg.enabled || !cfg.apiKey) return { ok: 0, failed: 0, error: "mirror disabled" };
+  let ok = 0;
+  let failed = 0;
+  let lastError: string | undefined;
+  let lastKind: MirrorErrorKind | undefined;
+  for (let i = 0; i < entries.length; i += CHUNK) {
+    const chunk = entries.slice(i, i + CHUNK).map(runToRow);
+    const r = await postMirrorRows(cfg, cfg.table, chunk);
+    if (r.ok) {
+      ok += chunk.length;
+    } else {
+      failed += chunk.length;
+      lastError = r.error;
+      lastKind = r.kind;
+      if (r.kind === "missing-table" || r.kind === "auth") break;
+    }
+  }
+  if (ok > 0) {
+    const st = readCloudMirrorStatus();
+    noteStatus({
+      lastSyncAt: new Date().toISOString(),
+      mirroredRuns: (st.mirroredRuns ?? 0) + ok,
+      ...(failed === 0 ? { lastError: undefined, lastErrorKind: undefined } : {}),
+    });
+  }
+  if (failed > 0) noteStatus({ lastError: lastError, lastErrorKind: lastKind });
+  return { ok, failed, error: failed > 0 ? lastError : undefined, kind: failed > 0 ? lastKind : undefined };
+}
+
+/** r508: mirror the workflow DEFINITIONS themselves into workflow_defs so the
+ * off-site backup can restore automations, not only their reports. */
+export async function mirrorWorkflowsToCloud(items: MirrorWorkflowPayload[]): Promise<MirrorResult> {
+  const cfg = readCloudMirrorConfig();
+  if (!cfg || !cfg.enabled || !cfg.apiKey) return { ok: 0, failed: 0, error: "mirror disabled" };
+  let ok = 0;
+  let failed = 0;
+  let lastError: string | undefined;
+  let lastKind: MirrorErrorKind | undefined;
+  const rows = items.map((w) => ({
+    id: w.id,
+    name: clamp(w.name),
+    updated_at: w.updatedAt ? new Date(w.updatedAt).toISOString() : null,
+    data: w.data,
+    mirrored_at: new Date().toISOString(),
+  }));
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const r = await postMirrorRows(cfg, "workflow_defs", rows.slice(i, i + CHUNK));
+    if (r.ok) {
+      ok += Math.min(CHUNK, rows.length - i);
+    } else {
+      failed += Math.min(CHUNK, rows.length - i);
+      lastError = r.error;
+      lastKind = r.kind;
+      if (r.kind === "missing-table" || r.kind === "auth") break;
+    }
+  }
+  if (ok > 0) {
+    const st = readCloudMirrorStatus();
+    noteStatus({ mirroredWorkflows: (st.mirroredWorkflows ?? 0) + ok });
+  }
+  if (failed > 0) noteStatus({ lastError: lastError, lastErrorKind: lastKind });
+  return { ok, failed, error: failed > 0 ? lastError : undefined, kind: failed > 0 ? lastKind : undefined };
+}
+
+/** One-row probe the Doctor card's "Test" button uses. Also records the
+ * verdict (r508) so the setup panel can react without a sync attempt. */
+export async function testCloudMirror(): Promise<{ ok: boolean; error?: string; kind?: MirrorErrorKind }> {
   const cfg = readCloudMirrorConfig();
   if (!cfg || !cfg.url || !cfg.apiKey) return { ok: false, error: "URL and key required" };
   try {
@@ -195,10 +393,15 @@ export async function testCloudMirror(): Promise<{ ok: boolean; error?: string }
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      return { ok: false, error: `${res.status}: ${text.slice(0, 200)}` };
+      const c = classifyMirrorError(res.status, text);
+      noteStatus({ lastError: c.message, lastErrorKind: c.kind });
+      return { ok: false, error: c.message, kind: c.kind };
     }
+    noteStatus({ lastError: undefined, lastErrorKind: undefined });
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    const error = err instanceof Error ? err.message : String(err);
+    noteStatus({ lastError: error, lastErrorKind: "network" });
+    return { ok: false, error, kind: "network" };
   }
 }

@@ -14,6 +14,7 @@ import {
   CloudUpload,
   Copy,
   Database,
+  ExternalLink,
   HardDriveDownload,
   History,
   RefreshCw,
@@ -31,14 +32,18 @@ import {
   type StorageEstimateInfo,
 } from "@/lib/storage-tiers";
 import {
-  SUPABASE_TABLE_SQL,
-  mirrorRunToCloud,
+  SUPABASE_SCHEMA_SQL,
+  errorIsMissingTable,
+  mirrorRunsToCloud,
+  mirrorWorkflowsToCloud,
   readCloudMirrorConfig,
   readCloudMirrorStatus,
+  supabaseSqlEditorUrl,
   testCloudMirror,
   writeCloudMirrorConfig,
   type CloudMirrorConfig,
   type CloudMirrorStatus,
+  type MirrorWorkflowPayload,
 } from "@/lib/cloud-mirror";
 import {
   archiveTierStats,
@@ -291,6 +296,28 @@ function fmt(chars: number): string {
 }
 
 
+// ─── r508: workflow definitions off the live localStorage archive ────────────
+// The cloud mirror backs up automations too — the full Workflow objects ride
+// into workflow_defs.data (jsonb) with id/name/updatedAt extracted for the
+// Supabase Table Editor's visibility.
+function readWorkflowDefs(): MirrorWorkflowPayload[] {
+  try {
+    const raw = window.localStorage.getItem("nexus-workflows");
+    if (!raw) return [];
+    const list = JSON.parse(raw) as Array<Record<string, unknown>>;
+    return list
+      .filter((w) => typeof w?.id === "string")
+      .map((w) => ({
+        id: w.id as string,
+        name: typeof w.name === "string" ? w.name : String(w.id),
+        updatedAt: typeof w.updatedAt === "number" ? w.updatedAt : 0,
+        data: w,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 // ─── r507: Storage tiers — the doctor's verdict section ──────────────────────
 // Renders the four-tier architecture (hot → warm → durable → optional cloud),
 // the durable-storage request, the Supabase mirror configuration (BYO), and
@@ -420,7 +447,9 @@ function StorageTiers() {
         enabled: cfg?.enabled ?? false,
       });
       const r = await testCloudMirror();
-      if (r.ok) toast.success("Supabase reachable — table responds to reads.");
+      if (r.ok) toast.success("Supabase reachable — mirror tables respond to reads.");
+      else if (r.kind === "missing-table")
+        toast.error("Reachable, but the mirror tables are missing — run the one-time setup SQL (amber panel).", { duration: 8000 });
       else toast.error(`Supabase test failed: ${r.error ?? "unknown error"}`);
     } finally {
       setBusy("none");
@@ -436,21 +465,25 @@ function StorageTiers() {
         return;
       }
       const all = await listArchiveFull();
-      if (all.length === 0) {
-        toast.info("Nothing to sync yet — no archived runs.");
+      const wfs = readWorkflowDefs();
+      if (all.length === 0 && wfs.length === 0) {
+        toast.info("Nothing to sync yet — no archived runs or workflows.");
         return;
       }
-      let ok = 0;
-      let lastErr = "";
-      for (const run of all.slice(0, 25)) {
-        const r = await mirrorRunToCloud(run);
-        if (r.ok) ok += 1;
-        else lastErr = r.error ?? "unknown";
+      const runs = await mirrorRunsToCloud(all);
+      const defs = await mirrorWorkflowsToCloud(wfs);
+      const okTotal = runs.ok + defs.ok;
+      if (okTotal > 0) {
+        toast.success(`Mirrored ${runs.ok} run${runs.ok === 1 ? "" : "s"} · ${defs.ok} workflow${defs.ok === 1 ? "" : "s"} to Supabase.`);
       }
-      if (ok > 0) {
-        toast.success(`Mirrored ${ok} run${ok === 1 ? "" : "s"} to Supabase${ok < Math.min(all.length, 25) ? ` (${lastErr.slice(0, 80)})` : ""}.`);
-      } else {
-        toast.error(`Mirror failed: ${lastErr.slice(0, 120)}`);
+      if (runs.failed > 0 || defs.failed > 0 || okTotal === 0) {
+        const missing = runs.kind === "missing-table" || defs.kind === "missing-table" || errorIsMissingTable(runs.error) || errorIsMissingTable(defs.error);
+        if (missing) {
+          toast.error("Supabase has no mirror tables yet — run the one-time setup SQL (amber panel above), then Sync again.", { duration: 8000 });
+        } else {
+          const err = runs.error ?? defs.error ?? "unknown";
+          toast.error(`Mirror failed: ${err.slice(0, 140)}`);
+        }
       }
     } finally {
       setBusy("none");
@@ -460,12 +493,18 @@ function StorageTiers() {
 
   const copySql = React.useCallback(() => {
     try {
-      void navigator.clipboard.writeText(SUPABASE_TABLE_SQL);
-      toast.success("Table SQL copied — paste it into the Supabase SQL editor once.");
+      void navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL);
+      toast.success("Schema SQL copied — paste it into the Supabase SQL editor and press RUN.");
     } catch {
       toast.error("Clipboard unavailable — copy the SQL manually.");
     }
   }, []);
+
+  // r508: the owner's live failure mode — the mirror is ON but the one-time
+  // SQL was never run, so every write bounces PGRST205. The legacy status row
+  // may hold the raw r507 error string (no kind), so classify both ways.
+  const missingTable =
+    mirrorStatus.lastErrorKind === "missing-table" || errorIsMissingTable(mirrorStatus.lastError);
 
   const quotaPct = est.supported && est.quotaBytes > 0 ? Math.min(100, (est.usageBytes / est.quotaBytes) * 100) : 0;
 
@@ -486,6 +525,52 @@ function StorageTiers() {
           {est.persisted === true ? "Durable storage: granted" : busy === "persist" ? "Asking…" : "Enable durable storage"}
         </Button>
       </div>
+
+      {cfg && missingTable && (
+        <div
+          className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3"
+          data-testid="cloud-mirror-setup"
+          role="status"
+        >
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+            One-time setup required — the mirror tables don’t exist yet (PGRST205)
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Supabase is reachable, but this project has no <code className="rounded bg-amber-500/15 px-1">run_reports</code> table,
+            so every mirror write bounces with 404. A browser cannot create tables over PostgREST — run the setup SQL once:
+          </p>
+          <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-[11px] text-muted-foreground">
+            <li>Copy the setup SQL</li>
+            <li>Open this project’s SQL editor (button below)</li>
+            <li>Paste → Run — safe to re-run, includes schema-cache reload</li>
+            <li>Come back and press Test, then Sync now</li>
+          </ol>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 border-amber-500/50 px-2 text-xs text-amber-700 hover:bg-amber-500/15 dark:text-amber-400"
+              onClick={copySql}
+            >
+              <Copy className="h-3 w-3" aria-hidden />
+              Copy setup SQL
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 px-2 text-xs"
+              asChild
+            >
+              <a href={supabaseSqlEditorUrl(cfg.url)} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-3 w-3" aria-hidden />
+                Open Supabase SQL editor
+              </a>
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ul className="mt-2 space-y-1.5">
         <TierRow
@@ -539,7 +624,7 @@ function StorageTiers() {
           badge={
             cfg?.enabled ? (
               <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
-                on · {mirrorStatus.mirroredRuns} mirrored
+                on · {mirrorStatus.mirroredRuns ?? 0} runs · {mirrorStatus.mirroredWorkflows ?? 0} defs mirrored
               </span>
             ) : (
               <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">off</span>
@@ -548,7 +633,9 @@ function StorageTiers() {
         >
           {STORAGE_TIER_NOTES.cloud}
           {mirrorStatus.lastError ? (
-            <span className="mt-1 block text-destructive">Last mirror error: {mirrorStatus.lastError}</span>
+            <span className={`mt-1 block ${missingTable ? "text-amber-600 dark:text-amber-400" : "text-destructive"}`}>
+              Last mirror error: {mirrorStatus.lastError}
+            </span>
           ) : mirrorStatus.lastSyncAt ? (
             <span className="mt-1 block">Last mirror {new Date(mirrorStatus.lastSyncAt).toLocaleString()}.</span>
           ) : null}
@@ -625,19 +712,27 @@ function StorageTiers() {
             </Button>
             <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={busy !== "none"} onClick={onSyncNow}>
               <CloudUpload className="h-3 w-3" aria-hidden />
-              {busy === "sync" ? "Syncing…" : "Sync now (last 25)"}
+              {busy === "sync" ? "Syncing…" : "Sync now (all runs + workflows)"}
             </Button>
           </div>
           <div className="rounded-md bg-muted/60 p-2">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] font-medium text-muted-foreground">One-time table SQL</p>
-              <Button type="button" variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-[11px]" onClick={copySql}>
-                <Copy className="h-3 w-3" aria-hidden />
-                Copy
-              </Button>
+              <p className="text-[11px] font-medium text-muted-foreground">One-time schema SQL (run_reports + workflow_defs + RLS)</p>
+              <div className="flex items-center gap-1">
+                <Button type="button" variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-[11px]" asChild>
+                  <a href={supabaseSqlEditorUrl(url || cfg?.url || "")} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-3 w-3" aria-hidden />
+                    Open editor
+                  </a>
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="h-6 gap-1 px-1.5 text-[11px]" onClick={copySql}>
+                  <Copy className="h-3 w-3" aria-hidden />
+                  Copy
+                </Button>
+              </div>
             </div>
-            <pre className="mt-1 max-h-32 overflow-auto whitespace-pre text-[10px] leading-relaxed text-muted-foreground">
-              {SUPABASE_TABLE_SQL}
+            <pre className="mt-1 max-h-40 overflow-auto whitespace-pre text-[10px] leading-relaxed text-muted-foreground">
+              {SUPABASE_SCHEMA_SQL}
             </pre>
           </div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
