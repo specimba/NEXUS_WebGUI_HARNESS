@@ -5,7 +5,13 @@ import {
   MEMORY_SOURCE_MESSAGES,
 } from "./constants";
 import { runAgentChat } from "./chat-client";
-import { resolveLlm } from "./llm-config";
+// r506 (owner directive): memory folds are SMALL utility tasks — fast lane,
+// emergent substitutions, 30s first-token budget. Never the largest model.
+import {
+  UTILITY_FAST_BUDGET_MS,
+  UTILITY_SYSTEM_SUFFIX,
+  buildUtilityWire,
+} from "./utility-lane";
 import { useAgentsStore, useConversationsStore, useSettingsStore } from "./stores";
 
 // ─── Hermes-style memory folding ─────────────────────────────────────────────
@@ -75,16 +81,21 @@ export async function consolidateMemory(
     ? `Previous memory document:\n"""\n${conv.memory.text.trim()}\n"""\n\n`
     : "";
 
-  const llm = resolveLlm(settings, "auto");
+  // r506: utility wire — fast above-moderate lane + substitution ladder +
+  // short first-token budget (a memory fold is a 150-word pass, not a thesis).
+  const wire = buildUtilityWire(settings);
   const result = await runAgentChat(
     {
-      provider: llm.provider,
-      apiKey: llm.apiKey,
-      baseUrl: llm.baseUrl,
-      model: llm.model,
+      provider: wire.primary.provider,
+      apiKey: wire.primary.apiKey,
+      baseUrl: wire.primary.baseUrl,
+      model: wire.primary.model,
+      providerId: wire.primary.providerId,
       temperature: 0.2,
       maxIterations: 0,
-      system: CONSOLIDATION_SYSTEM,
+      firstTokenBudgetMs: UTILITY_FAST_BUDGET_MS,
+      relay: wire.relay,
+      system: CONSOLIDATION_SYSTEM + UTILITY_SYSTEM_SUFFIX,
       messages: [
         {
           role: "user",

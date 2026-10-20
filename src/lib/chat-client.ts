@@ -59,6 +59,13 @@ export interface RunAgentParams {
    * buildRelayWire().
    */
   relay?: { baseUrl?: string; apiKey?: string; model: string; label?: string; useAuto?: boolean }[];
+  /**
+   * r506: per-request first-token budget (ms) — utility dials carry a short
+   * one (UTILITY_FAST_BUDGET_MS) so a silent lane is rotated off in 30s
+   * instead of the 60s engine default. Threaded to the engine for the
+   * primary AND every relay hop; clamped server-side to [10s, 120s].
+   */
+  firstTokenBudgetMs?: number;
   signal?: AbortSignal;
   /** Force the legacy server transport (used after a browser-direct CORS death). */
   forceServer?: boolean;
@@ -253,6 +260,7 @@ async function runBrowserDirect(
     ...(params.relay && params.relay.length > 0
       ? { relay: params.relay as RelayWireHop[] }
       : {}),
+    ...(params.firstTokenBudgetMs ? { firstTokenBudgetMs: params.firstTokenBudgetMs } : {}),
   };
 
   const send = (evt: Record<string, unknown>) => {
@@ -355,6 +363,7 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
         messages: params.messages,
         tools: params.tools ?? [],
         ...(params.relay && params.relay.length > 0 ? { relay: params.relay } : {}),
+        ...(params.firstTokenBudgetMs ? { firstTokenBudgetMs: params.firstTokenBudgetMs } : {}),
         ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
       }),
       signal:

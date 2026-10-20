@@ -56,6 +56,8 @@ import {
   type ProviderBreakerMap,
 } from "@/lib/provider-breaker";
 import { useSettingsStore } from "@/lib/stores";
+// r506: utility fast-lane routing — the AI buttons' own wire, previewed here.
+import { buildUtilityWire } from "@/lib/utility-lane";
 // r503: Radar → Relay adoption pipeline — this card renders and manages the
 // adopted-lane registry (localStorage `nexus-relay-adopted`, written by the
 // radar tab's auto-pipeline AND the row actions below) plus the auto-adopt
@@ -191,6 +193,14 @@ export function ModelRelayCard() {
 
   const primary = resolveLlm(settings);
   const policy: RelayFailoverPolicy = settings.relayFailoverPolicy ?? "smart";
+  // r506: the utility wire (AI buttons' dial order) — recomputed on the SAME
+  // tick as health/breaker so the preview reflects quarantine/sickness live.
+  const utilityWire = React.useMemo(
+    () => buildUtilityWire(settings),
+    // health/breaker are the 15s-tick inputs buildUtilityWire reads via
+    // snapshots — listing them keeps the preview live with quarantine state.
+    [settings, health, breaker]
+  );
   // r504: fleet board rows + per-hop dock verdicts — both read the SAME two
   // snapshots the sort uses (one truth, no parallel verdict math here).
   const fleet = React.useMemo(() => buildFleetRows(health, breaker), [health, breaker]);
@@ -318,6 +328,41 @@ export function ModelRelayCard() {
             {POLICY_COPY[policy].desc} Three consecutive hard lane-fails trip a
             provider circuit breaker: its lanes dial last until the quarantine
             lapses, then one dial re-probes them.
+          </p>
+        </div>
+
+        {/* ── r506: Utility fast lanes — the AI buttons (plan generation,
+            auto-assign, memory folds) dial a FAST above-moderate lane with
+            emergent substitutions instead of the largest reasoning model.
+            Violet row (matches the primary row + the ✨ utility identity). */}
+        <div
+          className="rounded-lg border border-violet-500/25 bg-violet-500/[0.04] p-3"
+          data-testid="utility-fast-lane"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
+              <Sparkles className="h-3.5 w-3.5 text-violet-400" aria-hidden />
+              Utility fast lanes
+            </p>
+            <Switch
+              aria-label="Toggle utility fast lanes"
+              checked={settings.utilityFastLane !== false}
+              onCheckedChange={(v) => update({ utilityFastLane: v })}
+            />
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            AI buttons (plan generation, auto-assign, memory folds) are SMALL
+            tasks: they dial a fast, above-moderate lane — free-first — with a
+            30s first-token budget and emergent substitutions, instead of the
+            largest reasoning model.
+          </p>
+          <p
+            className="mt-1.5 truncate font-mono text-[11px] text-violet-300/90"
+            title={`Utility dial order: ${utilityWire.preview}`}
+            aria-label={`Utility dial order: ${utilityWire.preview}`}
+          >
+            {utilityWire.fast ? "⚡ ": "→ "}
+            {utilityWire.preview}
           </p>
         </div>
 

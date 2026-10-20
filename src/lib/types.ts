@@ -515,6 +515,15 @@ export interface Settings {
    */
   relayFailoverPolicy?: "smart" | "quality" | "free";
   /**
+   * r506: utility fast-lane routing — the AI utility buttons (plan generation,
+   * auto-assign, memory consolidation) dial a FAST above-moderate lane
+   * (free-first) with an emergent substitution ladder and a 30s first-token
+   * budget, instead of the global primary (often the largest reasoning model).
+   * Default ON; false = utility buttons dial the global primary + standard
+   * decision-fit ladder.
+   */
+  utilityFastLane?: boolean;
+  /**
    * r503: radar→relay adoption pipeline — brand-new FREE lanes the tracker
    * sees (first seen) auto-join the relay chain with their provider tags.
    * Default ON (that is the point); false = manual Adopt actions only.

@@ -39,6 +39,13 @@ import { ModelPicker } from "@/components/nexus/model-picker";
 import { AUTO_PLAN_SYSTEM } from "@/lib/constants";
 // r503 (owner directive): quality-marked lane pool for pipeline/step pins.
 import { buildLaneCatalog, laneShortName } from "@/lib/lane-catalog";
+// r506 (owner directive): AI utility buttons dial a FAST above-moderate lane
+// with emergent substitutions — never the largest reasoning model by default.
+import {
+  UTILITY_FAST_BUDGET_MS,
+  UTILITY_SYSTEM_SUFFIX,
+  buildUtilityWire,
+} from "@/lib/utility-lane";
 import { extractJsonArray, roleMatchesAgent, uid } from "@/lib/helpers";
 import {
   useAgentsStore,
@@ -47,7 +54,6 @@ import {
 } from "@/lib/stores";
 import type { PipelineDepth, StepKind, Workflow, WorkflowStep } from "@/lib/types";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
-import { resolveLlm } from "@/lib/llm-config";
 import { cn } from "@/lib/utils";
 
 // ─── Create / edit a workflow: name, description and ordered steps ──────────
@@ -249,30 +255,49 @@ export function WorkflowEditorDialog({
     const controller = new AbortController();
     planAbortRef.current?.abort(); // never two live plan runs
     planAbortRef.current = controller;
+    // r506: the utility wire names the lane that actually answers — smart
+    // substitution is SAID, not silent (r270 class) — captured via receipt.
+    let servedLabel: string | null = null;
     try {
       const settings = useSettingsStore.getState().settings;
       const agentList = useAgentsStore
         .getState()
         .agents.map((a) => ({ id: a.id, name: a.name, role: a.role }));
-      const llm = resolveLlm(settings, "auto");
-      const res = await runAgentChat({
-        provider: llm.provider,
-        apiKey: llm.apiKey,
-        baseUrl: llm.baseUrl,
-        model: llm.model,
-        // r317: registry id for the shared 429 memory + rotator stamping.
-        providerId: llm.providerId,
-        temperature: 0.2,
-        maxIterations: 1,
-        signal: controller.signal,
-        system: AUTO_PLAN_SYSTEM,
-        messages: [
-          {
-            role: "user",
-            content: `Task: ${task}\n\nAvailable agents JSON:\n${JSON.stringify(agentList)}`,
+      // r506 (owner directive): plan generation is a SMALL task — dial a fast
+      // above-moderate lane (free-first) with an emergent substitution ladder
+      // and a 30s first-token budget, instead of the global primary (often
+      // the largest reasoning model — the exact dial that dead-ended as
+      // "Couldn't generate a plan" when the flagship fleet went silent).
+      const wire = buildUtilityWire(settings);
+      const res = await runAgentChat(
+        {
+          provider: wire.primary.provider,
+          apiKey: wire.primary.apiKey,
+          baseUrl: wire.primary.baseUrl,
+          model: wire.primary.model,
+          // r317: registry id for the shared 429 memory + rotator stamping.
+          providerId: wire.primary.providerId,
+          temperature: 0.2,
+          maxIterations: 1,
+          firstTokenBudgetMs: UTILITY_FAST_BUDGET_MS,
+          // Smart substitution: fast backups + built-in engine, outcomes feed
+          // the shared health memory/breaker so the pool self-heals.
+          relay: wire.relay,
+          signal: controller.signal,
+          system: AUTO_PLAN_SYSTEM + UTILITY_SYSTEM_SUFFIX,
+          messages: [
+            {
+              role: "user",
+              content: `Task: ${task}\n\nAvailable agents JSON:\n${JSON.stringify(agentList)}`,
+            },
+          ],
+        },
+        {
+          onReceipt: (receipt) => {
+            servedLabel = receipt.resolved_label ?? null;
           },
-        ],
-      });
+        }
+      );
       const plan = extractJsonArray(res.content);
       const available = useAgentsStore.getState().agents;
       if (!plan || plan.length === 0 || available.length === 0) {
@@ -312,6 +337,7 @@ export function WorkflowEditorDialog({
       setPlanTask("");
       toast.success(
         `Generated ${mapped.length} steps` +
+          (servedLabel ? ` · via ${servedLabel}` : "") +
           (substituted > 0
             ? ` · ${substituted} step${substituted === 1 ? "" : "s"} on a fallback agent (planned agent not in roster — re-assign if needed)`
             : "")
@@ -320,7 +346,11 @@ export function WorkflowEditorDialog({
       // r235: a user cancel lands here as AbortError and stays silent — the
       // Cancel button is the affordance; no toast noise on purpose.
       if (!isAbortError(err)) {
-        toast.error("Couldn't generate a plan, add steps manually");
+        // r506: say what actually happened — the wire already rotated fast
+        // lanes + the built-in engine before surfacing, so this is a REAL
+        // exhaustion, not one dead flagship.
+        const reason = err instanceof Error && err.message ? ` — ${err.message.slice(0, 90)}` : "";
+        toast.error(`Couldn't generate a plan${reason}. Add steps manually or retry.`);
       }
     } finally {
       // Only the LIVE run resets planning state — a stale run resolving right
