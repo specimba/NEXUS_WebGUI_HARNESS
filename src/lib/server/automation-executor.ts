@@ -282,8 +282,9 @@ const BILLING_BODY_RE =
 export async function dialStep(dial: ResolvedDial, prompt: string): Promise<string> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), DIAL_TIMEOUT_MS);
+  let res: Response;
   try {
-    const res = await fetch(dial.url, {
+    res = await fetch(dial.url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -304,6 +305,27 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
       }),
       signal: ac.signal,
     });
+  } catch (err) {
+    // r505: a SILENT vault provider (the Vyce-class outage: connection
+    // accepted, no bytes for the whole 90s budget, 0% success) used to be a
+    // dead end — only a 429 walked the no-key free-lane fallback (r319), so
+    // a hang failed the step outright. A timeout IS a lane death: note the
+    // provider's congestion memory, spend the matching rescue proof, and
+    // walk the free lanes before surfacing — same doctrine as the 429 path.
+    if (ac.signal.aborted) {
+      if (dial.providerId) {
+        noteProvider429(dial.providerId);
+        clearRescueLane(dial.providerId);
+      }
+      const fallback = await dialNoKeyFallback(prompt, dial.url);
+      if (fallback !== null) return fallback;
+      throw new Error(
+        `dial timed out after ${Math.round(DIAL_TIMEOUT_MS / 1000)}s (provider silent) — no-key free-lane fallback also exhausted`
+      );
+    }
+    throw err;
+  }
+  try {
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       // r319: a 429 on the vault dial used to be a dead end — the server

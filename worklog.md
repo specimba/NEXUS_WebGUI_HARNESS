@@ -12165,3 +12165,33 @@ Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if pu
 Open risks: (1) breaker quarantine is provider-wide by design — a provider with one bad model + one great model loses the great one for ≤10m unless it answered in the last 15m (fresh-ok window); if the owner finds it too blunt, narrow the dock to lanes without recent ok (one-line change in breakerDocked). (2) hopIsFree is note-regex based — a future catalog note saying "not free" would mis-tag; keep notes free-vocabulary clean. (3) The real Vyce outage is external — when it heals, the next successful dial auto-heals the breaker (witnessed path), no human action needed. (4) gists-write 403 + suspended HF webhook still parked from r501-p2 (owner action).
 Blockers: none.
 Next recommended action: r505 — (1) cron list; (2) optionally fire a real workflow run to watch the breaker/board update from LIVE hop outcomes (the seeded QA proved the UI; a live run proves the write path); (3) datasets-server prompt-pack lane (integration D) or probe-first Studio template from the r500 handoff; (4) keep tsc/lint baselines exact.
+---
+Task ID: r505
+Agent: main (Z.ai Code orchestrator)
+Task: Owner pasted the parked run ("✗4 failed dials (Vyce AI ×4)", "server did not respond in 60s", network park 2/3) + asked "so why still we are failing?"
+
+Work Log:
+- ROOT-CAUSED the failure anatomy with dev.log + code evidence:
+  (1) Vyce's dead lanes don't fail fast — they HANG (~65s silence, 0% success per the owner's own status page).
+  (2) agent-engine gave every hop 3 pre-stream attempts × 60s first-token budget = 180s of silence before rotating — isTransientNetworkError matches "deadline", so a SILENT corpse was retried twice more on the same endpoint.
+  (3) chat-client CONNECT_TIMEOUT_MS = 60s header wall — the client killed the whole request BEFORE the ladder's first rotation could land (dev.log witness: POST /api/chat 200 in 61s ×6 — server finished at 61s while the client had aborted at 60s).
+  (4) The workflow-runner demoted the primary ONLY on mid-stream drops (localToolCalls.length > 0) — a pre-stream silence death (0 tokens, 0 tools) was re-dialed FIRST on every retry/step/resume.
+  (5) automation-executor dialStep walked the no-key free-lane fallback ONLY on 429 — a tab-closed silent-hang death was a dead end.
+- FIX 1 (agent-engine.ts) — SILENCE DOCTRINE: a fired first-token deadline (UpstreamDeadlineError) no longer retries the same endpoint — it throws immediately so the hop ladder ROTATES (both the fetch-phase catch and the mid-read catch). Fast transient errors (502/socket/reset — fail in ms) keep their 3-attempt retry. Worst-case per silent hop: 180s → 60s.
+- FIX 2 (chat-client.ts) — CONNECT_TIMEOUT_MS 60s → 90s: the header wall must exceed one engine first-token budget + rotation slack, or the client kills the request exactly when rotation starts.
+- FIX 3 (workflow-runner.ts) — SILENT-PRIMARY DOCTRINE: a pre-stream timeout/network death (draft empty, 0 tool calls) now demotes the primary + marks the family sick (5-min window, run scope + tab-wide laneSaturation), so the next attempt/step/resume leads with healthy lanes instead of the corpse.
+- FIX 4 (automation-executor.ts dialStep) — a DIAL_TIMEOUT_MS abort (silent provider, tab-closed lane) now notes the provider, spends the rescue proof, and walks the no-key free-lane fallback (r319 parity for timeouts; was 429-only) before surfacing.
+- LIVE WITNESS (resumed the hour-old parked "Lane spread QA" run in the owner's own browser session): OLD call log = 240s corpse stall through the Vyce family; NEW attempt ok:true in 207s with the visible rotation trail ("primary failed (503 temporarily disabled) — rotating to …"); verification served by AIHubMix · qwen3.8-max-free (FREE lane) in 3.3s via the System-One fast-model gate; run status "done" — the exact run that used to park as "✗1 failed dials (Vyce AI ×1)" now completes through rotation. dev.log: POST /api/chat 200 in 3.5min (full run) after the 61s corpse-era entries.
+- GATES: tsc 0 errors; lint 0/33 EXACT baseline.
+
+Stage Summary:
+- "Why still failing" answered: the client's 60s wall raced an engine that was patient with silent corpses (180s/hop) — rotation never got to land. Now silence rotates immediately, the wall tolerates one silent hop + rotation, silent primaries demote for the run, and tab-closed silent deaths walk the free lanes. The parked run's own resume proved it end-to-end.
+- Files: src/lib/agent-engine.ts (2 catch sites), src/lib/chat-client.ts (wall), src/lib/workflow-runner.ts (demotion predicate), src/lib/server/automation-executor.ts (timeout fallback walk).
+- The r504 breaker + r503 radar-adopt supply the healthy hops this rotation lands on; the owner's parked 8-step run can be resumed from the run panel (or auto-resume will fire it) and should now complete.
+
+Round Handoff:
+Round ID: r506
+Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if purged — 11 purges; current job 468574)
+Open risks: (1) a silent hop still costs 60s once per dial — if the pinned primary IS the corpse (Vyce pin), every first dial pays 60s before rotating; acceptable while Vyce is degraded; the r504 breaker does NOT skip the primary (explicit pin) — consider a "skip sick pinned primary" gate if the owner complains about the constant 60s tax. (2) The 36.7s / 3.5min POSTs in dev.log are healthy now; watch for new 61s corpse-pattern entries. (3) gists-write 403 + suspended HF webhook still parked (owner action).
+Blockers: none.
+Next recommended action: r506 — (1) cron list; (2) watch the owner's parked 8-step "test run" resume through the fixes; (3) datasets-server prompt-pack lane (integration D) or probe-first Studio template; (4) keep tsc/lint baselines exact.

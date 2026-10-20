@@ -1651,7 +1651,20 @@ export async function executeWorkflowRun(
         // v22: tool rounds streamed this attempt → the drop was MID-STREAM.
         // Demote the primary so the next attempt leads with the built-in
         // engine instead of re-dialing the provably sick endpoint first.
-        if (localToolCalls.length > 0 && SELF_HEAL_KINDS.includes(kind)) {
+        // r505 SILENT-PRIMARY DOCTRINE: a PRE-STREAM timeout/network death
+        // (0 tokens, 0 tool rounds — the Vyce-class corpse: connection
+        // accepted, then silence for the whole first-token budget) is ALSO
+        // proven lane sickness. Before this, only mid-stream drops demoted —
+        // so every retry, every later step and every resume re-dialed the
+        // silent corpse FIRST and burned 60s+ before the wire's healthy hops
+        // got their turn (witnessed: "✗4 failed dials (Vyce AI ×4)" across a
+        // parked run's whole life). rate-limit keeps its own saturation path
+        // below; billing/auth keep theirs.
+        if (
+          SELF_HEAL_KINDS.includes(kind) &&
+          (localToolCalls.length > 0 ||
+            (draft.length === 0 && (kind === "timeout" || kind === "network")))
+        ) {
           demotePrimary = true;
           // r126: promote to run scope — every later step starts demoted until
           // the window passes (stable continuation, not per-step re-learning).

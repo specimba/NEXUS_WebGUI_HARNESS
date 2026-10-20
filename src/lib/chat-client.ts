@@ -108,11 +108,15 @@ interface DonePayload {
  * surfacing as "server did not respond in 20s" on every scheduled run
  * (live: 12 hourly runs, all dead at the same step). That is slow-start, not
  * a wedged server: headers flush immediately once the handler runs
- * (route sends a start frame synchronously). 60s still bounds a genuinely
- * wedged server while tolerating slow starts; the 90s stream stall watchdog
+ * (route sends a start frame synchronously). r505: 60s → 90s — the Vyce-class
+ * outage (silent ~65s hangs, 0% success) needs the header wall to EXCEED one
+ * engine first-token budget (60s) plus rotation slack, or the client kills
+ * the request exactly when the ladder starts rotating ("✗4 failed dials
+ * (Vyce AI ×4)", every dial dead at 60s while the server logged 200 in 61s).
+ * 90s still bounds a genuinely wedged server; the 90s stream stall watchdog
  * takes over the moment headers arrive.
  */
-const CONNECT_TIMEOUT_MS = 60_000;
+const CONNECT_TIMEOUT_MS = 90_000;
 /** Max byte gap tolerated on the /api/chat SSE stream (r25 watchdog). */
 const SERVER_STALL_TIMEOUT_MS = 90_000;
 

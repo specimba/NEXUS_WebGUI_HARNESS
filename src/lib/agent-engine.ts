@@ -675,6 +675,18 @@ export async function runCustomEngine(
             : null;
         if (isAbort(err) && !deadlineReason) throw err;
         const surfaced: unknown = deadlineReason ?? err;
+        // r505 SILENCE DOCTRINE: a full silent first-token window is a corpse
+        // signal, not a hiccup. Re-dialing the SAME silent endpoint 2 more
+        // times at 60s each burned 180s per dead hop while the client's
+        // connect wall (60s) killed the whole request before the ladder ever
+        // rotated — witnessed live (owner, Vyce fleet degraded, 0% success /
+        // ~65s hangs): "✗4 failed dials (Vyce AI ×4)", every one dying on the
+        // silent primary with "server did not respond in 60s", rotation never
+        // seen. Fast transient errors (502/socket/reset) fail in milliseconds
+        // and KEEP their 3-attempt retry; silence rotates NOW — the next hop
+        // is a fresh lane, and the hop loop's [hop:] marker still feeds the
+        // health memory + r504 breaker so the family sinks on future dials.
+        if (deadlineReason) throw surfaced;
         if (attempt < MAX_UPSTREAM_ATTEMPTS && !streamedAny && isTransientNetworkError(surfaced)) {
           send({ type: "status", message: `Upstream hiccup (${shortError(surfaced)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
           await sleepAbortable(1200 * attempt, signal);
@@ -729,6 +741,16 @@ export async function runCustomEngine(
         // abort or an in-band error frame before any token is exactly the
         // "provider accepted and then stalled" case these retries exist for.
         if (isAbort(err)) throw err;
+        // r505 SILENCE DOCTRINE (mirror of the fetch-phase catch above): the
+        // first-token budget can also fire INSIDE the SSE read (headers
+        // arrived, body stayed silent — the exact Vyce outage shape). Our own
+        // deadline means the endpoint already spent its whole silent window:
+        // rotate to the next hop instead of re-dialing the corpse.
+        const deadlineHere =
+          !signal.aborted &&
+          deadlineCtl.signal.aborted &&
+          (deadlineCtl.signal.reason instanceof UpstreamDeadlineError || err instanceof UpstreamDeadlineError);
+        if (deadlineHere) throw err;
         if (attempt < MAX_UPSTREAM_ATTEMPTS && !streamedAny && isTransientNetworkError(err)) {
           send({ type: "status", message: `Upstream hiccup (${shortError(err)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
           await sleepAbortable(1200 * attempt, signal);
