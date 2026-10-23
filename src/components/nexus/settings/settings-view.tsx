@@ -8,6 +8,7 @@ import { ThemePicker } from "@/components/nexus/settings/theme-picker";
 import { AutomationVaultCard } from "@/components/nexus/settings/automation-vault-card";
 import { CortexEdgeCard } from "@/components/nexus/settings/cortex-edge-card";
 import { DeepLinkShare } from "@/components/nexus/settings/deep-link-share";
+import { EgressCard } from "@/components/nexus/settings/egress-card";
 import { GitHubOpsCard } from "@/components/nexus/settings/github-ops-card";
 import { LocalModelsPanel } from "@/components/nexus/settings/local-models";
 import { ModelRelayCard } from "@/components/nexus/settings/model-relay";
@@ -189,6 +190,7 @@ const SETTINGS_SECTIONS = [
   { id: "referrals", label: "Referrals" },
   { id: "byok", label: "BYOK" },
   { id: "cortex", label: "Cortex Edge" },
+  { id: "egress", label: "Egress" },
   { id: "behavior", label: "Behavior" },
   { id: "evolution", label: "Evolution" },
   { id: "profile", label: "Profile" },
@@ -611,6 +613,11 @@ export function SettingsView() {
           {/* ── 2-a Cortex Edge — server-side deep-web lane for agents ── */}
           <div id="cortex" className="scroll-mt-14">
             <CortexEdgeCard />
+          </div>
+
+          {/* ── r514 Egress — Webshare proxy pool routing (server-only creds) ── */}
+          <div id="egress" className="scroll-mt-14">
+            <EgressCard />
           </div>
 
           {/* ── Behavior ─────────────────────────────────────────────── */}

@@ -62,10 +62,10 @@ const r1 = resolveServerDialFromSlots(null);
 ok(!r1.dial && r1.why === "no-vault-key", "no slots at all → no-vault-key");
 const r2 = resolveServerDialFromSlots([{ provider: "builtin", key: "sk-x" }]);
 ok(!r2.dial && r2.why === "no-resolvable-provider", "builtin slot → no-resolvable-provider (executor skips it)");
-const r3 = resolveServerDialFromSlots([{ provider: "vyce", key: " sk-vyce-real-key-123456 " }]);
+const r3 = resolveServerDialFromSlots([{ provider: "vyce", key: " vyce-real-key-123456 " }]);
 ok(!!r3.dial && r3.dial.providerLabel === "Vyce AI", "registry provider resolves with label");
 ok(r3.dial?.url === "https://vyceai.com/v1/chat/completions", "dial URL pairs registry baseUrl with /chat/completions");
-ok(r3.dial?.key === "sk-vyce-real-key-123456", "key trimmed, never reformatted");
+ok(r3.dial?.key === "vyce-real-key-123456", "key trimmed, never reformatted");
 ok(!!r3.dial && r3.slot.provider === "vyce", "chosen slot rides the dial (mask knows exactly which key)");
 
 console.log("— r210: pickExecutorSlot (card ⇄ executor dial parity) —");
@@ -178,7 +178,7 @@ try {
   const postRes = await fetch(`${BASE}/api/vault`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ provider: "builtin", key: "sk-builtin-lane-qa-1234567890" }),
+    body: JSON.stringify({ provider: "builtin", key: "builtin-lane-qa-1234567890" }),
   });
   const posted = (await postRes.json()) as { ok?: boolean };
   ok(posted.ok === true, "seed builtin vault slot via POST /api/vault");
@@ -188,7 +188,7 @@ try {
   await db.automationVault.deleteMany({ where: { provider: "builtin" } });
 
   // Shape 3: registry-provider slot → ready, labeled, masked, no raw leak.
-  const testKey = "sk-vyce-lane-qa-9876543210abcdef";
+  const testKey = "vyce-lane-qa-9876543210abcdef";
   addedProviders.push("vyce");
   await fetch(`${BASE}/api/vault`, {
     method: "POST",

@@ -93,3 +93,6 @@ db/vault-seed.json
 
 # HF hub token (r501) — owner PAT, server-side only
 /db/hf-token.txt
+
+# agent round context (local working records, not source)
+agent-ctx/

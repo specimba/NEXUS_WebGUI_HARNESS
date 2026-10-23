@@ -93,6 +93,15 @@ export type AutoRunner = (
   audit?: TurnSafetyAudit
 ) => Promise<void>;
 
+/**
+ * r514: the upstream dial, injectable so the SERVER path (api/chat route,
+ * automation executor) can route through the egress layer (src/lib/server/
+ * egress.ts) while the BROWSER-direct path keeps the platform's plain fetch.
+ * Must be fetch-compatible: (url, init) → Response (streaming body included).
+ * Default = the platform's own fetch — byte-identical behavior.
+ */
+export type EngineDial = (url: string, init?: RequestInit) => Promise<Response>;
+
 export const MAX_IMAGES = 4;
 const MAX_IMAGE_DATAURL_LENGTH = 2_000_000; // ≈1.5 MB binary per image
 
@@ -336,7 +345,8 @@ export function upstreamErrorMessage(status: number, text: string): string {
     if (msg) {
       if (status === 401) return `Invalid API key: ${msg}`;
       if (status === 402) return `Out of credits (HTTP 402): ${msg}`;
-      if (status === 403) return `Access forbidden (check key/region): ${msg}`;
+      if (status === 403)
+        return `Access forbidden (check key/region): ${msg} — a 403 can also be an edge/WAF block on this server's egress IP; if your key is valid, route this upstream through the egress pool (Settings → Egress).`;
       if (status === 404) return `Model or endpoint not found: ${msg}`;
       if (status === 429) return `Rate limit exceeded: ${msg}`;
       return `${prefix}${msg}`;
@@ -421,7 +431,8 @@ export async function runRelayedCustom(
   send: EngineSend,
   signal: AbortSignal,
   toolIO: EngineToolIO,
-  autoRunner?: AutoRunner
+  autoRunner?: AutoRunner,
+  dial?: EngineDial
 ): Promise<void> {
   const primary: RelayWireHop = {
     baseUrl: body.baseUrl,
@@ -463,7 +474,8 @@ export async function runRelayedCustom(
           { ...body, baseUrl: hop.baseUrl, apiKey: hop.apiKey, model: hop.model },
           sendGate,
           signal,
-          toolIO
+          toolIO,
+          dial
         );
       }
       // A backup hop answered after the primary died — tell the client's
@@ -653,7 +665,8 @@ export async function runCustomEngine(
   body: EngineBody,
   send: EngineSend,
   signal: AbortSignal,
-  toolIO: EngineToolIO
+  toolIO: EngineToolIO,
+  dial?: EngineDial
 ): Promise<void> {
   if (body.images?.length) {
     send({ type: "status", message: `Analyzing ${body.images.length} attached image${body.images.length === 1 ? "" : "s"}…` });
@@ -749,7 +762,11 @@ export async function runCustomEngine(
       }, firstTokenMs);
       let res: Response;
       try {
-        res = await fetch(url, {
+        // r514: the dial is injectable — the server route passes the
+        // egress-aware dial (routing map → direct/pool per upstream; no token
+        // configured = byte-identical direct fetch). Browser-direct callers
+        // pass nothing and get the platform fetch, unchanged.
+        res = await (dial ?? fetch)(url, {
           method: "POST",
           headers: {
             ...authHeaders,

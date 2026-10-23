@@ -193,3 +193,16 @@ model CapabilityCheck {
 
   @@index([createdAt])
 }
+
+// ─── r514: Platform settings KV (server-only) ────────────────────────────────
+// Minimal key→string store for server-side platform state that must survive
+// reloads but never belongs in the browser: the Webshare egress token and the
+// per-upstream egress routing map (`egress.routing`). Values are read only by
+// server routes — the token NEVER re-enters any API response (masked last-4
+// previews only); proxy credentials built from it live in process memory for
+// ≤60s and are never persisted, logged or serialized.
+model PlatformSetting {
+  id        String   @id // "egress.webshare.token" | "egress.routing"
+  value     String
+  updatedAt DateTime @updatedAt
+}

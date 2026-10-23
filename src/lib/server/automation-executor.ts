@@ -40,6 +40,7 @@ import {
   providerBillingDeadLeftMs,
   resetProvider429,
 } from "@/lib/provider-rotation";
+import { egressRelayDial } from "@/lib/server/egress";
 
 export const CLAIM_INTERVAL_MS = 15_000;
 export const HEARTBEAT_STALE_MS = 120_000;
@@ -234,7 +235,7 @@ async function dialNoKeyFallback(
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), DIAL_TIMEOUT_MS);
     try {
-      const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+      const res = await egressRelayDial(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -296,7 +297,11 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
   const timer = setTimeout(() => ac.abort(), DIAL_TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(dial.url, {
+    // r514: the server-lane dial rides the egress layer (per-upstream routing;
+    // no token stored = byte-identical plain fetch). A typed EgressDialError
+    // (pool armed but broken) rethrows honestly below — never masked as a
+    // timeout, so the congestion memory is not fed a false lane death.
+    res = await egressRelayDial(dial.url, {
       method: "POST",
       headers: {
         "content-type": "application/json",

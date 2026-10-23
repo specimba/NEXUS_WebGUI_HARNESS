@@ -11,6 +11,7 @@ import {
 } from "@/lib/tools-defs";
 import { guardPublicUrl } from "@/lib/server/url-guard";
 import { recordGateway429 } from "@/lib/server/gateway-pulse";
+import { egressRelayDial } from "@/lib/server/egress";
 import type { ToolCallInfo } from "@/lib/types";
 import {
   buildMaterialsDigest,
@@ -134,7 +135,10 @@ export async function POST(req: NextRequest) {
         }
         const useCustom = body.provider === "custom" && !!body.baseUrl;
         if (useCustom) {
-          await runRelayedCustom(body, send, engineAbort.signal, toolIO, runAutoEngine);
+          // r514: the server relay dial rides the egress layer — per-upstream
+          // routing map decides direct vs Webshare pool; with no token stored
+          // the dial is byte-identical to the previous plain fetch.
+          await runRelayedCustom(body, send, engineAbort.signal, toolIO, runAutoEngine, egressRelayDial);
         } else {
           await runAutoEngine(body, send, engineAbort.signal, audit);
         }

@@ -5,7 +5,8 @@
 # .env / db / logs / artifacts excluded by nature of being untracked).
 set -euo pipefail
 
-PAT="${GITHUB_BACKUP_PAT:-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}"
+PAT="${GITHUB_BACKUP_PAT:-}"  # NEVER inline the PAT here — export GITHUB_BACKUP_PAT before calling (C2-lite r514).
+if [[ -z "$PAT" ]]; then echo "backup-push: GITHUB_BACKUP_PAT is not set - refusing (no inline secrets, r514)." >&2; exit 1; fi
 REPO="specimba/NEXUS_WebGUI_HARNESS"
 SRC="/home/z/my-project"
 WORK="/tmp/nexus-push"
