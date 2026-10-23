@@ -6,6 +6,7 @@
 // Split out of server/tools.ts so client code never imports node:vm / ZAI.
 
 import type { ToolId } from "./types";
+import type { CortexConfig } from "./cortex-edge";
 
 export interface ToolResult {
   ok: boolean;
@@ -52,6 +53,58 @@ export function buildToolDefs(tools: ToolId[]): ToolDef[] {
             url: { type: "string", description: "Full URL including https://" },
           },
           required: ["url"],
+        },
+      },
+    },
+    deep_scrape: {
+      type: "function",
+      function: {
+        name: "deep_scrape",
+        description:
+          'Deep-web lane: scrape JS-rendered pages a plain reader cannot render, run a clean structured web search, or crawl several related pages from one site — in ONE call. Use mode="read" (default) with url for JavaScript-heavy pages (SPAs, dashboards, login-walled previews) where read_url returns shell HTML; mode="search" with query for ranked web results (title/url/description); mode="crawl" with url + maxPages to pull up to 20 related pages from one site at once. Runs through the Cortex Edge lane when configured and honestly falls back to the plain URL reader / web search when it is not.',
+        parameters: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "Page to read or crawl (full https:// URL) — required when mode=\"read\" or mode=\"crawl\"" },
+            query: { type: "string", description: 'Search query — required when mode="search"' },
+            mode: { type: "string", enum: ["read", "search", "crawl"], description: "read = scrape one JS-rendered page (default); search = structured web search; crawl = several pages from one site" },
+            site: { type: "string", description: 'search only: restrict results to one site, e.g. "docs.python.org"' },
+            maxPages: { type: "number", description: "crawl only: pages to pull (1-20), default 6" },
+          },
+        },
+      },
+    },
+    cortex_memory: {
+      type: "function",
+      function: {
+        name: "cortex_memory",
+        description:
+          'Semantic memory over the owner\'s free Upstash Vector index (auto-embeddings — no embedding API). mode="remember" stores durable knowledge the owner or other agents may need later (decisions, dossiers, frontier findings, user preferences); mode="recall" (default) searches it semantically before re-researching something that may already be known. Needs the Cortex Edge lane or direct Vector keys (Settings → Cortex Edge) and answers with an honest configuration pointer when neither is set.',
+        parameters: {
+          type: "object",
+          properties: {
+            mode: { type: "string", enum: ["remember", "recall"], description: "remember = store knowledge (default when storing); recall = semantic search (default)" },
+            text: { type: "string", description: "remember: the knowledge to store · recall: the search query" },
+            kind: { type: "string", description: 'optional label, e.g. "note" | "scrape" | "dossier" | "frontier" — narrows recall' },
+            topK: { type: "number", description: "recall only: max hits 1-10, default 5" },
+          },
+          required: ["text"],
+        },
+      },
+    },
+    sandbox_exec: {
+      type: "function",
+      function: {
+        name: "sandbox_exec",
+        description:
+          "Run a shell command (python3/node/jq/curl-free compute…) in the owner's free Upstash Box sandbox VM and get stdout/stderr plus the exit code. Use for computations the model cannot do reliably, data/file processing, or throwingaway package installs. Needs the Cortex Edge lane or Box keys (Settings → Cortex Edge → Sandbox) and answers with an honest configuration pointer when neither is set. Free tier: 5 CPU-hours/month — keep commands short.",
+        parameters: {
+          type: "object",
+          properties: {
+            command: { type: "string", description: 'Shell command run via sh -c, e.g. "python3 -c \'print(2+2)\'"' },
+            timeoutSec: { type: "number", description: "Command timeout in seconds (5-120, default 30)" },
+          },
+          required: ["command"],
         },
       },
     },
@@ -430,14 +483,27 @@ function composeToolSignals(a: AbortSignal, b: AbortSignal): { signal: AbortSign
   };
 }
 
+/** Optional per-request execution context threaded with a tool call (2-a). */
+export interface HttpToolContext {
+  cortex?: CortexConfig;
+}
+
 /**
  * Browser-side executor: same server logic, one HTTP hop.
  * r25: bounded — the engine's signal (when provided) and a hard 30s deadline
  * ride the fetch together (AbortSignal.any when available). A timeout reports
  * the standard ok:false tool-error envelope so the model can adapt mid-run;
  * a caller abort is rethrown so a user stop stays a user stop.
+ * 2-a: `context` (optional 4th param) rides the POST body so the server
+ * executor gets the Cortex Edge config for deep_scrape (BYOK, per request,
+ * never persisted). Optional ⇒ still assignable to the plain ToolExecutor.
  */
-export const httpToolExecutor: ToolExecutor = async (name, argsJson, signal) => {
+export const httpToolExecutor: (
+  name: string,
+  argsJson: string,
+  signal?: AbortSignal,
+  context?: HttpToolContext
+) => Promise<ToolResult> = async (name, argsJson, signal, context) => {
   const timeout =
     typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(TOOL_CALL_TIMEOUT_MS) : null;
   const composed = timeout ? (signal ? composeToolSignals(signal, timeout) : { signal: timeout, dispose: () => {} }) : null;
@@ -449,7 +515,7 @@ export const httpToolExecutor: ToolExecutor = async (name, argsJson, signal) => 
       // (they'd need a CORS preflight we never grant). Keep in sync with the
       // csrfOk() gate in /api/tools/execute.
       headers: { "Content-Type": "application/json", "x-nexus-csrf": "1" },
-      body: JSON.stringify({ name, args: argsJson }),
+      body: JSON.stringify({ name, args: argsJson, ...(context?.cortex ? { cortex: context.cortex } : {}) }),
       ...(composed ? { signal: composed.signal } : {}),
     });
     const data = (await res.json().catch(() => null)) as ToolResult | { error?: string } | null;

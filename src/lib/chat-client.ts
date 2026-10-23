@@ -66,6 +66,13 @@ export interface RunAgentParams {
    * primary AND every relay hop; clamped server-side to [10s, 120s].
    */
   firstTokenBudgetMs?: number;
+  /**
+   * 2-a: Cortex Edge config (BYOK) — forwarded PER REQUEST to whichever lane
+   * executes tools: the server relay body, or /api/tools/execute for the
+   * browser-direct engine. Never persisted server-side; absent = the
+   * deep_scrape ladder degrades to its read_url/web_search fallback.
+   */
+  cortex?: { url: string; key?: string; hbKey?: string };
   signal?: AbortSignal;
   /** Force the legacy server transport (used after a browser-direct CORS death). */
   forceServer?: boolean;
@@ -89,6 +96,9 @@ export interface AgentRunResult {
   iterations: number;
   /** Which transport produced the answer (run-call-log observability). */
   transport: "browser-direct" | "server";
+  /** r511 Praison-style L4 — why the loop ended ("goal" is healthy; doom_loop
+   *  / max_iterations / no_tool_calls feed the run drawer's honest evidence). */
+  completionReason?: string;
 }
 
 export interface AgentHandlers {
@@ -106,6 +116,8 @@ interface DonePayload {
   content: string;
   toolCalls: ToolCallInfo[];
   iterations: number;
+  /** r511 — Praison L4 completion reason echoed by the engine's done event. */
+  completionReason?: string;
 }
 
 /**
@@ -261,6 +273,7 @@ async function runBrowserDirect(
       ? { relay: params.relay as RelayWireHop[] }
       : {}),
     ...(params.firstTokenBudgetMs ? { firstTokenBudgetMs: params.firstTokenBudgetMs } : {}),
+    ...(params.cortex ? { cortex: params.cortex } : {}),
   };
 
   const send = (evt: Record<string, unknown>) => {
@@ -301,6 +314,9 @@ async function runBrowserDirect(
           content: String(evt.content ?? ""),
           toolCalls: Array.isArray(evt.toolCalls) ? (evt.toolCalls as ToolCallInfo[]) : [],
           iterations: Number(evt.iterations ?? 1),
+          ...(typeof (evt as { completionReason?: unknown }).completionReason === "string"
+            ? { completionReason: (evt as { completionReason: string }).completionReason }
+            : {}),
         };
         break;
       }
@@ -319,7 +335,15 @@ async function runBrowserDirect(
     body,
     send,
     params.signal ?? new AbortController().signal,
-    { defs: buildToolDefs(params.tools ?? []), execute: httpToolExecutor },
+    {
+      defs: buildToolDefs(params.tools ?? []),
+      // 2-a: the browser-direct engine's tools still execute server-side via
+      // /api/tools/execute — forward the Cortex config per request so
+      // deep_scrape gets its edge lane there too (BYOK: transit only, never
+      // persisted).
+      execute: (name, argsJson, signal) =>
+        httpToolExecutor(name, argsJson, signal, params.cortex ? { cortex: params.cortex } : undefined),
+    },
     // No autoRunner in the browser — a useAuto hop throws here, the relay
     // rotates past it, and if the chain exhausts we fall back to the server
     // (which owns the built-in engine) in runAgentChat.
@@ -364,6 +388,7 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
         tools: params.tools ?? [],
         ...(params.relay && params.relay.length > 0 ? { relay: params.relay } : {}),
         ...(params.firstTokenBudgetMs ? { firstTokenBudgetMs: params.firstTokenBudgetMs } : {}),
+        ...(params.cortex ? { cortex: params.cortex } : {}),
         ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
       }),
       signal:
@@ -446,6 +471,9 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
           content: String(evt.content ?? ""),
           toolCalls: Array.isArray(evt.toolCalls) ? (evt.toolCalls as ToolCallInfo[]) : [],
           iterations: Number(evt.iterations ?? 1),
+          ...(typeof (evt as { completionReason?: unknown }).completionReason === "string"
+            ? { completionReason: (evt as { completionReason: string }).completionReason }
+            : {}),
         };
         break;
       case "error": {
@@ -511,7 +539,7 @@ async function runServerAgent(params: RunAgentParams, h: AgentHandlers): Promise
     throw new Error("The agent stream ended without a result.");
   }
   const result: DonePayload = done;
-  return { content: result.content, toolCalls: result.toolCalls, iterations: result.iterations, transport: "server" as const };
+  return { content: result.content, toolCalls: result.toolCalls, iterations: result.iterations, completionReason: result.completionReason, transport: "server" as const };
 }
 
 function short(err: unknown): string {

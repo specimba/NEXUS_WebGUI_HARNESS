@@ -297,6 +297,17 @@ export function ChatView() {
             tools: selectedAgent.tools,
             messages: history,
             ...(relayHops.length > 0 ? { relay: relayHops } : {}),
+            // 2-a: Cortex Edge config rides per request (BYOK) so deep_scrape
+            // gets its lane ladder on both transports. v2 arms on ANY lane key
+            // (deep-web, memory, jobs, sandbox) — not just the deep-web pair.
+            ...(settings.cortex?.url ||
+            settings.cortex?.hbKey ||
+            settings.cortex?.vectorUrl ||
+            settings.cortex?.vectorToken ||
+            settings.cortex?.qstashToken ||
+            settings.cortex?.boxApiKey
+              ? { cortex: settings.cortex }
+              : {}),
             images: images && images.length > 0 ? images : undefined,
             signal: controller.signal,
           },

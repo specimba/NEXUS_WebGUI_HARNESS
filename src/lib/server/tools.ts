@@ -4,6 +4,7 @@ import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import ZAI from "z-ai-web-dev-sdk";
 import { TOOL_META } from "../constants";
 import { buildToolDefs, type ToolDef, type ToolResult } from "../tools-defs";
+import { CORTEX_FALLBACK, cortexDeepScrape, cortexMemory, cortexSandbox, type CortexConfig } from "../cortex-edge";
 import { guardPublicUrl } from "./url-guard";
 
 // ─── Tool execution engine (server-side only) ────────────────────────────────
@@ -20,10 +21,21 @@ async function getZai() {
   return zaiPromise;
 }
 
+/**
+ * 2-a: optional per-request execution context. `cortex` carries the browser's
+ * Cortex Edge config (BYOK — forwarded per request, never persisted) so the
+ * deep_scrape lane ladder can run. Absent context = the lane ladder degrades
+ * to its read_url/web_search fallback, exactly as before.
+ */
+export interface ToolContext {
+  cortex?: CortexConfig;
+}
+
 export async function executeTool(
   name: string,
   argsJson: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  context?: ToolContext
 ): Promise<ToolResult> {
   const started = Date.now();
   let args: Record<string, unknown> = {};
@@ -41,6 +53,15 @@ export async function executeTool(
         break;
       case "read_url":
         content = await doReadUrl(args);
+        break;
+      case "deep_scrape":
+        content = await doDeepScrape(args, signal, context);
+        break;
+      case "cortex_memory":
+        content = await doCortexMemory(args, signal, context);
+        break;
+      case "sandbox_exec":
+        content = await doSandboxExec(args, signal, context);
         break;
       case "run_code":
         content = doRunCode(args);
@@ -330,6 +351,114 @@ function htmlToText(html: string): string {
     .replace(/[ \t]+/g, " ")
     .replace(/\n\s*\n\s*\n+/g, "\n\n")
     .trim();
+}
+
+// ─── deep_scrape (2-a Cortex Edge lane ladder) ───────────────────────────────
+// Lane ladder lives in ../cortex-edge.ts (isomorphic): edge function → direct
+// Hyperbrowser → fallback. This handler catches the CORTEX_FALLBACK marker and
+// routes read/search through the EXISTING doReadUrl / doWebSearch
+// implementations — deep_scrape NEVER hard-fails when the plain tools can
+// still answer; the provenance header keeps transcripts honest about which
+// lane actually served the content.
+async function doDeepScrape(
+  args: Record<string, unknown>,
+  signal?: AbortSignal,
+  context?: ToolContext
+): Promise<string> {
+  const cfg = context?.cortex;
+  const mode: "read" | "search" | "crawl" =
+    args.mode === "search" || args.mode === "crawl" ? args.mode : "read";
+  // SSRF guard: the edge-function URL is client-supplied and is fetched
+  // SERVER-side on this path — same doctrine as the relay baseUrl/hop guards
+  // (https-only, no loopback/private/metadata targets).
+  if (cfg?.url?.trim()) {
+    const verdict = guardPublicUrl(cfg.url.trim());
+    if (!verdict.ok) {
+      throw new Error(`Cortex Edge URL rejected by the SSRF guard (${verdict.reason})`);
+    }
+  }
+  const res = await cortexDeepScrape(
+    {
+      ...(typeof args.url === "string" ? { url: args.url } : {}),
+      ...(typeof args.query === "string" ? { query: args.query } : {}),
+      mode,
+      ...(typeof args.site === "string" ? { site: args.site } : {}),
+      ...(typeof args.maxPages === "number" ? { maxPages: args.maxPages } : {}),
+    },
+    cfg,
+    signal
+  );
+  // Lane ladder exhausted (or never armed) → read / search fall through to the
+  // existing executors with a provenance prefix; the edge/direct error (when
+  // one was attempted) rides along as an honest note line.
+  if (res.content === CORTEX_FALLBACK) {
+    const note = res.error ? `\n(note: ${res.error})` : "";
+    if (mode === "search") {
+      const search = await doWebSearch(args, signal);
+      return `[cortex fallback → web_search]${note}\n${search}`;
+    }
+    const read = await doReadUrl(args);
+    return `[cortex fallback → read_url]${note}\n${read}`;
+  }
+  // Edge/direct success (provenance-headed content) — or a crawl-without-lanes
+  // / validation failure, which surfaces as the standard tool-error envelope.
+  if (!res.ok) throw new Error(res.content);
+  return res.content;
+}
+
+// ─── cortex_memory + sandbox_exec (2-c Cortex v2 lanes) ────────────────────
+// Both ladders live in ../cortex-edge.ts (edge function → direct Upstash REST
+// → honest off) and NEVER throw for lane absence — the honest configuration
+// pointer IS the tool result, so the agent step keeps working. Unlike
+// deep_scrape there is NO plain-tool fallback (read_url/web_search cannot
+// answer semantic memory or shell execution), and no SSRF guard targets here
+// beyond the shared guard below: the edge URL is client-supplied and dialed
+// server-side, so it passes the same guardPublicUrl doctrine as deep_scrape.
+function guardCortexUrl(cfg?: CortexConfig): void {
+  if (cfg?.url?.trim()) {
+    const verdict = guardPublicUrl(cfg.url.trim());
+    if (!verdict.ok) {
+      throw new Error(`Cortex Edge URL rejected by the SSRF guard (${verdict.reason})`);
+    }
+  }
+}
+
+async function doCortexMemory(
+  args: Record<string, unknown>,
+  signal?: AbortSignal,
+  context?: ToolContext
+): Promise<string> {
+  guardCortexUrl(context?.cortex);
+  const res = await cortexMemory(
+    {
+      ...(args.mode === "remember" || args.mode === "recall" ? { mode: args.mode } : {}),
+      ...(typeof args.text === "string" ? { text: args.text } : {}),
+      ...(typeof args.kind === "string" ? { kind: args.kind } : {}),
+      ...(typeof args.topK === "number" ? { topK: args.topK } : {}),
+    },
+    context?.cortex,
+    signal
+  );
+  if (!res.ok) throw new Error(res.content);
+  return res.content;
+}
+
+async function doSandboxExec(
+  args: Record<string, unknown>,
+  signal?: AbortSignal,
+  context?: ToolContext
+): Promise<string> {
+  guardCortexUrl(context?.cortex);
+  const res = await cortexSandbox(
+    {
+      ...(typeof args.command === "string" ? { command: args.command } : {}),
+      ...(typeof args.timeoutSec === "number" ? { timeoutSec: args.timeoutSec } : {}),
+    },
+    context?.cortex,
+    signal
+  );
+  if (!res.ok) throw new Error(res.content);
+  return res.content;
 }
 
 // ─── run_code (node:vm sandbox) ──────────────────────────────────────────────

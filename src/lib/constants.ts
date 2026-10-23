@@ -72,6 +72,9 @@ export function modelLabel(model: string): string {
 export const TOOL_IDS: ToolId[] = [
   "web_search",
   "read_url",
+  "deep_scrape",
+  "cortex_memory",
+  "sandbox_exec",
   "run_code",
   "current_time",
   "arxiv_search",
@@ -95,6 +98,24 @@ export const TOOL_META: Record<ToolId, { label: string; description: string; emo
     label: "URL Reader",
     description: "Fetch and read the contents of any web page",
     emoji: "📄",
+  },
+  deep_scrape: {
+    label: "Deep scrape",
+    description:
+      "JS-rendered page scrape / site crawl / structured web search via the Cortex Edge lane (edge function → direct Hyperbrowser → URL reader fallback)",
+    emoji: "🕸️",
+  },
+  cortex_memory: {
+    label: "Cortex memory",
+    description:
+      "Remember and recall durable knowledge over your free Upstash Vector index (semantic memory with auto-embeddings) — needs the Cortex Edge lane or direct Vector keys (Settings → Cortex Edge)",
+    emoji: "🧠",
+  },
+  sandbox_exec: {
+    label: "Sandbox run",
+    description:
+      "Execute a shell command (python/node/etc.) in the Upstash Box sandbox VM — needs the Cortex Edge lane or Box keys (Settings → Cortex Edge → Sandbox)",
+    emoji: "🧳",
   },
   run_code: {
     label: "Code Runner",

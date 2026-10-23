@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { PageHeader, ThemeToggle } from "@/components/nexus/atoms";
 import { ThemePicker } from "@/components/nexus/settings/theme-picker";
 import { AutomationVaultCard } from "@/components/nexus/settings/automation-vault-card";
+import { CortexEdgeCard } from "@/components/nexus/settings/cortex-edge-card";
 import { DeepLinkShare } from "@/components/nexus/settings/deep-link-share";
 import { GitHubOpsCard } from "@/components/nexus/settings/github-ops-card";
 import { LocalModelsPanel } from "@/components/nexus/settings/local-models";
@@ -187,6 +188,7 @@ const SETTINGS_SECTIONS = [
   { id: "gh-ops", label: "GitHub" },
   { id: "referrals", label: "Referrals" },
   { id: "byok", label: "BYOK" },
+  { id: "cortex", label: "Cortex Edge" },
   { id: "behavior", label: "Behavior" },
   { id: "evolution", label: "Evolution" },
   { id: "profile", label: "Profile" },
@@ -604,6 +606,11 @@ export function SettingsView() {
               unreachable from the sticky nav (no id, free-scroll only). */}
           <div id="byok" className="scroll-mt-14">
             <ProviderCard />
+          </div>
+
+          {/* ── 2-a Cortex Edge — server-side deep-web lane for agents ── */}
+          <div id="cortex" className="scroll-mt-14">
+            <CortexEdgeCard />
           </div>
 
           {/* ── Behavior ─────────────────────────────────────────────── */}

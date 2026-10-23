@@ -13,6 +13,7 @@
 // 400 fallback, tool-call-as-text salvage with grace rounds + digest fallback.
 
 import { CUSTOM_FALLBACK_MODEL, MAX_ITERATIONS_DEFAULT } from "./constants";
+import type { CortexConfig } from "./cortex-edge";
 import { isAuthRelayFailure, isDeadlyRelayFailure, isSoftRelayFailure } from "./relay-core";
 import {
   buildToolDefs,
@@ -56,6 +57,13 @@ export interface EngineBody {
   system?: string;
   messages: { role: "user" | "assistant"; content: string }[];
   tools?: ToolId[];
+  /**
+   * 2-a: Cortex Edge config (BYOK, browser → server per request, never
+   * persisted). The server chat route threads it into executeTool's context
+   * so the deep_scrape lane ladder can run; absent = the ladder degrades to
+   * its read_url/web_search fallback.
+   */
+  cortex?: CortexConfig;
   images?: EngineImage[];
   relay?: RelayWireHop[];
   /**
@@ -571,6 +579,76 @@ function newRequestId(): string {
     : `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// ─── Praison L4 completion telemetry + doom-loop guard (r511) ────────────────
+
+/**
+ * WHY did this engine turn stop? Threaded through the tool loop and attached
+ * to the terminal `done` SSE payload (additive field — backward-compatible).
+ * "needs_help" is reserved for a future ask-the-operator protocol (never
+ * emitted today). "error" is expressed by the CALLER's error SSE event (the
+ * engine signals failure by throwing; the payload belongs to the route), so
+ * runCustomEngine itself only ever emits goal / no_tool_calls /
+ * max_iterations / doom_loop.
+ */
+export type CompletionReason =
+  | "goal"
+  | "no_tool_calls"
+  | "max_iterations"
+  | "doom_loop"
+  | "needs_help"
+  | "error";
+
+/** JSON.stringify with object keys recursively sorted (stable across runs). */
+function stableStringify(v: unknown): string {
+  if (v === null || typeof v !== "object") return JSON.stringify(v) ?? "null";
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(",")}]`;
+  const o = v as Record<string, unknown>;
+  return `{${Object.keys(o)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`)
+    .join(",")}}`;
+}
+
+/**
+ * Tool-call signature: `name:stableArgsJson` (args keys sorted, truncated to
+ * 300 chars). Deliberately covers ONLY name + args — never tool RESULTS —
+ * because a poller whose OUTPUT keeps changing is doing real work; what it
+ * must NOT do is re-issue the identical call forever.
+ */
+function toolCallSig(name: string, argsJson: string): string {
+  let args: unknown = null;
+  try {
+    args = JSON.parse(argsJson || "{}") as unknown;
+  } catch {
+    args = { raw: String(argsJson ?? "").slice(0, 300) }; // unparseable args still count, stably
+  }
+  return `${name}:${stableStringify(args).slice(0, 300)}`;
+}
+
+/**
+ * Doom-loop verdict over the turn's tool-call signatures:
+ *  (a) the SAME exact signature appears ≥3 times in the turn, OR
+ *  (b) the last 4 signatures alternate A,B,A,B.
+ * NOTE: (a) trips on identical ARGS alone — a poller whose results change
+ * every call but whose arguments are byte-identical 3x IS the intended catch
+ * (the model is stuck re-issuing the same call and ignoring the answers).
+ */
+function isDoomLoopSig(recentSigs: string[]): boolean {
+  if (recentSigs.length >= 3) {
+    const last = recentSigs[recentSigs.length - 1];
+    let count = 0;
+    for (const s of recentSigs) if (s === last) count += 1;
+    if (count >= 3) return true;
+  }
+  const last4 = recentSigs.slice(-4);
+  return (
+    last4.length === 4 &&
+    last4[0] === last4[2] &&
+    last4[1] === last4[3] &&
+    last4[0] !== last4[1]
+  );
+}
+
 export async function runCustomEngine(
   body: EngineBody,
   send: EngineSend,
@@ -617,11 +695,17 @@ export async function runCustomEngine(
 
   let graceUsed = 0; // tool-calls salvaged from the FINAL pass (max 2)
   let synthesisRetried = false; // r507: one synthesis order after a degenerate empty final
+  // r511 Praison L4: per-turn completion reason + doom-loop guard state.
+  let completionReason: CompletionReason = "goal";
+  let budgetSpent = false;
+  let forceFinal = false; // set by the doom-loop guard — reuses the budget-exhaustion flow
+  let doomDetected = false;
+  const recentSigs: string[] = [];
   for (let iteration = 1; iteration <= maxIterations + 3 && iteration <= 13; iteration++) {
     // Cancelled runs bail before starting another LLM iteration (r252).
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
     send({ type: "iteration", n: iteration });
-    const isFinalPass = iteration > maxIterations;
+    const isFinalPass = iteration > maxIterations || forceFinal;
     // Resilience (r19): gateways like Vyce sit behind rotating upstream pools
     // and occasionally drop a call mid-run (502/504/socket death) — exactly
     // what killed a Morning-Briefing step after 7 successful tool calls.
@@ -820,6 +904,10 @@ export async function runCustomEngine(
           ? await toolIO.execute(tc.name, validation.args ?? "{}", signal)
           : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
         collected.push({ id: tc.id, name: tc.name, args: tc.args, result: result.content, ok: result.ok, ms: result.ms });
+        // r511 doom-loop telemetry: identical name+args 3x (or an A,B,A,B
+        // alternation) means the model is stuck re-issuing the same call.
+        recentSigs.push(toolCallSig(tc.name, tc.args));
+        if (isDoomLoopSig(recentSigs)) doomDetected = true;
         send({
           type: "tool_result",
           id: tc.id,
@@ -837,12 +925,29 @@ export async function runCustomEngine(
           content: clip(fenceToolOutputForModel(tc.name, result.content, 8000, toolIO.audit), 8000),
         });
       }
+      // r511 Praison L4 doom-loop guard: stop the SAME way budget exhaustion
+      // stops — drop tools next pass (forceFinal → isFinalPass), order the
+      // final answer, and label the turn honestly. One forced synthesis beats
+      // burning every remaining round on a loop.
+      if (doomDetected) {
+        completionReason = "doom_loop";
+        forceFinal = true;
+        send({ type: "status", message: "Doom loop detected — the same tool calls keep repeating. Finalizing from the material gathered…" });
+        msgs.push({
+          role: "user",
+          content:
+            "TOOL LOOP DETECTED. You keep re-issuing the same tool calls and their results are not changing your answer. Write your FINAL markdown answer now from the results you already have — plain prose/markdown only, no tool calls, no JSON.",
+        });
+        continue;
+      }
       if (iteration >= maxIterations) {
         // r29 autonomous synthesis (Temporal/LangGraph "reserve a final pass"
         // doctrine): the LAST in-budget tool round is followed by an explicit
         // synthesis order, so the no-tools final pass is purposeful instead of
         // a silent gamble. This is what turns "budget exhausted + raw dump"
         // into an actual synthesized answer.
+        budgetSpent = true;
+        completionReason = "max_iterations";
         send({ type: "status", message: "Tool budget spent — finalizing answer…" });
         msgs.push({
           role: "user",
@@ -876,6 +981,10 @@ export async function runCustomEngine(
             ? await toolIO.execute(salvaged.name, validation.args ?? "{}", signal)
             : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
           collected.push({ id, name: salvaged.name, args: argsStr, result: result.content, ok: result.ok, ms: result.ms });
+          // r511: salvage-executed calls count toward the doom pattern too —
+          // the forced stop itself fires in the main tool branch next round.
+          recentSigs.push(toolCallSig(salvaged.name, argsStr));
+          if (isDoomLoopSig(recentSigs)) doomDetected = true;
           send({ type: "tool_result", id, name: salvaged.name, ok: result.ok, ms: result.ms, content: clip(result.content, 4000) });
           msgs.push({
             role: "user",
@@ -965,7 +1074,13 @@ export async function runCustomEngine(
     if (outcome.truncated) {
       send({ type: "status", message: "Heads-up: the provider closed this stream early (no end-of-stream marker) — the answer may be cut off." });
     }
-    send({ type: "done", content: finalContent, toolCalls: collected, iterations: iteration });
+    // r511 last-mile honest labeling: a doom pattern caught on a salvage path
+    // (the forced stop lives only in the main tool branch) still reads as
+    // doom_loop; a direct no-tools answer before any budget spend reads as
+    // no_tool_calls. Everything else keeps its threaded value.
+    if (doomDetected) completionReason = "doom_loop";
+    else if (collected.length === 0 && !budgetSpent) completionReason = "no_tool_calls";
+    send({ type: "done", content: finalContent, toolCalls: collected, iterations: iteration, completionReason });
     return;
   }
   throw new Error("Agent loop exceeded maximum iterations.");

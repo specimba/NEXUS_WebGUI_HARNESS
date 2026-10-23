@@ -1,5 +1,7 @@
 // ─── NEXUS WebGUI · Shared Types ─────────────────────────────────────────────
 
+import type { CortexConfig } from "./cortex-edge";
+
 export type View = "chat" | "agents" | "workflows" | "settings" | "radar";
 
 /** Accent theme variants (remap the violet/fuchsia accent scale via CSS vars). */
@@ -8,6 +10,9 @@ export type UiThemeId = "nexus" | "matrix" | "fallout" | "cyber";
 export type ToolId =
   | "web_search"
   | "read_url"
+  | "deep_scrape"
+  | "cortex_memory"
+  | "sandbox_exec"
   | "run_code"
   | "current_time"
   | "arxiv_search"
@@ -34,6 +39,11 @@ export interface Agent {
   role: string;
   description: string;
   instructions: string;
+  /** r511 Praison-style L1 — one-sentence objective this worker optimizes for.
+   *  Optional: pre-existing agents stay valid (undefined = derived from role). */
+  goal?: string;
+  /** r511 Praison-style L1 — persona grounding shown in crew rosters. */
+  backstory?: string;
   model: string; // "auto" for built-in, or a model id for custom providers
   temperature: number; // 0 – 1.5
   maxIterations: number; // 1 – 10
@@ -392,6 +402,15 @@ export interface Workflow {
   runs: WorkflowRun[];
   createdAt: number;
   updatedAt: number;
+  /** r511 Tryable-experiment clone — one research cycle pinned to a fresh
+   *  radar lane, compared in the Evolution ledger against its source. */
+  experiment?: {
+    sourceWorkflowId: string;
+    lane: string;
+    startedAt: number;
+    label: string;
+  };
+
   /** Pipeline depth (r26) — missing = "standard" for pre-existing workflows. */
   depth?: PipelineDepth;
   /**
@@ -459,6 +478,9 @@ export interface SpawnProposal {
   planLines?: string[];
   /** Why this was proposed — shown verbatim in the inbox row. */
   reason: string;
+  /** r511 — set when a judged Frontier Scout item inspired the variation,
+   *  so the inbox can show the source paper/repo beside the proposal. */
+  frontierRef?: { title: string; url: string; kind: "paper" | "repo" | "model" };
   sourceWorkflowId: string;
   sourceWorkflowName: string;
   sourceRunId?: string;
@@ -535,6 +557,17 @@ export interface Settings {
    * the decision ladder falls back to a fast-model JSON judge via the vault.
    */
   typesafeKey?: string;
+  /**
+   * 2-a Cortex Edge — the server-side deep-web lane for agents (Hyperbrowser
+   * at a Supabase Edge Function). url = the deployed edge-function URL (empty
+   * = lane off); key = the x-nexus-cortex-key shared secret (the
+   * CORTEX_SHARED_SECRET set in Supabase → Edge Functions → Secrets — NOT an
+   * SSL/GPG key); hbKey = optional per-request Hyperbrowser key (BYOK
+   * override used when HYPERBROWSER_API_KEY is not set as an edge secret).
+   * BYOK doctrine: these live in browser localStorage and are forwarded PER
+   * REQUEST only — the server never persists them.
+   */
+  cortex?: CortexConfig;
   /**
    * Evolution Layer: novelty % below which a finished run counts as a
    * near-duplicate and triggers a spawn proposal. 10–90; missing = 35

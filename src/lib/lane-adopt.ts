@@ -26,9 +26,9 @@
 //      rotate onto fresh capacity;
 //   4. the rotator's health memory self-corrects — a bad adoption fails a
 //      dial, gets demoted, and sinks (never a silent permanent seat);
-//   5. lanes the tracker later marks `removedAt` are disabled here too —
+//   5. lanes the tracker later marks `removedAt` are RETIRED here too —
 //      pinned work won't 404 on a corpse (the "12 models removed in 48h"
-//      capability-radar warning class).
+//      capability-radar warning class, r512 auto-retire below).
 //
 // Policy: FREE lanes only, KNOWN registry providers only (dialable base
 // URLs), capped registry (oldest-first eviction keeps the newest frontier),
@@ -38,7 +38,7 @@
 // they are never adopted.
 
 import { providerById } from "./providers";
-import type { TrackedModelRow } from "./tracker-types";
+import { TRACKER_CACHE_KEY, parseTrackerMirror, type TrackedModelRow } from "./tracker-types";
 
 export const ADOPTED_LANES_KEY = "nexus-relay-adopted";
 
@@ -68,6 +68,18 @@ export interface AdoptedLane {
   enabled: boolean;
   /** Why it was disabled — "removed from catalog", "user muted", … */
   disabledReason?: string;
+  // ── r512 retirement fields (ALL optional so old persisted registries
+  // survive the shape bump — readRegistry only requires key/providerId). ──
+  /** Proven removed from its provider catalog: excluded from every dial
+   * path (relay chain, lane pins, experiment prefill) but still LISTED so
+   * the audit trail stays visible in Settings → Model relay. */
+  retired?: boolean;
+  /** Full human reason — "removed from {provider} catalog · {date}". */
+  retiredReason?: string;
+  /** ISO — when the retirement was stamped. */
+  retiredAt?: string;
+  /** r512 dial-time backstop: 404/503 missing-model strikes (retire at 2). */
+  removalStrikes?: number;
 }
 
 function readRegistry(): AdoptedLane[] {
@@ -95,14 +107,202 @@ function writeRegistry(lanes: AdoptedLane[]): void {
   }
 }
 
-/** Snapshot for UIs (Settings → Model relay, radar tab "in relay" chips). */
+/** Snapshot for UIs (Settings → Model relay, radar tab "in relay" chips).
+ * r512: runs the lazy retirement pass first so audit surfaces show the amber
+ * retired chip as soon as the tracker knows, without waiting for a dial. */
 export function adoptedLanesSnapshot(): AdoptedLane[] {
+  runLazyRetirementPass();
   return readRegistry();
 }
 
 /** True when the lane key is already registered (any enabled state). */
 export function isLaneAdopted(key: string): boolean {
   return readRegistry().some((l) => l.key === key);
+}
+
+// ─── r512: pinned-lane auto-retire ─────────────────────────────────────
+// The capability-radar warning class ("48h: N catalog models removed —
+// pinned lanes will 404/503") as MECHANISM, not warning: a lane proven
+// removed from its provider catalog is retired IN THIS SAME registry key
+// (no key sprawl) and excluded from every dial path. Retirement fires
+// LAZILY — every read path runs a throttled pass against the tracker's
+// removal mirror (nexus-tracker-cache) — plus a DIAL-TIME backstop
+// (noteRemovalStrike, 2 strikes) for removals the tracker mirror missed.
+// Retired lanes stay listed (the audit trail) and honor a manual restore
+// only when the catalog shows the lane again.
+
+export interface LaneRetirement {
+  key: string;
+  reason: string;
+  /** ISO — when the retirement was stamped. */
+  at: string;
+}
+
+/** Dial strikes before a tracker-missed removal retires (spec cap). */
+const REMOVAL_STRIKES_TO_RETIRE = 2;
+
+function providerLabel(providerId: string): string {
+  return providerById(providerId)?.name ?? providerId;
+}
+
+function removalReason(providerId: string, removedAt?: string | null): string {
+  const d = removedAt ? new Date(removedAt) : new Date();
+  const day = Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+  return `removed from ${providerLabel(providerId)} catalog · ${day}`;
+}
+
+/** key → removedAt for every row the tracker mirror marks removed. */
+function trackerRemovedRows(): Map<string, string> {
+  const out = new Map<string, string>();
+  try {
+    const raw = localStorage.getItem(TRACKER_CACHE_KEY);
+    if (!raw) return out;
+    const boot = parseTrackerMirror(raw);
+    if (boot.kind !== "data") return out;
+    for (const row of boot.data.tracked) {
+      if (row?.id && row.removedAt) out.set(row.id, row.removedAt);
+    }
+  } catch {
+    /* private mode / quota — the pass is best-effort by design */
+  }
+  return out;
+}
+
+function stampRetirement(l: AdoptedLane, reason: string): void {
+  l.retired = true;
+  l.retiredReason = reason;
+  l.retiredAt = new Date().toISOString();
+  l.enabled = false;
+  l.disabledReason = reason;
+}
+
+/** Retire a lane (tracker removal / dial strikes / future callers). Idempotent
+ * — an already-retired lane keeps its original reason. The record STAYS in
+ * the registry: the settings card renders it with the amber retired chip. */
+export function retireLane(key: string, reason: string): AdoptedLane[] {
+  const lanes = readRegistry();
+  const l = lanes.find((x) => x.key === key);
+  if (l && !l.retired) {
+    stampRetirement(l, reason);
+    writeRegistry(lanes);
+  }
+  return lanes;
+}
+
+/** Un-retire (Settings restore affordance — the UI verifies catalog presence
+ * before calling this). Clears every retirement field and re-enables. */
+export function restoreLane(key: string): AdoptedLane[] {
+  const lanes = readRegistry();
+  const l = lanes.find((x) => x.key === key);
+  if (l) {
+    l.retired = undefined;
+    l.retiredReason = undefined;
+    l.retiredAt = undefined;
+    l.removalStrikes = undefined;
+    l.enabled = true;
+    l.disabledReason = undefined;
+    writeRegistry(lanes);
+  }
+  return lanes;
+}
+
+/** Every retired lane with its reason — audit feeds / future UIs. */
+export function retiredLanesWithReason(): LaneRetirement[] {
+  return readRegistry()
+    .filter((l) => l.retired)
+    .map((l) => ({
+      key: l.key,
+      reason: l.retiredReason ?? "removed from provider catalog",
+      at: l.retiredAt ?? l.adoptedAt,
+    }));
+}
+
+export function isLaneRetired(key: string): boolean {
+  return readRegistry().some((l) => l.key === key && l.retired);
+}
+
+/** The full retirement reason for a lane — registry retirement first, then
+ * the raw tracker removal (pins may reference lanes that were never
+ * adopted). Null = the lane is neither retired nor tracker-removed, i.e.
+ * dialable as far as this module knows. */
+export function laneRetirementReason(key: string): string | null {
+  if (!key || key === "auto::builtin") return null;
+  const l = readRegistry().find((x) => x.key === key);
+  if (l?.retired) return l.retiredReason ?? "removed from provider catalog";
+  const removedAt = trackerRemovedRows().get(key);
+  if (removedAt) {
+    return removalReason(key.slice(0, key.indexOf("::")), removedAt);
+  }
+  return null;
+}
+
+/** r512 dial-time backstop: one 404/503 missing-model dial against a registry
+ * lane. Two strikes retire it ("cap: 2 strikes per lane before retire") even
+ * when the tracker mirror never saw the removal. Safe on unknown keys —
+ * non-adopted lanes keep the relay health memory as their corpse handler. */
+export function noteRemovalStrike(key: string, error?: string): { strikes: number; retired: boolean } {
+  const lanes = readRegistry();
+  const l = lanes.find((x) => x.key === key);
+  if (!l) return { strikes: 0, retired: false };
+  if (l.retired) return { strikes: l.removalStrikes ?? 0, retired: true };
+  l.removalStrikes = (l.removalStrikes ?? 0) + 1;
+  if (l.removalStrikes >= REMOVAL_STRIKES_TO_RETIRE) {
+    const detail = error ? ` (${error.slice(0, 80)})` : "";
+    stampRetirement(l, `${removalReason(l.providerId)} · ${l.removalStrikes} dial strikes${detail}`);
+    writeRegistry(lanes);
+    return { strikes: l.removalStrikes, retired: true };
+  }
+  writeRegistry(lanes);
+  return { strikes: l.removalStrikes, retired: false };
+}
+
+// The pass is throttled: buildRelayChain() runs on EVERY dial (per streamStep
+// attempt), and the mirror parse — while small — must not ride each one.
+let lastLazyPassAt = 0;
+const LAZY_PASS_INTERVAL_MS = 10_000;
+
+/** Lazy auto-retire: cross-check the registry against the tracker's removal
+ * mirror and retire matching lanes with the full reason. Called from every
+ * adopted-lane READ path (rotation build / prefill / settings snapshot), so
+ * no sync-time coupling is needed. Returns how many lanes retired now. */
+export function runLazyRetirementPass(): number {
+  const now = Date.now();
+  if (now - lastLazyPassAt < LAZY_PASS_INTERVAL_MS) return 0;
+  lastLazyPassAt = now;
+  let retired = 0;
+  try {
+    const removals = trackerRemovedRows();
+    if (removals.size === 0) return 0;
+    const lanes = readRegistry();
+    let dirty = false;
+    for (const l of lanes) {
+      if (l.retired || !removals.has(l.key)) continue;
+      stampRetirement(l, removalReason(l.providerId, removals.get(l.key)));
+      l.removalStrikes = 0;
+      dirty = true;
+      retired += 1;
+    }
+    if (dirty) writeRegistry(lanes);
+  } catch {
+    /* best-effort — the doctrine chain still stands */
+  }
+  return retired;
+}
+
+/** True when the tracker catalog currently shows the lane alive (present and
+ * NOT removedAt) — the restore affordance's presence check. Reads the
+ * localStorage mirror; the Settings restore button re-verifies against a
+ * live /api/tracker fetch before actually un-retiring. */
+export function catalogHasLane(key: string): boolean {
+  try {
+    const raw = localStorage.getItem(TRACKER_CACHE_KEY);
+    if (!raw) return false;
+    const boot = parseTrackerMirror(raw);
+    if (boot.kind !== "data") return false;
+    return boot.data.tracked.some((r) => r?.id === key && !r.removedAt);
+  } catch {
+    return false;
+  }
 }
 
 /** Manual adoption (radar row action / settings) — idempotent, un-disables. */
@@ -114,8 +314,15 @@ export function adoptLane(
   const existing = lanes.find((l) => l.key === row.id);
   if (existing) {
     if (!existing.enabled) {
+      // r512: a manual Adopt is an explicit user override on a row the user
+      // is LOOKING at (radar rows render on live tracker data) — clear the
+      // retirement fields too, not just the mute.
       existing.enabled = true;
       existing.disabledReason = undefined;
+      existing.retired = undefined;
+      existing.retiredReason = undefined;
+      existing.retiredAt = undefined;
+      existing.removalStrikes = undefined;
       writeRegistry(lanes);
       return { added: true, lanes };
     }
@@ -209,6 +416,9 @@ export function absorbTrackerLanes(
     // Correct-tag gate 1: known dialable provider (HF signal rows fail here
     // by design — they are repos, not OpenAI-compatible lanes).
     if (!providerById(row.providerId)) continue;
+    // r512: a REMOVED sighting is not fresh capacity — never adopt a corpse
+    // (the removedAt branch below only maintains EXISTING registry rows).
+    if (row.removedAt && !byKey.has(row.id)) continue;
     // Correct-tag gate 2: free capacity only — the directive names free
     // findings; paid lanes are a deliberate manual Adopt.
     if (!row.free) continue;
@@ -226,11 +436,18 @@ export function absorbTrackerLanes(
         byKey.set(row.id, res.lanes.find((l) => l.key === row.id)!);
       }
     } else if (existing.enabled && row.removedAt) {
-      // Catalog dropped the lane — disable, don't delete (the audit trail is
-      // the "12 removed in 48h" visibility, now wired instead of warned).
-      setAdoptedLaneEnabled(row.id, false, "removed from provider catalog");
+      // r512: the catalog dropped the lane — RETIRE it (was: plain disable).
+      // Same audit trail (the record stays listed) but the full reason now
+      // carries provider + date, and the retired flag excludes the lane from
+      // EVERY dial path (relay chain, per-step pins, experiment prefill).
+      const reason = removalReason(row.providerId, row.removedAt);
+      retireLane(row.id, reason);
+      // Keep the loop's local snapshot consistent with retireLane's write.
+      existing.retired = true;
+      existing.retiredReason = reason;
+      existing.retiredAt = new Date().toISOString();
       existing.enabled = false;
-      existing.disabledReason = "removed from provider catalog";
+      existing.disabledReason = reason;
       report.disabledKeys.push(row.id);
     }
   }
@@ -238,7 +455,12 @@ export function absorbTrackerLanes(
   return report;
 }
 
-/** Enabled adopted lanes that can actually dial (used by buildRelayChain). */
+/** Enabled adopted lanes that can actually dial (used by buildRelayChain).
+ * r512: runs the lazy retirement pass first and EXCLUDES retired lanes —
+ * this one filter is what the relay rotation, the lane-experiment prefill
+ * and every "freshest lanes" list all inherit (one truth, no parallel skip
+ * logic). Retired records stay visible via adoptedLanesSnapshot(). */
 export function enabledAdoptedLanes(): AdoptedLane[] {
-  return readRegistry().filter((l) => l.enabled && providerById(l.providerId));
+  runLazyRetirementPass();
+  return readRegistry().filter((l) => l.enabled && !l.retired && providerById(l.providerId));
 }

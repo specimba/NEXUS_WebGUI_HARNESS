@@ -18,6 +18,7 @@ import {
 import { AgentAvatar, EmptyState, ModelBadge, PageHeader, ToolBadge } from "@/components/nexus/atoms";
 import { AgentFormDialog } from "@/components/nexus/agents/agent-form-dialog";
 import { TestAgentDialog } from "@/components/nexus/agents/test-agent-dialog";
+import { CrewPanel } from "@/components/nexus/agents/crew-panel";
 import { downloadJson, firstGrapheme, fmtRel } from "@/lib/helpers";
 import { useAgentsStore, useConversationsStore, useWorkflowsStore } from "@/lib/stores";
 import type { Agent, AgentColor, ToolId } from "@/lib/types";
@@ -324,6 +325,8 @@ export function AgentsView() {
       </PageHeader>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        {/* r511 Harness Crew — alignment meters + presets, mounted above the grid */}
+        <CrewPanel />
         {agents.length === 0 ? (
           <EmptyState
             emoji="🤖"

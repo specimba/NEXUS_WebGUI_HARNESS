@@ -8,6 +8,7 @@
 import * as React from "react";
 import {
   Activity,
+  ArchiveRestore,
   ArrowDown,
   ArrowUp,
   CircleCheck,
@@ -65,8 +66,10 @@ import { buildUtilityWire } from "@/lib/utility-lane";
 import {
   MAX_ADOPTED_LANES,
   adoptedLanesSnapshot,
+  catalogHasLane,
   clearAdoptedLanes,
   removeAdoptedLane,
+  restoreLane,
   setAdoptedLaneEnabled,
   type AdoptedLane,
 } from "@/lib/lane-adopt";
@@ -835,6 +838,10 @@ function FleetHealthRow({ row }: { row: FleetRow }) {
 // Tags are the "correct tags in first seen" the owner asked for: provider
 // glyph + free/paid + ctx + $in/$out + first-seen age + origin, and when the
 // lane is disabled a red chip carries the reason (audit trail, not deletion).
+// r512: RETIRED lanes (proven removed from their provider catalog) render an
+// amber retired chip with the full reason+date in the tooltip, and a Restore
+// affordance ONLY when the catalog shows the lane again — the restore
+// re-verifies against a live /api/tracker fetch before un-retiring.
 function AdoptedLaneRow({
   lane,
   onLanes,
@@ -845,8 +852,43 @@ function AdoptedLaneRow({
 }) {
   const price = fmtPrice({ priceIn: lane.priceIn ?? null, priceOut: lane.priceOut ?? null });
   const ctx = fmtCtx(lane.contextWindow ?? null);
+  const retired = lane.retired === true;
+  // The restore affordance exists only while the (mirror of the) catalog
+  // shows the lane alive; the click path re-verifies live before un-retiring.
+  const [canRestore, setCanRestore] = React.useState(() => retired && catalogHasLane(lane.key));
+  const [restoring, setRestoring] = React.useState(false);
+  // Keep the affordance in step with the 15s registry poll and the tracker
+  // mirror's own refresh cadence.
+  React.useEffect(() => {
+    if (!retired) return;
+    const t = window.setInterval(() => setCanRestore(catalogHasLane(lane.key)), 15_000);
+    return () => window.clearInterval(t);
+  }, [retired, lane.key]);
+
+  async function restore() {
+    setRestoring(true);
+    try {
+      const res = await fetch("/api/tracker", { cache: "no-store" });
+      const json = res.ok
+        ? ((await res.json()) as { tracked?: Array<{ id?: string; removedAt?: string | null }> })
+        : null;
+      const row = json?.tracked?.find((r) => r?.id === lane.key);
+      if (!row || row.removedAt) {
+        toast.error(`${lane.modelId} is still absent from the provider catalog — nothing to restore yet`);
+        setCanRestore(false);
+        return;
+      }
+      onLanes(restoreLane(lane.key));
+      toast.success(`${lane.modelId} restored to the relay chain`);
+    } catch {
+      toast.error("Catalog check failed — try again");
+    } finally {
+      setRestoring(false);
+    }
+  }
+
   return (
-    <li className={cn("flex items-center gap-2 px-2.5 py-1.5", !lane.enabled && "opacity-70")}>
+    <li className={cn("flex items-center gap-2 px-2.5 py-1.5", (!lane.enabled || retired) && "opacity-70")}>
       <span aria-hidden className="w-5 shrink-0 text-center text-sm" title={providerMeta(lane.providerId).label}>
         {providerMeta(lane.providerId).glyph}
       </span>
@@ -864,7 +906,16 @@ function AdoptedLaneRow({
               paid
             </Badge>
           )}
-          {!lane.enabled && (
+          {retired ? (
+            <Badge
+              variant="outline"
+              title={`${lane.retiredReason ?? "removed from provider catalog"} · retired ${fmtAge(lane.retiredAt ?? lane.adoptedAt)}`}
+              className="h-4 shrink-0 rounded border-amber-500/40 bg-amber-500/10 px-1 text-[9px] font-semibold uppercase text-amber-600 dark:text-amber-300"
+            >
+              <CircleAlert className="mr-0.5 h-2.5 w-2.5" aria-hidden />
+              retired
+            </Badge>
+          ) : !lane.enabled ? (
             <Badge
               variant="outline"
               title={lane.disabledReason ?? "disabled"}
@@ -872,7 +923,7 @@ function AdoptedLaneRow({
             >
               <span className="truncate">{lane.disabledReason ?? "disabled"}</span>
             </Badge>
-          )}
+          ) : null}
         </div>
         <p className="truncate text-[10px] text-muted-foreground">
           {[ctx, price, `first seen ${fmtAge(lane.firstSeenAt)}`].filter(Boolean).join(" · ") ||
@@ -885,19 +936,36 @@ function AdoptedLaneRow({
       >
         {lane.origin === "radar-auto" ? "auto" : "manual"}
       </Badge>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-6 shrink-0 px-1.5 text-[10.5px] text-muted-foreground"
-        aria-label={lane.enabled ? `Mute ${lane.modelId} in the relay` : `Re-enable ${lane.modelId} in the relay`}
-        onClick={() => {
-          onLanes(setAdoptedLaneEnabled(lane.key, !lane.enabled));
-          toast.success(lane.enabled ? `${lane.modelId} muted` : `${lane.modelId} back in the chain`);
-        }}
-      >
-        {lane.enabled ? "Mute" : "Enable"}
-      </Button>
+      {retired ? (
+        canRestore ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={restoring}
+            className="h-6 shrink-0 gap-1 px-1.5 text-[10.5px] text-amber-600 hover:text-amber-500 dark:text-amber-300"
+            aria-label={`Restore ${lane.modelId} to the relay — it re-appeared in the catalog`}
+            onClick={() => void restore()}
+          >
+            <ArchiveRestore className="h-3 w-3" aria-hidden />
+            {restoring ? "Checking…" : "Restore"}
+          </Button>
+        ) : null
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 shrink-0 px-1.5 text-[10.5px] text-muted-foreground"
+          aria-label={lane.enabled ? `Mute ${lane.modelId} in the relay` : `Re-enable ${lane.modelId} in the relay`}
+          onClick={() => {
+            onLanes(setAdoptedLaneEnabled(lane.key, !lane.enabled));
+            toast.success(lane.enabled ? `${lane.modelId} muted` : `${lane.modelId} back in the chain`);
+          }}
+        >
+          {lane.enabled ? "Mute" : "Enable"}
+        </Button>
+      )}
       <Button
         type="button"
         variant="ghost"

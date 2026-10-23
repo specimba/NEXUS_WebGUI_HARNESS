@@ -713,6 +713,9 @@ export function buildRelayChain(
   // every run funneling into one saturated primary while fresh free capacity
   // sits un dialed in the radar: an adopted lane dials on the very next chain
   // build, and the rotator's health memory demotes it if it disappoints.
+  // r512: enabledAdoptedLanes() also runs the lazy auto-retire pass and
+  // EXCLUDES lanes the tracker (or 2 dial strikes) proved removed from their
+  // provider catalog — a corpse lane never joins the rotation here.
   for (const lane of enabledAdoptedLanes()) {
     if (hops.some((h) => h.key === lane.key)) continue; // keyed/live pass covered it
     const reg = providerById(lane.providerId);

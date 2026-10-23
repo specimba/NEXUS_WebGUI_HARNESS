@@ -168,6 +168,45 @@ export function pickVariationAngle(taskExcerpt: string, history: AngleHistoryEnt
   return pickVariationAngleWithReason(taskExcerpt, history).angle;
 }
 
+// ─── r511 · Frontier-seeded enrichment (owner: "smarter and self-development
+// automation with the newest high-quality trend papers … and new trend GitHub
+// repositories") ────────────────────────────────────────────────────────────
+// The Frontier Scout (r511, src/lib/frontier-scout.ts) already judges trend
+// papers/repos through the free SystemOne cascade and files high scorers as
+// improvement seeds. This closes the loop: a stall variation proposal can be
+// BORN FROM a seed — the reason cites the source, a planLine carries the
+// adoption directive, and the inbox links the paper/repo.
+
+/** A judged Frontier Scout seed, distilled for proposal enrichment. */
+export interface FrontierSeedRef {
+  title: string;
+  url: string;
+  kind: "paper" | "repo" | "model";
+  /** The seed's adoption directive (seed.seed from the scout ledger). */
+  directive: string;
+  /** Judge total 0–100 (rubric + SystemOne cascade). */
+  total: number;
+}
+
+/**
+ * Pure: stamp an existing variation proposal with a frontier seed.
+ * Appends the provenance line to `reason`, sets `frontierRef`, and adds ONE
+ * planLine "Adopt: {directive}" (word-truncated at 200 — persisted text is
+ * never torn mid-word, r398 doctrine). planLines may be undefined before —
+ * initialized here. Never mutates the input.
+ */
+export function withFrontierSeed(
+  p: SpawnProposal,
+  seed: FrontierSeedRef
+): SpawnProposal {
+  return {
+    ...p,
+    reason: `${p.reason} — inspired by Frontier Scout: “${seed.title}” (${seed.kind}, ${seed.total}/100)`,
+    frontierRef: { title: seed.title, url: seed.url, kind: seed.kind },
+    planLines: [...(p.planLines ?? []), `Adopt: ${truncateAtWord(seed.directive.trim(), 200)}`],
+  };
+}
+
 export interface MaybeProposeSpawnInput {
   status: "done" | "error" | "stopped";
   novelty?: number;

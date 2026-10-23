@@ -12344,3 +12344,31 @@ Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if pu
 Open risks: (1) mercury-decide as a chat hop is untested against the live endpoint (it joined the arena as a T3 decision hop; if the typed endpoint rejects chat wire, relay health will sink it automatically — same doctrine as any sick hop); (2) the owner's browser mirror status still shows the OLD unicode error until the next Sync now (which now self-heals); (3) durable-storage grant remains browser-gated (Firefox/Chrome policy) — guidance copy shipped, grant itself can't be forced; (4) gists-write 403 + suspended HF webhook still parked (owner action); (5) pinned-lane auto-retire (removed radar models) still unimplemented.
 Blockers: none.
 Next recommended action: r511 — (1) cron list; (2) witness a real workflow verification gate answering via "intern-systemone" (the run drawer engine line will read "Intern SystemOne · intern-decision-4b"); (3) pinned-lane auto-retire when the tracker marks a lane removed; (4) mistral large-4/voxtral capability surfacing in the tracker if the owner wants audio lanes; (5) keep tsc/lint baselines exact.
+
+---
+Task ID: r513-recovery
+Agent: main (orchestrator, owner-initiated recovery round)
+Task: Owner reported sandbox rollback wiped the last 2-3 sessions (r499–r513) and deleted credentials; recover everything, then adapt the parallel NEXUS_BOT sandbox project (uploaded tar + conversation log) into this platform.
+
+Work Log:
+- Forensics: local HEAD had regressed to r498 (ebc462272); working tree missing all r499–r513 artifacts (no deliverables/, no cortex files, no frontier/crew modules). Dangling git objects all pre-Oct-15 (rollback wiped .git objects too).
+- RECOVERY SOURCE 1 (git): origin/main was 16 commits AHEAD of local (r499…r510 all pushed) — `git fetch` + `git reset --hard origin/main` (25ddc9e52) restored the entire committed lineage; worklog back to 491 task entries with r511 handoff.
+- RECOVERY SOURCE 2 (survivor snapshot): /tmp/my-project (Oct 21 00:49 sandbox initial_snapshot) held the uncommitted r511–r513 tail. Classified by mtime (Oct 20–21 = genuine; older = legacy junk, left dead). Copied 32 files: full Cortex v2 set (src/lib/cortex-edge.ts 41.7KB v2, cortex-edge-paste-pack.ts, settings/cortex-edge-card.tsx 28.5KB, deliverables/nexus-cortex-harness/{edge-function 63.7KB v2.0, SUPABASE_AI_PASTE_PACK.md 12.7KB}, scripts/gen-cortex-pack.ts + qa-513.sh, r511 frontier-scout (lib+tab+api), crew.ts+crew-panel) + 20 modified files (constants TOOL_IDS/TOOL_META, tools-defs, server/tools, execute route KNOWN, workflow-runner r513-gap-closure cortex forward, chat-view arm line, settings-view mount, agent-engine/chat-client/api-chat, relay/lane-adopt/stores/types/spawn-proposal, radar/agents/model-relay/workflows views).
+- Legacy praison/* components in the survivor snapshot (pre-rebrand junk) explicitly NOT resurrected.
+- tsconfig exclude += "deliverables" (Deno edge function is a paste artifact, not app code; was the only tsc failure class).
+- Gates: tsc --noEmit → 0 errors TRUE-exit; bun run lint → 0 errors / 33 warnings (EXACT r498 baseline); paste-pack round-trip regenerated → 11,183 chars (frozen r513 contract, char-identical); dev server restarted via scripts/dev-restart.sh (pid 2801 detached) → Ready 2.5s, GET / 200, capability-radar armed, vault ENOENT honest.
+- Browser QA (agent-browser): Settings #cortex card mounted with all 6 v2 markers (Semantic memory / QStash / Sandbox / Setup guide / edge-secret-only / Free budget); guided-setup click → "Deploy the function" + "Probe & witness" both visible (5 steps); bogus-URL probe → honest failure; cortex url persists to nexus-settings localStorage; Radar → Stars/Trending/Frontier tabs render; no console errors. qa-513.sh hardened (CR-stripped eval output for the overflow check).
+- Owner-side state (not lost, recorded): owner manually re-entered 3-4 provider credentials after they were deleted with the rollback — vault rehydration seed file (db/vault-seed.json) is still gone; radar keeps surfacing the empty-vault finding until owner re-seeds one closed-tab lane key.
+
+Stage Summary:
+- Loss window r499–r513 FULLY RECOVERED: 16 commits from origin + 32 files from the /tmp survivor snapshot; zero code re-authored from memory; every frozen r513 contract verified byte-level (pack 11,183 chars).
+- Recovery doctrine upgraded for the next crash: (1) push at every round end (was the actual savior — r499–r510 lived on origin); (2) /tmp/my-project snapshot is the fallback for the uncommitted tail of the CURRENT session; (3) upload/ mount survives rollbacks and holds owner-uploaded context.
+- Parallel-track intel received and parked for the adaptation phase: upload/NEXUSbot2210v3.tar = NEXUS_BOT/NEXUS OS (own git lineage, R14 rounds, Upstash/Hyperbrowser/Webshare/GitHub+Supabase connectors, AES-256-GCM vault, ingest tokens, eval harness, durability hardening) + upload/Pasted Content_1792780908392.txt = its conversation log; owner directive: adapt its approaches into THIS platform's WebGUI harness.
+- Stack capability map confirmed for the adaptation phase: Upstash (Redis/Vector/QStash/Box — already wired via Cortex v2) + Supabase (mirror + edge) + Webshare paid proxies + Hyperbrowser + Exa credits + Bright Data.
+
+Round Handoff:
+Round ID: r514
+Task owner: main (15-min webDevReview cadence — cron list FIRST, rebuild if purged)
+Open risks: (1) vault seed file still missing — closed-tab lane stays quiet until owner re-stores a key (radar surfaces hourly); (2) NEXUS_BOT adaptation phase not started yet — deep-dive planning agents are the next round's core work; (3) r511 sessions' exact scope reconstructed from files, not from a worklog entry (that worklog entry was lost with the rollback) — noted honestly.
+Blockers: none
+Next recommended action: r514 — (1) cron list; (2) deep-dive the NEXUS_BOT tar worklog + pasted log → extract connector/durability/eval patterns worth adapting; (3) plan the multi-provider egress combination (Webshare proxies + Hyperbrowser + Exa + Bright Data) as harness lanes; (4) wire the best 1-2 adaptations as real features.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeTool } from "@/lib/server/tools";
+import type { CortexConfig } from "@/lib/cortex-edge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,9 @@ export const dynamic = "force-dynamic";
 const KNOWN = new Set([
   "web_search",
   "read_url",
+  "deep_scrape",
+  "cortex_memory",
+  "sandbox_exec",
   "run_code",
   "current_time",
   "arxiv_search",
@@ -54,9 +58,9 @@ export async function POST(req: NextRequest) {
   if (!csrfOk(req)) {
     return NextResponse.json({ error: "Cross-origin tool execution is not allowed" }, { status: 403 });
   }
-  let body: { name?: string; args?: string };
+  let body: { name?: string; args?: string; cortex?: CortexConfig };
   try {
-    body = (await req.json()) as { name?: string; args?: string };
+    body = (await req.json()) as { name?: string; args?: string; cortex?: CortexConfig };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -67,7 +71,12 @@ export async function POST(req: NextRequest) {
   const args = typeof body.args === "string" ? body.args : "{}";
   // r25: client disconnects cancel in-flight tool work where the underlying
   // implementation can honor a signal.
-  const result = await executeTool(name, args, req.signal);
+  // 2-a: a client-supplied Cortex Edge config rides per request (BYOK — never
+  // persisted) so deep_scrape's lane ladder can run; its URL is SSRF-guarded
+  // inside the deep_scrape handler before any server-side fetch.
+  const result = await executeTool(name, args, req.signal, {
+    ...(body.cortex ? { cortex: body.cortex } : {}),
+  });
   return NextResponse.json(result);
 }
 

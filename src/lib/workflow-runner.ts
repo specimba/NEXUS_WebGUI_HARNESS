@@ -9,7 +9,11 @@ import {
   rateLimitResumeDelayMs,
   MAX_AUTO_RESUME_TRIPS,
 } from "@/lib/gateway-cadence";
-import { buildAngleHistory, latestScoredNovelty, maybeProposeSpawn, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
+import { buildAngleHistory, latestScoredNovelty, maybeProposeSpawn, withFrontierSeed, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
+import type { FrontierSeedRef } from "@/lib/spawn-proposal-engine";
+// r511 frontier seeding: the browser-side seed ledger the radar's Frontier tab
+// writes — stall proposals get enriched with the freshest unused seed.
+import { readFrontierSeeds } from "@/lib/frontier-scout";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { archiveRun, engineStatusToArchiveStatus } from "@/lib/run-archive";
 import { maxParks, parkDelayMs, resolvePark, type ParkKind } from "@/lib/park-policy";
@@ -40,7 +44,15 @@ import {
 } from "@/lib/lane-rotation";
 import { resolveExplicitLlm, resolveLlm, type ResolvedLlm } from "@/lib/llm-config";
 import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
-import { buildRelayWire, recordRelayStatusLine, stripRelayMarkers, type RelayTaskFit, type RelayWireHop } from "@/lib/relay";
+import { buildRelayWire, parseRelayStatusLine, recordRelayStatusLine, stripRelayMarkers, type RelayTaskFit, type RelayWireHop } from "@/lib/relay";
+// r512 pinned-lane auto-retire: pins materialize against the adopted-lane
+// registry's retirement state + the tracker removal mirror; a lane the
+// catalog dropped never dials (falls through to rotation instead).
+import { laneRetirementReason, noteRemovalStrike } from "@/lib/lane-adopt";
+// r512 crew judge-gates: role definitions carry the gate question template
+// + threshold; the runner derives the agent's role the same way the crew
+// panel does (crewRoleIdForAgent keyword map — no roleId is stored).
+import { CREW_ROLE_DEFS, crewRoleIdForAgent } from "@/lib/crew";
 import {
   buildConversationalContext,
   buildReviewContext,
@@ -949,10 +961,40 @@ export async function executeWorkflowRun(
           angleHistory,
         });
         if (proposal) {
-          st.addProposal(proposal);
+          // ── r511 frontier seeding (owner: "self-development automation with
+          // the newest trend papers / GitHub repos"): stamp the stall proposal
+          // with the highest-judged seed the Evolution Inbox has NOT already
+          // used. Best-effort INSIDE the same try/catch — a seeding failure
+          // degrades to the plain proposal, never affects finalization.
+          let seeded = proposal;
+          try {
+            const usedTitles = new Set(
+              st.proposals
+                .filter((p) => p.status === "open" && p.frontierRef)
+                .map((p) => p.frontierRef!.title)
+            );
+            const seed = readFrontierSeeds()
+              .filter((s) => !usedTitles.has(s.title))
+              .sort((a, b) => b.total - a.total)[0];
+            if (seed) {
+              const ref: FrontierSeedRef = {
+                title: seed.title,
+                url: seed.url,
+                kind: seed.kind, // "paper" | "repo" — a FrontierSeedRef subset
+                directive: seed.seed,
+                total: seed.total,
+              };
+              seeded = withFrontierSeed(proposal, ref);
+            }
+          } catch {
+            /* seeds empty or ledger unreadable — plain proposal, current behavior */
+          }
+          st.addProposal(seeded);
           toast("Evolution proposal added to the inbox", {
             icon: "🧬",
-            description: `${wf.name} keeps producing similar output (novelty ${Math.round(novelty)}%) — a variation was suggested`,
+            description: seeded.frontierRef
+              ? `${wf.name} keeps producing similar output (novelty ${Math.round(novelty)}%) — a frontier-seeded variation was suggested`
+              : `${wf.name} keeps producing similar output (novelty ${Math.round(novelty)}%) — a variation was suggested`,
           });
         }
       } catch {
@@ -1279,6 +1321,21 @@ export async function executeWorkflowRun(
     // provider — the owner's lane-spread directive. resolveExplicitLlm never
     // dead-ends: unknown/keyless pins fall back with an honest note.
     const llm = resolveExplicitLlm(settings.settings, runStep.lane, agent.model);
+    // ─── r512 pinned-lane auto-retire: when the step's (or the pipeline
+    // default's) lane pin points at a lane the tracker — or 2 dial strikes —
+    // proved removed from its provider catalog, the pin is DEAD: never dial
+    // the corpse. The dial falls through to the EXACT sick-hop demote path
+    // (rescue lane → nextRotation healthy external lane → built-in engine
+    // last rung, r509 doctrine) with an honest relayNotes line, and the pin
+    // lane is kept off the wire's tail too (it used to be re-appended as the
+    // last hop on substituted dials).
+    const pinKey = runStep.lane?.trim() ?? "";
+    const pinRetireReason =
+      typeof window !== "undefined" && pinKey ? laneRetirementReason(pinKey) : null;
+    const pinDead = pinRetireReason != null;
+    const pinRetiredNote = pinDead
+      ? `lane pin retired (${pinRetireReason}) → fell through to rotation`
+      : null;
     // Synthetic deep-research passes carry a merged tool set (base tools +
     // web_search + arxiv_search) materialized on the run step itself.
     const effectiveTools: ToolId[] = runStep.tools ?? agent.tools ?? [];
@@ -1313,7 +1370,7 @@ export async function executeWorkflowRun(
       primaryFamilyKey !== "" &&
       primaryFamilyKey !== "auto" &&
       laneSickUntil(laneSaturation, primaryFamilyKey, Date.now()) > Date.now();
-    let demotePrimary = Date.now() < primarySickUntil || primaryFamilySick;
+    let demotePrimary = Date.now() < primarySickUntil || primaryFamilySick || pinDead;
 
     for (let attempt = 1; attempt <= MAX_STEP_ATTEMPTS; attempt++) {
       // Rebuild the relay wire PER ATTEMPT (r25): attempt 1's failures were
@@ -1341,7 +1398,7 @@ export async function executeWorkflowRun(
       // first dial (attempt > 1 alone would still re-dial the dead primary).
       if (
         demotePrimary &&
-        (attempt > 1 || Date.now() < primarySickUntil || primaryFamilySick) &&
+        (attempt > 1 || Date.now() < primarySickUntil || primaryFamilySick || pinDead) &&
         !forceServer
       ) {
         const rescueId = liveRescueLaneId();
@@ -1482,7 +1539,7 @@ export async function executeWorkflowRun(
             { providerId: dialLlm.providerId, model: dialLlm.model },
             { taskFit }
           ),
-          ...(dialLlm !== llm && llm.providerId !== "auto"
+          ...(dialLlm !== llm && llm.providerId !== "auto" && !pinDead
             ? [
                 {
                   key: `${llm.providerId}::${llm.model ?? ""}`,
@@ -1499,6 +1556,11 @@ export async function executeWorkflowRun(
         draft = "";
         localToolCalls = [];
         relayNotes = [];
+        // r512: a retired lane pin leads the notes (the WHY), then whatever
+        // rotation reason this attempt picked (rescue / healthy lane).
+        if (pinRetiredNote) {
+          relayNotes.push(pinRetiredNote);
+        }
         if (rotationNote) {
           relayNotes.push(rotationNote);
         }
@@ -1529,7 +1591,7 @@ export async function executeWorkflowRun(
             );
           }
         }
-        if (dialLlm !== llm && !rotationNote) {
+        if (dialLlm !== llm && !rotationNote && !pinDead) {
           const sickLeft = Math.max(
             0,
             Math.ceil(
@@ -1561,6 +1623,18 @@ export async function executeWorkflowRun(
             messages: [{ role: "user", content: context }],
             ...(relayHops.length > 0 ? { relay: relayHops } : {}),
             ...(forceServer ? { forceServer: true } : {}),
+            // r513 gap closure: pipeline steps now carry the cortex config too
+            // (BYOK, per run) — scheduled/server-lane deep_scrape, cortex_memory
+            // and sandbox_exec calls get the same lane ladder chat has.
+            ...(settings.settings.cortex &&
+            (settings.settings.cortex.url ||
+              settings.settings.cortex.hbKey ||
+              settings.settings.cortex.vectorUrl ||
+              settings.settings.cortex.vectorToken ||
+              settings.settings.cortex.qstashToken ||
+              settings.settings.cortex.boxApiKey)
+              ? { cortex: settings.settings.cortex }
+              : {}),
             signal,
           },
           {
@@ -1577,6 +1651,18 @@ export async function executeWorkflowRun(
                   // guard makes that structural, not incidental.
                   recordRelayStatusLine(m);
                   relayNotes.push(stripRelayMarkers(m));
+                  // r512 dial-time backstop (wire hops): a hop that died with a
+                  // missing-model body is catalog rot the tracker mirror may have
+                  // missed — feed the lane's strike counter (2 strikes → retire).
+                  const hopLine = parseRelayStatusLine(m);
+                  if (
+                    hopLine &&
+                    !hopLine.ok &&
+                    hopLine.key !== "auto::builtin" &&
+                    classifyRunError(hopLine.error).kind === "model"
+                  ) {
+                    noteRemovalStrike(hopLine.key, hopLine.error);
+                  }
                 }
               }
             },
@@ -1602,6 +1688,12 @@ export async function executeWorkflowRun(
             },
           }
         );
+        // r511 Praison L4: surface non-goal loop endings in the call note
+        // (doom_loop / max_iterations / no_tool_calls) — rides relayNotes so
+        // every note branch carries it.
+        if (res.completionReason && res.completionReason !== "goal") {
+          relayNotes.push(`loop: ${res.completionReason}`);
+        }
         pushCall({
           stepId: runStep.stepId,
           stepLabel: runStep.label,
@@ -1691,6 +1783,20 @@ export async function executeWorkflowRun(
         // browser-direct errors.
         const kind =
           ((err as { kind?: RunErrorKind }).kind ?? classifyRunError(message).kind);
+        // r512 dial-time backstop (primary dial): a 404/503 whose body matches
+        // the existing missing-model classification is a removal the tracker
+        // mirror missed — record a strike on the exact lane; at 2 strikes the
+        // lane retires (lane-adopt) and the next lazy pass excludes it from
+        // every rotation build and pin materialization.
+        if (
+          typeof window !== "undefined" &&
+          kind === "model" &&
+          dialLlm.providerId &&
+          dialLlm.providerId !== "auto" &&
+          dialLlm.model
+        ) {
+          noteRemovalStrike(`${dialLlm.providerId}::${dialLlm.model}`, message);
+        }
         // v22: tool rounds streamed this attempt → the drop was MID-STREAM.
         // Demote the primary so the next attempt leads with the built-in
         // engine instead of re-dialing the provably sick endpoint first.
@@ -2047,8 +2153,27 @@ export async function executeWorkflowRun(
         // flagship verification pass is even needed. A confident PASS skips
         // the extra frontier call entirely; FAIL, low confidence or "no
         // judge available" keeps the full pass — worst case = status quo.
+        // ─── r512 crew judge-gates WIRED: when the agent under verification
+        // maps to a CrewRoleDef whose gate is enabled (judge / implementer /
+        // reviewer), the gate QUESTION is that role's own template
+        // instantiated with the step output, and the pass mark is the role's
+        // threshold — still through the EXISTING free-first SystemOne ladder
+        // (decide(), no paid Jev in the default path). The role is derived
+        // exactly the way the crew panel does it (crewRoleIdForAgent keyword
+        // map — agents do not store a roleId).
         if (step.instruction === VERIFICATION_INSTRUCTION) {
           const draft = prev[prev.length - 1]?.output ?? "";
+          const crewRole = CREW_ROLE_DEFS[crewRoleIdForAgent(agentRow)];
+          const roleGate = crewRole.gate.enabled ? crewRole : null;
+          const gateQuestion = roleGate
+            ? roleGate.gate.question.replace(
+                /\{\{output\}\}/g,
+                // The template names the artifact; the excerpt stays bounded
+                // (the full draft already rides the state block below).
+                draft.slice(0, 600).trim() || "(empty output)"
+              )
+            : "Is this draft a COMPLETE final deliverable for the task — on-topic, no placeholder text, no unanswered sub-questions, and no obviously unsupported load-bearing claims? Minor polish issues do not count against it.";
+          const gateThreshold = roleGate ? roleGate.gate.threshold : SYSTEMONE_GATE_CONFIDENCE;
           const gate = await decide({
             settings: settings.settings,
             signal,
@@ -2056,11 +2181,10 @@ export async function executeWorkflowRun(
             question: {
               id: "verify-gate",
               type: "noul",
-              prompt:
-                "Is this draft a COMPLETE final deliverable for the task — on-topic, no placeholder text, no unanswered sub-questions, and no obviously unsupported load-bearing claims? Minor polish issues do not count against it.",
+              prompt: gateQuestion,
             },
           });
-          if (gate && gate.answer === "yes" && gate.confidence >= SYSTEMONE_GATE_CONFIDENCE) {
+          if (gate && gate.answer === "yes" && gate.confidence >= gateThreshold) {
             patchRunStep(step.stepId, {
               output: draft,
               toolCalls: [],
@@ -2076,7 +2200,11 @@ export async function executeWorkflowRun(
               ms: gate.ms,
               ok: true,
               attempt: 1,
-              note: `System-One gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — flagship verification pass skipped`,
+              // r512: role gates are distinguishable on the wire — the crew
+              // panel's alignment math counts these notes.
+              note: roleGate
+                ? `System-One gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via} · role:${roleGate.id}) — flagship verification pass skipped`
+                : `System-One gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — flagship verification pass skipped`,
             });
             toast("System-One gate passed", {
               icon: "✓",
@@ -2086,6 +2214,24 @@ export async function executeWorkflowRun(
             });
             prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(draft) || undefined, output: draft });
             continue;
+          }
+          // r512: an actual FAIL verdict now leaves an honest callLog entry —
+          // the crew panel's gate pass-rate reads /System-One gate (?:fail|rework)/
+          // and previously had nothing to count (a FAIL fell through silently).
+          // Control flow is UNCHANGED: the full verification pass runs below,
+          // exactly like the generic gate's failure semantics.
+          if (gate && gate.answer !== "yes") {
+            pushCall({
+              stepId: step.stepId,
+              stepLabel: step.label,
+              agentName: agentRow.name,
+              engine: gate.judge,
+              model: gate.via,
+              ms: gate.ms,
+              ok: true,
+              attempt: 1,
+              note: `System-One gate FAIL ${(gate.confidence * 100).toFixed(0)}%${roleGate ? ` (role:${roleGate.id})` : ""} — rework → full verification pass runs`,
+            });
           }
           // FAIL / uncertain / no judge available → run the full verification pass.
         }

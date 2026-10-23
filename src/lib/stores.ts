@@ -648,6 +648,14 @@ interface WorkflowsState {
   update: (id: string, patch: Partial<Workflow>) => void;
   remove: (id: string) => void;
   duplicate: (id: string) => string | null;
+  /**
+   * r511 Tryable experiments (owner: "pin it, run one research cycle through
+   * it, and compare novelty scores against the usual lane"): clone a source
+   * pipeline with EVERY step pinned to one fresh radar lane. Returns the new
+   * workflow id, or null on a guard failure (missing source / bad lane /
+   * experiment cap reached — the caller must say WHICH).
+   */
+  createLaneExperiment: (sourceWorkflowId: string, lane: string, label: string) => string | null;
   addRun: (wfId: string, run: WorkflowRun) => void;
   patchRun: (wfId: string, runId: string, patch: Partial<WorkflowRun>) => void;
   patchRunStep: (wfId: string, runId: string, stepId: string, patch: Partial<WorkflowRunStep>) => void;
@@ -731,6 +739,46 @@ export const useWorkflowsStore = create<WorkflowsState>()(
               : w
           ),
         })),
+      // ── r511 lane experiments ────────────────────────────────────────────
+      // Guarded clone: source must exist, the lane must be a real
+      // "providerId::model" pin (or the built-in), and at most 3 concurrent
+      // experiments keep the ledger honest (the owner compares novelty vs the
+      // usual lane — an unbounded fleet would drown the comparison).
+      createLaneExperiment: (sourceWorkflowId, lane, label) => {
+        const trimmedLane = lane.trim();
+        const trimmedLabel = label.trim();
+        if (!trimmedLane || !trimmedLabel) return null;
+        const LANE_RE = /^[\w.\/:-]+::[\w.\/:-]+$/;
+        if (trimmedLane !== "auto::builtin" && !LANE_RE.test(trimmedLane)) return null;
+        const s = get();
+        const source = s.workflows.find((w) => w.id === sourceWorkflowId);
+        if (!source || source.steps.length === 0) return null;
+        if (s.workflows.filter((w) => w.experiment).length >= 3) return null;
+        const now = Date.now();
+        const copy: Workflow = {
+          id: uid("wf"),
+          name: `Lane experiment · ${trimmedLabel}`.slice(0, 60),
+          description: `One research cycle pinned to ${trimmedLane} — compares novelty vs “${source.name}”.`,
+          // Same-step clone, but every step carries the experiment lane pin
+          // (per-step pin wins over the pipeline default in the runner).
+          steps: source.steps.map((st) => ({ ...st, id: uid("step"), lane: trimmedLane })),
+          runs: [],
+          createdAt: now,
+          updatedAt: now,
+          ...(source.depth ? { depth: source.depth } : {}),
+          lane: trimmedLane,
+          experiment: {
+            sourceWorkflowId,
+            lane: trimmedLane,
+            startedAt: now,
+            label: trimmedLabel,
+          },
+          // Deliberately NO schedule — an experiment runs when the owner runs it.
+        };
+        // Insert at top — the store's ordering convention (newest-first).
+        set((st) => ({ workflows: [copy, ...st.workflows] }));
+        return copy.id;
+      },
       patchRun: (wfId, runId, patch) =>
         set((s) => ({
           workflows: s.workflows.map((w) =>

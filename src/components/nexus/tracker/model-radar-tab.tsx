@@ -196,9 +196,16 @@ export function ModelRadarTab() {
   // emerald "in relay" chip instead of the Adopt button. One registry read
   // per render (snapshot Set) instead of isLaneAdopted() ×120 rows; recomputes
   // when fresh tracker data lands (auto-adoptions included) or a manual
-  // Adopt bumps adoptTick.
+  // Adopt bumps adoptTick. r512: RETIRED lanes (removed from the catalog)
+  // no longer count as "in relay" — the chip must not promise a dial path
+  // the rotation excluded (they re-qualify via the manual Adopt override).
   const adoptedKeys = React.useMemo(
-    () => new Set(adoptedLanesSnapshot().map((l) => l.key)),
+    () =>
+      new Set(
+        adoptedLanesSnapshot()
+          .filter((l) => l.enabled && !l.retired)
+          .map((l) => l.key)
+      ),
     [data, adoptTick]
   );
 

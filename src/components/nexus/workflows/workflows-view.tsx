@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -66,7 +67,13 @@ import {
   useWorkflowsStore,
 } from "@/lib/stores";
 import type { SpawnProposal, Workflow, WorkflowRun, WorkflowSchedule, WorkflowStep } from "@/lib/types";
-import { buildAngleHistory, buildVariationProposal, latestScoredNovelty, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
+import { buildAngleHistory, buildVariationProposal, latestScoredNovelty, withFrontierSeed, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
+import type { FrontierSeedRef } from "@/lib/spawn-proposal-engine";
+// r511 frontier seeding + lane experiments: the browser-side seed ledger and
+// the radar-adopted lane registry are read client-side (BYOK intact).
+import { readFrontierSeeds } from "@/lib/frontier-scout";
+import { enabledAdoptedLanes } from "@/lib/lane-adopt";
+import type { AdoptedLane } from "@/lib/lane-adopt";
 import { useSettingsStore } from "@/lib/stores";
 import { buildWorkflowExport, downloadJson, fmtBytes, fmtIn, fmtIntervalShort, fmtRel, IMPORT_RUNS_CAP, resolveStepRole, roleMatchesAgent, sanitizeImportedRun, stripUiChipArtifacts, summarizeRoleTagMismatches, truncateAtWord, uid } from "@/lib/helpers";
 import { resolveLlm } from "@/lib/llm-config";
@@ -256,6 +263,10 @@ function workflowFingerprint(name: string, steps: WorkflowStep[], depth?: Workfl
 function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
   const addProposal = useWorkflowsStore((s) => s.addProposal);
   const proposals = useWorkflowsStore((s) => s.proposals);
+  // r511 Tryable experiments: launcher state + the store action.
+  const createLaneExperiment = useWorkflowsStore((s) => s.createLaneExperiment);
+  const requestHighlight = useUiStore((s) => s.requestHighlightWorkflow);
+  const [expDialogOpen, setExpDialogOpen] = React.useState(false);
   const rows = React.useMemo(
     () =>
       workflows
@@ -332,6 +343,17 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
         )}
       </div>
 
+      {/* r511 Tryable experiments launcher — header action (see dialog below). */}
+      <button
+        type="button"
+        onClick={() => setExpDialogOpen(true)}
+        title="Clone a pipeline with every step pinned to ONE fresh radar lane — run one research cycle and compare novelty against the usual lane"
+        className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/20 dark:text-emerald-400"
+      >
+        <span aria-hidden>🧪</span>
+        New lane experiment
+      </button>
+
       <div className="mt-3 space-y-1.5">
         {rows.map(({ wf, done }) => {
           const latest = done[0];
@@ -340,6 +362,19 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
           const delta =
             n != null && prevScored?.novelty != null ? n - prevScored.novelty : null;
           const trail = done.slice(0, 6).reverse(); // oldest → newest
+          // ── r511 Tryable experiments: provenance chip + Δ vs the source ──
+          const exp = wf.experiment;
+          const expSource = exp
+            ? workflows.find((w) => w.id === exp.sourceWorkflowId)
+            : undefined;
+          // Order-agnostic latest scored novelty (r215 doctrine) for BOTH
+          // sides — the delta must not depend on insertion order.
+          const expNovelty = exp ? latestScoredNovelty(wf.runs) : undefined;
+          const srcNovelty = expSource ? latestScoredNovelty(expSource.runs) : undefined;
+          const expDelta =
+            exp != null && expNovelty != null && srcNovelty != null
+              ? expNovelty - srcNovelty
+              : null;
           return (
             <div
               key={wf.id}
@@ -351,6 +386,34 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
                   {done.length} done run{done.length === 1 ? "" : "s"}
                   {latest.finishedAt ? ` · last ${fmtRel(latest.finishedAt)}` : ""}
                 </div>
+                {exp && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <span
+                      title={`Tryable experiment pinned to ${exp.lane} — one research cycle vs the usual lane${expSource ? ` of “${expSource.name}”` : ""}`}
+                      className="inline-flex max-w-full items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                    >
+                      <span aria-hidden>🧪</span>
+                      <span className="max-w-48 truncate sm:max-w-64">
+                        experiment of {expSource ? expSource.name : exp.lane} · {exp.label}
+                      </span>
+                    </span>
+                    {expDelta != null && (
+                      <span
+                        title="experiment vs source novelty"
+                        className={cn(
+                          "rounded-full border px-1.5 py-px text-[10px] font-semibold tabular-nums",
+                          expDelta > 0
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : expDelta < 0
+                              ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                              : "border-stone-500/30 bg-stone-500/10 text-stone-600 dark:text-stone-400"
+                        )}
+                      >
+                        Δ {expDelta > 0 ? "+" : ""}{expDelta}%
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 {trail.map((r) => {
@@ -416,24 +479,53 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
                         if (sn != null) scoredNovelty.set(w.id, sn);
                       }
                       const angleHistory = buildAngleHistory(proposals, wf.id, scoredNovelty);
-                      addProposal(
-                        buildVariationProposal({
-                          sourceWorkflowId: wf.id,
-                          sourceWorkflowName: wf.name,
-                          sourceRunId: latest.id,
-                          taskExcerpt:
-                            wf.steps[0]?.instruction ||
-                            wf.steps.map((s) => s.label).join(" → ") ||
-                            wf.name,
-                          novelty: n,
-                          threshold,
-                          manual: true,
-                          angleHistory,
-                        })
-                      );
-                      toast.success("Variation proposed — waiting in the Evolution Inbox", {
-                        description: `${wf.name} · spawn it into a real pipeline with one click`,
+                      // r511 frontier seeding (manual path): same enrichment as
+                      // the automatic runner path — stamp the proposal with the
+                      // highest-judged seed no open proposal uses yet.
+                      let proposal = buildVariationProposal({
+                        sourceWorkflowId: wf.id,
+                        sourceWorkflowName: wf.name,
+                        sourceRunId: latest.id,
+                        taskExcerpt:
+                          wf.steps[0]?.instruction ||
+                          wf.steps.map((s) => s.label).join(" → ") ||
+                          wf.name,
+                        novelty: n,
+                        threshold,
+                        manual: true,
+                        angleHistory,
                       });
+                      try {
+                        const usedTitles = new Set(
+                          proposals
+                            .filter((p) => p.status === "open" && p.frontierRef)
+                            .map((p) => p.frontierRef!.title)
+                        );
+                        const seed = readFrontierSeeds()
+                          .filter((s) => !usedTitles.has(s.title))
+                          .sort((a, b) => b.total - a.total)[0];
+                        if (seed) {
+                          const ref: FrontierSeedRef = {
+                            title: seed.title,
+                            url: seed.url,
+                            kind: seed.kind,
+                            directive: seed.seed,
+                            total: seed.total,
+                          };
+                          proposal = withFrontierSeed(proposal, ref);
+                        }
+                      } catch {
+                        /* seeds empty or ledger unreadable — plain proposal */
+                      }
+                      addProposal(proposal);
+                      toast.success(
+                        proposal.frontierRef
+                          ? "Frontier-seeded variation proposed — waiting in the Evolution Inbox"
+                          : "Variation proposed — waiting in the Evolution Inbox",
+                        {
+                          description: `${wf.name} · spawn it into a real pipeline with one click`,
+                        }
+                      );
                     }}
                     className="ml-1 inline-flex h-6 items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 text-[10px] font-semibold text-violet-600 transition-colors hover:bg-violet-500/20 dark:text-violet-400"
                   >
@@ -446,7 +538,237 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
           );
         })}
       </div>
+
+      {/* r511 Tryable experiments launcher dialog. */}
+      <LaneExperimentDialog
+        open={expDialogOpen}
+        onOpenChange={setExpDialogOpen}
+        workflows={workflows}
+      />
     </Card>
+  );
+}
+
+// ─── r511 · Lane experiment launcher (owner: "Tryable experiments: pin it,
+// run one research cycle through it, and compare novelty scores against the
+// usual lane") ────────────────────────────────────────────────────────────
+
+/** Store guard, mirrored for honest toasts — keep in sync with stores.ts. */
+const LANE_EXPERIMENT_RE = /^[\w.\/:-]+::[\w.\/:-]+$/;
+const LANE_EXPERIMENT_CAP = 3;
+
+function LaneExperimentDialog({
+  open,
+  onOpenChange,
+  workflows,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  workflows: Workflow[];
+}) {
+  const createLaneExperiment = useWorkflowsStore((s) => s.createLaneExperiment);
+  const requestHighlight = useUiStore((s) => s.requestHighlightWorkflow);
+  // Freshest radar lanes — lane-adopt.ts reads the localStorage registry the
+  // radar's auto-adopt pipeline maintains (client-side, BYOK intact).
+  const [lanes, setLanes] = React.useState<AdoptedLane[]>([]);
+  const [laneChoice, setLaneChoice] = React.useState(""); // "" = unset | "__custom__" | lane key
+  const [customLane, setCustomLane] = React.useState("");
+  const [sourceId, setSourceId] = React.useState("");
+  const [label, setLabel] = React.useState("");
+  const [labelTouched, setLabelTouched] = React.useState(false);
+
+  // (Re)hydrate on open: top-5 freshest ENABLED adopted lanes + the best
+  // default source (the workflow with the most done runs — its scored trail
+  // is the baseline the experiment will be compared against).
+  // NOTE: intentionally depends on `open` ONLY — workflows changes identity on
+  // every store patch (a live streaming run patches steps several times a
+  // second), which would reset the dialog mid-typing. The default source is
+  // read from the store snapshot at open-time; staleness after that is
+  // harmless (it is just a default).
+  React.useEffect(() => {
+    if (!open) return;
+    let nextLanes: AdoptedLane[] = [];
+    try {
+      nextLanes = enabledAdoptedLanes().slice(0, 5);
+    } catch {
+      /* registry unreadable — free-text fallback below */
+    }
+    setLanes(nextLanes);
+    setLaneChoice("");
+    setCustomLane("");
+    setLabel("");
+    setLabelTouched(false);
+    const candidates = useWorkflowsStore
+      .getState()
+      .workflows.filter((w) => w.runs.length > 0);
+    const best = candidates.reduce<Workflow | null>((acc, w) => {
+      if (!acc) return w;
+      const doneA = w.runs.filter((r) => r.status === "done").length;
+      const doneB = acc.runs.filter((r) => r.status === "done").length;
+      return doneA > doneB ? w : acc;
+    }, null);
+    setSourceId(best?.id ?? candidates[0]?.id ?? "");
+  }, [open]);
+
+  const runSources = workflows.filter((w) => w.runs.length > 0);
+  const isCustom = laneChoice === "__custom__";
+  const lane = lanes.length === 0 ? customLane.trim() : isCustom ? customLane.trim() : laneChoice;
+
+  /** Derive the experiment label from a lane key's model segment. */
+  const labelFromLane = (l: string): string => (l.split("::")[1] ?? l).trim().slice(0, 24);
+
+  const create = () => {
+    if (!lane || !sourceId) return;
+    const finalLabel = (labelTouched ? label.trim() : labelFromLane(lane)) || "fresh lane";
+    const id = createLaneExperiment(sourceId, lane, finalLabel);
+    if (id == null) {
+      // r270 doctrine: a guard that did nothing says WHICH guard failed.
+      if (workflows.filter((w) => w.experiment).length >= LANE_EXPERIMENT_CAP) {
+        toast.error(
+          `Lane-experiment cap reached (${LANE_EXPERIMENT_CAP}) — delete or finish one of the running experiments first`
+        );
+      } else if (lane !== "auto::builtin" && !LANE_EXPERIMENT_RE.test(lane)) {
+        toast.error(
+          "That lane doesn't look like providerId::model — paste a fresh radar lane (Settings → Model relay shows your adopted chain)"
+        );
+      } else {
+        toast.error("Source pipeline not found — pick a workflow with at least one run");
+      }
+      return;
+    }
+    const src = workflows.find((w) => w.id === sourceId);
+    toast.success(
+      `Lane experiment created — run it once to compare novelty vs “${src?.name ?? "the source"}”`,
+      {
+        description: `Every step is pinned to ${lane} · the Evolution ledger will show Δ vs the source's latest score.`,
+      }
+    );
+    requestHighlight(id);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span aria-hidden>🧪</span>
+            New lane experiment
+          </DialogTitle>
+          <DialogDescription>
+            Clone a pipeline with every step pinned to ONE fresh radar lane —
+            run a single research cycle and compare its novelty against the
+            usual lane in the Evolution ledger.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="lane-exp-lane">Lane to try</Label>
+            {lanes.length > 0 ? (
+              <>
+                <Select
+                  value={laneChoice || undefined}
+                  onValueChange={(v) => {
+                    setLaneChoice(v);
+                    if (!labelTouched && v !== "__custom__") setLabel(labelFromLane(v));
+                  }}
+                >
+                  <SelectTrigger id="lane-exp-lane" className="w-full">
+                    <SelectValue placeholder="Pick a fresh radar lane" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lanes.map((l) => (
+                      <SelectItem key={l.key} value={l.key}>
+                        <span className="block max-w-56 truncate sm:max-w-64" title={l.key}>
+                          {l.key}
+                        </span>
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="auto::builtin">auto::builtin — the built-in engine</SelectItem>
+                    <SelectItem value="__custom__">Custom lane — paste providerId::model</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  provider::model — freshest radar lanes
+                </p>
+              </>
+            ) : (
+              <Input
+                id="lane-exp-lane"
+                value={customLane}
+                onChange={(e) => {
+                  setCustomLane(e.target.value);
+                  if (!labelTouched) setLabel(labelFromLane(e.target.value));
+                }}
+                placeholder="providerId::model (e.g. kilo::kilo-auto/free)"
+                className="w-full font-mono text-xs"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            )}
+            {(lanes.length === 0 || isCustom) && (
+              <p className="text-xs text-muted-foreground">
+                Paste a fresh radar lane — Settings → Model relay shows your
+                adopted chain.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="lane-exp-source">Source pipeline</Label>
+            <Select value={sourceId || undefined} onValueChange={setSourceId}>
+              <SelectTrigger id="lane-exp-source" className="w-full">
+                <SelectValue placeholder="Pick a workflow with runs" />
+              </SelectTrigger>
+              <SelectContent>
+                {runSources.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>
+                    <span className="block max-w-56 truncate sm:max-w-64" title={w.name}>
+                      {w.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {runSources.length === 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                No pipeline has a run yet — run one first; the comparison needs
+                a scored baseline.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="lane-exp-label">Experiment label</Label>
+            <Input
+              id="lane-exp-label"
+              value={label}
+              onChange={(e) => {
+                setLabel(e.target.value);
+                setLabelTouched(true);
+              }}
+              placeholder="e.g. mercury-3"
+              maxLength={24}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Shown on the ledger row — defaults to the lane&apos;s model id.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={create} disabled={!lane || !sourceId}>
+            <span aria-hidden>🧪</span>
+            Create experiment
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -899,6 +1221,25 @@ function EvolutionInbox() {
                   {proposalAge(p.createdAt)}
                 </span>
               </p>
+              {/* r511: a frontier-seeded proposal cites its source paper/repo —
+                  one compact link line, the row stays spawn-first. */}
+              {p.frontierRef && (
+                <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]">
+                  <a
+                    href={p.frontierRef.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Open the ${p.frontierRef.kind} this proposal was inspired by: ${p.frontierRef.title}`}
+                    className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-muted/40 px-1.5 py-px font-medium text-foreground/80 transition-colors hover:bg-muted/70"
+                  >
+                    <span aria-hidden>🔬</span>
+                    <span className="max-w-48 truncate sm:max-w-72">{p.frontierRef.title}</span>
+                  </a>
+                  <span className="shrink-0 text-stone-500 dark:text-stone-400">
+                    frontier-seeded
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <Button

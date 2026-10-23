@@ -103,7 +103,13 @@ export async function POST(req: NextRequest) {
       send({ type: "start" });
       try {
         body.images = sanitizeImages(body.images);
-        const toolIO: EngineToolIO = { defs: buildToolDefs((body.tools ?? []).filter(Boolean)), execute: executeTool };
+        // 2-a: bind the request's Cortex Edge config (BYOK, per-request) into
+        // the executor so the deep_scrape lane ladder runs on the server lane.
+        const cortexContext = { cortex: body.cortex };
+        const toolIO: EngineToolIO = {
+          defs: buildToolDefs((body.tools ?? []).filter(Boolean)),
+          execute: (name, argsJson, sig) => executeTool(name, argsJson, sig, cortexContext),
+        };
         // v0.2 receipt (r26-3): one audit per turn, fed by whichever engine ran
         // (relay or auto) via the shared toolIO reference.
         const audit = newTurnSafetyAudit();
@@ -304,7 +310,7 @@ async function runAutoEngine(
       const validation = validateToolCall(toolDefs, call.name, JSON.stringify(call.args));
       if (!validation.ok && audit) audit.rejectedCalls += 1;
       const result = validation.ok
-        ? await executeTool(call.name, validation.args ?? "{}", signal)
+        ? await executeTool(call.name, validation.args ?? "{}", signal, { cortex: body.cortex })
         : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
       collected.push({
         id: call.id,
@@ -343,7 +349,7 @@ async function runAutoEngine(
         const validation = validateToolCall(toolDefs, call.name, JSON.stringify(call.args));
         if (!validation.ok && audit) audit.rejectedCalls += 1;
         const result = validation.ok
-          ? await executeTool(call.name, validation.args ?? "{}")
+          ? await executeTool(call.name, validation.args ?? "{}", undefined, { cortex: body.cortex })
           : { ok: false, content: validation.error ?? "invalid tool call", ms: 0 };
         collected.push({
           id: call.id,
