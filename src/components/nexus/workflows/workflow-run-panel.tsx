@@ -1299,7 +1299,7 @@ export function WorkflowRunPanel({
          * NOT dismiss the run panel — users watch a live run while writing.
          * Dismissal stays available via the X button or Escape. */
         onInteractOutside={(e) => e.preventDefault()}
-        className="flex w-full flex-col gap-0 border-l bg-background p-0 shadow-2xl sm:max-w-2xl"
+        className="flex w-full flex-col gap-0 overflow-hidden border-l bg-background p-0 shadow-2xl sm:max-w-2xl"
       >
         <SheetHeader className="border-b pr-12">
           <SheetTitle className="truncate">{liveWorkflow?.name ?? "Workflow"}</SheetTitle>
@@ -1356,15 +1356,19 @@ export function WorkflowRunPanel({
           </div>
         </SheetHeader>
 
-        {/* Task input */}
-        <div className="border-b p-4">
+        {/* Task input — r516: the base Textarea is field-sizing-content (auto-
+            grows with content), so pasting a long instruction used to push the
+            Run button below the fixed-height sheet with NO scroll to reach it.
+            The box now caps at ~8 lines and scrolls internally; the whole
+            block is shrink-0 so the controls stay pinned above the log. */}
+        <div className="shrink-0 border-b p-4">
           <Textarea
             rows={2}
             value={task}
             onChange={(e) => setTask(e.target.value)}
             placeholder="Describe the task for this pipeline…"
             aria-label="Pipeline task"
-            className="resize-none"
+            className="max-h-48 resize-none overflow-y-auto"
           />
           {/* r486-a successor wire (RSI continuity): when checked, the run's
               first step receives a labeled digest of this pipeline's last
@@ -1517,13 +1521,13 @@ export function WorkflowRunPanel({
                           rows={3}
                           value={schedule?.task ?? ""}
                           onChange={(e) => patchSchedule({ task: e.target.value })}
+                          className="max-h-32 resize-none overflow-y-auto text-sm"
                           placeholder={
                             liveWorkflow?.description
                               ? `Defaults to: ${liveWorkflow.description.slice(0, 60)}${liveWorkflow.description.length > 60 ? "…" : ""}`
                               : "Defaults to the workflow description"
                           }
                           aria-label="Scheduled task"
-                          className="resize-none text-sm"
                         />
                       </div>
 
@@ -1577,8 +1581,9 @@ export function WorkflowRunPanel({
           </div>
         </div>
 
-        {/* Steps output + history */}
-        <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
+        {/* Steps output + history — min-h-0 lets this flex child actually
+            shrink (default min-height:auto made long runs overflow the sheet). */}
+        <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
           {!viewedRun ? (
             <>
               <div className="flex min-h-32 items-center justify-center px-6 pt-6 text-center text-sm text-muted-foreground">

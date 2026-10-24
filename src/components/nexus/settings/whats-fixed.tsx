@@ -508,6 +508,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "after the first real closed-tab fire, the server-run panel shows exactly ONE new run — not a stack of simultaneous copies of the same workflow",
   },
+  {
+    round: "r516",
+    title: "Routing reads the leaderboards, not name-words — and every panel you reported un-scrollable now scrolls",
+    detail:
+      "Four owner-reported fixes. (1) Lane order is benchmark-led: a new intelligence index distills arena.ai (WebDev + Agent boards) and Artificial Analysis (intelligence + coding agents) server-side, caches 6h, and the relay chain blends 65% benchmark · 35% catalog Elo within each class — the diffusion speed lane no longer outranks benchmark-proven free frontier models because a hand-typed constant said so. (2) The Frontier Scout tab (and every radar tab) is its own scroll container — tall boards no longer clip with no way down. (3) The workflow run panel caps the task box at ~8 lines with internal scroll, so a long pasted instruction can never push the Run button out of reach; the step log gained the missing min-h-0 shrink. (4) The GitHub radar's rate-limit wall grew an escape hatch: a 403/429 on the shared egress IP now retries through the Webshare pool automatically and says so honestly. Bonus: per-step Decision Gates — the free Intern Decision-4B primitive judges every workflow step output (confident FAIL → one free rework pass) on its separate 200 RPM decision quota.",
+    lookFor:
+      "Settings → Model Relay: an emerald “Benchmark intelligence” panel (source chips + top-6 board + Refresh) and “Intel 0.9xx” badges on every hop; Radar → Frontier scrolls; a long paste in the run panel keeps Run visible; a GitHub refresh that needed the pool toasts “Refreshed via the egress pool”",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

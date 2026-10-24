@@ -537,6 +537,15 @@ export interface Settings {
    */
   relayFailoverPolicy?: "smart" | "quality" | "free";
   /**
+   * r516: per-step Decision Gates in workflow runs — after every regular
+   * generate step, the free System-One ladder (Intern Decision-4B → fast
+   * judge, never paid Jev by default) reviews the output against the step's
+   * assignment. Confident PASS: accepted with a witness line. Confident FAIL:
+   * ONE bounded free rework pass. Uncertain / no judge: accept unchanged
+   * (the gate never blocks). Default ON; false = outputs accepted as before.
+   */
+  decisionGates?: boolean;
+  /**
    * r506: utility fast-lane routing — the AI utility buttons (plan generation,
    * auto-assign, memory consolidation) dial a FAST above-moderate lane
    * (free-first) with an emergent substitution ladder and a 30s first-token

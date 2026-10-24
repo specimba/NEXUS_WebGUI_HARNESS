@@ -22,7 +22,9 @@ architect's dev-round lane (see [AGENT.md](./AGENT.md) §2).
 
 ## Integrations (P1 — the sweep's combination plays)
 
-- [ ] **P1** **9router auto-fallback ladder in relay.ts** — map current hop ladder in `provider-rotation.ts`, add decolua/9router-style auto-fallback (ladder walk on 429/403/5xx, token-lean shaping). *Acceptance: lane rotation survives provider storms with zero manual toggles, measured in a qa script.* (9router 31,313★)
+- [ ] **P1** **9router auto-fallback ladder in relay.ts** — hop ladder already walks 429/403/5xx with health memory + provider breaker (r504/r493, delivered earlier); remaining slice = token-lean request shaping (9router-style budget-aware max_tokens / context trims per hop class). *Acceptance: qa script witnesses a provider storm survivable with zero manual toggles + measured token deltas.* (9router 31,313★)
+- [x] **P1** **Benchmark-led lane ordering ("not on words only")** — r516 intelligence index: server producer distills arena.ai WebDev/Agent + Artificial Analysis intelligence/coding-agents (live parse → honest curated-snapshot fallback → 6h PlatformSetting cache, GET /api/intelligence), relay chain sorts within class by 65% benchmark · 35% catalog Elo. Mercury-3 (0.90) no longer outranks qwen3.8-max-free (0.95). UI: Benchmark intelligence panel + Intel badges (Settings → Model Relay).
+- [x] **P1** **Decision models in workflows (System-One everywhere)** — r516 per-step Decision Gates: after every regular generate step the free ladder (Intern Decision-4B 200 RPM quota → fast flash judge → Jev only if ever keyed) judges output vs step assignment; confident FAIL → one bounded free rework pass; toggle in Model Relay card (`decisionGates`, default on). Joins the r512 crew role-gates + r27 verify gate.
 - [ ] **P1** **Durable-step semantics for scheduled runs** — per-step retry + resume-after-restart (upstash/workflow-js invoke/retry/waitForEvent shape) on the existing QStash wiring, no new service. *Acceptance: a scheduled server run that dies mid-way resumes at the failed step; visible in the run archive.*
 - [ ] **P1** **NEXUS_BOT adaptation wave** — port from `upload/NEXUSbot2210v3.tar`: server-side AES-256-GCM vault, single redaction choke point in front of every outbound LLM dial, Anthropic-dialect lanes, Exa/Bright Data acquisition lanes. *Acceptance: vault round-trips server-only; one redaction module covers relay + engine + radar dials.*
 
@@ -41,6 +43,11 @@ architect's dev-round lane (see [AGENT.md](./AGENT.md) §2).
 
 ## Done (this round + carried)
 
+- [x] r516: **Benchmark intelligence routing** — intelligence-index producer + API + relay blend sort + Benchmark panel/Intel badges; snapshot honest-fallback witnessed live (arena 403 from sandbox IP, AA JS-rendered).
+- [x] r516: **Scroll-bug class closure** — radar TabsContent all scroll containers (frontier/github/hf/papers); run-panel task box capped (max-h + internal scroll, shrink-0 controls, min-h-0 log); editor dialog textareas capped. Owner's recurring complaint addressed at the CLASS level.
+- [x] r516: **Per-step Decision Gates** in workflow-runner (free SystemOne ladder, one rework, never blocks) + toggle.
+- [x] r516: **GitHub radar pool escape hatch** — 403/429 → Webshare pool retry (honest `via: "pool"` + toast); fixes specimba stale refresh path.
+- [x] r516: **Webshare knowledge distilled** — CLI/MCP/Skills surfaces noted (ops doc); mirror lone-surrogate sanitizer verified present (r510, cloud-mirror.ts).
 - [x] r515: AIE v1 — queue normalization, deterministic moves, safe execution, 10-min cycles, panel. (r515-a/b)
 - [x] r515: repo sweep research — 54 URLs → docs/repo-sweep-report-2410.md, 56-row scored table. (r515-a)
 - [x] r515-c: **Strategic Context Layer** — StrategyItem model, engine `advance-strategy` moves, await-owner cooldown (no more identical no-op spam), ADAPT→auto-backlog hook, digest stream, `GET /api/strategy` context pack, `GET /api/briefing`, Strategy card in Workflow Studio, AGENT/TASKS/WORKLOGS doctrine files, cron doctrine (3 layers).

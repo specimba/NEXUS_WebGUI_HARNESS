@@ -81,7 +81,9 @@ export function buildLaneCatalog(settings: Settings): LaneCatalog {
     options.push({
       id: hop.key,
       label: hop.label,
-      note: `${TIER_LABEL[hop.tier]} · Elo ${hop.elo.toFixed(2)} · ${usage}${trust}`,
+      // r516: Intel (benchmark blend) leads the note — it's the ordering
+      // signal; Elo stays as the catalog prior. "°" marks prior-only rows.
+      note: `${TIER_LABEL[hop.tier]} · Intel ${(hop.intel ?? hop.elo).toFixed(2)}${hop.intelOrigin === "live" ? "" : "°"} · Elo ${hop.elo.toFixed(2)} · ${usage}${trust}`,
       group: isAuto ? "Fallback" : hop.label.split(" · ")[0] || hop.providerId,
       badge,
       badgeTone,

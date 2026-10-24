@@ -31,6 +31,15 @@ import {
   type ProviderBreakerMap,
 } from "./provider-breaker";
 import type { Settings } from "./types";
+// r516: benchmark intelligence index — the chain's within-class ordering now
+// leads with LIVE leaderboard data (arena webdev/agent + Artificial Analysis)
+// blended over the static catalog Elo prior. Isomorphic helpers, localStorage
+// cache; the index itself is produced server-side (/api/intelligence).
+import {
+  blendedIntel,
+  readIntelligenceCache,
+  type IntelligenceIndex,
+} from "./intelligence";
 
 export interface RelayHop {
   /** Stable key "providerId::model" — used for ordering + de-duplication. */
@@ -45,6 +54,13 @@ export interface RelayHop {
   /** Arena Elo 0–1 (evidence-grounded quality estimate, see docs). */
   elo: number;
   note?: string;
+  /** r516: benchmark-blended ordering score (live index 0.65 · elo prior
+   * 0.35). Falls back to `elo` when no leaderboard row matches. */
+  intel?: number;
+  /** "live" = a leaderboard row matched this model; "prior" = elo only. */
+  intelOrigin?: "live" | "prior";
+  /** Canonical leaderboard name that matched (UI honesty chip). */
+  intelName?: string;
 }
 
 /** Wire shape sent to /api/chat (no ids — server is stateless). */
@@ -751,12 +767,23 @@ export function buildRelayChain(
     });
   }
 
-  // Generation-Era doctrine, r504 hardened: breaker-docked providers sink
-  // FIRST (a quarantined fleet must not burn ladder rungs even when its tier
-  // is flagship), then recently-failed hops, then the failover policy's free-
-  // frontier preference, then tier → Elo → task fit, stable within equal rank.
+  // Generation-Era doctrine, r516 intelligence-led: breaker-docked providers
+  // sink FIRST (a quarantined fleet must not burn ladder rungs even when its
+  // tier is flagship), then recently-failed hops, then the failover policy's
+  // free-frontier preference, then tier → LIVE INTELLIGENCE (benchmark blend;
+  // the static Elo is only the 0.35 prior) → task fit, stable within rank.
+  // Owner r516: "This needs to be really smart routing, not on words only" —
+  // mercury-3 (diffusion speed lane) no longer outranks benchmark-proven
+  // free frontier (qwen3.8-max) just because a hand-typed constant said so.
   const health = loadHealth();
   const breaker = providerBreakerSnapshot();
+  const idx: IntelligenceIndex | null = readIntelligenceCache();
+  for (const h of hops) {
+    const b = blendedIntel(idx, h.model, h.elo);
+    h.intel = b.intel;
+    h.intelOrigin = b.origin;
+    if (b.name) h.intelName = b.name;
+  }
   const policy: RelayFailoverPolicy = settings.relayFailoverPolicy ?? "smart";
   const freeRank = (h: RelayHop) => (hopIsFree(h) ? 0 : 1);
   hops.sort((a, b) => {
@@ -780,6 +807,9 @@ export function buildRelayChain(
       const fp = freeRank(a) - freeRank(b);
       if (fp) return fp;
     }
+    const ia = a.intel ?? a.elo;
+    const ib = b.intel ?? b.elo;
+    if (ib !== ia) return ib - ia;
     if (b.elo !== a.elo) return b.elo - a.elo;
     const tb = taskBoost(b, fit);
     const ta = taskBoost(a, fit);

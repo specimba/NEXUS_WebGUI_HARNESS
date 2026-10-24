@@ -2236,7 +2236,92 @@ export async function executeWorkflowRun(
           // FAIL / uncertain / no judge available → run the full verification pass.
         }
         const { content } = await streamStep(step, step.agentId, baseSystem, context);
-        prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(content) || undefined, output: content });
+
+        // ─── r516 PER-STEP DECISION GATE (owner directive: "decision models
+        // should be used in our workflows to improve our LLM's capabilities").
+        // After every regular generate step, the FREE System-One ladder
+        // (Intern Decision-4B on its separate 200 RPM decision quota → fast
+        // flash judge → paid Jev only if ever keyed) reviews the output
+        // against the step assignment:
+        //   • confident PASS  → accepted, a witness line lands in the call log;
+        //   • confident FAIL  → ONE bounded free rework pass, then accept;
+        //   • uncertain/no judge/gate off → accept unchanged (never blocks;
+        //     worst case = the exact pre-r516 behavior).
+        // Skipped for short drafts (<200 chars) and degraded streams — a
+        // three-line answer has no output worth a judge round-trip.
+        let finalOutput = content;
+        const gateEnabled = settings.settings.decisionGates !== false;
+        const gateWorthy =
+          gateEnabled &&
+          content.trim().length >= 200 &&
+          !/^_The model ended/.test(content) &&
+          kind === "generate";
+        if (gateWorthy) {
+          try {
+            const gate = await decide({
+              settings: settings.settings,
+              signal,
+              state: `TASK:\n${task}\n\nSTEP: ${step.label}\nSTEP ASSIGNMENT: ${instruction ?? "(the agent's standing instructions)"}\n\nOUTPUT UNDER REVIEW:\n${content.slice(0, 5000)}`,
+              question: {
+                id: "step-gate",
+                type: "noul",
+                prompt:
+                  "Does this output fulfill the step assignment — substantive, on-topic, no placeholder text, and no obviously unfinished sections?",
+                criteriaTrue: "the output fulfills the step assignment",
+                criteriaFalse:
+                  "the output is incomplete, off-topic, placeholder, or clearly unfinished",
+              },
+            });
+            if (gate?.answer === "yes" && gate.confidence >= SYSTEMONE_GATE_CONFIDENCE) {
+              pushCall({
+                stepId: step.stepId,
+                stepLabel: step.label,
+                agentName: agentRow.name,
+                engine: gate.judge,
+                model: gate.via,
+                ms: gate.ms,
+                ok: true,
+                attempt: 1,
+                note: `Decision gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — output accepted`,
+              });
+            } else if (gate?.answer === "no" && gate.confidence >= SYSTEMONE_GATE_CONFIDENCE) {
+              pushCall({
+                stepId: step.stepId,
+                stepLabel: step.label,
+                agentName: agentRow.name,
+                engine: gate.judge,
+                model: gate.via,
+                ms: gate.ms,
+                ok: true,
+                attempt: 1,
+                note: `Decision gate FAIL ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — one free rework pass runs`,
+              });
+              patchRunStep(step.stepId, { status: "running", reworked: true });
+              const rework = await streamStep(
+                step,
+                step.agentId,
+                `${baseSystem}\n\nREWORK REQUIRED — the quality judge rejected the previous output as incomplete or off-topic for this step. Deliver a complete, substantive result.`,
+                context
+              );
+              finalOutput = rework.content;
+              pushCall({
+                stepId: step.stepId,
+                stepLabel: step.label,
+                agentName: agentRow.name,
+                engine: gate.judge,
+                model: gate.via,
+                ms: rework.ms,
+                ok: true,
+                attempt: 2,
+                note: `Rework pass delivered after Decision gate FAIL (${gate.via}) — output replaced`,
+              });
+            }
+            // Uncertain (0.5–0.75) or no judge → accept unchanged, silently.
+          } catch {
+            /* the gate NEVER blocks a run — judge errors fall through */
+          }
+        }
+        prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(finalOutput) || undefined, output: finalOutput });
       } catch (err) {
         if (isAbortError(err)) {
           if (stalledRuns.has(wf.id)) {

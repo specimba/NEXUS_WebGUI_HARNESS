@@ -10,6 +10,7 @@
 
 import * as React from "react";
 import { ArrowUpRight, Github, Search, Star } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -115,22 +116,24 @@ function GitHubStarsTab() {
     setError(null);
     try {
       const repos: GhRepo[] = [];
+      let poolPages = 0; // r516: pages that needed the Webshare egress pool
       // r26: routed through our own /api/radar/github proxy — it sanitizes
       // the username and may attach a SERVER-side token for a higher rate
       // limit (never shipped to the client). Still an explicit user action.
       for (let page = 1; page <= GH_PAGES; page++) {
         const res = await fetch(
           `/api/radar/github?user=${encodeURIComponent(name)}&page=${page}`,
-          { signal: AbortSignal.timeout(20_000) }
+          { signal: AbortSignal.timeout(30_000) } // r516: 20s→30s — the pool retry leg adds a hop
         );
         const data = (await res.json().catch(() => null)) as
-          | { repos?: GhRepo[]; error?: string }
+          | { repos?: GhRepo[]; error?: string; via?: string }
           | null;
         if (res.status === 404) throw new Error(`GitHub user “${name}” was not found.`);
         if (res.status === 429) throw new Error(data?.error ?? "GitHub API rate limit hit — try again in a bit.");
         if (!res.ok || !data || !Array.isArray(data.repos)) {
           throw new Error(data?.error ?? `GitHub API returned HTTP ${res.status}.`);
         }
+        if (data.via === "pool") poolPages++;
         repos.push(...data.repos);
         if (data.repos.length < 100) break; // last page — stop early
       }
@@ -146,6 +149,13 @@ function GitHubStarsTab() {
       writeCache(GH_CACHE_KEY, next);
       writeCache(GH_USER_KEY, name);
       setCache(next);
+      // r516: honest routing witness — the direct egress IP was rate-limited
+      // and the residential pool carried this refresh instead.
+      if (poolPages > 0) {
+        toast.success("Refreshed via the egress pool", {
+          description: `Direct GitHub dials were rate-limited; ${poolPages} page${poolPages === 1 ? "" : "s"} rode the Webshare pool instead.`,
+        });
+      }
     } catch (err) {
       const message = isTimeoutError(err)
         ? "GitHub took too long to answer — try again."

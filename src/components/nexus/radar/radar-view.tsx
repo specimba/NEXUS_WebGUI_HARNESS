@@ -77,16 +77,21 @@ export function RadarView() {
         <TabsContent value="models" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <ModelRadarTab />
         </TabsContent>
-        <TabsContent value="github" className="mt-0 min-h-0 flex-1 p-4 md:p-6">
+        {/* r516: EVERY tab content is its own scroll container — the models tab
+            had overflow-y-auto while github/hf/papers/frontier relied on page
+            scroll that the app shell (h-full flex) never provides, so tall
+            boards clipped with no way to reach the bottom rows. Same class on
+            all five — one truth, no per-tab drift (the recurring scroll bug). */}
+        <TabsContent value="github" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <GitHubStarsTab />
         </TabsContent>
-        <TabsContent value="hf" className="mt-0 min-h-0 flex-1 p-4 md:p-6">
+        <TabsContent value="hf" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <HfTrendingTab />
         </TabsContent>
-        <TabsContent value="papers" className="mt-0 min-h-0 flex-1 p-4 md:p-6">
+        <TabsContent value="papers" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <PaperRadarTab />
         </TabsContent>
-        <TabsContent value="frontier" className="mt-0 min-h-0 flex-1 p-4 md:p-6">
+        <TabsContent value="frontier" className="mt-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <FrontierScoutTab />
         </TabsContent>
       </Tabs>

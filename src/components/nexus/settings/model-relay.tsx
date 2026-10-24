@@ -13,8 +13,10 @@ import {
   ArrowUp,
   CircleCheck,
   CircleAlert,
+  Gauge,
   Info,
   Radar,
+  RefreshCw,
   RotateCcw,
   ShieldCheck,
   Sparkles,
@@ -59,6 +61,14 @@ import {
 import { useSettingsStore } from "@/lib/stores";
 // r506: utility fast-lane routing — the AI buttons' own wire, previewed here.
 import { buildUtilityWire } from "@/lib/utility-lane";
+// r516: benchmark intelligence index — the live ordering signal this card
+// previews and refreshes (arena.ai WebDev/Agent + artificialanalysis.ai).
+import {
+  intelligenceStale,
+  readIntelligenceCache,
+  writeIntelligenceCache,
+  type IntelligenceIndex,
+} from "@/lib/intelligence";
 // r503: Radar → Relay adoption pipeline — this card renders and manages the
 // adopted-lane registry (localStorage `nexus-relay-adopted`, written by the
 // radar tab's auto-pipeline AND the row actions below) plus the auto-adopt
@@ -84,18 +94,19 @@ const TIER_STYLE: Record<1 | 2 | 3, string> = {
 
 // ── r504: failover policy copy (owner directive: "auto-rotate them to the
 // best available alternative free frontiers for continuation smartly") ──
+// r516 rewording: ordering within a class is benchmark-led now, not words.
 const POLICY_COPY: Record<RelayFailoverPolicy, { label: string; desc: string }> = {
   smart: {
     label: "Smart",
-    desc: "Keeps quality tiers, but a FREE lane outranks paid siblings of its era — outages ride free frontiers before spending a cent.",
+    desc: "Keeps quality tiers, but a FREE lane outranks paid siblings of its era — outages ride free frontiers before spending a cent. Within a class, lanes order by the live benchmark intelligence index, not by name words.",
   },
   quality: {
     label: "Quality",
-    desc: "Classic doctrine: Generation-Era tier first, then arena Elo. Free/paid is not a factor.",
+    desc: "Generation-Era tier first, then the intelligence blend (65% live benchmark index · 35% catalog Elo). Free/paid is not a factor.",
   },
   free: {
     label: "Free first",
-    desc: "All free lanes dial before any paid lane (tiers still order within). Maximum cost protection during a degraded fleet.",
+    desc: "All free lanes dial before any paid lane (benchmark intelligence orders within). Maximum cost protection during a degraded fleet.",
   },
 };
 
@@ -194,6 +205,44 @@ export function ModelRelayCard() {
     };
   }, []);
 
+  // ── r516: benchmark intelligence index — the live ordering signal. Mounted
+  // hydrates from localStorage, auto-refreshes when older than 6h, and the
+  // Refresh button forces a server re-fetch (?fresh=1). The chain preview
+  // below recomputes when this lands, so the ladder the owner sees is the
+  // ladder the rotator actually dials.
+  const [intel, setIntel] = React.useState<IntelligenceIndex | null>(() => readIntelligenceCache());
+  const [intelLoading, setIntelLoading] = React.useState(false);
+  const intelBooted = React.useRef(false);
+  const loadIntel = React.useCallback(async (fresh: boolean) => {
+    setIntelLoading(true);
+    try {
+      const res = await fetch(`/api/intelligence${fresh ? "?fresh=1" : ""}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const idx = (await res.json()) as IntelligenceIndex;
+      writeIntelligenceCache(idx);
+      setIntel(idx);
+      if (fresh) {
+        const live = idx.sources.filter((s) => s.status === "live").length;
+        toast.success("Benchmark index refreshed", {
+          description: `${idx.entries.length} models · ${idx.origin === "live" ? `${live} live board${live === 1 ? "" : "s"}` : "curated snapshot (boards unreachable)"} · ${idx.ms}ms`,
+        });
+      }
+    } catch (err) {
+      if (fresh) {
+        toast.error("Benchmark refresh failed", {
+          description: err instanceof Error ? err.message : "Could not reach /api/intelligence.",
+        });
+      }
+    } finally {
+      setIntelLoading(false);
+    }
+  }, []);
+  React.useEffect(() => {
+    if (intelBooted.current) return;
+    intelBooted.current = true;
+    if (intelligenceStale(readIntelligenceCache())) void loadIntel(false);
+  }, [loadIntel]);
+
   const primary = resolveLlm(settings);
   const policy: RelayFailoverPolicy = settings.relayFailoverPolicy ?? "smart";
   // r506: the utility wire (AI buttons' dial order) — recomputed on the SAME
@@ -222,7 +271,9 @@ export function ModelRelayCard() {
         h.key !== excludeKey &&
         !(primary.providerId === "auto" && h.providerId === "auto")
     );
-  }, [settings, primary]);
+    // intel rides the deps: when a fresh benchmark index lands, the previewed
+    // ladder re-sorts exactly like the next real dial will.
+  }, [settings, primary, intel]);
 
   // Reorder controls index THIS list (auto pinned last is never swappable).
   // r167 fix: the old code indexed the full chain but reordered the filtered
@@ -245,7 +296,7 @@ export function ModelRelayCard() {
 
   function resetOrder() {
     update({ relayOrder: [] });
-    toast.success("Relay order reset to recommended (tier → Elo)");
+    toast.success("Relay order reset to recommended (tier → benchmark intelligence)");
   }
 
   return (
@@ -334,6 +385,111 @@ export function ModelRelayCard() {
           </p>
         </div>
 
+        {/* ── r516: Benchmark intelligence — the live ordering signal the
+            ladder actually sorts by (arena WebDev/Agent + Artificial
+            Analysis intelligence + coding agents). Emerald row. */}
+        <div
+          className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] p-3"
+          data-testid="benchmark-intelligence"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
+              <Gauge className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
+              Benchmark intelligence
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] font-normal",
+                  intel?.origin === "live"
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                )}
+                title={
+                  intel?.origin === "live"
+                    ? "At least one leaderboard board was parsed live for this index"
+                    : "Boards unreachable — curated snapshot in effect (honest fallback, never invented)"
+                }
+              >
+                {intel ? (intel.origin === "live" ? "live boards" : "snapshot") : "loading…"}
+              </Badge>
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-[11px]"
+              disabled={intelLoading}
+              aria-label="Refresh benchmark intelligence index"
+              onClick={() => void loadIntel(true)}
+            >
+              <RefreshCw className={cn("h-3 w-3", intelLoading && "animate-spin")} aria-hidden />
+              Refresh
+            </Button>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            Ordering signal — arena.ai WebDev + Agent boards and Artificial
+            Analysis (intelligence index + coding agents). Lane order blends{" "}
+            <span className="font-medium text-emerald-400">65% benchmark · 35% catalog Elo</span>,
+            cached 6h; a speed lane can no longer outrank a benchmark-proven
+            frontier model just because its name says so.
+          </p>
+          {intel ? (
+            <>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {intel.sources.map((s) => (
+                  <span
+                    key={s.id}
+                    title={`${s.url} · ${s.status}${s.note ? ` · ${s.note}` : ""}`}
+                    className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/40 px-2 py-0.5 text-[10px] text-muted-foreground"
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        s.status === "live"
+                          ? "bg-emerald-500"
+                          : s.status === "snapshot"
+                            ? "bg-amber-500"
+                            : "bg-stone-400"
+                      )}
+                      aria-hidden
+                    />
+                    {s.label}
+                    {s.status === "live" ? ` · ${s.count}` : ""}
+                  </span>
+                ))}
+                <span className="text-[10px] text-muted-foreground">
+                  {intel.entries.length} models · updated {new Date(intel.asOf).toLocaleString()}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                {intel.entries.slice(0, 6).map((e, i) => (
+                  <div key={e.name} className="flex items-center gap-2 text-[11px]">
+                    <span className="w-4 shrink-0 text-right font-mono text-muted-foreground">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-mono" title={e.name}>
+                      {e.name}
+                    </span>
+                    <div className="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-emerald-500/60"
+                        style={{ width: `${Math.round(e.intel * 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-8 shrink-0 text-right font-mono text-emerald-400">
+                      {e.intel.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="mt-2 text-[11px] text-muted-foreground" role="status">
+              Fetching the boards… the ladder re-sorts the moment it lands.
+            </p>
+          )}
+        </div>
+
         {/* ── r506: Utility fast lanes — the AI buttons (plan generation,
             auto-assign, memory folds) dial a FAST above-moderate lane with
             emergent substitutions instead of the largest reasoning model.
@@ -366,6 +522,35 @@ export function ModelRelayCard() {
           >
             {utilityWire.fast ? "⚡ ": "→ "}
             {utilityWire.preview}
+          </p>
+        </div>
+
+        {/* ── r516: Decision gates — the System-One tier reviews every workflow
+            step output on the FREE decision quota (Intern Decision-4B → fast
+            judge; paid Jev stays demoted last). Emerald row (the SystemOne
+            identity color across the harness). */}
+        <div
+          className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] p-3"
+          data-testid="decision-gates"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
+              <CircleCheck className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
+              Decision gates in workflows
+            </p>
+            <Switch
+              aria-label="Toggle per-step decision gates"
+              checked={settings.decisionGates !== false}
+              onCheckedChange={(v) => update({ decisionGates: v })}
+            />
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            After every workflow step, the free System-One primitive (Intern
+            Decision-4B — its own 200 RPM decision quota, separate from the
+            generative 50 RPM) judges the output against the step assignment.
+            Confident PASS: accepted with a witness line. Confident FAIL: one
+            bounded free rework pass. Uncertain or no judge: accepted unchanged
+            — the gate never blocks, and the generative quota stays untouched.
           </p>
         </div>
 
@@ -705,8 +890,25 @@ function HopRow({
           >
             T{hop.tier} {TIER_LABEL[hop.tier]}
           </Badge>
-          <Badge variant="outline" className="font-mono text-[10px] font-normal">
-            Elo {hop.elo.toFixed(2)}
+          {/* r516: the ordering badge is the BENCHMARK BLEND now — live index
+              when a leaderboard row matched, catalog Elo prior otherwise.
+              Static Elo survives only inside the tooltip (the 35% prior). */}
+          <Badge
+            variant="outline"
+            className={cn(
+              "font-mono text-[10px] font-normal",
+              hop.intelOrigin === "live"
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                : "text-muted-foreground"
+            )}
+            title={
+              hop.intelOrigin === "live"
+                ? `Intelligence ${((hop.intel ?? hop.elo).toFixed(3))} = 65% benchmark "${hop.intelName ?? hop.model}" + 35% catalog Elo ${hop.elo.toFixed(2)} — this is what orders the ladder`
+                : `No leaderboard row matched "${hop.model}" — ordering falls back to the catalog Elo prior (${hop.elo.toFixed(2)})`
+            }
+          >
+            Intel {(hop.intel ?? hop.elo).toFixed(3)}
+            {hop.intelOrigin === "live" ? "" : "°"}
           </Badge>
           {free && !isAuto && (
             <Badge

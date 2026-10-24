@@ -861,6 +861,7 @@ export function WorkflowEditorDialog({
                           "Extra system-prompt focus injected at run time, e.g. \"Keep findings under 200 words\""
                         }
                         aria-label={`Instruction override for step ${i + 1}`}
+                        className="max-h-40 overflow-y-auto" /* r516: long pastes stay scrollable, dialog never blown open */
                       />
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         {agent
@@ -925,6 +926,7 @@ export function WorkflowEditorDialog({
                   value={planTask}
                   onChange={(e) => setPlanTask(e.target.value)}
                   placeholder="e.g. Research the state of AI agents, distill the top trends into an outline, then write a short blog post"
+                  className="max-h-40 overflow-y-auto" /* r516: same paste guard */
                 />
                 <div className="flex justify-end gap-2">
                   {planning ? (
