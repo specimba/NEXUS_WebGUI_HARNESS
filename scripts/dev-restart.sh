@@ -26,6 +26,9 @@ sleep 1
 #    boundary across a whole round — new SESSION (not just new group) is the
 #    difference. Delegating the launch to the same proven recipe keeps ONE
 #    canonical boot path.
+# r521: bare `next` needs the repo bin dir on PATH — a patrol tool shell
+# without it failed this whole script with "exec: next: not found" (dev.log).
+export PATH="/home/z/my-project/node_modules/.bin:$HOME/.bun/bin:$PATH"
 setsid nohup bash -c 'exec next dev -p 3000 2>&1 | tee dev.log' </dev/null >/dev/null 2>&1 &
 disown || true
 

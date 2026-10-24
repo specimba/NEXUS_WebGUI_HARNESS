@@ -52,6 +52,11 @@ interface VaultStep {
   label: string;
   agentName?: string;
   prompt: string;
+  /** TASK-101 slice 3 (r521): the workflow-js waitForEvent shape — a step
+   * that PAUSES the run until a named event lands in the automation event
+   * log. All wait state persists in the run row (status "waiting" + a
+   * sentinel in stepsJson), so a restart resumes the WAIT, never the step. */
+  waitFor?: { event: string; timeoutMs?: number };
 }
 
 export interface TickResult {
@@ -66,8 +71,9 @@ export interface TickResult {
     /** r443: an overlap guard no-op — the previous tick's pipeline is still running. */
     | "tick-already-running";
   workflowIds: string[];
-  /** Present when claimed === 1 — the run outcome for QA/panel reads. */
-  outcome?: { runId: string; status: "done" | "error" };
+  /** Present when claimed === 1 — the run outcome for QA/panel reads.
+   * r521: "waiting" joins the union — a waitForEvent step parks the run. */
+  outcome?: { runId: string; status: "done" | "error" | "waiting" };
 }
 
 interface ResolvedDial {
@@ -429,11 +435,96 @@ async function dialStepWithRetry(
   }
 }
 
+// ─── TASK-101 slice 3 (r521): the durable waitForEvent shape ────────────────
+// A step may declare `waitFor: { event, timeoutMs? }`. When the executor
+// arrives it checks the automation event log for that name; absent, the run
+// PARKS as status "waiting" with a sentinel entry persisted in stepsJson
+// (event + since + deadline) and the executor YIELDS. The claim loop
+// re-evaluates the checkpoint every tick: event lands → the step completes
+// with an honest "[event … received after Xs — resuming]" trail; deadline
+// passes → the step fails into the normal error/breaker path. Everything
+// lives in EXISTING columns (status String + stepsJson) — zero schema
+// change — so a server restart resumes the WAIT, not the step.
+export const AUTOMATION_EVENT_LOG_KEY = "automation.events.v1";
+const EVENT_LOG_CAP = 50;
+export const DEFAULT_WAIT_TIMEOUT_MS = 10 * 60_000;
+const WAIT_MIN_TIMEOUT_MS = 30_000;
+
+interface AutomationEventEntry {
+  name: string;
+  at: string; // ISO
+  payload?: string;
+}
+
+export interface WaitCheckpoint {
+  event: string;
+  /** ISO — when the executor FIRST arrived at this step (survives restarts). */
+  since: string;
+  /** ISO — since + timeoutMs; past this the wait fails honestly. */
+  deadline: string;
+}
+
+async function readEventLog(): Promise<AutomationEventEntry[]> {
+  const row = await db.platformSetting.findUnique({ where: { id: AUTOMATION_EVENT_LOG_KEY } });
+  if (!row?.value) return [];
+  try {
+    const parsed = JSON.parse(row.value) as unknown;
+    return Array.isArray(parsed) ? (parsed as AutomationEventEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Emit a named event — any waiting step whose checkpoint matches resumes on
+ * the next claim tick. Newest last, capped; operator-visible via
+ * GET /api/automation/events. */
+export async function emitAutomationEvent(name: string, payload?: string): Promise<number> {
+  const trimmed = name.trim().slice(0, 120);
+  if (!trimmed) throw new Error("event name required");
+  const log = await readEventLog();
+  log.push({
+    name: trimmed,
+    at: new Date().toISOString(),
+    ...(payload ? { payload: payload.slice(0, 500) } : {}),
+  });
+  const capped = log.slice(-EVENT_LOG_CAP);
+  await db.platformSetting.upsert({
+    where: { id: AUTOMATION_EVENT_LOG_KEY },
+    create: { id: AUTOMATION_EVENT_LOG_KEY, value: JSON.stringify(capped) },
+    update: { value: JSON.stringify(capped) },
+  });
+  return capped.length;
+}
+
+function fmtWaitDur(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = Math.max(0, totalSeconds % 60);
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+/** Shared stepsJson parser — empty array on corrupt/absent payloads. */
+function parseVaultSteps(raw: string): VaultStep[] {
+  try {
+    const parsed = JSON.parse(raw) as VaultStep[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/** r521: do steps at/after `from` include at least one DIALABLE step? Wait
+ * steps never dial, so a run whose remaining steps are all waitFor steps can
+ * advance (park / resume / complete) with no vault key at all. */
+function remainingStepsNeedDial(steps: VaultStep[], from: number): boolean {
+  return steps.some((s, idx) => idx >= from && !(s.waitFor?.event?.trim()));
+}
+
 /** Execute one claimed workflow end-to-end with honest run bookkeeping. */
 export async function executeWorkflow(
   wf: { id: string; name: string; task: string; stepsJson: string; intervalMs: number },
   dial: ResolvedDial,
-): Promise<{ runId: string; status: "done" | "error" }> {
+  resumeRunId?: string,
+): Promise<{ runId: string; status: "done" | "error" | "waiting" }> {
   let steps: VaultStep[] = [];
   try {
     const parsed = JSON.parse(wf.stepsJson) as VaultStep[];
@@ -445,22 +536,125 @@ export async function executeWorkflow(
     steps = [{ label: "Run task", prompt: wf.task }];
   }
 
-  const run = await db.automationRun.create({
-    data: {
-      workflowId: wf.id,
-      workflowName: wf.name,
-      trigger: "schedule",
-      status: "running",
-      stepsTotal: steps.length,
-      stepsJson: "[]",
-    },
-  });
+  let runId: string;
+  let outputs: { label: string; output: string; ms: number; ok: boolean }[] = [];
+  let startIndex = 0;
+  let resumeWait: WaitCheckpoint | null = null;
 
-  const outputs: { label: string; output: string; ms: number; ok: boolean }[] = [];
+  const existing = resumeRunId
+    ? await db.automationRun.findUnique({ where: { id: resumeRunId } })
+    : null;
+  if (existing) {
+    // TASK-101 slice 3: resume the WAIT, never the completed work — finished
+    // steps load from the persisted stepsJson (the trailing waiting sentinel
+    // is stripped), the run flips back to "running", and the loop continues
+    // at the wait step with the ORIGINAL since/deadline checkpoint.
+    let parsed: { label: string; output: string; ms: number; ok: boolean; waiting?: WaitCheckpoint }[] = [];
+    try {
+      const p = JSON.parse(existing.stepsJson) as unknown;
+      if (Array.isArray(p)) parsed = p as typeof parsed;
+    } catch {
+      /* corrupt stepsJson → remaining steps re-execute (honest) */
+    }
+    const trail = parsed[parsed.length - 1];
+    if (trail?.waiting) resumeWait = trail.waiting;
+    outputs = parsed
+      .filter((e) => !(e && e.waiting))
+      .map((e) => ({ label: e.label, output: e.output, ms: e.ms, ok: e.ok }));
+    startIndex = Math.min(outputs.length, steps.length);
+    runId = existing.id;
+    await db.automationRun.update({
+      where: { id: runId },
+      data: { status: "running", error: null },
+    });
+  } else {
+    const run = await db.automationRun.create({
+      data: {
+        workflowId: wf.id,
+        workflowName: wf.name,
+        trigger: "schedule",
+        status: "running",
+        stepsTotal: steps.length,
+        stepsJson: "[]",
+      },
+    });
+    runId = run.id;
+  }
+
   try {
-    for (let i = 0; i < steps.length; i++) {
+    for (let i = startIndex; i < steps.length; i++) {
       const step = steps[i];
       const t0 = Date.now();
+
+      // ── TASK-101 slice 3: the waitForEvent step (checked BEFORE the dial —
+      // a wait step never dials a provider; it either resumes, parks, or
+      // times out) ──
+      if (step.waitFor?.event?.trim()) {
+        const eventName = step.waitFor.event.trim().slice(0, 120);
+        const timeoutMs = Math.max(WAIT_MIN_TIMEOUT_MS, Number(step.waitFor.timeoutMs) || DEFAULT_WAIT_TIMEOUT_MS);
+        const fresh = !(resumeWait && resumeWait.event === eventName);
+        const since = fresh ? new Date().toISOString() : (resumeWait as WaitCheckpoint).since;
+        const deadline = fresh
+          ? new Date(Date.now() + timeoutMs).toISOString()
+          : (resumeWait as WaitCheckpoint).deadline;
+        const sinceMs = Date.parse(since);
+        const sinceSafe = Number.isFinite(sinceMs) ? sinceMs : 0;
+        const log = await readEventLog();
+        const landed = log
+          .filter((e) => e.name === eventName && Date.parse(e.at) >= sinceSafe)
+          .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0];
+        if (landed) {
+          const landedMs = Date.parse(landed.at);
+          const waitedS = Math.max(0, Math.round(((Number.isFinite(landedMs) ? landedMs : Date.now()) - sinceSafe) / 1000));
+          outputs.push({
+            label: step.label,
+            output: `[event "${eventName}" received after ${fmtWaitDur(waitedS)} — resuming]${landed.payload ? `\n${landed.payload}` : ""}`,
+            ms: Date.now() - t0,
+            ok: true,
+          });
+          resumeWait = null;
+          continue;
+        }
+        const elapsedMs = Date.now() - sinceSafe;
+        if (elapsedMs >= timeoutMs) {
+          outputs.push({
+            label: step.label,
+            output: `waited ${fmtWaitDur(Math.round(elapsedMs / 1000))} for event "${eventName}" — never arrived (timeout ${fmtWaitDur(Math.round(timeoutMs / 1000))})`,
+            ms: Date.now() - t0,
+            ok: false,
+          });
+          await db.automationRun.update({
+            where: { id: runId },
+            data: { currentStep: i + 1, stepsJson: JSON.stringify(outputs) },
+          });
+          throw new Error(
+            `step ${i + 1}/${steps.length} "${step.label}" timed out waiting for event "${eventName}" (${fmtWaitDur(Math.round(timeoutMs / 1000))} budget)`
+          );
+        }
+        // Still waiting: persist the sentinel + flip to "waiting" and YIELD
+        // the run. nextRunAt stays untouched (r520 contract) so the claim
+        // loop re-evaluates the wait every tick — a restart resumes the WAIT,
+        // not the step (the sentinel IS the durable checkpoint).
+        await db.automationRun.update({
+          where: { id: runId },
+          data: {
+            status: "waiting",
+            currentStep: i + 1,
+            stepsJson: JSON.stringify([
+              ...outputs,
+              {
+                label: step.label,
+                output: `[waiting for event "${eventName}" — ${fmtWaitDur(Math.max(0, Math.round(elapsedMs / 1000)))} elapsed / ${fmtWaitDur(Math.round(timeoutMs / 1000))} budget]`,
+                ms: Math.max(0, elapsedMs),
+                ok: true,
+                waiting: { event: eventName, since, deadline } satisfies WaitCheckpoint,
+              },
+            ]),
+          },
+        });
+        return { runId, status: "waiting" };
+      }
+
       try {
         const { text, firstFailure } = await dialStepWithRetry(dial, step.prompt || step.label);
         // TASK-101: a recovered step is still a succeeded step (ok:true — the
@@ -484,15 +678,17 @@ export async function executeWorkflow(
         // Progress writes land even on the failing step — the panel shows
         // exactly where a dead run stopped (r80 honesty, server lane).
         await db.automationRun.update({
-          where: { id: run.id },
+          where: { id: runId },
           data: { currentStep: i + 1, stepsJson: JSON.stringify(outputs) },
         });
       }
     }
     const report = outputs.map((o) => `## ${o.label}\n${o.output}`).join("\n\n");
     await db.automationRun.update({
-      where: { id: run.id },
-      data: { status: "done", finalReport: report, finishedAt: new Date() },
+      where: { id: runId },
+      // r521: stepsJson is rewritten on completion too — a resumed run's
+      // stale waiting sentinel must never outlive the run it belonged to.
+      data: { status: "done", finalReport: report, finishedAt: new Date(), stepsJson: JSON.stringify(outputs) },
     });
     await db.automationWorkflow.update({
       where: { id: wf.id },
@@ -502,11 +698,11 @@ export async function executeWorkflow(
         failStreak: 0,
       },
     });
-    return { runId: run.id, status: "done" };
+    return { runId, status: "done" };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await db.automationRun.update({
-      where: { id: run.id },
+      where: { id: runId },
       data: { status: "error", error: message, finishedAt: new Date() },
     });
     // Breaker parity with the client lane (r171): at BREAKER_LIMIT the
@@ -522,7 +718,7 @@ export async function executeWorkflow(
         ...(nextStreak >= BREAKER_LIMIT ? { enabled: false } : {}),
       },
     });
-    return { runId: run.id, status: "error" };
+    return { runId, status: "error" };
   }
 }
 
@@ -577,22 +773,104 @@ async function tickOnceInner(now: Date): Promise<TickResult> {
     return { claimed: 0, reason: "client-alive", workflowIds: [] };
   }
 
-  const due = await db.automationWorkflow.findMany({
+  // ── TASK-101 slice 3 (r521): the wait sweep ──
+  // A run parked "waiting" owns the tick: re-evaluate its checkpoint (event
+  // landed? deadline passed?) and resume it; only when the wait cannot
+  // advance does the tick fall through to fresh claims. Workflows with a
+  // waiting run are excluded from the claim below — their wait IS their due
+  // work (a duplicate fresh run would double-execute the pipeline).
+  const waitingRuns = await db.automationRun.findMany({
+    where: { status: "waiting" },
+    orderBy: { startedAt: "asc" },
+  });
+  const waitingWfIds = new Set(waitingRuns.map((r) => r.workflowId));
+  if (waitingRuns.length > 0) {
+    const waitingRun = waitingRuns[0];
+    const wfRow = await db.automationWorkflow.findUnique({ where: { id: waitingRun.workflowId } });
+    if (!wfRow) {
+      await db.automationRun.update({
+        where: { id: waitingRun.id },
+        data: {
+          status: "error",
+          error: "workflow deleted while the run was waiting for an event",
+          finishedAt: new Date(),
+        },
+      });
+    } else {
+      // TASK-101 slice 3: a wait-only resume needs NO provider dial — wait
+      // steps short-circuit before any dial is read. A keyless vault (the
+      // sandbox DB-rollback reality) must not deadlock a run whose remaining
+      // steps only need their event checkpoint evaluated.
+      const steps = parseVaultSteps(wfRow.stepsJson);
+      const doneCount = (() => {
+        try {
+          const parsed = JSON.parse(waitingRun.stepsJson) as { waiting?: unknown }[];
+          return Array.isArray(parsed) ? parsed.filter((e) => !(e && e.waiting)).length : 0;
+        } catch {
+          return 0;
+        }
+      })();
+      // corrupt/empty stepsJson on a waiting run → conservatively demand a
+      // dial (the honest default: prompt steps need a real lane).
+      const needsDial = steps.length === 0 ? true : remainingStepsNeedDial(steps, doneCount);
+      let dial: ResolvedDial;
+      if (needsDial) {
+        const vaultSlots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
+        const resolved = resolveServerDialFromSlots(
+          vaultSlots.map((s) => ({ provider: s.provider, key: s.key })),
+        );
+        if (!resolved.dial) return { claimed: 0, reason: resolved.why, workflowIds: [] };
+        dial = resolved.dial;
+      } else {
+        // Provably unreachable dial: every remaining step is a waitFor step.
+        dial = { url: "", key: "", model: "", providerLabel: "no-dial (wait-only resume)", providerId: "" };
+      }
+      const outcome = await executeWorkflow(
+        {
+          id: wfRow.id,
+          name: wfRow.name,
+          task: wfRow.task,
+          stepsJson: wfRow.stepsJson,
+          intervalMs: wfRow.intervalMs,
+        },
+        dial,
+        waitingRun.id,
+      );
+      return { claimed: 1, workflowIds: [wfRow.id], outcome };
+    }
+  }
+
+  const dueRows = await db.automationWorkflow.findMany({
     where: { enabled: true, nextRunAt: { lte: now } },
     orderBy: { nextRunAt: "asc" },
-    take: 1,
   });
+  const due = dueRows.filter((w) => !waitingWfIds.has(w.id)).slice(0, 1);
   if (due.length === 0) return { claimed: 0, reason: "idle", workflowIds: [] };
 
   // r207: ALL slots, oldest first — first RESOLVABLE one wins (a legacy
   // builtin slot no longer blocks a newer registry-provider key).
-  const vaultSlots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
-  const resolved = resolveServerDialFromSlots(
-    vaultSlots.map((s) => ({ provider: s.provider, key: s.key })),
-  );
-  if (!resolved.dial) return { claimed: 0, reason: resolved.why, workflowIds: [] };
-
+  // r521: EXCEPT a wait-only workflow (every step is waitFor) — its first
+  // tick just parks the run, so it must be claimable with NO vault key;
+  // prompt steps still demand a real lane.
   const wf = due[0];
+  const wfRowSteps = parseVaultSteps(wf.stepsJson);
+  const claimNeedsDial =
+    wfRowSteps.length === 0
+      ? Boolean(wf.task.trim())
+      : remainingStepsNeedDial(wfRowSteps, 0);
+  let dial: ResolvedDial;
+  if (claimNeedsDial) {
+    const vaultSlots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
+    const resolved = resolveServerDialFromSlots(
+      vaultSlots.map((s) => ({ provider: s.provider, key: s.key })),
+    );
+    if (!resolved.dial) return { claimed: 0, reason: resolved.why, workflowIds: [] };
+    dial = resolved.dial;
+  } else {
+    // Provably unreachable dial: every step short-circuits at the waitFor
+    // branch (park on first arrival) before any dial field is read.
+    dial = { url: "", key: "", model: "", providerLabel: "no-dial (wait-only workflow)", providerId: "" };
+  }
   const outcome = await executeWorkflow(
     {
       id: wf.id,
@@ -601,7 +879,7 @@ async function tickOnceInner(now: Date): Promise<TickResult> {
       stepsJson: wf.stepsJson,
       intervalMs: wf.intervalMs,
     },
-    resolved.dial,
+    dial,
   );
   return { claimed: 1, workflowIds: [wf.id], outcome };
 }

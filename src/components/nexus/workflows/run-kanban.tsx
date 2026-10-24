@@ -10,6 +10,7 @@ import {
   Ban,
   Check,
   Clock,
+  Hourglass,
   Loader2,
   Minus,
   Undo2,
@@ -43,12 +44,14 @@ interface ServerRunRow {
   finalReport?: string | null;
 }
 
-/** v25: one parsed entry of AutomationRun.stepsJson — [{label, output, ms, ok}]. */
+/** v25: one parsed entry of AutomationRun.stepsJson — [{label, output, ms, ok}].
+ * r521: a wait step parks a sentinel entry carrying the durable checkpoint. */
 interface ServerStepDetail {
   label?: string;
   output?: string;
   ms?: number;
   ok?: boolean;
+  waiting?: { event: string; since: string; deadline: string };
 }
 
 function parseRunSteps(raw?: string | null): ServerStepDetail[] {
@@ -196,7 +199,9 @@ function groupRuns(workflows: Workflow[], serverRuns: ServerRunRow[]): Record<Co
       server: r,
       sortAt: Date.parse(r.startedAt) || 0,
     };
-    if (r.status === "running") cards.running.push(card);
+    // r521: a "waiting" run still belongs in Working — it is paused on an
+    // event, not finished; the amber hourglass card tells the two apart.
+    if (r.status === "running" || r.status === "waiting") cards.running.push(card);
     else if (r.status === "error") cards.attention.push(card);
     else cards.done.push(card);
   }
@@ -279,6 +284,10 @@ function RunCard({
         <div className="flex items-center gap-1.5">
           {s.status === "running" ? (
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-violet-400" aria-hidden />
+          ) : s.status === "waiting" ? (
+            <span title="Paused on a waitForEvent step — emit the event to resume" className="flex shrink-0">
+              <Hourglass className="h-3.5 w-3.5 animate-pulse text-amber-500" aria-hidden />
+            </span>
           ) : s.status === "error" ? (
             <X className="h-3.5 w-3.5 shrink-0 text-red-500" aria-hidden />
           ) : (
@@ -295,7 +304,11 @@ function RunCard({
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
           <span className="tabular-nums">{fmtRel(Date.parse(s.startedAt))}</span>
           <span>
-            · {s.status === "running" ? `step ${s.currentStep}/${s.stepsTotal}` : `${s.stepsTotal} steps`}
+            · {s.status === "running"
+              ? `step ${s.currentStep}/${s.stepsTotal}`
+              : s.status === "waiting"
+                ? "waiting for event"
+                : `${s.stepsTotal} steps`}
           </span>
           <span>· {s.trigger === "manual" ? "manual" : "schedule"}</span>
         </div>
@@ -479,6 +492,10 @@ function ServerRunDrawer({
         <header className="flex items-center gap-2 border-b border-border/60 p-4">
           {row.status === "running" ? (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-400" aria-hidden />
+          ) : row.status === "waiting" ? (
+            <span title="Paused on a waitForEvent step — emit the event to resume" className="flex shrink-0">
+              <Hourglass className="h-4 w-4 animate-pulse text-amber-500" aria-hidden />
+            </span>
           ) : row.status === "error" ? (
             <X className="h-4 w-4 shrink-0 text-red-500" aria-hidden />
           ) : (
@@ -506,7 +523,11 @@ function ServerRunDrawer({
               <span className="tabular-nums">· took {fmtMs(duration)}</span>
             ) : null}
             <span className="tabular-nums">
-              · {row.status === "running" ? `step ${row.currentStep}/${row.stepsTotal}` : `${row.stepsTotal} steps`}
+              · {row.status === "running"
+                ? `step ${row.currentStep}/${row.stepsTotal}`
+                : row.status === "waiting"
+                  ? "waiting for event"
+                  : `${row.stepsTotal} steps`}
             </span>
           </div>
 
@@ -537,6 +558,12 @@ function ServerRunDrawer({
                       <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{fmtMs(st.ms)}</span>
                     ) : null}
                   </div>
+                  {st.waiting ? (
+                    <p className="mt-1.5 flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                      <Hourglass className="h-3 w-3 shrink-0 animate-pulse" aria-hidden />
+                      waiting for event “{st.waiting.event}” — resumes automatically when it lands
+                    </p>
+                  ) : null}
                   {st.output ? (
                     <pre className="mt-1.5 max-h-44 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-background/60 p-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
                       {st.output}
@@ -578,6 +605,62 @@ function ServerRunDrawer({
           </button>
         </footer>
       </div>
+    </div>
+  );
+}
+
+/** r521 (TASK-101 slice 3): the operator event lane — emit a named event to
+ * resume any server-lane step parked on a waitForEvent checkpoint. The board
+ * refreshes within one 60s poll; the claim loop resumes the run on its next
+ * 15s tick after the event lands. */
+function EventEmitBar() {
+  const [name, setName] = React.useState("");
+  const [state, setState] = React.useState<"idle" | "busy" | "ok" | "err">("idle");
+  const emit = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || state === "busy") return;
+    setState("busy");
+    try {
+      const res = await fetch("/api/automation/events", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ event: trimmed }),
+      });
+      setState(res.ok ? "ok" : "err");
+      if (res.ok) setName("");
+    } catch {
+      setState("err");
+    }
+    setTimeout(() => setState("idle"), 2500);
+  };
+  return (
+    <div
+      role="group"
+      aria-label="Emit automation event"
+      className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/5 px-2.5 py-1.5"
+    >
+      <Hourglass className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden />
+      <span className="text-[10px] font-medium text-muted-foreground">
+        Resume a waiting step — emit event
+      </span>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void emit();
+        }}
+        placeholder="event name (e.g. deploy-done)"
+        aria-label="Event name to emit"
+        className="min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 py-1 text-[11px] outline-none placeholder:text-muted-foreground/50 focus:border-amber-500/50"
+      />
+      <button
+        type="button"
+        onClick={() => void emit()}
+        disabled={!name.trim() || state === "busy"}
+        className="shrink-0 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-600 transition-colors hover:bg-amber-500/20 disabled:opacity-40 dark:text-amber-400"
+      >
+        {state === "busy" ? "…" : state === "ok" ? "emitted ✓" : state === "err" ? "failed" : "Emit"}
+      </button>
     </div>
   );
 }
@@ -638,6 +721,7 @@ export function RunKanban({
 
   return (
     <div className="space-y-2">
+      <EventEmitBar />
       {filterChoices.length > 1 && (
         <div
           role="group"

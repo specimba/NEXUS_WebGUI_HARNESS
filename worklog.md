@@ -12715,3 +12715,29 @@ Round ID: r520 → next patrol (job 473388)
 Open risks: (1) TASK-101 remainder — waitForEvent shape (event-wait semantics between steps) not yet designed; (2) TASK-102 NEXUS_BOT wave still queued behind it; (3) sandbox DB rollbacks keep wiping AutonomyLog/StrategyItem seeds — if the Engine panel ever reads empty, hit Sync signals once; (4) Supabase nexus-backups bucket + GitHub PAT rotation still owner-side pending; (5) lint baseline must be re-checked after any future source edit.
 Blockers: none.
 Next recommended action: TASK-101 slice 3 — design the waitForEvent shape (a step that pauses the run until a named event lands, persisted in AutomationRun so a restart resumes the WAIT not the step); or advance TASK-102 NEXUS_BOT wave if the design wants more deliberation.
+---
+Task ID: r521
+Agent: patrol job 473388 (main session)
+Task: r520 handoff — TASK-101 slice 3 (waitForEvent durable wait shape); golden-path QA first; styling polish + ≥1 user-facing feature.
+
+Work Log:
+- QA golden paths FIRST: Settings → Model Relay (35 intel hits, benchmark panel live), Radar → Frontier present, Workflows engine armed; console 0 errors on both page checks (upload/qa-521/). Nothing broken → advanced the P1 backlog.
+- TASK-101 slice 3 SHIPPED — the durable waitForEvent shape (workflow-js parity):
+  • Steps may declare `waitFor: { event, timeoutMs? }` (default budget 10m, floor 30s). A wait step NEVER dials a provider: on arrival it either completes ("[event \"x\" received after Xs — resuming]" + optional payload), PARKS the run as status "waiting" with a sentinel persisted in stepsJson (event + since + deadline), or times out honestly into the normal error/breaker path.
+  • Wait sweep owns the tick: the oldest "waiting" run is re-evaluated every claim tick (event landed? deadline passed?); workflows with a waiting run are excluded from fresh claims (no duplicate pipeline execution). All state lives in EXISTING columns (status String + stepsJson) — zero schema change — so a server restart resumes the WAIT, not the step (r520's re-fire contract, now event-aware).
+  • New /api/automation/events route: POST { event, payload? } emits into a capped (50) JSON event log on PlatformSetting "automation.events.v1" (id-keyed, per freellm-index precedent); GET returns the log.
+  • Keyless-vault proof (discovered by accident, fixed for real): this round's sandbox DB rollback wiped the vault (0 slots) AND deleted db/vault-seed.json (gitignored, local-only — boot log: ENOENT). The fresh-claim path originally demanded a dial even for wait-only workflows → event-driven schedules would deadlock with no key. Fixed symmetrically: claim/resume resolves a dial ONLY when unprompted steps remain; wait-only workflows park, resume, and complete with NO vault key.
+- UI (run-kanban, styling + feature mandate): "waiting" runs stay in the Working column behind a pulsing amber hourglass card with "waiting for event" meta; the detail drawer renders the amber sentinel chip ("waiting for event \"x\" — resumes automatically when it lands"); NEW EventEmitBar on the board (input + Emit → POST /api/automation/events) — the operator lane that resumes waiting steps.
+- QA scripts/qa-waitfor.ts (dial-free, persisted): PASS 1 run parks waiting with a well-formed sentinel; PASS 2 emit through the REAL route → the WAIT resumed → run done with the honest event trail (completed steps NOT re-run); PASS 3 a pre-crafted deadline-past wait fails honestly ("timed out waiting for event"). Route smoke: POST ok:true logSize:1. Artifacts in upload/qa-521/.
+- dev-restart.sh PATH fix: this round the setsid relaunch failed wholesale with "exec: next: not found" (bare `next`, PATH without node_modules/.bin in the patrol tool shell) — the script now exports PATH before launch.
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline.
+
+Stage Summary:
+- TASK-101 slice 3 is live end-to-end: event-driven durable waits (park → emit → resume; restart-safe by construction) with an operator emit control on the runs board. With r520's slices 1+2 (per-step retry, re-fire on restart) the server lane now carries retry + re-fire + waitForEvent semantics.
+- Round overran the 12-round budget (~17 tool rounds): sandbox fights — dev server reaped 3× between tool calls even under setsid, one relaunch failed on PATH, and the DB rollback ate the vault + seed file. Every overrun step was convergent (no thrash loops); QA still passed fully before the final commit.
+
+Round Handoff:
+Round ID: r521 → next patrol (job 473388)
+Open risks: (1) DEV SERVER LIVENESS: setsid relaunches died 2× between tool calls this round (clean dev.log, no OOM — r518-class behavior is back); a self-healing supervisor (detached health-check daemon or ensure-dev.sh on a short loop) is the next platform fix. (2) Vault is EMPTY (rollback) and db/vault-seed.json was lost with it — Owner must re-enter one vault key once, then run scripts/seedwrite.ts to regenerate the seed so future wipes self-heal; until then the server lane's dialable runs stand down honestly (no-vault-key) while wait-only schedules keep working (proven this round). (3) TASK-101 remainder: browser-lane parity + step-editor authoring for waitFor; NOTE the sync route still overwrites stepsJson from client pushes, so a DB-authored waitFor survives only until that workflow's next tab sync (documented limitation). (4) TASK-102 NEXUS_BOT wave still queued. (5) Supabase nexus-backups bucket + GitHub PAT rotation still owner-side. (6) If the Engine panel reads empty after a rollback, hit Sync signals once — the engine self-seeds.
+Blockers: none.
+Next recommended action: dev-server liveness supervisor (the reaper is now the #1 operational risk), then TASK-102 NEXUS_BOT wave.
