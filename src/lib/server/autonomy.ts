@@ -6,6 +6,12 @@ import {
   providerBillingDeadLeftMs,
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
+import {
+  advanceStrategyItem,
+  appendDigestEntries,
+  listAdvancableItems,
+  maybeAutoAdaptItem,
+} from "@/lib/server/strategy";
 
 // ─── r515: Autonomous Improvement Engine (AIE) ───────────────────────────────
 // Owner directive (r515): the external 15-min cron patrol kept getting purged
@@ -48,6 +54,9 @@ const FRESH_PROPOSAL_LIMIT = 3;
 const FRESH_PROPOSAL_WINDOW_MS = 2 * 3_600_000;
 const SEED_MOVE_COOLDOWN_MS = 6 * 3_600_000;
 const FOLLOWUP_MOVE_COOLDOWN_MS = 24 * 3_600_000;
+/** r515-c: an identical "await-owner" no-op every cycle is noise, not honesty
+ * (the owner screenshot showed 5 copies). Once per 6h is plenty. */
+const AWAIT_OWNER_COOLDOWN_MS = 6 * 3_600_000;
 /** Report cadence: every 6th consecutive cycle, or 24h since the last report. */
 const REPORT_EVERY_N_CYCLES = 6;
 
@@ -248,7 +257,13 @@ async function enrichRationale(title: string, rationale: string): Promise<{ text
 
 // ─── Move generation ─────────────────────────────────────────────────────────
 
-export type MoveKind = "research-repo" | "import-seed" | "run-workflow" | "radar-followup" | "await-owner";
+export type MoveKind =
+  | "research-repo"
+  | "advance-strategy"
+  | "import-seed"
+  | "run-workflow"
+  | "radar-followup"
+  | "await-owner";
 
 interface MoveDraft {
   rank: number;
@@ -313,6 +328,26 @@ export async function generateNextMoves(
     });
   }
 
+  // 1.5) Strategy advancement — the SCL connection (r515-c). Open backlog
+  //      items from the Strategic Context Layer rank right after the budget-
+  //      governed research drain: the engine's data-only move touches the item
+  //      (advancedAt/Count) and appends a digest line the next briefing
+  //      carries. Implementation itself stays the chat-side architect's lane
+  //      (AGENT.md doctrine) — the engine never edits code or workflows.
+  const advancable = await listAdvancableItems(2);
+  for (const item of advancable) {
+    drafts.push({
+      rank: nextRank(),
+      kind: "advance-strategy",
+      title: `Advance ${item.id}: ${trunc(item.title, 84)}`,
+      rationale: trunc(
+        item.nextAction || "No next action recorded — advance + digest so the next briefing carries it.",
+        240,
+      ),
+      payload: { itemId: item.id },
+    });
+  }
+
   // 2) Radar seeds — honest import is owner-copy only (workflow mutation is
   //    out of AIE doctrine). Cooldown prevents re-proposing the same no-op.
   const seeds = digest?.seeds ?? [];
@@ -367,18 +402,30 @@ export async function generateNextMoves(
     }
   }
 
-  // 4) Nothing to do — say so honestly instead of manufacturing work.
+  // 4) Nothing to do — say so honestly instead of manufacturing work, and
+  //    say it ONCE per cooldown window (r515-c: the owner's screenshot showed
+  //    five identical await-owner rows piling up cycle after cycle).
   if (drafts.length === 0) {
-    drafts.push({
-      rank: nextRank(),
-      kind: "await-owner",
-      title: "Backlog empty — propose the next focus",
-      rationale:
-        vaultSlots === 0
-          ? "No queued research, no critical findings, no fresh seeds; the vault is empty so closed-tab LLM lanes are dormant by doctrine. Owner decision required."
-          : "No queued research, no critical findings, no fresh seeds. Owner decision required.",
-      payload: { queued: queuedCount, criticals: criticals.length, seeds: seeds.length, vaultSlots },
+    const lastAwaitOwner = await db.nextMove.findFirst({
+      where: { kind: "await-owner", status: { in: ["executed", "skipped"] } },
+      orderBy: { executedAt: "desc" },
+      select: { executedAt: true },
     });
+    const awaitOwnerCooled =
+      !lastAwaitOwner?.executedAt ||
+      Date.now() - lastAwaitOwner.executedAt.getTime() >= AWAIT_OWNER_COOLDOWN_MS;
+    if (awaitOwnerCooled) {
+      drafts.push({
+        rank: nextRank(),
+        kind: "await-owner",
+        title: "Backlog empty — propose the next focus",
+        rationale:
+          vaultSlots === 0
+            ? "No queued research, no strategy items, no critical findings, no fresh seeds; the vault is empty so closed-tab LLM lanes are dormant by doctrine. Owner decision required."
+            : "No queued research, no strategy items, no critical findings, no fresh seeds. Owner decision required.",
+        payload: { queued: queuedCount, criticals: criticals.length, seeds: seeds.length, vaultSlots },
+      });
+    }
   }
 
   const ranked = drafts.slice(0, 5).map((d) => ({ ...d, rank: d.rank }));
@@ -610,6 +657,14 @@ async function researchRepo(queueId: string): Promise<string> {
       where: { id: row.id },
       data: { status: "researched", score: Math.round(score), verdict, notes: trunc(notes, NOTES_MAX), researchedAt: new Date() },
     });
+    // r515-c recursive loop: an ADAPT verdict must not evaporate — auto-enqueue
+    // a backlog item (deduped) so the next cycles advance it and the briefing
+    // surfaces it to the chat-side architect. Bonus call: never fails research.
+    if (verdict === "ADAPT") {
+      await maybeAutoAdaptItem(row.id, row.owner, row.repo, Math.round(score), repo.description ?? undefined).catch(
+        () => undefined,
+      );
+    }
     return `researched ${repo.full_name ?? row.repo}: score ${Math.round(score)}/10 → ${verdict} (${repo.stargazers_count ?? 0}★, pushed ${pushedAgo}${repo.archived ? ", archived" : ""})`;
   } catch (e) {
     const cls = errorClass(e);
@@ -660,6 +715,32 @@ export async function executeMove(move: { id: string; kind: string; payloadJson:
         status: "executed",
         result: `no-op — owner decision required. Finding: "${trunc(finding || "(details in the radar panel)", 200)}"`,
       };
+    } else if (move.kind === "advance-strategy") {
+      let itemId = "";
+      try {
+        itemId = String((JSON.parse(move.payloadJson) as { itemId?: unknown }).itemId ?? "");
+      } catch {
+        itemId = "";
+      }
+      if (!itemId) {
+        outcome = { status: "failed", result: "honest failure — payload missing itemId" };
+      } else {
+        const item = await db.strategyItem.findUnique({ where: { id: itemId } });
+        if (!item) {
+          outcome = { status: "skipped", result: "strategy item vanished — honest no-op" };
+        } else if (item.status === "done") {
+          outcome = { status: "skipped", result: `${itemId} already done — honest no-op` };
+        } else {
+          await advanceStrategyItem(itemId, "aie");
+          await appendDigestEntries([
+            { source: "aie", text: `${itemId} advanced — ${trunc(item.nextAction || item.title, 160)}` },
+          ]);
+          outcome = {
+            status: "executed",
+            result: `${itemId} advanced (data-only move: advancedAt/Count touched, digest line appended — implementation itself is the chat-side architect's lane per AGENT.md doctrine)`,
+          };
+        }
+      }
     } else if (move.kind === "await-owner") {
       outcome = { status: "executed", result: "no-op — owner decision required" };
     } else {
@@ -815,7 +896,7 @@ async function maybeWriteReport(cycleId: string): Promise<void> {
     if (cyclesSince < REPORT_EVERY_N_CYCLES && !stale24h) return;
 
     const dayAgo = new Date(Date.now() - 24 * 3_600_000);
-    const [proposed24, executed24, failed24, drained24, researchedRows] = await Promise.all([
+    const [proposed24, executed24, failed24, drained24, researchedRows, strategyOpen, strategyAdvanced24] = await Promise.all([
       db.nextMove.count({ where: { createdAt: { gte: dayAgo } } }),
       db.nextMove.count({ where: { status: "executed", executedAt: { gte: dayAgo } } }),
       db.nextMove.count({ where: { status: "failed", executedAt: { gte: dayAgo } } }),
@@ -824,6 +905,9 @@ async function maybeWriteReport(cycleId: string): Promise<void> {
         where: { researchedAt: { gte: dayAgo }, verdict: { not: null } },
         select: { verdict: true },
       }),
+      // r515-c: strategy slice — the SCL connection is now part of the report.
+      db.strategyItem.count({ where: { status: { not: "done" } } }),
+      db.strategyItem.count({ where: { advancedAt: { gte: dayAgo } } }),
     ]);
     const verdictHistogram: Record<string, number> = { ADAPT: 0, WATCH: 0, SKIP: 0 };
     for (const r of researchedRows) {
@@ -838,7 +922,7 @@ async function maybeWriteReport(cycleId: string): Promise<void> {
     });
     const failureStreaks = failedQueueRows.map((r) => ({ id: r.id, notes: trunc(r.notes ?? "", 80) }));
     const summary = trunc(
-      `24h report: ${proposed24} moves proposed · ${executed24} executed · ${failed24} failed · queue drained ${drained24} · verdicts ${verdictHistogram.ADAPT}A/${verdictHistogram.WATCH}W/${verdictHistogram.SKIP}S${failureStreaks.length ? ` · ${failureStreaks.length} failed queue row(s)` : ""}`,
+      `24h report: ${proposed24} moves proposed · ${executed24} executed · ${failed24} failed · queue drained ${drained24} · verdicts ${verdictHistogram.ADAPT}A/${verdictHistogram.WATCH}W/${verdictHistogram.SKIP}S${failureStreaks.length ? ` · ${failureStreaks.length} failed queue row(s)` : ""} · strategy ${strategyOpen} open / ${strategyAdvanced24} advanced(24h)`,
       SUMMARY_MAX,
     );
     await db.autonomyLog.create({
@@ -855,6 +939,7 @@ async function maybeWriteReport(cycleId: string): Promise<void> {
           queueDrained: drained24,
           verdictHistogram,
           failureStreaks,
+          strategy: { open: strategyOpen, advanced24: strategyAdvanced24 },
         }),
       },
     });

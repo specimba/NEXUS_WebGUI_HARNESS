@@ -261,3 +261,35 @@ model AutonomyLog {
 
   @@index([kind, createdAt])
 }
+
+// ─── r515-c: Strategic Context Layer (SCL) — the connective tissue ───────────
+// Owner diagnosis: the AIE ran but "proposed no-ops" because nothing CONNECTED
+// the research signals to a living strategy ("we need proper instruction and
+// agent.md tasks.md worklogs.md etc — a strategical system for disciplined
+// continuous work … this is still void"). StrategyItem is the RUNTIME half of
+// that system: a queryable integration backlog that the AIE advances (data-only
+// moves), the briefing endpoint assembles into agent-ready context packs, and
+// the chat-side architect distills/implements in dev rounds. The GIT half is
+// docs/strategy/{AGENT,TASKS,WORKLOGS}.md — AGENT.md carries the capability
+// elevation cycle doctrine: in-app workers research (they can never pause or
+// edit the platform that serves them), the chat-side architect distills and
+// implements, the Owner decides and schedules. Recursive by construction.
+model StrategyItem {
+  id            String    @id // "TASK-<n>" (TASK-100 upward, sequential)
+  title         String
+  kind          String // "integration" | "research" | "experiment" | "owner-action"
+  source        String // "repo-sweep-2410" | "radar" | "aie:auto-adapt" | "owner" | "chat-side"
+  status        String // "proposed" | "ready" | "in-progress" | "blocked" | "done"
+  priority      Int       @default(2) // 1 high · 2 normal · 3 low
+  nextAction    String    @default("")
+  acceptance    String? // done-when criteria
+  notes         String?
+  dedupeKey     String?   @unique // sync idempotency ("seed:slug", "auto-adapt:gh:owner/repo", …)
+  originJson    String? // machine-origin payload (score, queue id, finding)
+  advancedCount Int       @default(0) // how many AIE cycles advanced it
+  advancedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, priority])
+}

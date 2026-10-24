@@ -3,6 +3,7 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { ServerAutopilot } from "@/components/nexus/workflows/server-autopilot";
+import { StrategyCard } from "@/components/nexus/workflows/strategy-card";
 import { GatewayPulse } from "@/components/nexus/workflows/gateway-pulse-chip";
 import {
   Archive,
@@ -1890,6 +1891,9 @@ export function WorkflowsView() {
         <GatewayPulse />
         <div className="mb-4">
           <ServerAutopilot />
+        </div>
+        <div className="mb-4">
+          <StrategyCard />
         </div>
         {agents.length === 0 ? (
           <Alert className="mb-4 border-violet-500/30 bg-violet-500/5">
