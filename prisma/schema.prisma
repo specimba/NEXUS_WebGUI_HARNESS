@@ -206,3 +206,58 @@ model PlatformSetting {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+// ─── r515: Autonomous Improvement Engine (AIE) ───────────────────────────────
+// The owner's r515 directive: the external 15-min cron patrol keeps getting
+// purged (7×) — the platform itself must carry autonomy. The AIE is a
+// deterministic, vault-free 10-minute server loop: it reads first-party
+// signals (research backlog, radar digest, run-archive failure rate, vault
+// slots), proposes 1-5 ranked NEXT MOVES, executes only SAFE vault-free ones
+// (GitHub research = unauthenticated public API; no LLM dials, no workflow
+// mutations), and logs every cycle idempotently per 10-minute bucket.
+model ResearchQueue {
+  id           String    @id // normalized: "gh:owner/repo" or "url:<sha1-12>"
+  kind         String // "repo" | "url"
+  owner        String? // for repos
+  repo         String?
+  url          String?
+  source       String // "owner-sweep-2410" | "radar-seed" | "next-move" | manual
+  status       String // "queued" | "researched" | "skipped" | "failed"
+  score        Int? // 0-10 relevance
+  verdict      String? // ADAPT | WATCH | SKIP
+  notes        String? // distilled findings (≤2000 chars)
+  researchedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model NextMove {
+  id          String    @id // "mv_<ulid-ish>"
+  cycleId     String // which AIE cycle generated it
+  rank        Int
+  kind        String // "research-repo" | "import-seed" | "run-workflow" | "radar-followup" | "await-owner"
+  title       String
+  rationale   String
+  payloadJson String // action-specific params
+  status      String // "proposed" | "executed" | "executing" | "failed" | "skipped"
+  executedAt  DateTime?
+  result      String? // ≤2000 chars honest outcome
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model AutonomyLog {
+  id        String   @id // "cyc_<bucket>" or "rep_<bucket>"
+  kind      String // "cycle" | "report"
+  summary   String // ≤500 chars
+  movesJson String // JSON array [{id,title,kind,status}] of that cycle
+  statsJson String // {queued, researched, failed, ms, laneUsed}
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, createdAt])
+}

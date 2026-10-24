@@ -92,4 +92,13 @@ export async function register(): Promise<void> {
   // UTC hour bucket over the platform's own intelligence tables.
   const { startCapabilityRadar } = await import("@/lib/server/capability-radar");
   startCapabilityRadar();
+  // r515 — Autonomous Improvement Engine (AIE): the owner's answer to the
+  // 7×-purged external cron patrol — the platform itself carries autonomy.
+  // Deterministic + vault-free (zero provider keys, closed tab) 10-minute
+  // cycle over first-party signals: propose ranked next moves, execute the
+  // SAFE ones (GitHub research on the unauthenticated budget), log honestly.
+  // Boot pattern mirrors startCapabilityRadar: globalThis guard, +15s first
+  // pass, unref'd interval, never throws.
+  const { startAutonomyEngine } = await import("@/lib/server/autonomy");
+  startAutonomyEngine();
 }

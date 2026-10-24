@@ -3,15 +3,21 @@
 import * as React from "react";
 import {
   Bot,
+  ChevronDown,
+  ChevronRight,
   CircleDot,
   Clock,
   Copy,
+  Download,
   FlaskConical,
+  Hourglass,
   KeyRound,
   Radar as RadarIcon,
   RefreshCw,
   RadioTower,
+  Search,
   Server,
+  Sparkles,
   Timer,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +84,43 @@ const POLL_MS = 15_000;
 // r497: the radar digest changes at most hourly (one row per UTC hour
 // bucket) — a 60s poll keeps the panel honest without hammering the route.
 const RADAR_POLL_MS = 60_000;
+// r515: the AIE cycles every 10 minutes (idempotent per bucket) — the same
+// 60s poll cadence keeps the moves/queue/log feed honest without hammering.
+const AUTONOMY_POLL_MS = 60_000;
+
+// r515: kind → glyph map for the next-moves list (kept tiny + local).
+function MoveKindIcon({ kind, className }: { kind: string; className?: string }) {
+  const props = { className: cn("h-3 w-3 shrink-0", className), "aria-hidden": true as const };
+  switch (kind) {
+    case "research-repo":
+      return <Search {...props} />;
+    case "import-seed":
+      return <Download {...props} />;
+    case "radar-followup":
+      return <RadarIcon {...props} />;
+    case "await-owner":
+      return <Hourglass {...props} />;
+    default:
+      return <CircleDot {...props} />;
+  }
+}
+
+// r515: honest status chips — violet = waiting, emerald = done, red = failed,
+// amber = mid-flight, muted = honest skip.
+function moveStatusClass(status: string): string {
+  switch (status) {
+    case "executed":
+      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
+    case "failed":
+      return "border-red-500/40 bg-red-500/10 text-red-400";
+    case "executing":
+      return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+    case "skipped":
+      return "border-muted-foreground/30 bg-muted/20 text-muted-foreground";
+    default:
+      return "border-violet-500/40 bg-violet-500/10 text-violet-300";
+  }
+}
 
 // ── r497: Capability Radar view types (client mirror of the server digest) ──
 type RadarFindingView = {
@@ -124,6 +167,39 @@ type RadarState = {
   latest: RadarDigestView | null;
   history: { id: string; findings: number; critical: number; warnings: number; tryables: number; updatedAt: string }[];
 };
+
+// ── r515: Autonomous Improvement Engine view types (client mirror) ──────────
+type AutonomyLogView = {
+  id: string;
+  kind: string; // "cycle" | "report"
+  summary: string;
+  movesJson: string;
+  statsJson: string;
+  createdAt: string;
+};
+type AutonomyMoveView = {
+  id: string;
+  cycleId: string;
+  rank: number;
+  kind: string; // research-repo | import-seed | run-workflow | radar-followup | await-owner
+  title: string;
+  rationale: string;
+  status: string; // proposed | executing | executed | failed | skipped
+  result: string | null;
+  createdAt: string;
+};
+type AutonomyState = {
+  ok: boolean;
+  error?: string;
+  latestLog: AutonomyLogView | null;
+  latestReport: AutonomyLogView | null;
+  logs: AutonomyLogView[];
+  queue: { queued: number; researched: number; failed: number; oldestQueuedAgeMin: number | null };
+  moves: AutonomyMoveView[];
+  moves24: { executed: number; failed: number; proposed: number };
+  engine: { lastCycleAt: string | null; nextCycleInMin: number | null; enabled: boolean };
+};
+type EnqueueCounts = { ok: boolean; inserted: number; duplicates: number; invalid: number; capped?: boolean; error?: string };
 
 function fmtIn(iso: string | null): string {
   if (!iso) return "—";
@@ -252,6 +328,111 @@ export function ServerAutopilot() {
     }, RADAR_POLL_MS);
     return () => clearInterval(t);
   }, [pollRadar]);
+
+  // ── r515: Autonomous Improvement Engine — poll + actions ───────────────────
+  const [autonomy, setAutonomy] = React.useState<AutonomyState | null>(null);
+  const [cycleBusy, setCycleBusy] = React.useState(false);
+  const [aieOpen, setAieOpen] = React.useState(true);
+  const [queueText, setQueueText] = React.useState("");
+  const [importBusy, setImportBusy] = React.useState(false);
+  const [importSummary, setImportSummary] = React.useState<string | null>(null);
+  const [openLog, setOpenLog] = React.useState<string | null>(null);
+
+  const pollAutonomy = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/autonomy", { cache: "no-store" });
+      if (res.ok) setAutonomy((await res.json()) as AutonomyState);
+    } catch {
+      /* local server briefly unreachable — retry next tick */
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void pollAutonomy();
+    const t = setInterval(() => {
+      if (!document.hidden) void pollAutonomy();
+    }, AUTONOMY_POLL_MS);
+    return () => clearInterval(t);
+  }, [pollAutonomy]);
+
+  async function runCycleNow() {
+    setCycleBusy(true);
+    try {
+      const res = await fetch("/api/autonomy", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+        body: JSON.stringify({ action: "cycle" }),
+      });
+      const json = (await res.json()) as AutonomyState & { alreadyRan?: boolean };
+      if (json.ok) {
+        setAutonomy(json);
+        void pollAutonomy();
+        if (json.alreadyRan) {
+          toast.info("Cycle already ran this bucket", {
+            description: `The engine is idempotent per 10-minute bucket (${json.latestLog?.id ?? "?"}) — re-arming fires at the next boundary.`,
+          });
+        } else {
+          const s = json.latestLog ? (JSON.parse(json.latestLog.statsJson ?? "{}") as { executed?: number; proposed?: number; failed?: number }) : {};
+          toast.success("Autonomy cycle complete", {
+            description: `${s.proposed ?? 0} move${(s.proposed ?? 0) === 1 ? "" : "s"} proposed · ${s.executed ?? 0} executed${s.failed ? ` · ${s.failed} honest failure${s.failed === 1 ? "" : "s"}` : ""}`,
+          });
+        }
+      } else {
+        toast.error("Autonomy cycle failed", { description: json.error ?? "unknown error" });
+      }
+    } catch {
+      toast.error("Autonomy cycle failed", { description: "the local server did not answer" });
+    } finally {
+      setCycleBusy(false);
+    }
+  }
+
+  async function importQueue() {
+    // r515: line-oriented import (the mini-panel's contract is "one per line")
+    // — splitting on ANY whitespace would shred a malformed line into fake
+    // per-word entries and blur the honest {invalid} count.
+    const urls = queueText
+      .split(/[\n,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (urls.length === 0) {
+      toast.error("Nothing to import", { description: "Paste one repo or URL per line first." });
+      return;
+    }
+    setImportBusy(true);
+    try {
+      const res = await fetch("/api/autonomy", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+        body: JSON.stringify({ action: "enqueue", urls }),
+      });
+      const json = (await res.json()) as EnqueueCounts;
+      if (json.ok) {
+        const line = `last import: +${json.inserted} queued · ${json.duplicates} duplicate${json.duplicates === 1 ? "" : "s"} · ${json.invalid} invalid${json.capped ? " · capped at 500 rows" : ""}`;
+        setImportSummary(line);
+        setQueueText("");
+        void pollAutonomy();
+        toast.success(`Imported ${json.inserted} of ${urls.length}`, {
+          description: `${json.duplicates} duplicate${json.duplicates === 1 ? "" : "s"} · ${json.invalid} invalid — github URLs normalize to gh:owner/repo and dedupe against every prior status.`,
+        });
+      } else {
+        toast.error("Import failed", { description: json.error ?? "unknown error" });
+      }
+    } catch {
+      toast.error("Import failed", { description: "the local server did not answer" });
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  function parseLogStats(json: string | undefined): Record<string, unknown> {
+    try {
+      const v = JSON.parse(json ?? "{}") as unknown;
+      return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
 
   async function checkNow() {
     setRadarBusy(true);
@@ -847,6 +1028,271 @@ export function ServerAutopilot() {
             The radar scans the run archive, registry, vault, model catalog and gateway pulse every hour and distills findings + tryable adaptations. Use “Check now” for the first digest.
           </p>
         )}
+      </div>
+
+      {/* r515: Autonomous Improvement Engine — the platform's OWN 10-minute
+          autonomy loop (the external 15-min cron patrol kept getting purged,
+          so autonomy now lives here). Deterministic + vault-free by doctrine:
+          zero provider keys, works tab-closed, idempotent per 10-min bucket,
+          safe moves only, honest no-ops over silent magic. */}
+      <div id="autonomy-engine" className="mt-3 rounded-lg border border-emerald-500/20 bg-background/40 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAieOpen((o) => !o)}
+            aria-expanded={aieOpen}
+            aria-controls="autonomy-engine-body"
+            title="Collapse or expand the Autonomous Improvement Engine card"
+            className="flex items-center gap-1.5 rounded-md transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50"
+          >
+            {aieOpen ? (
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            )}
+            <Sparkles className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+            <h4 className="text-xs font-semibold uppercase tracking-wide leading-none">Autonomous improvement engine</h4>
+          </button>
+          <Badge
+            variant="outline"
+            className="px-1.5 py-0 text-[10px] border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+            title="The engine boots with the server (instrumentation) and cycles every 10 minutes — deterministic signal reads, ranked proposals, safe vault-free execution. No provider keys anywhere; the one optional rationale enricher rides the built-in no-key free lane with a 6s timeout and fails open."
+          >
+            every 10m · vault-free · works tab-closed
+          </Badge>
+          {autonomy?.engine ? (
+            <>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-1.5 py-0 text-[10px]",
+                  autonomy.engine.enabled
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-300",
+                )}
+                title={
+                  autonomy.engine.enabled
+                    ? "The 10-minute loop is armed inside the server process (first pass 15s after boot)."
+                    : "The engine has not armed yet — it arms when the server boots its instrumentation hook."
+                }
+              >
+                <CircleDot className={cn("h-2.5 w-2.5", autonomy.engine.enabled && "animate-pulse")} aria-hidden />
+                {autonomy.engine.enabled ? "engine armed" : "arming…"}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                last cycle {fmtAgo(autonomy.engine.lastCycleAt)}
+                {autonomy.engine.nextCycleInMin !== null ? ` · next in ${autonomy.engine.nextCycleInMin}m` : ""}
+              </span>
+            </>
+          ) : null}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={cycleBusy}
+            onClick={() => void runCycleNow()}
+            className="ml-auto h-6 gap-1 border-emerald-500/40 px-2 text-[10px] text-emerald-300 transition-colors hover:bg-emerald-500/10 hover:text-emerald-200"
+            title="Propose + execute the top safe moves NOW (idempotent within the current 10-minute bucket — a repeat click honestly answers “already ran”)"
+          >
+            <RefreshCw className={cn("h-3 w-3", cycleBusy ? "animate-spin" : "")} aria-hidden />
+            Execute top move
+          </Button>
+        </div>
+
+        {aieOpen ? (
+          <div id="autonomy-engine-body" className="mt-2">
+            {autonomy ? (
+              <>
+              <div aria-label="Autonomy KPIs" className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
+                <div
+                  title="The research backlog: repos/URLs waiting for the engine's vault-free GitHub research (max 2 per 10-min cycle — the 60 req/h unauthenticated budget governs)."
+                  className="rounded-lg border border-emerald-500/15 bg-background/40 px-2 py-1.5"
+                >
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Queue depth</p>
+                  <p className="mt-0.5 text-xs font-semibold tabular-nums text-emerald-200">
+                    {autonomy.queue.queued} queued
+                    <span className="font-normal text-muted-foreground">
+                      {" "}
+                      · {autonomy.queue.researched} researched · {autonomy.queue.failed} failed
+                    </span>
+                  </p>
+                </div>
+                <div
+                  title={`Move outcomes in the last 24h: ${autonomy.moves24.executed} executed, ${autonomy.moves24.failed} failed, ${autonomy.moves24.proposed} proposed.`}
+                  className="rounded-lg border border-emerald-500/15 bg-background/40 px-2 py-1.5"
+                >
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Moves · 24h</p>
+                  <p className="mt-0.5 text-xs font-semibold tabular-nums text-emerald-200">
+                    {autonomy.moves24.executed} executed
+                    {autonomy.moves24.failed > 0 ? ` · ${autonomy.moves24.failed} failed` : ""}
+                    <span className="font-normal text-muted-foreground"> · {autonomy.moves24.proposed} proposed</span>
+                  </p>
+                </div>
+                <div
+                  title="When the last idempotent 10-minute bucket ran (interval fire or a manual “Execute top move”)."
+                  className="rounded-lg border border-emerald-500/15 bg-background/40 px-2 py-1.5"
+                >
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Last cycle</p>
+                  <p className="mt-0.5 text-xs font-semibold tabular-nums text-emerald-200">
+                    {autonomy.engine.lastCycleAt ? fmtAgo(autonomy.engine.lastCycleAt) : "never"}
+                    <span className="font-normal text-muted-foreground">
+                      {autonomy.engine.nextCycleInMin !== null ? ` · next ${autonomy.engine.nextCycleInMin}m` : ""}
+                    </span>
+                  </p>
+                </div>
+                <div
+                  title="Engine arm state inside the server process. Armed = the loop fires with zero keys and a closed tab — the whole point."
+                  className="rounded-lg border border-emerald-500/15 bg-background/40 px-2 py-1.5"
+                >
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Engine status</p>
+                  <p className={cn("mt-0.5 text-xs font-semibold", autonomy.engine.enabled ? "text-emerald-400" : "text-amber-300")}>
+                    {autonomy.engine.enabled ? "armed" : "arming…"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Next moves — ranked, deterministic, status-honest */}
+              <div className="mt-2">
+                <p className="text-[11px] font-medium text-muted-foreground">Next moves (ranked)</p>
+                {autonomy.moves.length > 0 ? (
+                  <ul className="mt-1 max-h-48 space-y-1 overflow-y-auto pr-1">
+                    {autonomy.moves.map((m) => (
+                      <li key={m.id} className="rounded-md border bg-background/60 p-2 text-[11px]">
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                          <span className="rounded bg-emerald-500/15 px-1 py-0.5 text-[9.5px] font-semibold tabular-nums text-emerald-300">
+                            #{m.rank}
+                          </span>
+                          <MoveKindIcon kind={m.kind} className="text-emerald-400/80" />
+                          <span className="min-w-0 flex-1 truncate font-medium" title={m.title}>
+                            {m.title}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={cn("px-1.5 py-0 text-[9.5px]", moveStatusClass(m.status))}
+                            title={m.result ?? "status"}
+                          >
+                            {m.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 truncate text-muted-foreground" title={m.rationale}>
+                          {m.rationale}
+                        </p>
+                        {m.result ? (
+                          <p className="mt-0.5 truncate text-emerald-300/80" title={m.result ?? ""}>
+                            → {m.result}
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 rounded-md border bg-background/60 p-2 text-[11px] text-muted-foreground">
+                    No moves yet — run a cycle (button above) or wait for the next 10-minute bucket.
+                  </p>
+                )}
+              </div>
+
+              {/* Research queue mini-panel — import + honest counts */}
+              <div className="mt-2 rounded-md border border-emerald-500/15 bg-background/60 p-2">
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  Research queue — paste repo URLs (one per line; github URLs normalize to gh:owner/repo, dupes against
+                  any prior status are skipped, cap 500)
+                </p>
+                <textarea
+                  value={queueText}
+                  onChange={(e) => setQueueText(e.target.value)}
+                  rows={3}
+                  aria-label="Research queue import URLs"
+                  placeholder={"https://github.com/upstash/vector-js\nhttps://example.com/some-page"}
+                  className="mt-1 w-full resize-y rounded-md border bg-background/80 p-2 font-mono text-[10.5px] leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/40"
+                />
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={importBusy}
+                    onClick={() => void importQueue()}
+                    className="h-6 gap-1 border-emerald-500/40 px-2 text-[10px] text-emerald-300 transition-colors hover:bg-emerald-500/10 hover:text-emerald-200"
+                    title="Normalize + dedupe + enqueue these targets (honest {inserted, duplicates, invalid} counts back)"
+                  >
+                    <Download className={cn("h-3 w-3", importBusy ? "animate-bounce" : "")} aria-hidden />
+                    Import
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground">
+                    {autonomy.queue.queued} queued
+                    {autonomy.queue.oldestQueuedAgeMin !== null
+                      ? ` · oldest ${fmtAgo(new Date(Date.now() - autonomy.queue.oldestQueuedAgeMin * 60_000).toISOString())}`
+                      : ""}
+                  </span>
+                </div>
+                {importSummary ? <p className="mt-1 text-[10px] tabular-nums text-emerald-300/90">{importSummary}</p> : null}
+              </div>
+
+              {/* Logs feed — last 6 cycle/report rows, expandable stats */}
+              <div className="mt-2">
+                <p className="text-[11px] font-medium text-muted-foreground">Engine log (last {autonomy.logs.length})</p>
+                {autonomy.logs.length > 0 ? (
+                  <ul className="mt-1 max-h-56 space-y-1 overflow-y-auto pr-1">
+                    {autonomy.logs.map((log) => {
+                      const expanded = openLog === log.id;
+                      const stats = parseLogStats(log.statsJson);
+                      return (
+                        <li key={log.id} className="text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => setOpenLog(expanded ? null : log.id)}
+                            aria-expanded={expanded}
+                            className="flex w-full flex-wrap items-center gap-x-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-accent/60"
+                            title="Expand the cycle/report stats"
+                          >
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "px-1.5 py-0 text-[9.5px]",
+                                log.kind === "report"
+                                  ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                                  : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+                              )}
+                            >
+                              {log.kind}
+                            </Badge>
+                            <span className="font-mono text-[10px] text-muted-foreground">{log.id}</span>
+                            <span className="min-w-0 flex-1 truncate" title={log.summary}>
+                              {log.summary}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">{fmtAgo(log.createdAt)}</span>
+                          </button>
+                          {expanded ? (
+                            <div className="mx-1.5 mt-1 rounded-md border bg-background/60 p-2">
+                              <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-muted-foreground">
+                                {JSON.stringify({ moves: parseLogStats(log.movesJson), stats }, null, 2)}
+                              </pre>
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    No cycles yet — the first one lands ~15s after server boot (or on “Execute top move”).
+                  </p>
+                )}
+              </div>
+
+              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                Doctrine: deterministic signal reads → ranked proposals → at most 2 safe moves per cycle. Research uses
+                the unauthenticated GitHub API (User-Agent set, README ≤200KB) and the queue row IS the cache —
+                researched rows are never re-fetched. import-seed and radar-followup are honest no-ops; workflows are
+                never mutated; LLM dials: none (the optional top-move rationale enricher rides the built-in no-key lane,
+                6s timeout, fails open to the deterministic text).
+              </p>
+              </>
+            ) : (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Connecting to the engine… (the snapshot endpoint answers within a second of the server being up)
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {state && state.runs.length > 0 ? (
