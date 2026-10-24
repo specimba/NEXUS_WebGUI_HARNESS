@@ -12639,3 +12639,29 @@ Task owner: patrol job 473388 (every 30 min, :07/:37 Europe/Istanbul) / main ses
 Open risks: (1) Supabase nexus-backups bucket not yet created (owner one-time dashboard step) — backup-shard.sh output currently has no automated offsite home; (2) GitHub PAT rotation still pending (r514 follow-up) before the GitHub lane carries shards; (3) the cron registry remains mortal to session recycles — if 473388 vanishes, re-create from the paste block in docs/platform/cron-creation-criteria.md; (4) instrumentation.ts node:path edge-runtime dev warning (r515 code) — cosmetic but noisy in dev.log; (5) the freellm parser depends on the site's RSC flight shape — a parse finding <20 rows degrades honestly to "unavailable"; revisit if freellm.sh redesigns.
 Blockers: none.
 Next recommended action: TASK-101 durable-step semantics (upstash/workflow-js invoke/retry/waitForEvent shape on the existing QStash wiring) — the top P1 the patrol should advance next; then TASK-102 NEXUS_BOT wave.
+
+---
+Task ID: r518
+Agent: patrol job 473388 (main session)
+Task: Owner-reported breakage — "Cannot read properties of undefined (reading 'findUnique'/'findMany')" on /api/autonomy + /api/briefing + /api/strategy; autonomy engine wiring "no success"; vault key re-entry.
+
+Work Log:
+- Root-caused: dev server booted ~21:24Z, prisma client regenerated 21:52Z (r517 models StrategyItem/CapabilityCheck/etc.) — the long-running process held the STALE runtime client: `db.strategyItem` undefined → findUnique/findMany crashes. AutomationState/AutomationVault queries kept working (pre-r517 models), which masked it.
+- Verified generated d.ts had the models but runtime index.js had zero strategyItem delegates → confirmed stale-client diagnosis before touching code.
+- Fix = `bunx prisma generate` + ONE scripts/dev-restart.sh restart. No source change needed.
+- Discovered dev-restart.sh daemon (bash|tee tree) gets silently reaped between tool calls (no crash trace, no OOM in dev.log) → relaunched with `setsid nohup` full session detachment; survives boundaries.
+- Post-fix verification: GET / 200, /api/briefing 200 (full doctrine markdown, was degraded-500), /api/strategy 200 (was 500 findUnique), /api/autonomy {ok:true, engine.enabled:true} (was findUnique crash). Autonomy first cycle fires ~15s post-boot; snapshot clean (latestLog null right after boot, queue 0 = Owner's "Backlog empty" seeds via Sync signals / first sweep cycle).
+- Vault: vyce key stored in SQLite — survived restart; no loss mechanism in the restart path (Owner's re-entry likely pre-dates the r517 db push).
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors (warning-line count 34 = 33 baseline + summary line).
+
+Stage Summary:
+- The Owner's three visible symptoms (autonomy cycle failed, briefing degraded, strategy 500) were ONE root cause: stale Prisma runtime client vs regenerated schema. Operational fix, zero code delta — platform code untouched this round.
+- Dev-restart fragility found & documented: script's process tree is not session-detached; setsid relaunch is the durable pattern (candidate for dev-restart.sh patch next round).
+- Engine wiring is healthy: endpoints answer, engine armed, cycles deterministic every 10m.
+
+Round Handoff:
+Round ID: r518
+Task owner: patrol job 473388 / main session
+Open risks: (1) dev-restart.sh should be patched to setsid-detach (one-line fix, next round); (2) instrumentation.ts edge-runtime node:path warning still noisy (queued polish); (3) TASK-101 durable-step semantics remains top P1, untouched this round; (4) lint warning count should be re-baselined after any source edits; (5) Supabase nexus-backups bucket still owner-side pending.
+Blockers: none.
+Next recommended action: patch scripts/dev-restart.sh with setsid detachment + TASK-101 durable-step semantics (workflow-js invoke/retry/waitForEvent on existing QStash wiring); verify autonomy cycles populated in UI (Engine panel should show first cycle logs within 10 min of boot).
