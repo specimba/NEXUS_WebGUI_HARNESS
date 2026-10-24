@@ -16,7 +16,8 @@ architect's dev-round lane (see [AGENT.md](./AGENT.md) §2).
 
 - [ ] **P1** Rotate the GitHub PAT exposed in bb6120b31 (public history). `scripts/backup-push.sh` already refuses to run without an exported `GITHUB_BACKUP_PAT`. → TASK (seed)
 - [ ] **P1** Paste the real Webshare token on Settings → Egress → witness groq probe flip 403 (WAF) → 401 (key-level, via pool).
-- [ ] **P1** Recreate the z.ai-side dev patrol cron from YOUR account (the resilient control plane) — paste-ready task text in `GET /api/briefing` or the Strategy card's "Copy cron brief".
+- [x] **P1** ~~Recreate the z.ai-side dev patrol cron~~ **ARMED r517 — job 473388** (agentTurn, every 30 min :07/:37 Europe/Istanbul, priority 10, 1517-char message). Root cause of every past failure distilled into `docs/platform/cron-creation-criteria.md` (≤2000 chars · agentTurn-only · ≥30-min cadence · 6-field-with-seconds expr · explicit tz · round budget). If the registry wipes again: re-create from the paste block in that doc.
+- [ ] **P2** Create the Supabase Storage bucket `nexus-backups` on vwottesqbdgcsmvvvzok (policies: anon insert ALLOWED, anon select DENIED) → `scripts/backup-shard.sh` output (4 × ≤49MiB shards + sha256 manifest) gets a durable offsite home; 1GB free ≈ 5 generations. See `docs/platform/zai-storage-deep-dive.md`.
 - [ ] **P2** Decide the 2 baselined preseed keys in `src/lib/constants.ts` (rotate + relocate to vault seed).
 - [ ] **P2** Add a fine-grained read-only GitHub PAT to PlatformSetting → the engine's api research lane auto-resumes (currently html-fallback).
 
@@ -43,6 +44,10 @@ architect's dev-round lane (see [AGENT.md](./AGENT.md) §2).
 
 ## Done (this round + carried)
 
+- [x] r517: **Free reach census (freellm.sh filtered view)** — the REACH half of "reach × intelligence": server producer parses the site's RSC flight payload once (`/api/freellm`, 6h PlatformSetting cache, fail-open, no invented data) and derives the Owner's filtered view server-side (access ∈ free-tier/free-forever/signup-credits ∧ operational, newest-first); Model Relay gains the teal Free-reach panel (filter chips, NEW/gated badges, operational dots, scrolling census) + per-hop `reach` badges on the relay ladder; live: 153 sources → 151 free+operational.
+- [x] r517: **Cron failure root-caused + patrol re-armed** — job 473327 (r516-b) died from the triple violation (>2000 chars · webDevReview class · 15-min cadence); criteria doc + compliant patrol 473388 armed (see Owner actions).
+- [x] r517: **Storage deep dive + sharded backup pipeline** — chat.z.ai 2GB storage is browser-session-gated (backend BLOCKED, verdict + evidence in docs/platform/zai-storage-deep-dive.md); `scripts/backup-shard.sh` ships the proven 4×≤49MiB pipeline (excludes .chrome-qa-profile/.env, sha256 manifest, restore recipe).
+- [x] r517: **r515/r516 recovery** — local repo had regressed to r514 (another sandbox rollback); fast-forwarded from origin (01644552d), worklog spliced whole (r515→r515-c→r516→517-a/b), prisma client regenerated (r515 models), db:push clean.
 - [x] r516: **Benchmark intelligence routing** — intelligence-index producer + API + relay blend sort + Benchmark panel/Intel badges; snapshot honest-fallback witnessed live (arena 403 from sandbox IP, AA JS-rendered).
 - [x] r516: **Scroll-bug class closure** — radar TabsContent all scroll containers (frontier/github/hf/papers); run-panel task box capped (max-h + internal scroll, shrink-0 controls, min-h-0 log); editor dialog textareas capped. Owner's recurring complaint addressed at the CLASS level.
 - [x] r516: **Per-step Decision Gates** in workflow-runner (free SystemOne ladder, one rework, never blocks) + toggle.

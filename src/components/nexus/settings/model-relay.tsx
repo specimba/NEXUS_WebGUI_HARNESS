@@ -16,6 +16,7 @@ import {
   Gauge,
   Info,
   Radar,
+  RadioTower,
   RefreshCw,
   RotateCcw,
   ShieldCheck,
@@ -69,6 +70,18 @@ import {
   writeIntelligenceCache,
   type IntelligenceIndex,
 } from "@/lib/intelligence";
+// r517: free reach census — freellm.sh's filtered view (free access ∩
+// operational, newest first): the REACH half of "reach × intelligence".
+import {
+  FREELLM_FILTERED_URL,
+  freellmStale,
+  isNewcomer,
+  matchFreellmEntry,
+  readFreellmCache,
+  writeFreellmCache,
+  type FreellmEntry,
+  type FreellmIndex,
+} from "@/lib/freellm";
 // r503: Radar → Relay adoption pipeline — this card renders and manages the
 // adopted-lane registry (localStorage `nexus-relay-adopted`, written by the
 // radar tab's auto-pipeline AND the row actions below) plus the auto-adopt
@@ -85,6 +98,9 @@ import {
 } from "@/lib/lane-adopt";
 import { fmtAge, fmtCtx, fmtPrice, providerMeta } from "@/lib/tracker-types";
 import { cn } from "@/lib/utils";
+
+/** r517: reach-census filter slices (Model Relay → Free reach panel). */
+type ReachFilter = "all" | "free-forever" | "signup-credits" | "new";
 
 const TIER_STYLE: Record<1 | 2 | 3, string> = {
   1: "border-violet-500/50 bg-violet-500/15 text-violet-300",
@@ -242,6 +258,53 @@ export function ModelRelayCard() {
     intelBooted.current = true;
     if (intelligenceStale(readIntelligenceCache())) void loadIntel(false);
   }, [loadIntel]);
+
+  // ── r517: free reach census — freellm.sh's filtered view (free access ∩
+  // operational, newest first). Same mount shape as the intel index above:
+  // hydrate from localStorage, silent auto-refresh when stale, Refresh
+  // forces ?fresh=1. Reach × intelligence = the adoption shortlist.
+  const [freellm, setFreellm] = React.useState<FreellmIndex | null>(() => readFreellmCache());
+  const [freellmLoading, setFreellmLoading] = React.useState(false);
+  const [reachFilter, setReachFilter] = React.useState<ReachFilter>("all");
+  const freellmBooted = React.useRef(false);
+  const loadFreellm = React.useCallback(async (fresh: boolean) => {
+    setFreellmLoading(true);
+    try {
+      const res = await fetch(`/api/freellm${fresh ? "?fresh=1" : ""}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const idx = (await res.json()) as FreellmIndex;
+      writeFreellmCache(idx);
+      setFreellm(idx);
+      if (fresh) {
+        toast.success("Free reach census refreshed", {
+          description:
+            idx.origin === "live"
+              ? `${idx.entries.length} free+operational of ${idx.total} sources · ${idx.ms}ms`
+              : `freellm.sh unreachable — ${idx.note ?? "no parsed payload"}`,
+        });
+      }
+    } catch (err) {
+      if (fresh) {
+        toast.error("Reach census refresh failed", {
+          description: err instanceof Error ? err.message : "Could not reach /api/freellm.",
+        });
+      }
+    } finally {
+      setFreellmLoading(false);
+    }
+  }, []);
+  React.useEffect(() => {
+    if (freellmBooted.current) return;
+    freellmBooted.current = true;
+    if (freellmStale(readFreellmCache())) void loadFreellm(false);
+  }, [loadFreellm]);
+  const reachRows = React.useMemo(() => {
+    if (!freellm || freellm.origin !== "live") return [] as FreellmEntry[];
+    if (reachFilter === "free-forever") return freellm.entries.filter((e) => e.access.includes("free-forever"));
+    if (reachFilter === "signup-credits") return freellm.entries.filter((e) => e.access.includes("signup-credits"));
+    if (reachFilter === "new") return freellm.entries.filter((e) => isNewcomer(e));
+    return freellm.entries;
+  }, [freellm, reachFilter]);
 
   const primary = resolveLlm(settings);
   const policy: RelayFailoverPolicy = settings.relayFailoverPolicy ?? "smart";
@@ -490,6 +553,202 @@ export function ModelRelayCard() {
           )}
         </div>
 
+        {/* ── r517: Free reach census — freellm.sh's filtered view (free
+            access ∩ operational, newest first) as the REACH half of the
+            owner's "reach and intelligence index" directive. Teal row. */}
+        <div
+          className="rounded-lg border border-teal-500/25 bg-teal-500/[0.04] p-3"
+          data-testid="freellm-reach"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
+              <RadioTower className="h-3.5 w-3.5 text-teal-400" aria-hidden />
+              Free reach · freellm.sh
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] font-normal",
+                  freellm?.origin === "live"
+                    ? "border-teal-500/40 bg-teal-500/10 text-teal-300"
+                    : "border-stone-500/40 bg-stone-500/10 text-stone-400"
+                )}
+                title={
+                  freellm?.origin === "live"
+                    ? "The freellm.sh flight payload parsed live for this census"
+                    : "freellm.sh unreachable — no invented reach data, ever"
+                }
+              >
+                {freellm ? (freellm.origin === "live" ? "live census" : "unavailable") : "loading…"}
+              </Badge>
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-[11px]"
+              disabled={freellmLoading}
+              aria-label="Refresh free reach census"
+              onClick={() => void loadFreellm(true)}
+            >
+              <RefreshCw className={cn("h-3 w-3", freellmLoading && "animate-spin")} aria-hidden />
+              Refresh
+            </Button>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            Reach census — every free-access source that is operational right now
+            (free-tier · free-forever · signup-credits), newest first. Cross it with
+            the benchmark panel above:{" "}
+            <span className="font-medium text-teal-300">reach × intelligence</span> is
+            the adoption shortlist.{" "}
+            <a
+              href={FREELLM_FILTERED_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-teal-400 hover:underline"
+            >
+              filtered view ↗
+            </a>
+          </p>
+          {freellm && freellm.origin === "live" ? (
+            <>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Reach filter">
+                {(
+                  [
+                    ["all", `All ${freellm.entries.length}`],
+                    ["free-forever", `free-forever ${freellm.entries.filter((e) => e.access.includes("free-forever")).length}`],
+                    ["signup-credits", `signup-credits ${freellm.entries.filter((e) => e.access.includes("signup-credits")).length}`],
+                    ["new", `new 14d ${freellm.counts.new14d}`],
+                  ] as Array<[ReachFilter, string]>
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setReachFilter(id)}
+                    aria-pressed={reachFilter === id}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[10px] transition-colors",
+                      reachFilter === id
+                        ? "border-teal-500/50 bg-teal-500/15 text-teal-300"
+                        : "border-border/70 bg-background/40 text-muted-foreground hover:border-teal-500/30 hover:text-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {reachRows.length === 0 ? (
+                <p className="mt-2 rounded-md border border-dashed border-border/60 px-2 py-3 text-center text-[11px] text-muted-foreground">
+                  No sources in this slice right now — the census stays honest, not padded.
+                </p>
+              ) : (
+                <div
+                  className="mt-2 max-h-72 space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-teal-500/30"
+                  role="list"
+                  aria-label="Free reach sources"
+                >
+                  {reachRows.map((e) => (
+                    <div
+                      key={e.id}
+                      role="listitem"
+                      className="flex items-start gap-2 rounded-md border border-border/50 bg-background/30 px-2 py-1.5"
+                    >
+                      <span
+                        className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+                        title="operational"
+                        aria-hidden
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="truncate text-xs font-medium" title={`${e.name} — ${e.provider}`}>
+                            {e.name}
+                          </span>
+                          {isNewcomer(e) && (
+                            <Badge
+                              variant="outline"
+                              className="border-rose-500/40 bg-rose-500/10 text-[9px] font-normal text-rose-300"
+                              title={`Added to the freellm.sh index within the last 14 days (${e.addedAt?.slice(0, 10) ?? "recent"})`}
+                            >
+                              NEW
+                            </Badge>
+                          )}
+                          {e.gated && (
+                            <span
+                              className="shrink-0 rounded-full border border-stone-500/40 bg-stone-500/10 px-1.5 py-0.5 text-[9px] text-stone-400"
+                              title="Gated access — expect friction (waitlist/invite/approval)"
+                            >
+                              gated
+                            </span>
+                          )}
+                          <span
+                            className="shrink-0 rounded-full border border-border/70 bg-background/40 px-1.5 py-0.5 text-[9px] text-muted-foreground"
+                            title={`Provider: ${e.provider}`}
+                          >
+                            {e.provider}
+                          </span>
+                          {e.access
+                            .filter((a) => a === "free-forever" || a === "free-tier" || a === "signup-credits")
+                            .map((a) => (
+                              <span
+                                key={a}
+                                className={cn(
+                                  "shrink-0 rounded-full border px-1.5 py-0.5 text-[9px]",
+                                  a === "free-forever"
+                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                                    : a === "free-tier"
+                                      ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                                      : "border-teal-500/40 bg-teal-500/10 text-teal-300"
+                                )}
+                              >
+                                {a}
+                              </span>
+                            ))}
+                          {e.url && (
+                            <a
+                              href={e.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-auto shrink-0 text-[10px] text-muted-foreground hover:text-teal-400"
+                              aria-label={`Open ${e.name} (${e.provider})`}
+                            >
+                              ↗
+                            </a>
+                          )}
+                        </div>
+                        {(e.freeLimit || e.types.length > 0) && (
+                          <p
+                            className="mt-0.5 truncate text-[10px] text-muted-foreground"
+                            title={[e.freeLimit, e.types.length ? `types: ${e.types.join(", ")}` : ""].filter(Boolean).join(" — ")}
+                          >
+                            {e.freeLimit ?? e.types.join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5 text-[10px] text-muted-foreground">
+                <span>
+                  {freellm.total} sources · {freellm.counts.operational} operational ·{" "}
+                  {freellm.counts.degraded} degraded
+                </span>
+                <span>
+                  updated {new Date(freellm.asOf).toLocaleString()} · {freellm.ms}ms
+                </span>
+              </div>
+            </>
+          ) : freellm ? (
+            <p className="mt-2 text-[11px] text-muted-foreground" role="status">
+              freellm.sh census unavailable — {freellm.note ?? "no parsed payload"}. No
+              invented reach data; hit Refresh to retry.
+            </p>
+          ) : (
+            <p className="mt-2 text-[11px] text-muted-foreground" role="status">
+              Crawling freellm.sh… the reach list lands in a moment.
+            </p>
+          )}
+        </div>
+
         {/* ── r506: Utility fast lanes — the AI buttons (plan generation,
             auto-assign, memory folds) dial a FAST above-moderate lane with
             emergent substitutions instead of the largest reasoning model.
@@ -593,6 +852,7 @@ export function ModelRelayCard() {
                 enabled={enabled}
                 health={health[hop.key]}
                 docked={hopBreakerDocked(hop, breaker, health)}
+                reach={matchFreellmEntry(freellm, hop.model)}
                 onMove={(d) => move(orderIndex, d)}
               />
             );
@@ -851,6 +1111,7 @@ function HopRow({
   enabled,
   health,
   docked,
+  reach,
   onMove,
 }: {
   hop: RelayHop;
@@ -863,6 +1124,8 @@ function HopRow({
   health?: RelayHealthEntry;
   /** r504: the provider's circuit breaker is open and this lane is docked. */
   docked: boolean;
+  /** r517: freellm.sh reach match — this model is free+operational somewhere. */
+  reach?: FreellmEntry | null;
   onMove: (dir: -1 | 1) => void;
 }) {
   const isAuto = hop.providerId === "auto";
@@ -917,6 +1180,17 @@ function HopRow({
               title="Free frontier lane — the failover policy may prefer it"
             >
               free
+            </Badge>
+          )}
+          {/* r517: reach witness — the freellm.sh census independently
+              confirms this model as free AND operational somewhere. */}
+          {reach && !isAuto && (
+            <Badge
+              variant="outline"
+              className="border-teal-500/40 bg-teal-500/10 text-[10px] font-normal text-teal-300"
+              title={`freellm.sh census: free + operational on ${reach.provider}${reach.freeLimit ? ` — ${reach.freeLimit}` : ""}`}
+            >
+              reach
             </Badge>
           )}
           {docked ? (
