@@ -2,6 +2,15 @@
 # r517 — resilient dev-server bootstrap for the sandbox reaper.
 # If :3000 isn't answering, (re)start `bun run dev` detached and wait for Ready.
 cd /home/z/my-project
+# r522: defense in depth — the liveness supervisor guards the server between
+# tool rounds; ensure-dev guards the SUPERVISOR itself (setsid sessions were
+# reaped too, r521). Any patrol round that runs ensure-dev.sh therefore
+# self-heals both layers.
+if ! pgrep -f "bash scripts/liveness-supervisor.sh" >/dev/null 2>&1; then
+  rm -f scripts/.liveness-supervisor.pid
+  setsid nohup bash scripts/liveness-supervisor.sh </dev/null >/dev/null 2>&1 &
+  echo "[ensure-dev] liveness supervisor re-armed"
+fi
 if curl -s -o /dev/null -m 3 http://localhost:3000/; then
   echo "[ensure-dev] server already up"
   exit 0

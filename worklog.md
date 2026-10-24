@@ -12741,3 +12741,24 @@ Round ID: r521 → next patrol (job 473388)
 Open risks: (1) DEV SERVER LIVENESS: setsid relaunches died 2× between tool calls this round (clean dev.log, no OOM — r518-class behavior is back); a self-healing supervisor (detached health-check daemon or ensure-dev.sh on a short loop) is the next platform fix. (2) Vault is EMPTY (rollback) and db/vault-seed.json was lost with it — Owner must re-enter one vault key once, then run scripts/seedwrite.ts to regenerate the seed so future wipes self-heal; until then the server lane's dialable runs stand down honestly (no-vault-key) while wait-only schedules keep working (proven this round). (3) TASK-101 remainder: browser-lane parity + step-editor authoring for waitFor; NOTE the sync route still overwrites stepsJson from client pushes, so a DB-authored waitFor survives only until that workflow's next tab sync (documented limitation). (4) TASK-102 NEXUS_BOT wave still queued. (5) Supabase nexus-backups bucket + GitHub PAT rotation still owner-side. (6) If the Engine panel reads empty after a rollback, hit Sync signals once — the engine self-seeds.
 Blockers: none.
 Next recommended action: dev-server liveness supervisor (the reaper is now the #1 operational risk), then TASK-102 NEXUS_BOT wave.
+
+---
+Task ID: r522
+Agent: patrol job 473388 (main session)
+Task: r521 handoff — dev-server liveness supervisor (the #1 operational risk); golden-path QA first; styling polish + user-facing increment.
+
+Work Log:
+- DEV-SERVER LIVENESS SUPERVISOR SHIPPED (scripts/liveness-supervisor.sh): detached 30s health loop; 2-strike (~60s downtime) restart via the canonical dev-restart.sh (ONE boot path); 300s restart cooldown; RETIRES after 3 failed heal cycles (no flapping); single-instance pidfile; log capped at dev-supervisor.log. Armed via setsid nohup (pid 3351).
+- REAPER EVIDENCE CAPTURED: pid 3351 found DEAD ~2 min after launch (kill -0 fail, pgrep empty) — setsid sessions are being reaped again, exactly the r521 pattern. Defense in depth: ensure-dev.sh now re-arms the supervisor when dead (pgrep guard + setsid relaunch) — tested end-to-end this round ("[ensure-dev] liveness supervisor re-armed" + "server already up"; new pid 3571). Layering: the supervisor guards the server; every patrol's ensure-dev call guards the supervisor.
+- QA golden paths (scripts/cdp-qa-golden-r522.mjs, persisted for future rounds): Settings -> Model Relay renders + Intel ladder present; Radar -> Frontier renders + content scrolls (scrollTop 240); Workflows mounts + run-panel step long-paste holds 6000 chars + Run control reachable; console 0 errors across all paths (Runtime.exceptionThrown + Log.entryAdded capture). 8/9 — the one ❌ was the script's own boot probe (exact-text button match); fixed to button/a includes(). All three golden paths themselves PASS.
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = PROB (baseline 33 exact; the +1 no-unused-expressions came from the new QA script and was fixed to if/else in-round).
+
+Stage Summary:
+- Two-layer self-heal now covers the reaper problem, the strongest operational fix available inside the sandbox: automatic server restart on ~60s downtime + automatic supervisor re-arm on every patrol precheck. Honest limit: if the reaper kills BOTH supervisor and server between rounds, the next patrol's ensure-dev.sh is the recovery path (proven this round).
+- Round mandate note: the styling-polish/UI increment is deferred to r523 — budget went to the handoff's #1 operational fix + QA tooling; no src/ file touched, gates state unchanged.
+
+Round Handoff:
+Round ID: r522 -> next patrol (job 473388)
+Open risks: (1) supervisor survival across patrol boundaries unproven — first check next round: pgrep -f liveness-supervisor; if dead, bash scripts/ensure-dev.sh re-arms (proven). (2) TASK-102 NEXUS_BOT wave still queued as the next real feature round. (3) run-kanban UI increment owed: waiting-card event visibility on board cards + Copy-report in the drawer (designed, not shipped). (4) Vault still EMPTY after the r521 sandbox rollback — owner re-enters one key then scripts/seedwrite.ts regenerates the seed. (5) Supabase nexus-backups bucket + GitHub PAT rotation remain owner-side. (6) lint baseline must read 33 exact after any future source edit.
+Blockers: none.
+Next recommended action: r523 — (1) pgrep liveness-supervisor, re-arm via ensure-dev.sh if dead; (2) ship the owed run-kanban UI increment (amber waiting card with event visibility + drawer Copy-report); (3) TASK-102 NEXUS_BOT wave.

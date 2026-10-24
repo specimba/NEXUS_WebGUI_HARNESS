@@ -96,3 +96,7 @@ db/vault-seed.json
 
 # agent round context (local working records, not source)
 agent-ctx/
+
+# r522 liveness supervisor runtime artifacts
+dev-supervisor.log
+scripts/.liveness-supervisor.pid
