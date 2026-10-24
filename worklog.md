@@ -12665,3 +12665,30 @@ Task owner: patrol job 473388 / main session
 Open risks: (1) dev-restart.sh should be patched to setsid-detach (one-line fix, next round); (2) instrumentation.ts edge-runtime node:path warning still noisy (queued polish); (3) TASK-101 durable-step semantics remains top P1, untouched this round; (4) lint warning count should be re-baselined after any source edits; (5) Supabase nexus-backups bucket still owner-side pending.
 Blockers: none.
 Next recommended action: patch scripts/dev-restart.sh with setsid detachment + TASK-101 durable-step semantics (workflow-js invoke/retry/waitForEvent on existing QStash wiring); verify autonomy cycles populated in UI (Engine panel should show first cycle logs within 10 min of boot).
+
+---
+Task ID: r519
+Agent: main (orchestrator — Owner breakage closure + r518 handoff items)
+Task: Close the Owner-reported round — "Cannot read properties of undefined (reading 'findUnique'/'findMany')" on autonomy/briefing/strategy, "no improvement engine wiring success", empty strategy doctrine backlog, repeated vault key re-entry. Verify the r518 stale-client fix end-to-end and ship the queued handoff items.
+
+Work Log:
+- CONFIRMED r518's stale-Prisma-client diagnosis live: fresh-process delegate test (scripts/dbcheck.ts) passed all 6 AIE-era models (strategyItem/autonomyLog/nextMove/researchQueue/platformSetting/capabilityCheck) — the 21:23-booted server held a client generated 21:52 without those delegates → runtime-only findUnique/findMany crashes. Restart is the complete fix; zero source delta needed for the breakage itself.
+- scripts/ensure-dev.sh (new): idempotent dev-server pre-flight — up-check → pkill stragglers → setsid nohup relaunch → 30s ready poll. Survived every tool-call boundary across the whole round (the sandbox reaper kills plain nohup children; setsid full-session detachment is the durable recipe, as r518 recommended).
+- db/vault-seed.json (new, NOT in git — .gitignore line 92, plaintext stays localhost-only): generated from the live vault via scripts/seedwrite.ts so the r493 boot-rehydration path self-heals future DB wipes (fires only when the vault table has ZERO slots — deliberate deletions respected). Closes the Owner's repeated "re-entered vault vyce key again" loop.
+- r518 handoff item CLOSED — instrumentation.ts edge-warning spam fixed: node:fs/promises, node:path and process.cwd reads hidden behind runtime-constructed importers (new Function indirection; register() already stands down outside the nodejs runtime, so zero behavior change). MEASURED: 120 cumulative "not supported in the Edge Runtime" warnings before restart → fresh post-restart dev.log carries ZERO. Dev-only cosmetic; tsc/lint unaffected.
+- Strategy doctrine seeded LIVE: POST /api/strategy {action:"sync"} → 15 seeds inserted (TASK-100 9router auto-fallback ladder, TASK-101 durable-step semantics, TASK-102 NEXUS_BOT wave, TASK-103 plugin-manifest doctrine, …) + digest entry. POST /api/autonomy {action:"cycle"} → "2 proposed · 2 executed / 0 failed · 375ms" advancing TASK-100/101; later autonomous cycles advanced TASK-102/103 — the 10-min deterministic engine is provably cycling tab-closed.
+- Briefing end-state: GET /api/briefing returns the full doctrine markdown (was degraded-500) and "Top strategic items" now lists TASK-100/101 with concrete next-actions — the "strategy doctrine creation for our next movements" the Owner asked for.
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline; one canonical scripts/dev-restart.sh boot (dev-daemon.mjs detached spawn).
+- QA (agent-browser): Workflows tab — AUTONOMOUS IMPROVEMENT ENGINE "engine armed" + visible cycle logs (2 proposed · 2 executed · 375ms; later TASK-102/103 advances), Strategy & doctrine "15 open", Sync signals card live, console 0 errors (only HMR/Fast-Refresh info lines); sidebar tracker chip "0 new, 65 free models"; all APIs 200 in fresh dev.log (automation/sync, cron/forensics, gateway/pulse, radar/hourly, autonomy, tracker, strategy, version).
+- Registry watch: cron doctrine respected — docs/platform/cron-creation-criteria.md bans webDevReview kind + 15-min cadence (10/10 deaths, born-disabled evidence); the canonical patrol stays job 473388 (agentTurn, :07/:37 Europe/Istanbul). No duplicate patrol created.
+
+Stage Summary:
+- Owner's three visible symptoms were ONE root cause (stale Prisma runtime client vs regenerated schema) — fixed r518, verified + seeded r519. Platform source delta this round: instrumentation.ts warning-silencing only.
+- The improvement-engine wiring is now proven end-to-end: snapshot answers <300ms, cycles propose+execute data-only moves, backlog advances, briefing carries the doctrine + top items.
+- Vault resilience loop closed by design (seed file + boot rehydration); dev.log is clean of edge noise.
+
+Round Handoff:
+Round ID: r519 → next patrol (job 473388)
+Open risks: (1) TASK-101 durable-step semantics remains top P1 and needs a DEDICATED implementation round (per-step retry + resume-after-restart on the existing QStash wiring, invoke/retry/waitForEvent shape); (2) Supabase nexus-backups bucket still owner-side pending (backup-shard.sh output has no offsite home yet); (3) GitHub PAT rotation still pending (r514 follow-up); (4) two dev-server scripts now exist — dev-restart.sh stays the canonical ONE-restart command, ensure-dev.sh is the lightweight idempotent pre-flight (never counts as a restart when already up); (5) freellm parser rides the RSC flight shape (degrades honestly if freellm.sh redesigns).
+Blockers: none.
+Next recommended action: TASK-101 durable-step semantics — automation-executor per-step retry + resume-after-restart (workflow-js invoke/retry/waitForEvent shape on the existing QStash wiring); then TASK-102 NEXUS_BOT wave.

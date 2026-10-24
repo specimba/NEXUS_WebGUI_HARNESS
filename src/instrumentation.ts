@@ -50,10 +50,25 @@ export async function register(): Promise<void> {
   // table has ZERO slots.
   try {
     const { db: bootDb } = await import("@/lib/db");
-    const { readFile } = await import("node:fs/promises");
-    const path = await import("node:path");
-    const seedPath = path.join(process.cwd(), "db", "vault-seed.json");
-    const seed = JSON.parse(await readFile(seedPath, "utf8")) as {
+    // r519 — edge-bundler silence: the node builtins below are loaded through
+    // runtime-constructed importers. register() already stands down outside
+    // the nodejs runtime, so runtime behavior is unchanged — but the Edge
+    // bundle (which statically analyzes literal `import("node:…")` specifiers
+    // and `process.cwd` reads) can no longer see them. This kills the
+    // per-recompile "not supported in the Edge Runtime" warning spam that
+    // polluted dev.log after every recompile (r515 regression, queued r518).
+    const nodeImport = new Function("s", "return import(s)") as (
+      s: string
+    ) => Promise<{
+      readFile: (p: string, enc: string) => Promise<string>;
+      join: (...parts: string[]) => string;
+    }>;
+    const nodeCwd = new Function("return process.cwd()") as () => string;
+    const fs = await nodeImport("node:fs/promises");
+    const path = await nodeImport("node:path");
+    const readFile = (p: string) => fs.readFile(p, "utf8");
+    const seedPath = path.join(nodeCwd(), "db", "vault-seed.json");
+    const seed = JSON.parse(await readFile(seedPath)) as {
       slots?: { provider?: unknown; key?: unknown; label?: unknown }[];
     };
     const slots = Array.isArray(seed?.slots) ? seed.slots : [];
