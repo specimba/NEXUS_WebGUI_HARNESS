@@ -400,6 +400,35 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
   }
 }
 
+// ─── TASK-101 (r520): per-step retry — the workflow-js `retry(failedStep)` shape ───
+// A transient lane death (429 storm tail, one silent hang, a 5xx blip) used
+// to kill the whole multi-step run: step N failed → run error → the schedule
+// waited a full interval to try again. One bounded re-attempt after a short
+// backoff recovers exactly the transient class. Billing failures are EXEMPT —
+// a drained wallet does not heal in 2.5s (the r333 quarantine owns that
+// path), and re-dialing a corpse is the exact anti-pattern the rotation
+// memories exist to prevent. The attempt trail lands in the step output so
+// the run drawer shows the recovery honestly (no silent masking).
+const STEP_RETRY_BACKOFF_MS = 2_500;
+const BILLING_FAILURE_RE = /dial 402|please recharge|insufficient/i;
+
+async function dialStepWithRetry(
+  dial: ResolvedDial,
+  prompt: string,
+): Promise<{ text: string; firstFailure: string | null }> {
+  try {
+    return { text: await dialStep(dial, prompt), firstFailure: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (BILLING_FAILURE_RE.test(message)) throw err;
+    await new Promise((resolve) => setTimeout(resolve, STEP_RETRY_BACKOFF_MS));
+    // One honest re-throw if the lane is truly dead — the run still fails
+    // with the SECOND failure's message (the freshest lane evidence).
+    const text = await dialStep(dial, prompt);
+    return { text, firstFailure: message };
+  }
+}
+
 /** Execute one claimed workflow end-to-end with honest run bookkeeping. */
 export async function executeWorkflow(
   wf: { id: string; name: string; task: string; stepsJson: string; intervalMs: number },
@@ -433,7 +462,12 @@ export async function executeWorkflow(
       const step = steps[i];
       const t0 = Date.now();
       try {
-        const output = await dialStep(dial, step.prompt || step.label);
+        const { text, firstFailure } = await dialStepWithRetry(dial, step.prompt || step.label);
+        // TASK-101: a recovered step is still a succeeded step (ok:true — the
+        // stats stay honest), but the drawer sees the save explicitly.
+        const output = firstFailure
+          ? `[recovered on attempt 2 — attempt 1 failed: ${firstFailure.slice(0, 160)}]\n\n${text}`
+          : text;
         outputs.push({ label: step.label, output, ms: Date.now() - t0, ok: true });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

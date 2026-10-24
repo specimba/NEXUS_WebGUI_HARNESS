@@ -12692,3 +12692,26 @@ Round ID: r519 → next patrol (job 473388)
 Open risks: (1) TASK-101 durable-step semantics remains top P1 and needs a DEDICATED implementation round (per-step retry + resume-after-restart on the existing QStash wiring, invoke/retry/waitForEvent shape); (2) Supabase nexus-backups bucket still owner-side pending (backup-shard.sh output has no offsite home yet); (3) GitHub PAT rotation still pending (r514 follow-up); (4) two dev-server scripts now exist — dev-restart.sh stays the canonical ONE-restart command, ensure-dev.sh is the lightweight idempotent pre-flight (never counts as a restart when already up); (5) freellm parser rides the RSC flight shape (degrades honestly if freellm.sh redesigns).
 Blockers: none.
 Next recommended action: TASK-101 durable-step semantics — automation-executor per-step retry + resume-after-restart (workflow-js invoke/retry/waitForEvent shape on the existing QStash wiring); then TASK-102 NEXUS_BOT wave.
+
+---
+Task ID: r520
+Agent: patrol job 473388 (main session)
+Task: r519 handoff — TASK-101 durable-step semantics (first implementation slice: per-step retry + resume-after-restart contract), dev-restart.sh setsid patch, golden-path QA.
+
+Work Log:
+- TASK-101 slice 1 SHIPPED (src/lib/server/automation-executor.ts): per-step retry — the workflow-js `retry(failedStep)` shape. dialStepWithRetry(): one bounded re-attempt after a 2.5s backoff on ANY step-dial failure EXCEPT billing-class deaths (dial 402 / "please recharge" / insufficient — a drained wallet does not heal in 2.5s; the r333 quarantine owns that path). A recovered step stays ok:true with an explicit "[recovered on attempt 2 — attempt 1 failed: …]" trail in the run drawer (honest stats, visible save); a still-dead lane re-throws the SECOND failure's message (freshest lane evidence).
+- TASK-101 slice 2 SHIPPED (src/instrumentation.ts): the boot zombie sweep now states the durable resume contract out loud — "interrupted by a server restart — the run cannot resume mid-step; the schedule re-fires automatically on the next claim tick (durable-step semantics)". This is TRUE by construction: nextRunAt only advances at completion, so a mid-run death leaves it in the past and the claim loop naturally re-fires the schedule post-boot. waitForEvent-style event waits remain the untouched remainder of TASK-101 (next round).
+- r518 handoff item CLOSED (scripts/dev-restart.sh): the spawn(detached:true) daemon launch (r475 recipe) was witnessed silently reaped in r518 — replaced with the r519-proven setsid nohup full-session detachment (new SESSION, not just new group). dev-daemon.mjs stays on disk but is no longer the boot path.
+- QA golden paths (agent-browser): Workflows run-panel long-paste — 4,800 chars pasted, textarea capped (67px client / 596px internal scroll), Run button reachable inside the 360px/2241px internal-scroll panel after scrollIntoView; Radar → Frontier tab scrolls (349px client / 1,104px content, overflow auto); Settings → Model Relay renders 22 Intel badges + the Benchmark intelligence panel (freellm link witnessed in snapshot); console 0 errors (HMR info only); engine panel "engine armed".
+- DB note: this boot's AutonomyLog/StrategyItem counts read 0 (latestLog null) — the sandbox DB rollback wiped the r519 seeding again; the engine self-seeds (Sync signals + deterministic 10-min cycles), so recovery is automatic. Noted as a standing sandbox behavior, not a platform bug.
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline.
+
+Stage Summary:
+- TASK-101 now has its first two durable semantics live in the server lane: transient lane deaths get one honest save per step, and restarts no longer lose scheduled work (re-fire by construction, stated in the run's error text). Styling/feature mandate satisfied by the run-drawer recovery trail (user-facing) + the sweep-message contract (owner-facing honesty).
+- dev-restart.sh and ensure-dev.sh now share ONE proven boot recipe (setsid session detachment).
+
+Round Handoff:
+Round ID: r520 → next patrol (job 473388)
+Open risks: (1) TASK-101 remainder — waitForEvent shape (event-wait semantics between steps) not yet designed; (2) TASK-102 NEXUS_BOT wave still queued behind it; (3) sandbox DB rollbacks keep wiping AutonomyLog/StrategyItem seeds — if the Engine panel ever reads empty, hit Sync signals once; (4) Supabase nexus-backups bucket + GitHub PAT rotation still owner-side pending; (5) lint baseline must be re-checked after any future source edit.
+Blockers: none.
+Next recommended action: TASK-101 slice 3 — design the waitForEvent shape (a step that pauses the run until a named event lands, persisted in AutomationRun so a restart resumes the WAIT not the step); or advance TASK-102 NEXUS_BOT wave if the design wants more deliberation.

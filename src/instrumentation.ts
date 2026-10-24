@@ -24,7 +24,13 @@ export async function register(): Promise<void> {
       where: { status: "running" },
       data: {
         status: "error",
-        error: "interrupted by a server restart — the run cannot resume",
+        // TASK-101 (r520): the durable-step resume contract. A mid-run death
+        // cannot resume the interrupted step in-process, but the WORK is not
+        // lost: nextRunAt only advances at completion, so it is still in the
+        // past — the claim loop naturally re-fires the schedule on the next
+        // tick after boot. The error text now says that out loud.
+        error:
+          "interrupted by a server restart — the run cannot resume mid-step; the schedule re-fires automatically on the next claim tick (durable-step semantics)",
         finishedAt: new Date(),
       },
     });

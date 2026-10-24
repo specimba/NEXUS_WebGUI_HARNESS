@@ -20,8 +20,14 @@ pkill -f "next dev" 2>/dev/null || true
 pkill -f "next-server" 2>/dev/null || true
 sleep 1
 
-# 2) Boot via the detached daemonizer (survives tool-call boundaries).
-node scripts/dev-daemon.mjs
+# 2) Boot fully session-detached. r518 witnessed the spawn(detached:true)
+#    daemon tree getting silently reaped between tool calls (clean log, no
+#    OOM); the r519 ensure-dev.sh `setsid nohup` relaunch survived every
+#    boundary across a whole round — new SESSION (not just new group) is the
+#    difference. Delegating the launch to the same proven recipe keeps ONE
+#    canonical boot path.
+setsid nohup bash -c 'exec next dev -p 3000 2>&1 | tee dev.log' </dev/null >/dev/null 2>&1 &
+disown || true
 
 # 3) Poll to 200. Warm boot ~10-25s (.next intact); cold compile up to ~40s.
 for i in $(seq 1 16); do
