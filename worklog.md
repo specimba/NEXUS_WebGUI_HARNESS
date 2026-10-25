@@ -12786,3 +12786,29 @@ Round ID: r523 -> next patrol (job 473388)
 Open risks: (1) TASK-102 NEXUS_BOT wave is now the top P1 (AES vault + redaction choke per docs/strategy/TASKS.md). (2) drawer Copy-report UI check stays conditional — needs a server-run card to exercise (fire one run or wait for engine cycles). (3) Vault still EMPTY (r521 rollback) — owner re-entry + scripts/seedwrite.ts. (4) Supabase nexus-backups bucket + GitHub PAT rotation remain owner-side. (5) the sync route still overwrites stepsJson from client pushes — DB-authored waitFor survives only until that workflow's next tab sync (documented r521 limitation, still open).
 Blockers: none.
 Next recommended action: r524 — TASK-102 NEXUS_BOT wave slice 1 (read the TASK-102 spec in docs/strategy/TASKS.md first; land the smallest honest slice: NEXUS_BOT provider entry + adapter lane, no theatre), then QA golden paths, gates, ship.
+
+---
+Task ID: r524
+Agent: patrol job 473388 (main session)
+Task: r523 handoff — TASK-102 NEXUS_BOT adaptation wave slice 1 (single redaction choke point), QA golden paths first, gates, ship.
+
+Work Log:
+- SUPERVISOR alive again across the 30-min boundary (server 200) — two-layer defense holding for the third consecutive patrol.
+- QA golden paths FIRST: 9/9, console 0 errors (Settings -> Model Relay + Intel ladder, Radar -> Frontier scroll, Workflows 6000-char paste, Run control). Nothing broken -> advanced the P1 backlog.
+- TASK-102 SLICE 1 SHIPPED — the single redaction choke (src/lib/server/redaction.ts):
+  - Honest port note: the NEXUS_BOT tar (upload/NEXUSbot2210v3.tar) holds NO redaction module — its src/lib/guard.ts is a rate limiter; its ops/secrets.required.yaml supplied the doctrine instead ("owner-enters-locally-agents-see-names-only", mask: last4). Implemented fresh against the TASKS.md acceptance.
+  - redactDialBody(body, extraSecrets): deep-walks a dial body clone and masks every string — 8 pattern classes (sk-ant/sk-, ghp_ PATs, AIza, gsk_, xai-, JWT, Bearer literals) PLUS exact-match vault values passed by the dial site; mask shape [REDACTED:<class>:...last4]; in-memory redactionStats() telemetry exported.
+  - WIRED at all 3 server-lane LLM dial bodies: automation-executor no-key lane, automation-executor keyed lane (dial.key passed as exact-secret — auth header stays real, body can never leak the vault key even when a prompt quotes it), autonomy.ts enrichRationale lane. Relay-core/client-lane wiring is the documented next slice.
+- VERIFY: scripts/qa-redaction.ts (persisted, dial-free) — ALL 9 CHECKS PASSED (clone safety, vault exact-value masked with last4, openai/jwt/ghp classes, system prompt untouched, telemetry counts).
+- TASKS.md mirror updated (NEXUS_BOT entry now carries the slice-1 state + honest tar finding).
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline. Post-edit golden QA re-run: 9/9, console 0 errors.
+
+Stage Summary:
+- Every server-lane outbound LLM dial now passes through ONE redaction choke: pattern classes catch unregistered keys, exact-match catches the operator's real vault keys. The NEXUS_BOT wave's most safety-critical invariant is live and unit-proven; relay/radar wiring + AES-256-GCM vault port remain.
+- Round mandate note: this slice is owner-facing platform safety, not UI — the redactionStats() telemetry export is the hook for a future Engine-panel surface (user-visible polish deferred to r525 alongside relay wiring).
+
+Round Handoff:
+Round ID: r524 -> next patrol (job 473388)
+Open risks: (1) TASK-102 remainder — redactDialBody not yet in front of relay-core/client-lane dials (acceptance wants relay + engine + radar covered); AES-256-GCM vault port untouched; Anthropic-dialect + Exa/BrightData lanes untouched. (2) redactionStats() has no UI surface yet. (3) Vault still EMPTY (r521 rollback) — owner re-entry + scripts/seedwrite.ts. (4) Supabase bucket + PAT rotate owner-side. (5) r521 stepsJson sync-overwrite limitation still open.
+Blockers: none.
+Next recommended action: r525 — TASK-102 slice 2: wire redactDialBody into the relay-lane dial path (find the client-chain server dial; relay-core builds chains, the dial lives elsewhere — locate via "chat/completions" in src/lib), surface redactionStats() on the Engine panel (small user-visible win), then radar lane if budget allows.

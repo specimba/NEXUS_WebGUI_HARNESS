@@ -6,6 +6,7 @@ import {
   providerBillingDeadLeftMs,
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
+import { redactDialBody } from "@/lib/server/redaction";
 import {
   advanceStrategyItem,
   appendDigestEntries,
@@ -222,22 +223,24 @@ async function enrichRationale(title: string, rationale: string): Promise<{ text
     const res = await egressRelayDial(`${lane.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        model: lane.model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You tighten rationales for an automation engine. Reply with ONE sentence, max 180 characters, concrete, no filler, no quotes.",
-          },
-          {
-            role: "user",
-            content: `Move: ${title}\nDeterministic rationale: ${rationale}\nReply with the improved sentence only.`,
-          },
-        ],
-        max_tokens: 90,
-        temperature: 0.4,
-      }),
+      body: JSON.stringify(
+        redactDialBody({
+          model: lane.model,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You tighten rationales for an automation engine. Reply with ONE sentence, max 180 characters, concrete, no filler, no quotes.",
+            },
+            {
+              role: "user",
+              content: `Move: ${title}\nDeterministic rationale: ${rationale}\nReply with the improved sentence only.`,
+            },
+          ],
+          max_tokens: 90,
+          temperature: 0.4,
+        }),
+      ),
       signal: ac.signal,
     });
     if (!res.ok) {

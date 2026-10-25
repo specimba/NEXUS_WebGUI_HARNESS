@@ -41,6 +41,7 @@ import {
   resetProvider429,
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
+import { redactDialBody } from "@/lib/server/redaction";
 
 export const CLAIM_INTERVAL_MS = 15_000;
 export const HEARTBEAT_STALE_MS = 120_000;
@@ -244,19 +245,21 @@ async function dialNoKeyFallback(
       const res = await egressRelayDial(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are executing one step of a scheduled automation pipeline. Answer the step prompt directly and concisely.",
-            },
-            { role: "user", content: prompt },
-          ],
-          max_tokens: 2000,
-          temperature: 0.7,
-        }),
+        body: JSON.stringify(
+          redactDialBody({
+            model,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are executing one step of a scheduled automation pipeline. Answer the step prompt directly and concisely.",
+              },
+              { role: "user", content: prompt },
+            ],
+            max_tokens: 2000,
+            temperature: 0.7,
+          }),
+        ),
         signal: ac.signal,
       });
       if (!res.ok) {
@@ -313,19 +316,27 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
         "content-type": "application/json",
         authorization: `Bearer ${dial.key}`,
       },
-      body: JSON.stringify({
-        model: dial.model,
-        messages: [
+      body: JSON.stringify(
+        redactDialBody(
           {
-            role: "system",
-            content:
-              "You are executing one step of a scheduled automation pipeline. Answer the step prompt directly and concisely.",
+            model: dial.model,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are executing one step of a scheduled automation pipeline. Answer the step prompt directly and concisely.",
+              },
+              { role: "user", content: prompt },
+            ],
+            max_tokens: 2000,
+            temperature: 0.7,
           },
-          { role: "user", content: prompt },
-        ],
-        max_tokens: 2000,
-        temperature: 0.7,
-      }),
+          // the vault key rides the AUTH HEADER (untouched — the provider needs
+          // it); passing it here guarantees it can never leak through the BODY
+          // either, even when a workflow prompt quotes it by accident.
+          dial.key ? [dial.key] : [],
+        ),
+      ),
       signal: ac.signal,
     });
   } catch (err) {
