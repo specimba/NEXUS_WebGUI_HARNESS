@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DeepLinkShare } from "@/components/nexus/settings/deep-link-share";
 import { FREE_PROVIDERS, isChatProvider, providerById } from "@/lib/providers";
+import { ACQUISITION_PROVIDERS } from "@/lib/acquisition-registry";
 import { fmtSlotAge, pickExecutorSlot } from "@/lib/automation-lane";
 import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -650,37 +651,71 @@ export function AutomationVaultCard() {
               ))}
             </select>
             {providerById(laneProvider)?.lane === "acquisition" ? (
-              <>
-                {(() => {
-                  const lane = acqLanes.find((a) => a.provider === laneProvider);
-                  if (!lane) return null;
-                  const chip =
-                    lane.source === "vault"
-                      ? { text: "Live: serving from your vault slot", cls: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" }
-                      : lane.source === "env"
-                        ? { text: `Live: serving from ${lane.envFallback} (machine env)`, cls: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" }
-                        : { text: "Live: unconfigured — the lane stays silent", cls: "text-muted-foreground", dot: "bg-muted-foreground/40" };
-                  return (
-                    <p
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium"
-                      data-testid={`acq-source-${lane.provider}`}
-                    >
-                      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />
-                      <span className={chip.cls}>{chip.text}</span>
-                    </p>
-                  );
-                })()}
-                <p className="text-[11px] leading-snug text-amber-500/90">
-                  Acquisition lane — this key powers Radar Frontier&apos;s Exa
-                  search (picked up on the next Frontier refresh). Resolution
-                  order: this vault slot first, then the machine&apos;s{" "}
-                  <code className="font-mono text-[10px]">EXA_API_KEY</code> env
-                  fallback; with neither, the lane stays silent. The executor
-                  never dials it as an LLM step, so it can&apos;t win the dial-slot
-                  marker below.
-                </p>
-              </>
+              <p className="text-[11px] leading-snug text-amber-500/90">
+                Acquisition lane — this key powers Radar Frontier&apos;s Exa
+                search (picked up on the next Frontier refresh). Resolution
+                order: this vault slot first, then the machine&apos;s{" "}
+                <code className="font-mono text-[10px]">EXA_API_KEY</code> env
+                fallback; with neither, the lane stays silent. The executor
+                never dials it as an LLM step, so it can&apos;t win the dial-slot
+                marker below.
+              </p>
             ) : null}
+            <div className="flex w-full flex-wrap items-center gap-1.5" data-testid="acq-fleet">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Acquisition lanes
+              </span>
+              {ACQUISITION_PROVIDERS.map((p) => {
+                // r552: the always-on fleet readout — one honest pill per
+                // registry row, resolved through the same guard data the
+                // frontier dials use. Dormant rows declare themselves instead
+                // of pretending to be configurable.
+                const source = acqLanes.find((a) => a.provider === p.id)?.source ?? null;
+                const text =
+                  p.status === "dormant" && source === null
+                    ? "awaiting token — dormant"
+                    : p.status === "dormant"
+                      ? "key stored — dial pending"
+                      : source === "vault"
+                        ? "vault slot"
+                        : source === "env"
+                          ? `env fallback (${p.envFallback})`
+                          : "unconfigured — silent";
+                const dot =
+                  p.status === "dormant" && source === null
+                    ? "h-1.5 w-1.5 rounded-full border border-muted-foreground/50"
+                    : p.status === "dormant"
+                      ? "h-1.5 w-1.5 rounded-full bg-sky-500"
+                      : source === "vault"
+                        ? "h-1.5 w-1.5 rounded-full bg-emerald-500"
+                        : source === "env"
+                          ? "h-1.5 w-1.5 rounded-full bg-amber-500"
+                          : "h-1.5 w-1.5 rounded-full bg-muted-foreground/40";
+                const tone =
+                  p.status === "dormant" && source === null
+                    ? "text-muted-foreground"
+                    : p.status === "dormant"
+                      ? "text-sky-600 dark:text-sky-400"
+                      : source === "vault"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : source === "env"
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-muted-foreground";
+                return (
+                  <span
+                    key={p.id}
+                    data-testid={`acq-fleet-${p.id}`}
+                    title={p.blurb}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium"
+                  >
+                    <span aria-hidden className={dot} />
+                    <span className={tone}>
+                      {p.label} · {text}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
             <Input
               type="password"
               value={laneKey}

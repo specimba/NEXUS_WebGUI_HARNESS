@@ -26,6 +26,11 @@ export interface AcquisitionProviderInfo {
   envFallback: string;
   /** Default API base the acquisition dialect dials. */
   dialBase: string;
+  /** "live" = a dial dialect exists and a lane dials it today (the frontier
+   *  route probes it); "dormant" = registry ground truth only — the key can
+   *  already be stored/resolved through the guard, but the dial dialect ships
+   *  in a later wave. Honest vocabulary for the fleet readout. */
+  status: "live" | "dormant";
   /** One-line user-facing description (vault card + docs share this). */
   blurb: string;
 }
@@ -36,8 +41,27 @@ export const ACQUISITION_PROVIDERS: readonly AcquisitionProviderInfo[] = [
     label: "Exa",
     envFallback: "EXA_API_KEY",
     dialBase: "https://api.exa.ai",
+    status: "live",
     blurb:
       "Neural web-search acquisition — powers Radar Frontier's /search lane (picked up on the next Frontier refresh).",
+  },
+  {
+    id: "brightdata",
+    label: "Bright Data",
+    envFallback: "BRIGHTDATA_TOKEN",
+    dialBase: "https://api.brightdata.com",
+    status: "dormant",
+    blurb:
+      "Web-unlocker acquisition (SERP / web unlock) — awaiting a token; the unlocker dial dialect ships in a later wave.",
+  },
+  {
+    id: "webshare",
+    label: "Webshare",
+    envFallback: "WEBSHARE_TOKEN",
+    dialBase: "https://proxy.webshare.io",
+    status: "dormant",
+    blurb:
+      "Residential proxy pool (the pool tier) — awaiting a token; rotation wiring ships with the pool dialect.",
   },
 ] as const;
 

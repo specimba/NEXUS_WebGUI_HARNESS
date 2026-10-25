@@ -35,6 +35,16 @@ async function main() {
   check("registry entry carries env fallback name", acquisitionById("exa")?.envFallback === "EXA_API_KEY");
   check("registry dial base is the Exa production endpoint", acquisitionById("exa")?.dialBase === "https://api.exa.ai");
   check("unknown id resolves to null info", acquisitionById("nope") === null);
+  check(
+    "registry carries the two dormant rows (brightdata + webshare)",
+    ACQUISITION_PROVIDERS.length === 3 && isAcquisitionProvider("brightdata") && isAcquisitionProvider("webshare"),
+  );
+  check(
+    "dormant rows declare honest envFallback names",
+    acquisitionById("brightdata")?.status === "dormant" && acquisitionById("brightdata")?.envFallback === "BRIGHTDATA_TOKEN" &&
+      acquisitionById("webshare")?.status === "dormant" && acquisitionById("webshare")?.envFallback === "WEBSHARE_TOKEN",
+  );
+  check("exa is the only live row", ACQUISITION_PROVIDERS.filter((p) => p.status === "live").length === 1);
 
   console.log("── acquisitionKeyFromSources (the ONE ordering) ──");
   const vault = [
@@ -85,6 +95,11 @@ async function main() {
   check("fully unconfigured → null", r4 === null);
   const r5 = await resolveAcquisitionSlot("openai", { envKey: "sk-env" });
   check("non-acquisition provider refused", r5 === null);
+  const r6 = await resolveAcquisitionSlot("brightdata", { envKey: "bd-token" });
+  check(
+    "dormant provider still resolves through the guard (dial absence is a route concern)",
+    r6?.source === "env" && r6?.key === "bd-token",
+  );
 
   console.log("── probeSlotDial (the guarded dial) ──");
   let dialCalls = 0;

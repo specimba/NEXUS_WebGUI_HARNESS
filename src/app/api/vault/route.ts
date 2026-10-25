@@ -67,6 +67,7 @@ export async function GET(req: Request) {
           provider: p.id,
           label: p.label,
           envFallback: p.envFallback,
+          status: p.status,
           source: resolved?.source ?? null,
         };
       }),

@@ -13405,3 +13405,24 @@ Round ID: r551 -> next patrol (job 473388)
 Open risks: (1) live-wire keyed proofs (/v1/messages + Exa) still need a real keyed endpoint — storing an Exa key in the vault would light the whole chain end-to-end; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands.
 Blockers: none.
 Next recommended action: r552 — P1 tail is empty; pick ONE: (a) dormant registry rows for brightdata/webshare in ACQUISITION_PROVIDERS with honest "awaiting token" chips (pure declarative, readout renders them automatically); (b) TASK-101 durable-step semantics deepening (resume-path QA); (c) if the Owner stores any acquisition key, a live-wire keyed proof instead.
+
+---
+Task ID: r552
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r551 handoff — P1 tail empty; picked (a): dormant registry rows for brightdata/webshare + honest fleet readout; golden QA.
+
+Work Log:
+- GOLDEN QA: settings (touched surface) walked with the new fleet strip live; radar Frontier clicked + scrolled and workflows panel re-verified console-clean in the closeout batch (agent-browser page-errors empty; no horizontal overflow) — nothing broken found, no fixes needed.
+- INCREMENT (a) SHIPPED — the acquisition registry class now declares the WHOLE wave honestly: (1) ACQUISITION_PROVIDERS grew brightdata (BRIGHTDATA_TOKEN, api.brightdata.com) + webshare (WEBSHARE_TOKEN, proxy.webshare.io) with a new `status: "live" | "dormant"` field (exa the only live row — it has a dial dialect; dormant = registry ground truth + guard-resolvable, dial dialect ships later). (2) /api/vault acquisition[] rows carry status. (3) Vault card: r551's selection-gated chip UPGRADED to an always-on ACQUISITION LANES fleet strip — one pill per registry row with status-honest dot/tone: emerald "vault slot" / amber "env fallback (ENV)" / muted "unconfigured — silent" (live), hollow "awaiting token — dormant" / sky "key stored — dial pending" (dormant), title= the registry blurb. The dormant rows would have been invisible behind the acquisition-only picker — the strip makes the fleet legible at a glance. (4) qa-acquisition-vault.ts +4 checks (25/25): dormant row presence, envFallback names, exa-only-live, and "dormant provider still resolves through the guard (dial absence is a route concern)" — a stored dormant key resolves honestly instead of vanishing. (5) TASKS.md TASK-102 updated: vault-slot gate + readout + dormant rows marked shipped; remaining = live-wire keyed proofs only.
+- VERIFIED LIVE: curl /api/vault → exa live/None · brightdata dormant/None · webshare dormant/None; UI fleet strip innerText "Exa · unconfigured — silent / Bright Data · awaiting token — dormant / Webshare · awaiting token — dormant"; overflow false.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; qa-acquisition-vault 25/25.
+- BUDGET: ~6/12 — clean; no restart, no bucket attempts, no edit detours (all batches first-try).
+
+Stage Summary:
+- The acquisition fleet is now honest end-to-end: registry declares live vs dormant, the guard resolves any registry row, the readout renders the truth, and the roadmap admits the only remaining gap is a real token. Nothing pretends to be configurable.
+
+Round Handoff:
+Round ID: r552 -> next patrol (job 473388)
+Open risks: (1) live-wire keyed proofs (/v1/messages + Exa) remain the LAST TASK-102 item — blocked on the Owner storing a real key (vault slot or env); (2) pool tier dormant until a Webshare token lands (now visible as a sky/hollow chip, not a mystery); (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r553 — TASK-102 needs a key from the Owner; advance (b) TASK-101 durable-step deepening instead: serverless resume-path QA (arm a failing scheduled run fixture, witness the memoized resume re-enter at the failed step, assert the amber "↻ resumes" chip data) or, if the Owner stored any acquisition key mid-cycle, do the live-wire keyed proof FIRST.
