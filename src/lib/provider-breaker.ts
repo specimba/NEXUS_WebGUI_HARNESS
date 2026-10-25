@@ -142,6 +142,23 @@ export function breakerHistory(e: ProviderBreakerEntry | undefined): boolean {
   return !!e && (e.trips > 0 || e.streak >= BREAKER_STREAK_THRESHOLD);
 }
 
+/** r548: scoped heal for ONE provider — a freshly stored vault key must not
+ * inherit the old key's streak/quarantine memory. Drops only that provider's
+ * entry; every sibling keeps its own memory. (Scoped twin of
+ * resetProviderBreakers, paired with clearProviderLaneHealth in relay.ts.) */
+export function resetProviderBreaker(providerId: string): void {
+  if (!providerId) return;
+  try {
+    const m = loadBreakers();
+    if (m[providerId]) {
+      delete m[providerId];
+      saveBreakers(m);
+    }
+  } catch {
+    /* ignore — memory is best-effort */
+  }
+}
+
 /** Wipe the breaker memory (paired with the lane-health clear button). */
 export function resetProviderBreakers(): void {
   try {

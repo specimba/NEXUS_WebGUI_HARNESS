@@ -448,6 +448,27 @@ export function relayHealthSnapshot(): RelayHealth {
   return loadHealth();
 }
 
+/** r548: vault-realignment heal (browser half). A freshly stored key must not
+ * inherit the OLD key's dial memory — drop every lane-health entry for ONE
+ * provider (`${providerId}::...`) so the fresh credential re-enters every
+ * browser wire immediately. The browser-side mirror of the r335 server
+ * recheck: mirror heal = recheck (server) + scoped clear (browser). Returns
+ * the number of entries dropped (0 = nothing pinned, a safe no-op). */
+export function clearProviderLaneHealth(providerId: string): number {
+  if (!providerId) return 0;
+  const h = loadHealth();
+  const prefix = `${providerId}::`;
+  let dropped = 0;
+  for (const k of Object.keys(h)) {
+    if (k.startsWith(prefix)) {
+      delete h[k];
+      dropped++;
+    }
+  }
+  if (dropped > 0) saveHealth(h);
+  return dropped;
+}
+
 // ─── r188: the relay status wire — one parser for every consumer ─────────────
 // The server (agent-engine) classifies each rotation failure from the FULL
 // upstream error and labels the line with a verdict marker; clients used to

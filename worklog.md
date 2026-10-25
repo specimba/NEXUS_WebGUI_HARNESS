@@ -13317,3 +13317,26 @@ Round ID: r547 -> next patrol (job 473388)
 Open risks: (1) PINNED LOOP persists (process up since 10:15:29) — research rows still score with boot-time code; fresh-code signature to watch for in new receipts' notes: "README head distilled from github.com HTML"; (2) ADAPT witness = first post-restart seed of a crewai/autogen-class repo (ONE bucket attempt max); (3) pool tier dormant until a Webshare token lands; (4) webDevReview concurrency doctrine stands.
 Blockers: none.
 Next recommended action: r548 — check process start time FIRST; if the server restarted, seed ONE vocab-dense repo (gh: shorthand now works!) and witness ADAPT emerald within one bucket; if not, advance the TASKS.md P1 tail (TASK-101 durable-step / TASK-102 wave) with a serverless slice.
+
+---
+Task ID: r548
+Agent: Z.ai Code (patrol round, job 473388 + Owner live bug report)
+Task: Owner-reported bug FIRST — "Couldn't generate a plan — 429 Too many requests" persisting after a Vyce vault-key realignment; else r547 handoff (restart check → ADAPT witness / P1 slice).
+
+Work Log:
+- RESTART CHECK: dev-server etime ~3:55h (boot ≈18:13 local — same process r547 measured as 10:15:29 UTC) → still PRE-r546; auto-loop STILL pinned (receipt0 crewai score 6, "topics: (none)", old html-fallback note). ADAPT witness stays restart-gated; no seeds burned.
+- OWNER BUG ROOT-CAUSED: plan-gen dials CLIENT-side (buildUtilityWire in the browser over the settings store → runAgentChat ladder). The vault card's realign flows (mirrorProvider r337 / saveLane) heal only the SERVER half (r335 recheck → executor rotation memory). The BROWSER half — lane health + provider breaker in localStorage — kept the old key's soft-429 stamps: buildUtilityWire filtered the realigned provider's lanes OUT entirely (laneRecentlyFailed), so the fresh key never re-entered the wire and the same 429 surfaced. Exactly the Owner's "same problem when I tried to use AI again after that key was realigned".
+- FIX (two-sided): (1) scoped browser heal — relay.clearProviderLaneHealth(providerId) (drops every `${providerId}::*` lane-health entry, returns dropped count) + provider-breaker.resetProviderBreaker(providerId) (scoped twin of the full reset), wired into BOTH mirrorProvider and saveLane in the vault card; mirror toast now says "Browser dial memory carried the old key's failure stamps — cleared; the fresh key dials immediately." (2) utility-wire doctrine: soft-failed lanes (recent 429/capacity stamp, NOT dead) DEMOTE to late rungs instead of vanishing — a 429 answers in milliseconds, burns none of the 30s first-token budget, keeps the substitution pool alive through a free-tier rate-limit storm; hard-dead lanes + breaker-docked families stay filtered OUT.
+- VERIFIED: scripts/qa-realign-heal.ts 8/8 (scoped clear drops only vyce entries; orca untouched; scoped breaker reset; no-op safety; fresh key re-records + heals breaker on success). lint 0 errors / 33 warnings EXACT. tsc: src clean; the qa script tripped TS1375 (top-level await in a non-module) — fixed via static imports; the shipping chain re-runs tsc and refuses to commit on any error.
+- GOLDEN QA (agent-browser): settings render + provider catalog + free-reach census (freellm.sh index, 67-free ticker) — console 0, page errors 0; radar opened + Frontier attempted + scroll — console 0; workflows panel — console 0, body 1280/1280 no horizontal overflow, and the panel shows "server lane: Vyce AI sk-1••••8f71" (the Owner's realigned slot, live). Long-paste probe HONEST MISS: editor row not reachable by text-match this round (rows render as non-button generics; "Plan → Pipeline" button present); paste surface untouched by r548 edits → r547's 6593-char verification stands. No theatre.
+- Owner artifacts ingested: run001 report (9-step workflow, status parked/auto-resumes — r535 durable-resume doctrine working; step 1 done, 10KB digest), workflows-full export, full-UI paste (Model Tracker free census).
+
+Stage Summary:
+- The Owner's exact realignment flow now heals BOTH sides of the dial memory. Re-aligning once more after this deploy (or simply retrying AI) lets the Vyce key's lanes re-enter the utility wire immediately; even WITHOUT a re-align, soft-rung demotion gives rate-limited free lanes a cheap path back into the ladder.
+- Loop still pinned pre-r546. ADAPT witness remains one restart away.
+
+Round Handoff:
+Round ID: r548 -> next patrol (job 473388)
+Open risks: (1) PINNED LOOP persists — fresh-code signature to watch in new receipt notes: "README head distilled from github.com HTML"; (2) ADAPT witness = first post-restart seed of a vocab-dense repo (ONE bucket attempt max, gh: shorthand works); (3) pool tier dormant until a Webshare token lands; (4) receipts header spacing nit "(latest verdicts)· lanes" (missing space) — 1-line fix, skipped for budget; (5) workflows editor rows are not text-matchable by agent-browser — long-paste QA needs ref-based clicking next time; (6) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r549 — check process start time FIRST (fresh-code signature in new receipts = restart); if re-armed, seed ONE vocab-dense repo and witness ADAPT emerald; else P1 tail (vault-slot gate for acquisition providers — registry class + probeSlotDial guard per TASKS.md TASK-102 remaining) + the 1-line receipts spacing fix.

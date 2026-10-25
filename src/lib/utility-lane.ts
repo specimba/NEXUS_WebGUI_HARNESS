@@ -115,17 +115,30 @@ export function buildUtilityWire(settings: Settings): UtilityWire {
   const chain = buildRelayChain(settings, { taskFit: "decision" });
   const health = relayHealthSnapshot();
   const breaker = providerBreakerSnapshot();
-  const usable = chain.filter(
-    (h) =>
-      h.providerId === "auto" ||
-      (!hopBreakerDocked(h, breaker, health) && !laneRecentlyFailed(health[h.key]))
-  );
-  const keyed = usable.filter((h) => h.providerId !== "auto");
+  // r548: soft-failed lanes (a recent 429/capacity stamp) DEMOTE to late rungs
+  // instead of dropping — a soft lane answers in milliseconds (the 429 IS the
+  // answer), burns none of the 30s first-token budget, and keeps the
+  // substitution pool alive through a free-tier rate-limit storm. Hard-dead
+  // lanes and breaker-docked families stay filtered OUT (true corpses).
+  const keyed: RelayHop[] = [];
+  const softRungs: RelayHop[] = [];
+  for (const h of chain) {
+    if (h.providerId === "auto") continue;
+    if (hopBreakerDocked(h, breaker, health)) continue;
+    const he = health[h.key];
+    if (laneRecentlyFailed(he)) {
+      if (he?.soft && !he?.dead) softRungs.push(h);
+      continue;
+    }
+    keyed.push(h);
+  }
   const isFast = (h: RelayHop) => UTILITY_FAST_RE.test(`${h.model} ${h.note ?? ""}`);
   const fastFree = keyed.filter((h) => isFast(h) && hopIsFree(h));
   const fastPaid = keyed.filter((h) => isFast(h) && !hopIsFree(h));
   const rest = keyed.filter((h) => !isFast(h));
-  const ranked = [...fastFree, ...fastPaid, ...rest];
+  const softFast = softRungs.filter((h) => isFast(h));
+  const softRest = softRungs.filter((h) => !isFast(h));
+  const ranked = [...fastFree, ...fastPaid, ...rest, ...softFast, ...softRest];
 
   // Built-in engine primary: keep it (zero-config promise), fast keyed lanes
   // ride as substitutions — same "backup substitutions emerge" contract.

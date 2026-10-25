@@ -39,6 +39,8 @@ import { FREE_PROVIDERS, isChatProvider, providerById } from "@/lib/providers";
 import { fmtSlotAge, pickExecutorSlot } from "@/lib/automation-lane";
 import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
+import { clearProviderLaneHealth } from "@/lib/relay";
+import { resetProviderBreaker } from "@/lib/provider-breaker";
 
 interface VaultSlot {
   provider: string;
@@ -284,6 +286,11 @@ export function AutomationVaultCard() {
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setLaneKey("");
       await load();
+      // r548 realignment heal (browser half): the fresh key must not inherit
+      // the old key's lane-health/breaker stamps — clear THIS provider's
+      // browser dial memory so it re-enters every wire immediately.
+      clearProviderLaneHealth(laneProvider);
+      resetProviderBreaker(laneProvider);
       toast.success("Server-lane key stored — closed-tab runs can dial now.", {
         description: `${providerById(laneProvider)?.name ?? laneProvider} · local SQLite only, nothing leaves this machine.`,
       });
@@ -316,6 +323,13 @@ export function AutomationVaultCard() {
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       await load();
+      // r548: the mirror just replaced the credential — the BROWSER dial
+      // memory (lane health + provider breaker in localStorage) must not pin
+      // the old key's 429/fail stamps. Clear this provider's entries so the
+      // fresh key re-enters every browser wire immediately; the server half
+      // of the heal is the r335 recheck below.
+      const clearedBrowser = clearProviderLaneHealth(providerId);
+      resetProviderBreaker(providerId);
       // r341: the mirror just REPLACED the server slot's credential — but the
       // executor's server-process rotation map still skips this provider for
       // up to 6h after an old billing 403 (its memory heals only on a proven
@@ -342,6 +356,9 @@ export function AutomationVaultCard() {
         }
       } catch {
         /* cosmetic server-lane heal — the mirror itself already succeeded */
+      }
+      if (clearedBrowser > 0) {
+        healNote += " Browser dial memory carried the old key's failure stamps — cleared; the fresh key dials immediately.";
       }
       toast.success("Key mirrored to the server lane", {
         description: `${providerById(providerId)?.name ?? providerId} · closed-tab schedules can dial with it now. Local SQLite only, nothing leaves this machine.${healNote}`,
