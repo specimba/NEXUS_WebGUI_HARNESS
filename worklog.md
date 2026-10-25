@@ -12868,3 +12868,27 @@ Round ID: r526 -> next patrol (job 473388)
 Open risks: (1) db/vault-master.key is gitignored — a fresh clone booting an ENCRYPTED vault with no env key generates a NEW file key and cannot decrypt pre-existing ciphertext rows (the legacy plaintext path does not apply to them). Owner-side: back up db/vault-master.key beside db/vault-seed.json, or set NEXUS_VAULT_MASTER_KEY. (2) Vault still EMPTY (r521 rollback) — owner re-entry + scripts/seedwrite.ts (rehydration now encrypts at rest on write). (3) r521 stepsJson sync-overwrite limitation still open. (4) Supabase nexus-backups bucket + GitHub PAT rotate owner-side.
 Blockers: none.
 Next recommended action: r527 — update the TASKS.md NEXUS_BOT mirror for slices 1-3, then either the Anthropic-dialect lane slice (negotiation behind the same redaction choke) or scripts/seedwrite.ts so the vault can be re-populated end-to-end through the new encrypted write path.
+
+---
+Task ID: r527
+Agent: patrol job 473388 (main session)
+Task: r526 handoff — TASKS.md NEXUS_BOT mirror for slices 1-3 + seedwrite.ts as the owner re-entry path through the new encrypted write direction; QA golden paths first; gates; ship.
+
+Work Log:
+- SUPERVISOR alive across the boundary (server 200, pid 3571) — sixth consecutive patrol.
+- QA golden paths FIRST: 9/9, console 0 errors. Nothing broken -> advanced the handoff action.
+- HONEST FINDING: scripts/seedwrite.ts was an EXPORT-only tool (DB -> db/vault-seed.json plaintext). Under r526 the DB holds enc:v1: ciphertext, so running it as-is would have exported ciphertext into the seed file — a fresh clone (different machine key) could then never rehydrate. Upgraded to a TWO-WAY bridge:
+  - DEFAULT (export): DB -> seed file, DECRYPTED back to plaintext (r493 trust class preserved: localhost-only plaintext backup, gitignored); legacy plaintext rows pass through unchanged.
+  - --import: seed file -> DB, ENCRYPTED via src/lib/server/vault-crypto.ts — the owner re-entry path after the r521 rollback, also usable on a NON-empty vault (boot rehydration only fires on a zero-row table). Masked previews only; a full key is never printed.
+- VERIFY: scripts/qa-seedwrite.ts (persisted E2E, throwaway provider, self-cleaning) — 7/7 PASS: import exits 0 without printing the key, row lands as enc:v1: ciphertext (raw key absent from the DB row), export round-trips to the ORIGINAL plaintext.
+- USER-VISIBLE (round mandate): the vault card's empty state now shows the owner path inline — "Re-populate from the seed backup without a restart: bun scripts/seedwrite.ts --import" with inline code chips (export command included); TASKS.md NEXUS_BOT mirror updated with slices 1-3 state (r526 debt cleared).
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline. Post-edit golden QA re-run: 9/9, console 0 errors.
+
+Stage Summary:
+- The vault's operational loop is now complete and honest end-to-end: owner writes keys through --import (encrypted at rest) or the UI, the executor/consume/test-dial/recheck lanes decrypt server-side, the backup export decrypts for the operator, and the seed bridge keeps a plaintext localhost backup that re-encrypts on the way back in. TASK-102 remainder: Anthropic-dialect lanes + Exa/BrightData acquisition lanes only.
+
+Round Handoff:
+Round ID: r527 -> next patrol (job 473388)
+Open risks: (1) db/vault-master.key backup is owner-side (fresh clone + encrypted rows + new file key = undecryptable rows); seedwrite export is the plaintext backup that pairs with it. (2) Vault still EMPTY pending owner --import (path now proven E2E + surfaced in the card UI). (3) r521 stepsJson sync-overwrite limitation still open. (4) Supabase nexus-backups bucket + GitHub PAT rotate owner-side. (5) qa-seedwrite writes/deletes a throwaway row — safe to re-run anytime.
+Blockers: none.
+Next recommended action: r528 — TASK-102 slice 4: Anthropic-dialect lane support (smallest honest slice: a dialect adapter in src/lib that shapes Anthropic /v1/messages bodies behind the SAME redaction choke, gated on a vault slot whose provider pairs an Anthropic-style endpoint; verify dial-free with a body-shaping script), or — if the dialect design wants deliberation — TASK-100 token-lean request shaping (the last 9router slice).

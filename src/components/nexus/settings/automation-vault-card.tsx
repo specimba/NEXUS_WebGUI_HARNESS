@@ -811,6 +811,19 @@ export function AutomationVaultCard() {
               slots are skipped, so storing a new key promotes it without deleting old ones.
             </p>
           ) : null}
+          {!loading && !loadFailed && slots.length === 0 ? (
+            <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground/70">
+              Re-populate from the seed backup without a restart:{" "}
+              <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[9.5px]">
+                bun scripts/seedwrite.ts --import
+              </code>{" "}
+              (writes through the AES-256-GCM vault;{" "}
+              <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[9.5px]">
+                bun scripts/seedwrite.ts
+              </code>{" "}
+              exports the plaintext backup).
+            </p>
+          ) : null}
         </div>
 
         {loading ? (
