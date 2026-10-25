@@ -1195,7 +1195,7 @@ export function ServerAutopilot() {
                   <p className="text-[11px] font-medium text-muted-foreground">Research receipts (latest verdicts)</p>
                   <ul className="mt-1 space-y-1">
                     {autonomy.receipts!.map((r) => (
-                      <li key={r.id} className="flex items-center gap-1.5 text-xs" title={r.note ?? undefined}>
+                      <li key={r.id} className="flex items-center gap-1.5 rounded px-1 py-0.5 text-xs transition-colors hover:bg-muted/40" title={r.note ?? undefined}>
                         <span className={cn("shrink-0 rounded border px-1 py-px text-[10px] font-medium", verdictChip(r.verdict))}>
                           {r.verdict ?? "…"}
                         </span>

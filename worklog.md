@@ -13225,3 +13225,27 @@ Round ID: r543 -> next patrol (job 473388)
 Open risks: (1) auto-loop planner stays pre-r542 until a natural dev restart — new url drafts need manual POST {action:"cycle"} meanwhile (executions unaffected); (2) live-wire keyed proofs (Exa vault slot / PAT) still pending a real key — the frontier chip flip is the visible signal; (3) all verdicts so far are SKIP — seed a couple of REAL gh: repo rows to witness the ADAPT/WATCH chip colors live; (4) webDevReview concurrency doctrine stands (cross-check before reverting).
 Blockers: none.
 Next recommended action: r544 — seed 2-3 real gh: rows (e.g. active agent-framework repos) via the enqueue API to witness ADAPT/WATCH receipts in the new surface, then resume the P1 tail (TASKS.md; keyed proofs when a key lands).
+
+---
+Task ID: r544
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r543 handoff — seed real gh: repo rows to witness ADAPT/WATCH chip colors + the repo-label path live.
+
+Work Log:
+- HANDOFF EXECUTED: seeded 3 real agent-ecosystem repos via the production enqueue API (browser-use/browser-use, openai/openai-agents-python, SakanaAI/mass) → inserted:3. The engine researched ALL THREE within two cycles (11:45Z + 11:56Z buckets) — queue now 0q/6r/0f CUMULATIVE (3 url + 3 gh), 0 failed.
+- WATCH CHIP LIVE: receipts now show WATCH 7/10 browser-use, WATCH 6/10 openai-agents-python, WATCH 5/10 sakanaai/mass — the amber family first lit. COMPUTED-STYLE witness: WATCH chips render oklab(0.769 0.064 0.177 / 0.4) (amber hue, positive a*/b*) vs SKIP oklab(0.708 ~0 ~0 / 0.3) (zero chroma = neutral muted). Two distinct chip families verified in the live panel; console 0 errors.
+- REPO LABEL PATH first live exercise: gh rows render "owner/repo" labels (the r543 label ternary's repo branch was untested until now).
+- EXECUTION MECHANICS REFINED (of record): research moves can execute in the SAME bucket they are proposed (11:45Z cycle proposed 4 and executed browser-use in-pass) — r542's "propose → execute next bucket" described that round's prior-pool state, not a hard rule; the executor drains by rank with a 2/cycle cap.
+- ADAPT HONEST GAP: no receipt has scored ≥8 yet (rubric top band) — the ADAPT chip's code path is identical (same ternary family), but its color remains unexercised live; witnessing it needs a repo that strongly matches the scoring haystack.
+- STYLING POLISH: receipts rows gained rounded px-1 py-0.5 transition-colors hover:bg-muted/40 (hover affordance matching the tooltip-carrying rows).
+- Golden QA: settings 71 relay/provider matches, radar frontier surfaces, workflows 4680-char paste contained=true, chip-color eval clean, console 0 errors.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT.
+
+Stage Summary:
+- The receipts surface now demonstrates its full honest vocabulary in production: SKIP (muted) and WATCH (amber) witnessed computed-style with real repos; the research pipeline's witness chain is complete at every layer (API → DB → dev.log → UI → computed style). 6 real targets researched, 0 failures — the engine's first-party data lane is production-alive.
+
+Round Handoff:
+Round ID: r544 -> next patrol (job 473388)
+Open risks: (1) ADAPT chip color still unexercised (needs an ≥8/10 repo — seed a high-vocabulary-match repo to witness it); (2) auto-loop planner stays pre-r542 until a natural dev restart — new URL drafts need manual POST {action:"cycle"} (repo drafts unaffected — old planner always covered them); (3) live-wire keyed proofs pending a real key (frontier chip flip = signal); (4) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r545 — optionally witness ADAPT (seed one rubric-matching repo, e.g. a fresh harness/evals repo rich in the scoring vocabulary), then resume the P1 tail in docs/strategy/TASKS.md (TASK-101 durable-step semantics is accumulating advance receipts; keyed proofs when a key lands).
