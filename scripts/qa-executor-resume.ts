@@ -297,7 +297,9 @@ try {
     "contract: the join picks the workflow's LATEST schedule-trigger run, demands the memoized prefix, and stays SILENT (no chip) on a step-1 death",
   );
   const schedRowIdx = autopilotSrc.indexOf("data-testid={`schedule-resume-");
-  const schedRowRegion = schedRowIdx >= 0 ? autopilotSrc.slice(schedRowIdx, schedRowIdx + 400) : "";
+  // r558: the className grew (hover/focus polish) — widen the window so the
+  // interpolated template still lands inside it.
+  const schedRowRegion = schedRowIdx >= 0 ? autopilotSrc.slice(schedRowIdx, schedRowIdx + 700) : "";
   ok(
     schedRowRegion.includes("title={planTitle}") &&
       schedRowRegion.includes("at step ${plan.step}/${plan.total}") &&
@@ -324,6 +326,26 @@ try {
   ok(
     joinWire >= 1 && badgeWire >= 1,
     `contract: BOTH resume claims (schedule-row join + archive badge) demand the memoized prefix (join ${joinWire}, badge ${badgeWire})`,
+  );
+
+  // ── r558: one existence definition + chip-to-drawer affordance ──
+  const executorSrc = readFileSync(
+    new URL("../src/lib/server/automation-executor.ts", import.meta.url),
+    "utf8",
+  );
+  ok(
+    executorSrc.includes("hasMemoizedTrail(latest.stepsJson)"),
+    "contract: the executor's resume resolver gates existence through the SAME shared helper the UI renders through",
+  );
+  const chipIdx = autopilotSrc.indexOf("data-testid={`schedule-resume-");
+  // the <button tag sits just before the testid; the planTitle literal lives
+  // up in the map block (~750 chars up) — check it file-wide instead.
+  const chipRegion = chipIdx >= 0 ? autopilotSrc.slice(Math.max(0, chipIdx - 200), chipIdx + 420) : "";
+  ok(
+    chipRegion.includes("<button") &&
+      chipRegion.includes("setOpenRun(hit.runId)") &&
+      autopilotSrc.includes("click to open this run's trail"),
+    "contract: the schedule chip is a button that opens the run's drawer, and the title says so",
   );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);

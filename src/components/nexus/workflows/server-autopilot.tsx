@@ -552,11 +552,11 @@ export function ServerAutopilot() {
   // parsed plan onto armed schedule rows. Runs arrive newest-first (sync API
   // orderBy startedAt desc), so the FIRST schedule-trigger run per workflow
   // is the run resumableErroredRunId would pick up on the next fire — the
-  // executor's own LATEST-run rule. Map value null ⇒ resumable but
-  // unparseable shape (generic copy); absent key ⇒ NO resume claim at all —
-  // a step-1 death (no memoized prefix) gets honest silence, not a chip,
-  // because the executor runs FRESH there (resumableErroredRunId ⇒ null).
-  const resumeByWf = new Map<string, ResumePlan | null>();
+  // executor's own LATEST-run rule. Map value: { plan, runId } — plan null ⇒
+  // resumable but unparseable shape (generic copy); absent key ⇒ NO resume
+  // claim at all — a step-1 death (no memoized prefix) gets honest silence,
+  // not a chip, because the executor runs FRESH there.
+  const resumeByWf = new Map<string, { plan: ResumePlan | null; runId: string }>();
   for (const run of state?.runs ?? []) {
     if (run.trigger !== "schedule" || resumeByWf.has(run.workflowId)) continue;
     const resumable =
@@ -564,7 +564,10 @@ export function ServerAutopilot() {
       isResumableStepFailure(run.error) &&
       hasMemoizedTrail(run.stepsJson);
     if (!resumable) continue;
-    resumeByWf.set(run.workflowId, resumePlanFromError(run.error));
+    // r558: the chip is now a BUTTON — clicking opens that run's drawer
+    // (the same setOpenRun the archive rows use), so "see the plan" and
+    // "see the trail" are one click apart.
+    resumeByWf.set(run.workflowId, { plan: resumePlanFromError(run.error), runId: run.id });
   }
   // r137: lane-true countdowns. The DB registry's nextRunAt only advances
   // when the EXTERNAL scheduler claims a due run — while the tab drives
@@ -896,10 +899,13 @@ export function ServerAutopilot() {
             // schedules are armed. plan === null ⇒ resumable but the error
             // shape resisted parsing → the generic copy, exactly like the
             // drawer note's fallback.
-            const plan = resumeByWf.get(r.id);
-            const planTitle = plan
-              ? `Next scheduled fire re-enters at step ${plan.step}/${plan.total} ("${plan.label}") — the memoized prefix is not re-dialed`
-              : "Next scheduled fire resumes this run at its failed step (completed steps are memoized)";
+            const hit = resumeByWf.get(r.id);
+            const plan = hit?.plan ?? null;
+            const planTitle = (
+              plan
+                ? `Next scheduled fire re-enters at step ${plan.step}/${plan.total} ("${plan.label}") — the memoized prefix is not re-dialed`
+                : "Next scheduled fire resumes this run at its failed step (completed steps are memoized)"
+            ) + " — click to open this run's trail";
             return (
               <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                 <span className="font-medium">{r.name}</span>
@@ -908,15 +914,17 @@ export function ServerAutopilot() {
                   {fmtIn(localNextByWf.get(r.id) ?? r.nextRunAt)}
                   {r.failStreak > 0 ? ` · ⚠ ${r.failStreak} fail${r.failStreak === 1 ? "" : "s"}` : ""}
                 </span>
-                {plan !== undefined ? (
-                  <span
+                {hit ? (
+                  <button
+                    type="button"
                     data-testid={`schedule-resume-${r.id}`}
                     title={planTitle}
-                    className="inline-flex items-center rounded-md border border-amber-400/30 bg-amber-400/5 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-400"
+                    onClick={() => setOpenRun(hit.runId)}
+                    className="inline-flex items-center rounded-md border border-amber-400/30 bg-amber-400/5 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-400 transition-colors hover:border-amber-400/60 hover:bg-amber-400/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     ↻ next fire resumes
                     {plan ? ` at step ${plan.step}/${plan.total}` : " at the failed step"}
-                  </span>
+                  </button>
                 ) : null}
                 <Button
                   variant="outline"

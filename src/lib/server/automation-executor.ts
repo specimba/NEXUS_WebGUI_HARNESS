@@ -42,6 +42,7 @@ import {
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
 import { redactDialBody } from "@/lib/redaction";
+import { hasMemoizedTrail } from "@/lib/automation-lane";
 import {
   isAnthropicStyleEndpoint,
   anthropicDialectUrl,
@@ -606,14 +607,20 @@ export async function resumableErroredRunId(
     orderBy: { startedAt: "desc" },
   });
   if (!latest || latest.status !== "error") return null;
+  // r558: existence of a memoized prefix now has ONE definition — the
+  // shared helper the schedule-row chip and the archive badge render
+  // through (corrupt / empty / no-ok-row ⇒ fresh run, honest).
+  if (!hasMemoizedTrail(latest.stepsJson)) return null;
   let parsed: { label?: string; ok?: boolean }[] = [];
   try {
     const p = JSON.parse(latest.stepsJson) as unknown;
     if (Array.isArray(p)) parsed = p as { label?: string; ok?: boolean }[];
   } catch {
-    return null; // corrupt trail → fresh run (honest)
+    return null; // unreachable now (hasMemoizedTrail already refused) — kept for safety
   }
   const doneRows = parsed.filter((e) => e && e.ok && typeof e.label === "string");
+  // label-string narrowing for the prefix match below (hasMemoizedTrail only
+  // demands ok:true) — an ok:true trail with no labels restores nothing.
   if (doneRows.length === 0) return null;
   const matches = doneRows.every((row, idx) => steps[idx]?.label === row.label);
   return matches ? latest.id : null;

@@ -13542,3 +13542,27 @@ Round ID: r557 -> next patrol (job 473388)
 Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key (all sources null again post-cleanup); (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) client-side hasMemoizedTrail mirrors the executor's done-rows rule — label-match stays executor-side only (by design, but a drift surface to watch).
 Blockers: none.
 Next recommended action: r558 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect). Else candidates: (a) "Plan → Pipeline" editor deep-paste re-verification with role-dialog scoping (two rounds stale now); (b) point resumableErroredRunId's done-rows check at the SAME shared helper (hasMemoizedTrail) to collapse the client/server mirror into one definition (QA already imports both sides, so the contract test gets this near-free); (c) r556's deferred vault-cluster sub-card split (readability) if the Vault section grew again.
+
+---
+Task ID: r558
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r557 handoff — key check first (all acquisition sources null → no keyed proof, Owner-blocked); shipped candidate (b): the executor's resume resolver now gates existence through the SAME shared hasMemoizedTrail helper the UI renders through — plus a user-facing affordance: the schedule-row chip became a BUTTON that opens the run's drawer.
+
+Work Log:
+- KEY CHECK: /api/vault acquisition all null — keyed proofs stay Owner-blocked. Live trails unchanged (3 enabled workflows, all latest schedule-runs step-1 deaths, memoized=0) → honest silence held.
+- INCREMENT (b): resumableErroredRunId now refuses via `hasMemoizedTrail(latest.stepsJson)` before its own parse — one existence definition shared by chip, badge and executor (corrupt/empty/no-ok-row ⇒ fresh run). The label-string narrowing check stays executor-side (hasMemoizedTrail only demands ok:true; an ok:true trail without labels restores nothing) — behavior byte-identical, drift surface collapsed.
+- USER-FACING INCREMENT: the schedule-row resume chip is now a <button> — onClick opens that run's drawer via the SAME setOpenRun the archive rows use; title gains "— click to open this run's trail". Styling polish: hover border/bg lift (amber-400/60, amber-400/10) + focus-visible ring — the fleet-chip affordance language (r555), now on schedule rows too.
+- QA +2 (30/30): executor-side shared-helper wiring guard; chip-is-button/opens-drawer/title-says-so guard. Two guards initially failed on STALE REGION WINDOWS (className grew past the 400-char slice; `<button`/planTitle literal sit before/above the testid) — fixed the windows (700 forward; -200 back + file-wide literal), NOT the product code. Lesson: region guards need slack proportional to className growth.
+- TRIPLE LIVE WITNESS (witness run qa-r558-witness, r556/r557 discipline): (1) chip rendered "↻ next fire resumes at step 2/4"; (2) CLICKING THE CHIP expanded the run drawer (expanded=true) and the amber note rendered verbatim: "↻ Resumable — the next scheduled fire re-enters at step 2/4 (\"Synthesize\") — completed steps are memoized" — plan → trail in one click, first proven live; (3) DELETE cleanup → chips 0 (honest silence restored).
+- GOLDEN QA: workflows walked during the witness; radar Frontier role-tab ref click → body 1280/1280; #settings Model Relay/intel ladder renders (5 hits). Page-errors EMPTY; console error count 0. "Plan → Pipeline" deep-paste re-verification deferred AGAIN (3rd round stale — r549's 27,829-char closure still the deep verification; dialog untouched by r557/r558).
+- GATES: tsc 0 errors (re-run final); lint 0 errors / 33 warnings EXACT; qa-executor-resume 30/30; qa-acquisition-vault 27/27.
+- BUDGET: ~12/12 — the r557 compression lessons held: probe live data in round one, batch browser walks into single chained calls, fix QA windows not product code on guard failures.
+
+Stage Summary:
+- One existence definition now guards every resume claim in the system (chip, badge, executor), and the schedule chip became the affordance that closes the loop: see the plan where you arm the schedule → one click to the run's actual trail. The honesty chain r553→r558 is fully wired and QA-guarded at 30/30.
+
+Round Handoff:
+Round ID: r558 -> next patrol (job 473388)
+Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) deep-paste re-verification now 3 rounds stale (candidate a).
+Blockers: none.
+Next recommended action: r559 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row). Else candidates: (a) "Plan → Pipeline" editor deep-paste re-verification with role-dialog scoping — overdue, do it FIRST if no key lands; (b) TASK-101 tail: the drawer note's "(failStreak still counts)" parenthetical could surface the CURRENT failStreak number from the row it sits on (parsed vocabulary already loaded); (c) if the Vault section grew again, the r556 deferred acquisition-cluster sub-card split.
