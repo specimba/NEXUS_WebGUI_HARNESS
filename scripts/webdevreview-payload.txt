@@ -1,0 +1,8 @@
+NEXUS 15-min webDevReview — autonomous dev loop for /home/z/my-project (Next.js 16 App Router, bun, Prisma/SQLite, single-route + hash-nav).
+1) FIRST: read the LAST section of /home/z/my-project/worklog.md (Task ID, Stage Summary, Round Handoff) and follow its next recommended action. Break down this round's todos from it.
+2) Assess project status; run agent-browser QA on localhost:3000 golden paths (Settings -> Model Relay intel ladder, Radar -> Frontier tab scroll, Workflows -> run-panel long-paste; console must stay 0 errors). Prioritize fixes: build failures, runtime errors, test failures, broken QA paths FIRST.
+3) If stable, independently pick the best next increment: advance docs/strategy/TASKS.md P1 backlog or a well-scoped feature. [Mandatory every round] styling detail polish AND at least one user-facing improvement. Small verifiable increments, no theatre.
+4) GATES before commit: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors (33 warnings is the known baseline). Never ship on failed gates.
+5) APPEND (never overwrite) a section at the END of worklog.md: Task ID / Agent / Task / Work Log / Stage Summary + Round Handoff with next recommended action.
+6) Commit all changes and push BOTH remotes: origin AND fork.
+7) Dev server down: at most ONE restart via scripts/dev-restart.sh, then continue with serverless work. Early clean exit = success; do not overrun.
