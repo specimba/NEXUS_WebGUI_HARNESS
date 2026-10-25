@@ -3,6 +3,7 @@
 // guard's deps seam; env is pinned via deps.envKey. Mirrors the r548
 // qa-realign-heal pattern (static imports — TS1375-safe under bun).
 
+import { readFileSync } from "node:fs";
 import {
   ACQUISITION_PROVIDERS,
   acquisitionById,
@@ -115,6 +116,27 @@ async function main() {
   check(
     "configured: dial once with (key, source), result passes through",
     !p2.skipped && p2.result === "vault:sk-vault",
+  );
+
+  console.log("── user-facing copy honesty (source-level) ──");
+  // r556: the toasts must not out-promise the lane — a stored DORMANT token
+  // can't "dial now" (no dialect), and acquisition slots are never closed-tab
+  // LLM dials. Static-source checks on the vault card.
+  const cardSrc = readFileSync(
+    new URL("../src/components/nexus/settings/automation-vault-card.tsx", import.meta.url),
+    "utf8",
+  );
+  check(
+    "store-toast is lane-aware: dormant says 'stays dormant until its dial dialect ships', live acquisition never claims LLM dialing, chat keeps 'closed-tab runs can dial now'",
+    cardSrc.includes("stays dormant until its dial dialect ships") &&
+      cardSrc.includes("the executor never dials them as LLM steps") &&
+      cardSrc.includes("closed-tab runs can dial now"),
+  );
+  check(
+    "test-toast is lane-aware: dormant variant present, chat variant preserved",
+    cardSrc.includes("dial dialect is still dormant") &&
+      cardSrc.includes("the acquisition lane consumes it through the guard") &&
+      cardSrc.includes("closed-tab runs will dial with it"),
   );
 
   console.log(`\n${pass} passed, ${failures.length} failed`);

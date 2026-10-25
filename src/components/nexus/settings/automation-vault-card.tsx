@@ -312,9 +312,26 @@ export function AutomationVaultCard() {
       // browser dial memory so it re-enters every wire immediately.
       clearProviderLaneHealth(laneProvider);
       resetProviderBreaker(laneProvider);
-      toast.success("Server-lane key stored — closed-tab runs can dial now.", {
-        description: `${acquisitionById(laneProvider)?.label ?? providerById(laneProvider)?.name ?? laneProvider} · local SQLite only, nothing leaves this machine.`,
-      });
+      // r556: the toast must not out-promise the lane — a chat slot dials
+      // closed-tab runs; a live acquisition slot feeds the radar probe; a
+      // DORMANT acquisition slot is honest guard-resolved capacity only
+      // (no dial exists yet — "can dial now" would be a lie).
+      const acq = acquisitionById(laneProvider);
+      const laneName = acq?.label ?? providerById(laneProvider)?.name ?? laneProvider;
+      toast.success(
+        acq?.status === "dormant"
+          ? `Token stored — ${laneName}'s lane stays dormant until its dial dialect ships.`
+          : acq
+            ? "Acquisition key stored — the lane picks it up on its next probe."
+            : "Server-lane key stored — closed-tab runs can dial now.",
+        {
+          description: acq
+            ? acq.status === "dormant"
+              ? "The guard resolves it today (fleet chip: key stored — dial pending); the lane lights up the moment the dialect lands. Local SQLite only, nothing leaves this machine."
+              : "Acquisition lanes are data probes — the executor never dials them as LLM steps. Local SQLite only, nothing leaves this machine."
+            : "Local SQLite only, nothing leaves this machine.",
+        },
+      );
     } catch (e) {
       toast.error("Could not store the server-lane key", {
         description: e instanceof Error ? e.message : String(e),
@@ -466,8 +483,16 @@ export function AutomationVaultCard() {
         provider === "builtin"
           ? "Vault"
           : providerById(provider)?.name ?? PROVIDER_LABELS[provider] ?? provider;
+      // r556: honest dial expectation per lane class — acquisition slots
+      // are never closed-tab LLM dials; dormant ones have no dial at all yet.
+      const acqTest = acquisitionById(provider);
+      const dialNote = acqTest
+        ? acqTest.status === "dormant"
+          ? ` — ${acqTest.label}'s dial dialect is still dormant; the guard resolves it, the lane dials when it ships.`
+          : " — the acquisition lane consumes it through the guard."
+        : " — closed-tab runs will dial with it.";
       toast.success(`${name} key verified`, {
-        description: `The headless handoff returns it intact (${masked}) — closed-tab runs will dial with it.`,
+        description: `The headless handoff returns it intact (${masked})${dialNote}`,
       });
     } catch (e) {
       toast.error("Key test failed", {
@@ -671,7 +696,16 @@ export function AutomationVaultCard() {
               const reg = acquisitionById(laneProvider);
               if (!reg) return null;
               return (
-                <p className="text-[11px] leading-snug text-amber-500/90">
+                <p
+                  className={cn(
+                    "text-[11px] leading-snug",
+                    // r556: dormant reads as "pending" (the chips' sky),
+                    // not as a warning — amber stays for live lanes.
+                    reg.status === "dormant"
+                      ? "text-sky-600 dark:text-sky-400"
+                      : "text-amber-500/90",
+                  )}
+                >
                   Acquisition lane
                   {reg.status === "dormant"
                     ? " (dormant — the dial dialect hasn't shipped yet)"
