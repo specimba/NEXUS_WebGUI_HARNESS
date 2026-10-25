@@ -166,6 +166,12 @@ async function main() {
       cardSrc.includes("<MirrorCandidatesStrip") &&
       !cardSrc.includes("not mirrored yet"),
   );
+  // r565: pin the badge's count grammar — the numeral must come from
+  // candidates.length (never hardcoded), suffix stays singular-safe "waiting".
+  check(
+    "mirror strip badge grammar: count rendered from candidates.length with the singular-safe 'waiting' suffix",
+    stripSrc.includes("{candidates.length} waiting"),
+  );
 
   console.log(`\n${pass} passed, ${failures.length} failed`);
   if (failures.length > 0) {

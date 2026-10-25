@@ -834,12 +834,28 @@ function PlanPipelineDialog({
     .map((id) => agents.find((a) => a.id === id)?.name ?? "")
     .filter(Boolean);
   const previewCount = Math.min(stepLines.length, 3);
-  const rotationEcho =
-    rosterNames.length > 0 && planSteps.length > 0
-      ? ` (${rosterNames
-          .slice(0, previewCount)
-          .join(" → ")}${stepLines.length > previewCount ? " → …" : ""})`
-      : "";
+  // r565: the preview now NUMBERS its names — step i maps to
+  // selected[i % selected.length], so the echo says which index each name
+  // answers to ("1 Nexus Assistant → 2 Research Scout → …"); a long plan's
+  // Owner reads the mapping without counting arrows. Indices are
+  // tabular-nums + dimmed so the names stay the loudest thing in the line.
+  const rotationEcho: React.ReactNode =
+    rosterNames.length > 0 && planSteps.length > 0 ? (
+      <>
+        {" ("}
+        {rosterNames.slice(0, previewCount).map((n, i) => (
+          <span key={`${i}-${n}`}>
+            {i > 0 ? " → " : ""}
+            <span className="tabular-nums opacity-70">{i + 1}</span>{" "}
+            {n}
+          </span>
+        ))}
+        {stepLines.length > previewCount ? " → …" : ""}
+        {")"}
+      </>
+    ) : (
+      ""
+    );
 
   const toggle = (id: string) =>
     setSelected((cur) =>
@@ -936,7 +952,7 @@ function PlanPipelineDialog({
             >
               {goal
                 ? planSteps.length
-                  ? `✓ ${planSteps.length} step${planSteps.length === 1 ? "" : "s"} detected — mapped to agents in order${rotationEcho}`
+                    ? <>✓ {planSteps.length} step{planSteps.length === 1 ? "" : "s"} detected — mapped to agents in order{rotationEcho}</>
                   : "No step lines — a Research → Draft scaffold will be composed for you"
                 : "Tip: one step per line; bullets and numbering are stripped automatically"}
             </p>

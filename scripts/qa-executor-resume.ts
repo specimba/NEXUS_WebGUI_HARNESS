@@ -373,10 +373,12 @@ try {
 
   // ── r563: the rotation preview speaks create()'s mapping ──
   ok(
-    planSrc.includes("mapped to agents in order${rotationEcho}") &&
+    planSrc.includes("detected — mapped to agents in order") &&
+      planSrc.includes("{rotationEcho}") &&
       planSrc.includes("Math.min(stepLines.length, 3)") &&
-      planSrc.includes("selected[i % selected.length]"),
-    "contract: the paste-plan rotation preview names the agents and mirrors create()'s round-robin (min(steps, 3) names, ellipsis when more)",
+      planSrc.includes("selected[i % selected.length]") &&
+      planSrc.includes("{i + 1}"),
+    "contract: the paste-plan rotation preview names the agents WITH their step indices ({i + 1} spans) and mirrors create()'s round-robin (min(steps, 3) names, ellipsis when more)",
   );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);
