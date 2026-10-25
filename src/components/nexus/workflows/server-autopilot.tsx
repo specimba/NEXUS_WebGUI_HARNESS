@@ -133,6 +133,15 @@ function moveStatusClass(status: string): string {
   }
 }
 
+// r543: research receipt verdict chips — house doctrine: ADAPT = emerald
+// (act on it), WATCH = amber (keep an eye), SKIP = muted (honest pass).
+function verdictChip(v: string | null): string {
+  if (v === "ADAPT") return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
+  if (v === "WATCH") return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+  if (v === "SKIP") return "border-muted-foreground/30 bg-muted/20 text-muted-foreground";
+  return "border-violet-500/40 bg-violet-500/10 text-violet-300";
+}
+
 // ── r497: Capability Radar view types (client mirror of the server digest) ──
 type RadarFindingView = {
   severity: "critical" | "warning" | "info";
@@ -206,6 +215,7 @@ type AutonomyState = {
   latestReport: AutonomyLogView | null;
   logs: AutonomyLogView[];
   queue: { queued: number; researched: number; failed: number; oldestQueuedAgeMin: number | null };
+  receipts?: { id: string; kind: string; label: string; score: number | null; verdict: string | null; note: string | null }[];
   moves: AutonomyMoveView[];
   moves24: { executed: number; failed: number; proposed: number };
   engine: { lastCycleAt: string | null; nextCycleInMin: number | null; enabled: boolean };
@@ -1178,6 +1188,26 @@ export function ServerAutopilot() {
                   </p>
                 </div>
               </div>
+
+              {/* r543: research receipts — the engine's latest verdicts, visible */}
+              {(autonomy.receipts?.length ?? 0) > 0 && (
+                <div className="mt-2">
+                  <p className="text-[11px] font-medium text-muted-foreground">Research receipts (latest verdicts)</p>
+                  <ul className="mt-1 space-y-1">
+                    {autonomy.receipts!.map((r) => (
+                      <li key={r.id} className="flex items-center gap-1.5 text-xs" title={r.note ?? undefined}>
+                        <span className={cn("shrink-0 rounded border px-1 py-px text-[10px] font-medium", verdictChip(r.verdict))}>
+                          {r.verdict ?? "…"}
+                        </span>
+                        <span className="truncate text-foreground/90">{r.label}</span>
+                        <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
+                          {r.score !== null ? `${r.score}/10` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Next moves — ranked, deterministic, status-honest */}
               <div className="mt-2">

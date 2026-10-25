@@ -13203,3 +13203,25 @@ Round ID: r541 -> next patrol (job 473388)
 Open risks: concurrency with the 15-min webDevReview agent (473810) remains live — cross-check before reverting (r540 doctrine); page reader still live-wire-untested against real-world page quirks (cookie walls, CSP, redirects) — receipts carry page stats to sanity-check.
 Blockers: none.
 Next recommended action: r542 — FIRST verify the 3 url rows' research receipts: GET /api/autonomy snapshot (queue counts should show researched/failed out of 3) + dev.log page-reader lines + move results ("researched url:…: score → verdict"). If a row failed (404/non-html/timeout), the honest-failure shape IS the witness — check the error class note. Then resume the P1 tail (live-wire keyed proofs when a key lands) or the next TASKS.md item.
+
+---
+Task ID: r543
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r542 handoff — verify ui.shadcn.com drain; then P1 tail. Shipped the research-receipts UI surface.
+
+Work Log:
+- HANDOFF ITEM CLOSED: ui.shadcn.com was drained by the AUTO loop's 11:05Z bucket — exactly as r542 predicted (the loop's old planner closure proposes nothing for urls, but the EXECUTION code is unchanged, so pending url proposals execute fine). Queue now 0q/3r/0f — FULL page-reader witness: 3 real pages (bun.sh 2/10, nextjs.org 3/10, ui.shadcn.com 1/10 — honest SKIPs for marketing pages, rubric working as designed), 0 failed, researched rows never re-fetched.
+- INCREMENT — research receipts UI: getAutonomySnapshot gained `receipts` (latest 4 researched rows: label — gh → owner/repo, url → protocol-stripped host/path — plus score/verdict/note≤300); the AIE panel renders them under the KPI grid: verdict chip + label + score N/10, note as title tooltip. 11 promises / 11 destructure names — the r542 lesson applied AT the site in a comment.
+- STYLING POLISH: verdictChip color doctrine — ADAPT = emerald (act), WATCH = amber (keep an eye), SKIP = muted (honest pass), unknown = violet; same chip vocabulary as moveStatusClass.
+- COMPILE-ON-DEMAND RACE (of record): the first GET /api/autonomy after editing the lib served STALE code (receipts MISSING — no error anywhere); the second served fresh. When live-verifying server-lib edits, request twice before believing a MISSING.
+- Golden QA 3/3 + console 0 errors: settings 71 relay/provider matches, radar frontier surfaces render, workflows 4680-char paste contained=true (internal scroll holds). The amber "App updated" pill fired on all tabs after the rebuild — honesty surface consistent.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; receipts served live and rendered in the panel.
+
+Stage Summary:
+- The r540→r541→r542→r543 arc is closed end-to-end: url rows are seeded through the production API, planned (r542 fix), executed by the engine (0 failures across 3 real pages), and now VISIBLE to the owner with honest verdicts. The research pipeline has a complete witness chain: API counts → DB rows → dev.log → UI surface.
+
+Round Handoff:
+Round ID: r543 -> next patrol (job 473388)
+Open risks: (1) auto-loop planner stays pre-r542 until a natural dev restart — new url drafts need manual POST {action:"cycle"} meanwhile (executions unaffected); (2) live-wire keyed proofs (Exa vault slot / PAT) still pending a real key — the frontier chip flip is the visible signal; (3) all verdicts so far are SKIP — seed a couple of REAL gh: repo rows to witness the ADAPT/WATCH chip colors live; (4) webDevReview concurrency doctrine stands (cross-check before reverting).
+Blockers: none.
+Next recommended action: r544 — seed 2-3 real gh: rows (e.g. active agent-framework repos) via the enqueue API to witness ADAPT/WATCH receipts in the new surface, then resume the P1 tail (TASKS.md; keyed proofs when a key lands).

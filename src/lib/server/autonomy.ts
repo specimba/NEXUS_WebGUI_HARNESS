@@ -1115,6 +1115,8 @@ export interface AutonomySnapshot {
   /** Last 6 AutonomyLog rows (cycle + report), newest first — the panel feed. */
   logs: CycleResult["log"][];
   queue: { queued: number; researched: number; failed: number; oldestQueuedAgeMin: number | null };
+  /** r543: the engine's latest research verdicts — receipts surfaced for the panel. */
+  receipts: { id: string; kind: string; label: string; score: number | null; verdict: string | null; note: string | null }[];
   moves: {
     id: string;
     cycleId: string;
@@ -1133,13 +1135,21 @@ export interface AutonomySnapshot {
 
 export async function getAutonomySnapshot(): Promise<AutonomySnapshot> {
   const dayAgo = new Date(Date.now() - 24 * 3_600_000);
-  const [latestLog, latestReport, logs, queueRows, oldestQueued, moves, executed24, failed24, proposed24, lastCycle] =
+  const [latestLog, latestReport, logs, queueRows, oldestQueued, receiptRows, moves, executed24, failed24, proposed24, lastCycle] =
     await Promise.all([
       db.autonomyLog.findFirst({ orderBy: { createdAt: "desc" } }),
       db.autonomyLog.findFirst({ where: { kind: "report" }, orderBy: { createdAt: "desc" } }),
       db.autonomyLog.findMany({ orderBy: { createdAt: "desc" }, take: 6 }),
       db.researchQueue.groupBy({ by: ["status"], _count: { _all: true } }),
       db.researchQueue.findFirst({ where: { status: "queued" }, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
+      // r543: research receipts — latest verdicts for the panel surface
+      // (11 promises / 11 names — the r542 destructure lesson is of record).
+      db.researchQueue.findMany({
+        where: { status: "researched" },
+        orderBy: [{ researchedAt: "desc" }, { createdAt: "desc" }],
+        take: 4,
+        select: { id: true, kind: true, owner: true, repo: true, url: true, score: true, verdict: true, notes: true },
+      }),
       db.nextMove.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
       db.nextMove.count({ where: { status: "executed", executedAt: { gte: dayAgo } } }),
       db.nextMove.count({ where: { status: "failed", executedAt: { gte: dayAgo } } }),
@@ -1166,6 +1176,17 @@ export async function getAutonomySnapshot(): Promise<AutonomySnapshot> {
         ? Math.max(0, Math.round((Date.now() - oldestQueued.createdAt.getTime()) / 60_000))
         : null,
     },
+    receipts: receiptRows.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      label:
+        r.kind === "repo" && r.owner && r.repo
+          ? `${r.owner}/${r.repo}`
+          : (r.url ?? r.id).replace(/^https?:\/\//, "").replace(/\/$/, ""),
+      score: r.score,
+      verdict: r.verdict,
+      note: r.notes ? r.notes.slice(0, 300) : null,
+    })),
     moves: moves.map((m) => ({
       id: m.id,
       cycleId: m.cycleId,
