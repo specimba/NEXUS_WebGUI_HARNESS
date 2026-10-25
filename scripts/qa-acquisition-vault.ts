@@ -153,6 +153,19 @@ async function main() {
       cardSrc.includes("<AcquisitionLanesPanel") &&
       !cardSrc.includes('data-testid="acq-fleet"'),
   );
+  // r564: the mirror strip is its own component — same seam pin as r562.
+  const stripSrc = readFileSync(
+    new URL("../src/components/nexus/settings/mirror-candidates-strip.tsx", import.meta.url),
+    "utf8",
+  );
+  check(
+    "mirror strip seam: header + count badge live in the strip component, the card mounts it, the header is gone from the card",
+    stripSrc.includes("Saved in this browser, not mirrored yet") &&
+      stripSrc.includes('data-testid="mirror-count"') &&
+      stripSrc.includes("waiting") &&
+      cardSrc.includes("<MirrorCandidatesStrip") &&
+      !cardSrc.includes("not mirrored yet"),
+  );
 
   console.log(`\n${pass} passed, ${failures.length} failed`);
   if (failures.length > 0) {

@@ -12,7 +12,6 @@
 
 import * as React from "react";
 import {
-  ArrowDownToLine,
   Eye,
   EyeOff,
   FlaskConical,
@@ -38,6 +37,7 @@ import { DeepLinkShare } from "@/components/nexus/settings/deep-link-share";
 import { FREE_PROVIDERS, isChatProvider, providerById } from "@/lib/providers";
 import { ACQUISITION_PROVIDERS, acquisitionById } from "@/lib/acquisition-registry";
 import { AcquisitionLanesPanel } from "@/components/nexus/settings/acquisition-lanes-panel";
+import { MirrorCandidatesStrip } from "@/components/nexus/settings/mirror-candidates-strip";
 import { fmtSlotAge, pickExecutorSlot } from "@/lib/automation-lane";
 import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -720,35 +720,15 @@ export function AutomationVaultCard() {
             setLaneProvider={setLaneProvider}
             laneKeyRef={laneKeyRef}
           />
-          {mirrorCandidates.length > 0 && (
-            <div className="space-y-1.5 rounded-md border border-dashed border-violet-500/30 bg-violet-500/5 px-2.5 py-2">
-              <p className="text-[10.5px] text-muted-foreground">
-                Saved in this browser, not mirrored yet — one click stores it for
-                closed-tab runs (no re-paste; local SQLite only):
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {mirrorCandidates.map((p) => (
-                  <Button
-                    key={p.id}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void mirrorProvider(p.id)}
-                    disabled={mirroringProvider !== null}
-                    className="h-7 px-2 text-[11px]"
-                    title={`Store the ${p.name} key you already saved in Providers here — the server lane (tab closed) dials with it.`}
-                  >
-                    {mirroringProvider === p.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                    ) : (
-                      <ArrowDownToLine className="h-3 w-3" aria-hidden />
-                    )}
-                    Mirror {p.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* r564: the browser→server mirror strip is its own component
+              (mirror-candidates-strip.tsx) — same seam doctrine as r562's
+              acquisition panel; the card computes candidates and owns the
+              busy state (shared with the drift re-mirror buttons below). */}
+          <MirrorCandidatesStrip
+            candidates={mirrorCandidates}
+            busy={mirroringProvider}
+            onMirror={mirrorProvider}
+          />
           {laneSlots.length > 0 ? (
             <ul className="space-y-1.5">
               {laneSlots.map((s) => {
