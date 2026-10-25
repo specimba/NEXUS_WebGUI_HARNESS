@@ -155,5 +155,24 @@ check(
   maskedQuery.slice(0, 120)
 );
 
+// r539 — the key-source twin: WHICH source served the lane (the Frontier
+// UI's honesty chip reads this). Mid-file import is hoisted — keeps the new
+// checks self-contained next to their assertions.
+import { exaKeySourceFromSources } from "../src/lib/exa-dialect";
+
+check(
+  "key source: vault slot wins over env → 'vault'",
+  exaKeySourceFromSources([{ provider: "exa", key: " sk-vault " }], "sk-env") === "vault",
+);
+check(
+  "key source: env fallback only → 'env' (non-exa slots ignored)",
+  exaKeySourceFromSources([{ provider: "vyce", key: "sk-other" }], " sk-env ") === "env",
+);
+check(
+  "key source: no usable source → null (lane invisible, not an error)",
+  exaKeySourceFromSources(null, undefined) === null &&
+    exaKeySourceFromSources([{ provider: "exa", key: "   " }], "") === null,
+);
+
 console.log(`${passed}/${passed + failed} checks passed`);
 if (failed > 0) process.exit(1);

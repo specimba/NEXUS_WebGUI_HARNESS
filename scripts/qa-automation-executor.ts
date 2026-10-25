@@ -13,6 +13,17 @@
 //     ordering can never leak past the fixture
 //   • vault rows + heartbeat snapshotted and restored byte-for-byte
 //   • only run rows CREATED during the test are deleted
+//
+// r539 DE-FLAKE (the r535 pattern): the first draft seeded the fixture
+// enabled:true + due between resetFixture() and tickOnce() — the live dev
+// server's own claim loop (same DB, same stale heartbeat) could heist the
+// row first and answer the tick-integration assertions with its own UNMOCKED
+// run (the r537 24/26 flake class). Fixtures are now seeded enabled:false
+// (invisible to every foreign claim scan) and armFixture() flips ONLY the
+// fixture enabled + re-arms the stale heartbeat in the milliseconds right
+// before each tickOnce. The heartbeat re-arm also closes the second heist
+// vector: a live tab's POST /api/automation/sync refreshing lastSeenAt
+// mid-test would otherwise turn every tick into "client-alive".
 
 import { db } from "../src/lib/db";
 import {
@@ -129,7 +140,9 @@ async function resetFixture() {
         { label: "Step two", prompt: "Reply with exactly E2" },
       ]),
       intervalMs: 3_600_000,
-      enabled: true,
+      // r539: seeded DISABLED — a disabled row is invisible to every foreign
+      // claim scan; armFixture() flips it on milliseconds before each tick.
+      enabled: false,
       nextRunAt: new Date(Date.now() - 500), // earliest due → the fixture wins claim ordering
       failStreak: 0,
     },
@@ -137,6 +150,41 @@ async function resetFixture() {
   await db.automationVault.create({
     data: { provider: PROVIDER, key: "sk-qa-fake-key", label: "qa" },
   });
+}
+
+// r539: the ONLY moment the fixture is claimable. Re-arms the stale heartbeat
+// and flips the fixture enabled (with a DUE nextRunAt and a clean failStreak)
+// immediately before a tickOnce — shrinks the heist window (server claim
+// loop + live-tab heartbeat pulse) from seconds to milliseconds, and the
+// re-stale ERASES any server-side heist that already landed (advanced
+// nextRunAt / incremented failStreak) so a retry starts pristine.
+async function armFixture(failStreak = 0) {
+  await db.automationState.upsert({
+    where: { id: "singleton" },
+    create: { id: "singleton", lastSeenAt: stale() },
+    update: { lastSeenAt: stale() },
+  });
+  await db.automationWorkflow.update({
+    where: { id: WF_ID },
+    data: { enabled: true, nextRunAt: new Date(Date.now() - 500), failStreak },
+  });
+}
+
+// r539 final vector: a live tab's heartbeat pulse (POST /api/automation/sync
+// → lastSeenAt = now) can land inside the ms arm window, turning the tick
+// into "client-alive" (claimed 0) — the exact 24/26 signature. Segments that
+// EXPECT a claim retry bounded: re-arm (which also heals nextRunAt/failStreak
+// after a server-side heist) + re-tick. A no-claim result the test actually
+// wants (no-vault-key) returns on the first pass untouched; a persistent
+// anomaly fails VISIBLY on the assertion, never silently.
+async function guardedTick(failStreak = 0): Promise<TickResult> {
+  for (let attempt = 1; ; attempt++) {
+    await armFixture(failStreak);
+    const r = await tickOnce();
+    if (r.claimed !== 0) return r;
+    if (attempt >= 3) return r;
+    console.log(`  · tick returned claimed=0 (${r.reason}) — re-armed, re-ticked (attempt ${attempt})`);
+  }
 }
 
 try {
@@ -238,7 +286,7 @@ try {
     },
   });
   dialStatus = 200;
-  const promoted: TickResult = await tickOnce();
+  const promoted: TickResult = await guardedTick(); // r539: armed + heist-retried
   ok(
     promoted.claimed === 1 && promoted.outcome?.status === "done",
     "tick integration: builtin slot oldest + registry key newer → run claims and completes (r207 promotion)",
@@ -246,6 +294,8 @@ try {
 
   // 2. fresh heartbeat → stand down
   await resetFixture();
+  // no armFixture(): a fresh heartbeat stands EVERYONE down (server + tick);
+  // nothing can un-fresh it but this suite, so no heist vector exists here.
   await db.automationState.update({ where: { id: "singleton" }, data: { lastSeenAt: fresh() } });
   const alive: TickResult = await tickOnce();
   ok(alive.claimed === 0 && alive.reason === "client-alive", "fresh heartbeat → stands down (BYOK lane driving)");
@@ -253,13 +303,16 @@ try {
   // 3. stale heartbeat, no vault key → honest no-op
   await resetFixture();
   await db.automationVault.deleteMany({});
-  const noKey: TickResult = await tickOnce();
+  // r539 fix: the no-vault-key reason is produced by the CLAIM path (a due
+  // row exists, then its dial resolution fails) — the fixture MUST be armed
+  // enabled here or the scan finds nothing due and reports a different why.
+  const noKey: TickResult = await guardedTick();
   ok(noKey.claimed === 0 && noKey.reason === "no-vault-key", "no vault key → honest no-op (never implicit credentials)");
 
   // 4. DONE path: mocked 200 across both steps
   await resetFixture();
   dialStatus = 200;
-  const done: TickResult = await tickOnce();
+  const done: TickResult = await guardedTick(); // r539: armed + heist-retried
   ok(done.claimed === 1 && done.workflowIds[0] === WF_ID, "due workflow claimed (oldest-first) when heartbeat stale + vault resolvable");
   ok(done.outcome?.status === "done", "mocked-200 dial completes the run (done outcome)");
   const doneRun = await db.automationRun.findFirst({ where: { workflowId: WF_ID }, orderBy: { startedAt: "desc" } });
@@ -280,7 +333,7 @@ try {
   // 5. ERROR path: mocked 401 on the first step
   await resetFixture();
   dialStatus = 401;
-  const errored: TickResult = await tickOnce();
+  const errored: TickResult = await guardedTick(); // r539: armed + heist-retried
   ok(errored.claimed === 1 && errored.outcome?.status === "error", "mocked-401 dial fails honestly (error outcome)");
   const errRun = await db.automationRun.findFirst({ where: { workflowId: WF_ID }, orderBy: { startedAt: "desc" } });
   ok(
@@ -297,7 +350,7 @@ try {
   // 6. breaker parity: streak 2 → one more failure parks the schedule
   await resetFixture();
   await db.automationWorkflow.update({ where: { id: WF_ID }, data: { failStreak: 2 } });
-  const breaker: TickResult = await tickOnce();
+  const breaker: TickResult = await guardedTick(2); // r539: armed with the streak intact
   ok(breaker.claimed === 1 && breaker.outcome?.status === "error", "streak-2 workflow claims + fails again");
   const parked = await db.automationWorkflow.findUnique({ where: { id: WF_ID } });
   ok(

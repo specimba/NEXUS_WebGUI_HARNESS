@@ -9,6 +9,8 @@ import {
   exaAuthHeaders,
   exaDialUrl,
   exaKeyFromSources,
+  exaKeySourceFromSources,
+  type ExaKeySource,
   exaResponseToHouse,
   frontierQueryToExaBody,
 } from "@/lib/exa-dialect";
@@ -267,6 +269,26 @@ async function fetchArxivHarness(): Promise<{ items: FrontierItem[]; error?: str
 const EXA_FRONTIER_QUERY =
   "agentic LLM workflow harness judge post-training release announcement";
 
+// r539: WHICH source served the acquisition lane — computed independently of
+// the dial (a 401/429 exa response still has a live key source worth showing).
+// Vault-first (an "exa" AutomationVault slot) → "vault"; EXA_API_KEY → "env";
+// neither → null (the lane is invisible by design, never an error row).
+async function exaLaneKeySource(): Promise<ExaKeySource> {
+  try {
+    const slots = await db.automationVault.findMany({
+      where: { provider: "exa" },
+      orderBy: { createdAt: "asc" },
+    });
+    const decrypted = await Promise.all(
+      slots.map(async (s) => ({ provider: s.provider, key: await decryptVaultKey(s.key) })),
+    );
+    return exaKeySourceFromSources(decrypted, process.env.EXA_API_KEY);
+  } catch {
+    // vault unavailable (master key missing / table absent) → env fallback only
+    return exaKeySourceFromSources(null, process.env.EXA_API_KEY);
+  }
+}
+
 async function fetchExaAcquisition(): Promise<{ items: FrontierItem[]; error?: string }> {
   // r537: vault-first key resolution — an AutomationVault slot with provider
   // "exa" (AES-256-GCM at rest, decrypted server-side only, oldest first —
@@ -374,12 +396,16 @@ export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const fresh = url.searchParams.get("fresh") === "1";
 
+  // r539: the acquisition key-source rides EVERY response (even cache hits)
+  // — it reflects the vault/env posture NOW, not the posture when the board
+  // was cached.
+  const exaKeySource = await exaLaneKeySource();
   const hit = g.__frontierScoutCache;
   if (!fresh && hit && Date.now() - hit.at < TTL_MS) {
-    return NextResponse.json({ ok: true, cached: true, ...hit.payload });
+    return NextResponse.json({ ok: true, cached: true, ...hit.payload, exaKeySource });
   }
 
   const payload = await aggregate();
   g.__frontierScoutCache = { at: Date.now(), payload };
-  return NextResponse.json({ ok: true, ...payload });
+  return NextResponse.json({ ok: true, ...payload, exaKeySource });
 }

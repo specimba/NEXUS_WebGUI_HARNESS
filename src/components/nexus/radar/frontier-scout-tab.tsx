@@ -61,6 +61,11 @@ interface FrontierCache {
   fetchedAt: number;
   items: FrontierItem[];
   errors: string[];
+  /** r539: which source served the EXA acquisition lane — "vault" | "env" |
+   *  null (null/undefined = lane unconfigured → chip hidden; silence is the
+   *  honest state, the lane is invisible by design). Optional so pre-r539
+   *  localStorage caches hydrate unchanged. */
+  keySource?: "vault" | "env" | null;
 }
 
 // ─── Verdict / rung presentation maps (emerald / amber / stone only) ─────────
@@ -150,11 +155,18 @@ export function FrontierScoutTab() {
             : `Frontier aggregation failed (HTTP ${res.status}).`;
         throw new Error(msg);
       }
-      const rec = body as { fetchedAt?: unknown; items?: unknown; errors?: unknown };
+      const rec = body as {
+        fetchedAt?: unknown;
+        items?: unknown;
+        errors?: unknown;
+        exaKeySource?: unknown;
+      };
       const next: FrontierCache = {
         fetchedAt: typeof rec.fetchedAt === "number" ? rec.fetchedAt : Date.now(),
         items: Array.isArray(rec.items) ? (rec.items as FrontierItem[]) : [],
         errors: Array.isArray(rec.errors) ? rec.errors.map(String) : [],
+        keySource:
+          rec.exaKeySource === "vault" || rec.exaKeySource === "env" ? rec.exaKeySource : null,
       };
       writeCache(CACHE_KEY, next);
       setCache(next);
@@ -427,6 +439,30 @@ export function FrontierScoutTab() {
       </div>
 
       {error ? <ErrorBox message={error} onRetry={() => void fetchItems(true)} /> : null}
+
+      {/* r539: acquisition key-source honesty chip — the acquisition lane is
+          silent by design when unconfigured, so its ONE visible trace is the
+          live key source (vault-first since r537, env fallback). Palette
+          doctrine: emerald = first-class vault posture, amber = the demoted
+          machine-secret rung. */}
+      {cache?.keySource ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Chip
+            className={
+              cache.keySource === "vault"
+                ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+                : "border-amber-500/40 text-amber-700 dark:text-amber-400"
+            }
+          >
+            acq key · <span className="font-mono">{cache.keySource}</span>
+          </Chip>
+          <span className="text-[10px] leading-snug text-muted-foreground">
+            {cache.keySource === "vault"
+              ? "EXA acquisition lane served from the Automation Vault (vault-first)"
+              : "EXA acquisition lane served from the EXA_API_KEY machine secret"}
+          </span>
+        </div>
+      ) : null}
 
       {cache && cache.errors.length > 0 && !error ? (
         <p

@@ -54,6 +54,22 @@ export function exaKeyFromSources(
   return envKey?.trim() ?? "";
 }
 
+/** r539: the UI-honesty twin of exaKeyFromSources — WHICH source served the
+ * lane. Mirrors the exact same ordering (a vault "exa" slot with a trimmed
+ * non-blank key wins → "vault"; EXA_API_KEY fallback → "env"; neither ⇒
+ * null = the lane is invisible by design, never an error). The Frontier
+ * route ships this in its payload so the UI can show the live key source. */
+export type ExaKeySource = "vault" | "env" | null;
+
+export function exaKeySourceFromSources(
+  vaultSlots: { provider: string; key: string }[] | null,
+  envKey: string | undefined,
+): ExaKeySource {
+  if ((vaultSlots ?? []).some((s) => s.provider === "exa" && s.key.trim())) return "vault";
+  if (envKey?.trim()) return "env";
+  return null;
+}
+
 // ─── Body shaping ────────────────────────────────────────────────────────────
 
 export interface ExaSearchBody {
