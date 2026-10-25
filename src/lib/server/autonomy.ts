@@ -5,7 +5,7 @@ import {
   provider429CooldownLeftMs,
   providerBillingDeadLeftMs,
 } from "@/lib/provider-rotation";
-import { egressRelayDial } from "@/lib/server/egress";
+import { egressRelayDial, loadEgressPool, pickProxies, proxiedFetch } from "@/lib/server/egress";
 import { redactDialBody } from "@/lib/redaction";
 import {
   advanceStrategyItem,
@@ -49,6 +49,9 @@ const MAX_REPOS_PER_CYCLE = 2;
 // r542: url-kind rows ride the same per-cycle research budget family (page
 // fetches are external calls too — 15s timeout, 400KB cap each).
 const MAX_URLS_PER_CYCLE = 2;
+// r546: the research lane's Webshare-pool escape hatch (radar r516 port).
+const POOL_TIMEOUT_MS = 12_000;
+const POOL_PROXY_ATTEMPTS = 3;
 const QUEUE_CAP = 500;
 const NOTES_MAX = 2_000;
 const RESULT_MAX = 2_000;
@@ -585,6 +588,77 @@ async function fetchGithub(url: string, accept: string): Promise<Response> {
   }
 }
 
+// ── r546: the research lane's egress escape hatch + HTML enrichment ────────
+// Tier 1 (pool): mirrors the radar's r516 hatch — on a 403/429 from the
+// shared sandbox egress IP, try up to 3 Webshare pool proxies (residential
+// exits). Dormant until the owner pastes a Webshare token (Settings →
+// Egress): loadEgressPool then returns ok:false/empty and this is a
+// zero-cost no-op. Returns null on any pool trouble — the caller falls back
+// honestly, never fakes success.
+async function fetchGithubViaPool(url: string, accept: string): Promise<{ status: number; bodyText: string } | null> {
+  try {
+    const pool = await loadEgressPool({ forceRefresh: false });
+    if (!pool.ok || pool.pool.length === 0) return null;
+    for (const proxy of pickProxies(pool.pool, POOL_PROXY_ATTEMPTS)) {
+      const res = await proxiedFetch(
+        url,
+        { headers: { "User-Agent": "nexus-webgui-autonomy", Accept: accept }, method: "GET" },
+        { proxy, timeoutMs: POOL_TIMEOUT_MS },
+      );
+      if ("status" in res && res.status >= 200 && res.status < 300) {
+        return { status: res.status, bodyText: res.bodyText };
+      }
+    }
+  } catch {
+    /* pool infrastructure trouble — caller keeps the honest fallback */
+  }
+  return null;
+}
+
+// Tier 2 (HTML enrichment): github.com/<owner>/<repo> HTML stays 200 from the
+// sandbox egress (r515) and embeds the two signals the API lane would have
+// distilled — the real topic list (`"topics":[{"name":…}`) and the rendered
+// README (`article.markdown-body`). Both extracted deterministically; both
+// feed the SAME rubric, so rate-limited rows stop scoring half-blind.
+function topicsFromGhHtml(html: string): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  const arr = html.match(/"topics":\[\{"name":[\s\S]{0,2000}?\]/)?.[0];
+  if (arr) {
+    for (const m of arr.matchAll(/"name":"([^"]+)"/g)) {
+      if (!seen.has(m[1])) { seen.add(m[1]); names.push(m[1]); }
+    }
+  }
+  if (names.length === 0) {
+    for (const m of html.matchAll(/href="\/topics\/([^"#?]+)"/g)) {
+      const t = decodeURIComponent(m[1]);
+      if (!seen.has(t)) { seen.add(t); names.push(t); }
+    }
+  }
+  return names.slice(0, 20);
+}
+
+function readmeFromGhHtml(html: string): string {
+  const start = html.search(/<article[^>]*class="[^"]*markdown-body[^"]*"/i);
+  if (start < 0) return "";
+  const openEnd = html.indexOf(">", start);
+  if (openEnd < 0) return "";
+  const end = html.indexOf("</article>", openEnd);
+  const body = html.slice(openEnd + 1, end > openEnd ? end : openEnd + 120_000);
+  return body
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 1_200);
+}
+
 // ── r540: the url-kind research lane (TASKS P2) ───────────────────────────
 // Queued url rows used to blanket-skip with "no research lane wired" — they
 // now get a DIRECT page reader: title + og:description + visible text head,
@@ -738,7 +812,42 @@ async function researchRepo(queueId: string): Promise<string> {
     let readmeNote = "README: none/fetch-failed (research continued)";
     const repoRes = await fetchGithub(`https://api.github.com/repos/${row.owner}/${row.repo}`, "application/vnd.github+json");
     if (repoRes.status === 404) throw new Error("404 not found");
-    if (repoRes.status === 403 || repoRes.status === 429 || !repoRes.ok) {
+    // ── r546 tier 1: the research lane inherits the radar's r516 escape
+    // hatch — on a 403/429 from the shared sandbox egress IP, try up to 3
+    // Webshare pool proxies before falling back. Dormant without a token
+    // (loadEgressPool → ok:false/empty ⇒ zero-cost no-op); every outcome
+    // stays honest in the notes (`via: api-pool` vs `html-fallback`).
+    let repoPooled: GithubRepo | null = null;
+    if (repoRes.status === 403 || repoRes.status === 429) {
+      const pooled = await fetchGithubViaPool(`https://api.github.com/repos/${row.owner}/${row.repo}`, "application/vnd.github+json");
+      if (pooled) {
+        try {
+          const parsed = JSON.parse(pooled.bodyText) as GithubRepo;
+          if (typeof parsed.full_name === "string") repoPooled = parsed;
+        } catch {
+          /* unparsable pooled body — the html lane stays the honest fallback */
+        }
+      }
+    }
+    if (repoPooled) {
+      repo = repoPooled;
+      via = "api-pool";
+      const rmPooled = await fetchGithubViaPool(`https://api.github.com/repos/${row.owner}/${row.repo}/readme`, "application/vnd.github+json");
+      if (rmPooled) {
+        try {
+          const rm = JSON.parse(rmPooled.bodyText) as { size?: number; content?: string; encoding?: string };
+          if (typeof rm.size === "number" && rm.size > 200_000) {
+            readmeNote = `README ${Math.round(rm.size / 1024)}KB — over the 200KB cap, skipped`;
+          } else if (rm.encoding === "base64" && typeof rm.content === "string") {
+            const decoded = Buffer.from(rm.content, "base64").toString("utf8");
+            readmeExcerpt = decoded.slice(0, 1_200);
+            readmeNote = `README ${decoded.length.toLocaleString()} chars distilled (via egress pool)`;
+          }
+        } catch {
+          /* README is a bonus — the repo envelope already carried the essentials */
+        }
+      }
+    } else if (repoRes.status === 403 || repoRes.status === 429 || !repoRes.ok) {
       // r515: api.github.com is frequently rate-limited from shared sandbox
       // egress (403 with quota remaining 0) while github.com HTML stays 200.
       // Fallback: scrape the repo page (og:description + embedded
@@ -772,14 +881,21 @@ async function researchRepo(queueId: string): Promise<string> {
         stargazers_count: Number.isFinite(stars) ? stars : 0,
         forks_count: 0,
         pushed_at: pushedAt,
-        topics: [],
+        topics: topicsFromGhHtml(html),
         language: undefined,
         license: undefined,
         archived: /This repository has been archived/i.test(html),
       };
       via = "html-fallback";
-      readmeExcerpt = repo.description ?? "";
-      readmeNote = "README: not fetched (html-fallback lane — description only)";
+      // r546 tier 2 (enrichment): the page embeds the real topic list and the
+      // rendered README — the signals the API lane would have distilled
+      // (witnessed live: `"topics":[{"name":…}]` + `article.markdown-body`
+      // in github.com HTML). Lifts the r545 vocab ceiling (topics "(none)" +
+      // description-only haystack) with no egress dependency.
+      readmeExcerpt = readmeFromGhHtml(html);
+      readmeNote = readmeExcerpt
+        ? "README head distilled from github.com HTML (api rate-limited — full rubric recovered)"
+        : "README: not present in html-fallback page";
     } else {
       repo = (await repoRes.json()) as GithubRepo;
 
@@ -814,7 +930,7 @@ async function researchRepo(queueId: string): Promise<string> {
       `keywords: ${keywords.length ? keywords.join(", ") : "(none)"}`,
       readmeNote,
       `readme head: ${readmeExcerpt ? trunc(readmeExcerpt.replace(/\s+/g, " ").trim(), 600) : "(n/a)"}`,
-      `source: ${via}${via === "html-fallback" ? " (api.github.com rate-limited from sandbox egress)" : ""}`,
+      `source: ${via}${via === "html-fallback" ? " (api.github.com rate-limited — topics+README recovered from github.com HTML)" : via === "api-pool" ? " (Webshare egress pool after direct 403/429)" : ""}`,
     ].join("\n");
     await db.researchQueue.update({
       where: { id: row.id },
@@ -1191,6 +1307,10 @@ export async function getAutonomySnapshot(): Promise<AutonomySnapshot> {
       score: r.score,
       verdict: r.verdict,
       note: r.notes ? r.notes.slice(0, 300) : null,
+      // r546: egress-lane transparency — which lane produced this verdict
+      // (api / api-pool / html-fallback / page-reader), distilled from the
+      // notes' `source:` line so the owner can read the panel's honesty.
+      source: r.notes?.match(/^source: (.+)$/m)?.[1] ?? null,
     })),
     moves: moves.map((m) => ({
       id: m.id,

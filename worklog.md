@@ -13272,3 +13272,26 @@ Round ID: r545 -> next patrol (job 473388)
 Open risks: (1) research lane lacks the radar's Webshare-pool escape hatch — port it to researchRepo (repo + readme fetches) so rate-limited rows get topics/README; this is the highest-value next slice (unlocks ADAPT band + kills polluted scoring); (2) auto-loop planner stays pre-r542 until a natural dev restart (url drafts need manual triggers); (3) live-wire keyed proofs pending a real key; (4) webDevReview concurrency doctrine stands.
 Blockers: none.
 Next recommended action: r546 — port the Webshare-pool 403/429 retry into researchRepo's GitHub fetches (mirror the radar's r516 escape hatch), re-seed one high-signal repo, and witness the full-rubric score (topics/README lift) — the ADAPT chip should finally light. Then resume the TASKS.md P1 tail.
+
+---
+Task ID: r546
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r545 handoff — port the radar's r516 Webshare-pool escape hatch into researchRepo; witness the ADAPT band.
+
+Work Log:
+- SLICE SHIPPED (two tiers): (1) fetchGithubViaPool — the radar's r516 escape hatch ported to the research lane: on a 403/429 from the sandbox egress IP, up to 3 Webshare pool proxies ride before any fallback; dormant until a token is configured (loadEgressPool → ok:false/empty ⇒ zero-cost no-op), honest `via: api-pool` labeling. (2) HTML enrichment (the environment-independent unlock): github.com/<owner>/<repo> HTML embeds the full rubric signals — live-witnessed `"topics":[{"name":…}]` (20 topics on langchain) and `article.markdown-body` (rendered README); topicsFromGhHtml + readmeFromGhHtml extract both deterministically into the SAME scoreRepo haystack, killing the r545 half-blind ceiling (topics "(none)" + description-only).
+- FINDING OF RECORD (budget-priced): the auto-loop's HMR-safe timer closure PINS the boot-time module — a seeded row (microsoft/autogen) was executed by the loop with PRE-r546 code (its notes literally contain the old "README: not fetched (html-fallback lane — description only)" string that no longer exists in the tree), while the route context serves fresh code (receipts `source` field live). r544's "planner stays pre-r542 until natural dev restart" is the same mechanism, now proven at EXECUTION level: HMR does not reach the loop; every research row scored before a process restart is scored by old code.
+- WITNESS ATTEMPTS ×3, honest misses: autogen + crewAIInc/crewai (60k★, pushed 1d, vocab-dense) were both executed by the pinned loop → WATCH 6 with topics "(none)" — old-code artifacts, not new-code verdicts. Fresh-module route POSTs kept losing the bucket race, and the executor's 2-move cap went to strategy advances. No 4th race — the pattern is deterministic, not luck.
+- USER-FACING: receipts rows now carry an egress-lane badge (api / pool / html / page) distilled from the notes' `source:` line — the panel shows WHICH lane produced each verdict. LIVE-verified: all 4 current receipts render the `html` chip; verdictChip family unchanged (ADAPT emerald / WATCH amber / SKIP muted).
+- Golden QA: 3/3 paths console-clean (#workflows / #settings / #radar — zero [error]/[warn] beyond Fast Refresh noise); receipts surface renders badge + score + verdict live. DEFERRED (budget): the run-panel long-paste probe — component unchanged this round, prior-round containment held; r547 re-runs it first.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT.
+- BUDGET (of record): 16 tool rounds — the pinned-loop root cause forced 3 full bucket waits (~8 min each). Lesson: ONE bucket race attempt max per round; prefer serverless verification before any bucket-timed experiment. TASKS.md P1 tail untouched this round.
+
+Stage Summary:
+- The research lane's egress ladder is structurally complete (api → pool → enriched html), and the receipts surface is lane-transparent. The ADAPT chip's remaining blocker is precisely scoped: a dev-server process restart re-arms the loop on r546 code; the first post-restart research of a vocab-dense active repo (crewai/autogen-class) should light emerald — rubric math predicts 8.5→9 for those profiles.
+
+Round Handoff:
+Round ID: r546 -> next patrol (job 473388)
+Open risks: (1) PINNED LOOP: until a dev-server process restart, every research row is scored by boot-time (pre-r546) code — do NOT seed witness rows before confirming a restart (fresh-code signature in notes: "README head distilled from github.com HTML"); (2) ADAPT witness = first post-restart seed of a crewai/autogen-class repo; (3) pool tier dormant until a Webshare token lands in Settings → Egress; (4) run-panel long-paste QA re-run first thing; (5) webDevReview concurrency doctrine stands (cross-check before revert).
+Blockers: none.
+Next recommended action: r547 — re-run golden QA incl. the long-paste; if a natural restart has re-armed the loop (fresh-code signature in a new receipt's notes), seed ONE vocab-dense repo and witness ADAPT emerald; else advance the TASKS.md P1 tail (TASK-101/102 advance receipts already flow).

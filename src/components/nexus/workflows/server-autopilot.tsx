@@ -215,7 +215,7 @@ type AutonomyState = {
   latestReport: AutonomyLogView | null;
   logs: AutonomyLogView[];
   queue: { queued: number; researched: number; failed: number; oldestQueuedAgeMin: number | null };
-  receipts?: { id: string; kind: string; label: string; score: number | null; verdict: string | null; note: string | null }[];
+  receipts?: { id: string; kind: string; label: string; score: number | null; verdict: string | null; note: string | null; source?: string | null }[];
   moves: AutonomyMoveView[];
   moves24: { executed: number; failed: number; proposed: number };
   engine: { lastCycleAt: string | null; nextCycleInMin: number | null; enabled: boolean };
@@ -1200,6 +1200,22 @@ export function ServerAutopilot() {
                           {r.verdict ?? "…"}
                         </span>
                         <span className="truncate text-foreground/90">{r.label}</span>
+                        {/* r546: egress-lane badge — the panel shows WHICH lane
+                           produced each verdict (api / pool / html / page). */}
+                        {r.source && (
+                          <span
+                            className="shrink-0 rounded border border-muted-foreground/25 bg-muted/10 px-1 py-px text-[10px] text-muted-foreground"
+                            title={`Research lane: ${r.source}`}
+                          >
+                            {r.source.startsWith("api-pool")
+                              ? "pool"
+                              : r.source.startsWith("html-fallback")
+                                ? "html"
+                                : r.source.startsWith("page-reader")
+                                  ? "page"
+                                  : "api"}
+                          </span>
+                        )}
                         <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
                           {r.score !== null ? `${r.score}/10` : ""}
                         </span>
