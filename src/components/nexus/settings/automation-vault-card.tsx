@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DeepLinkShare } from "@/components/nexus/settings/deep-link-share";
 import { FREE_PROVIDERS, isChatProvider, providerById } from "@/lib/providers";
-import { ACQUISITION_PROVIDERS } from "@/lib/acquisition-registry";
+import { ACQUISITION_PROVIDERS, acquisitionById } from "@/lib/acquisition-registry";
 import { fmtSlotAge, pickExecutorSlot } from "@/lib/automation-lane";
 import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -309,7 +309,7 @@ export function AutomationVaultCard() {
       clearProviderLaneHealth(laneProvider);
       resetProviderBreaker(laneProvider);
       toast.success("Server-lane key stored — closed-tab runs can dial now.", {
-        description: `${providerById(laneProvider)?.name ?? laneProvider} · local SQLite only, nothing leaves this machine.`,
+        description: `${acquisitionById(laneProvider)?.label ?? providerById(laneProvider)?.name ?? laneProvider} · local SQLite only, nothing leaves this machine.`,
       });
     } catch (e) {
       toast.error("Could not store the server-lane key", {
@@ -649,18 +649,42 @@ export function AutomationVaultCard() {
                   {p.lane === "acquisition" ? " — acquisition lane" : ""}
                 </option>
               ))}
+              {/* r554: registry rows the chat picker doesn't carry (dormant
+                  acquisition providers) are storable anyway — the guard
+                  resolves them today (fleet chip flips to "key stored — dial
+                  pending") and the executor skips them as dial targets
+                  (unknown to the chat registry ⇒ no-resolvable-provider). */}
+              {ACQUISITION_PROVIDERS.filter((p) => !providerById(p.id)).map((p) => (
+                <option key={`acq-${p.id}`} value={p.id}>
+                  {p.label} — acquisition lane (dial pending)
+                </option>
+              ))}
             </select>
-            {providerById(laneProvider)?.lane === "acquisition" ? (
-              <p className="text-[11px] leading-snug text-amber-500/90">
-                Acquisition lane — this key powers Radar Frontier&apos;s Exa
-                search (picked up on the next Frontier refresh). Resolution
-                order: this vault slot first, then the machine&apos;s{" "}
-                <code className="font-mono text-[10px]">EXA_API_KEY</code> env
-                fallback; with neither, the lane stays silent. The executor
-                never dials it as an LLM step, so it can&apos;t win the dial-slot
-                marker below.
-              </p>
-            ) : null}
+            {(() => {
+              // r554: registry-aware note — dormant rows get the honest
+              // "dials later" wording, live rows keep the r551 copy; both
+              // state the same resolution order the guard enforces.
+              const reg = acquisitionById(laneProvider);
+              if (!reg) return null;
+              return (
+                <p className="text-[11px] leading-snug text-amber-500/90">
+                  Acquisition lane
+                  {reg.status === "dormant"
+                    ? " (dormant — the dial dialect hasn't shipped yet)"
+                    : ""}{" "}
+                  —{" "}
+                  {reg.status === "dormant"
+                    ? `a token stored here is honored today: the fleet chip flips to "key stored — dial pending" and ${reg.label}'s lane picks it up the moment its dialect ships. `
+                    : `this key powers Radar Frontier's ${reg.label} search (picked up on the next Frontier refresh). `}
+                  Resolution order: this vault slot first, then the
+                  machine&apos;s{" "}
+                  <code className="font-mono text-[10px]">{reg.envFallback}</code>{" "}
+                  env fallback; with neither, the lane stays silent. The
+                  executor never dials it as an LLM step, so it can&apos;t win
+                  the dial-slot marker below.
+                </p>
+              );
+            })()}
             <div className="flex w-full flex-wrap items-center gap-1.5" data-testid="acq-fleet">
               <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 Acquisition lanes

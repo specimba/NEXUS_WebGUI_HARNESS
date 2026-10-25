@@ -1464,7 +1464,11 @@ export function ServerAutopilot() {
                     >
                       {resumable ? (
                         <p className="mb-1 text-[10.5px] font-semibold text-amber-400">
-                          ↻ Resumable — completed steps are memoized; the next scheduled fire re-enters at the failed step (failStreak still counts).
+                          ↻ Resumable —{" "}
+                          {resumePlan
+                            ? `the next scheduled fire re-enters at step ${resumePlan.step}/${resumePlan.total} ("${resumePlan.label}") — `
+                            : "the next scheduled fire re-enters at the failed step — "}
+                          completed steps are memoized (failStreak still counts).
                         </p>
                       ) : null}
                       {cls ? (
