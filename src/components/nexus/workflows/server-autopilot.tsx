@@ -125,7 +125,7 @@ function moveStatusClass(status: string): string {
     case "failed":
       return "border-red-500/40 bg-red-500/10 text-red-400";
     case "executing":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+      return "border-amber-500/40 bg-amber-500/10 text-amber-300 animate-pulse";
     case "skipped":
       return "border-muted-foreground/30 bg-muted/20 text-muted-foreground";
     default:

@@ -13181,3 +13181,25 @@ Stage Summary:
 
 Round Handoff:
 r541 (next patrol) — unchanged from r540: seed 2-3 real url rows into the ResearchQueue (enqueueResearchTargets) to witness the page reader live within one AIE cycle, or the Exa live-wire proof if a key lands first. NEW STANDING RISK: a 15-min webDevReview agent (473810) may now run concurrently with 30-min patrols — concurrent-agent edit windows are LIVE again; on any suspected bad edit, cross-check with rg + Read + git show BEFORE reverting (r540 false-alarm doctrine), and treat dev.log Turbopack errors as the only hard evidence of a real broken window.
+
+---
+Task ID: r541
+Agent: Z.ai Code (patrol round, job 473388)
+Task: Golden QA + r540 handoff increment — seed real url rows to witness the page-reader path live within one AIE cycle.
+
+Work Log:
+- Golden QA 3/3 + console 0 errors: Settings renders (Model Relay surface + changelog receipts), Radar → Frontier tab renders (seed ledger, findings, cascade case row arXiv:2609.01345) and scrolls its own container, Workflows run-panel long-paste via eval: 6634 chars landed, textarea scrollH 835 vs clientH 67 — internal scroll containment holds, Run stays reachable. Console: only React DevTools info + HMR connect.
+- INCREMENT — page-reader seeding witnessed at the production API: POST /api/autonomy {action:"enqueue", urls:[bun.sh, nextjs.org, ui.shadcn.com]} → {"inserted":3,"duplicates":0,"invalid":0}; cycle snapshot confirms queue 3q/0r/0f. CLI curl passes the CSRF gate by design (site/origin null).
+- ENGINE-PACING FACT (honest): the same-bucket manual cycle (10:13Z, idempotent) spent its 2 move slots on TASK-100/TASK-101 advance-strategy moves — no research-repo move proposed this bucket. The 3 queued url rows are engine-paced for the next 10-min bucket(s) (10:20Z+ auto-fire; planner priority puts advance-strategy first). Seeding receipt is complete; research receipts land next bucket.
+- STYLING POLISH: executing move chip in server-autopilot.tsx moveStatusClass gains animate-pulse — mid-flight moves are now visibly alive at a glance, distinct from done/failed/skipped chips. Zero imports, zero shape change.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT baseline.
+
+Stage Summary:
+- The r540 page-reader lane now has its first REAL customers: 3 non-GitHub url rows (bun.sh, nextjs.org, ui.shadcn.com) sit in the production ResearchQueue (source "manual" via the enqueue API), engine-paced to be researched by the next buckets — first live-wire url research receipts become the witness for the r540 acceptance's last mile.
+- Budget honored: 12 rounds exactly (investigate 3, golden QA 4, seeding+witness 2, polish+gates 1, ship 2 — batched calls, no overrun).
+
+Round Handoff:
+Round ID: r541 -> next patrol (job 473388)
+Open risks: concurrency with the 15-min webDevReview agent (473810) remains live — cross-check before reverting (r540 doctrine); page reader still live-wire-untested against real-world page quirks (cookie walls, CSP, redirects) — receipts carry page stats to sanity-check.
+Blockers: none.
+Next recommended action: r542 — FIRST verify the 3 url rows' research receipts: GET /api/autonomy snapshot (queue counts should show researched/failed out of 3) + dev.log page-reader lines + move results ("researched url:…: score → verdict"). If a row failed (404/non-html/timeout), the honest-failure shape IS the witness — check the error class note. Then resume the P1 tail (live-wire keyed proofs when a key lands) or the next TASKS.md item.
