@@ -10,6 +10,7 @@ import {
   Ban,
   Check,
   Clock,
+  Copy,
   Hourglass,
   Loader2,
   Minus,
@@ -310,6 +311,20 @@ function RunCard({
                 ? "waiting for event"
                 : `${s.stepsTotal} steps`}
           </span>
+          {s.status === "waiting" ? (
+            (() => {
+              const evt = parseRunSteps(s.stepsJson).find((st) => st.waiting)?.waiting?.event;
+              return (
+                <span
+                  title={evt ? `Waiting for event "${evt}" — emit it on this board to resume` : "Waiting for an event"}
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-600 dark:text-amber-400"
+                >
+                  <Hourglass className="h-2.5 w-2.5 animate-pulse" aria-hidden />
+                  {evt ? evt : "waiting"}
+                </span>
+              );
+            })()
+          ) : null}
           <span>· {s.trigger === "manual" ? "manual" : "schedule"}</span>
         </div>
         {s.error ? (
@@ -475,6 +490,36 @@ function ServerRunDrawer({
 
   const steps = React.useMemo(() => parseRunSteps(row.stepsJson), [row.stepsJson]);
   const duration = row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.startedAt) : null;
+  // r523: one-click operator export — paste a run's honest story into bug
+  // reports / handoffs without screenshotting the drawer.
+  const [copied, setCopied] = React.useState(false);
+  const copyReport = React.useCallback(() => {
+    const report = [
+      `Run ${row.id} — ${row.workflowName}`,
+      `status: ${row.status} · trigger: ${row.trigger} · started ${row.startedAt}${row.finishedAt ? ` · finished ${row.finishedAt}` : ""}`,
+      row.error ? `error: ${row.error}` : null,
+      ...steps.map(
+        (st, i) =>
+          `${i + 1}. ${st.label || "step"} — ${
+            st.waiting
+              ? `waiting for event "${st.waiting.event}"`
+              : st.ok === false
+                ? "FAILED"
+                : st.output || "no output captured"
+          }`,
+      ),
+      row.finalReport ? `report: ${row.finalReport}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    void navigator.clipboard
+      ?.writeText(report)
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      })
+      .catch(() => {});
+  }, [row, steps]);
 
   return (
     <div
@@ -505,6 +550,19 @@ function ServerRunDrawer({
           <span className="shrink-0 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-600 dark:text-cyan-400">
             ⇉ server · {row.trigger === "manual" ? "manual" : "schedule"}
           </span>
+          <button
+            type="button"
+            onClick={copyReport}
+            aria-label="Copy run report to clipboard"
+            title="Copy the full run report (status, steps, outputs) to the clipboard"
+            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-emerald-500" aria-hidden />
+            ) : (
+              <Copy className="h-4 w-4" aria-hidden />
+            )}
+          </button>
           <button
             type="button"
             ref={closeRef}

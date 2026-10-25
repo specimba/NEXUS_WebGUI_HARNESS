@@ -12762,3 +12762,27 @@ Round ID: r522 -> next patrol (job 473388)
 Open risks: (1) supervisor survival across patrol boundaries unproven — first check next round: pgrep -f liveness-supervisor; if dead, bash scripts/ensure-dev.sh re-arms (proven). (2) TASK-102 NEXUS_BOT wave still queued as the next real feature round. (3) run-kanban UI increment owed: waiting-card event visibility on board cards + Copy-report in the drawer (designed, not shipped). (4) Vault still EMPTY after the r521 sandbox rollback — owner re-enters one key then scripts/seedwrite.ts regenerates the seed. (5) Supabase nexus-backups bucket + GitHub PAT rotation remain owner-side. (6) lint baseline must read 33 exact after any future source edit.
 Blockers: none.
 Next recommended action: r523 — (1) pgrep liveness-supervisor, re-arm via ensure-dev.sh if dead; (2) ship the owed run-kanban UI increment (amber waiting card with event visibility + drawer Copy-report); (3) TASK-102 NEXUS_BOT wave.
+
+---
+Task ID: r523
+Agent: patrol job 473388 (main session)
+Task: r522 handoff — (1) supervisor survival check, (2) owed run-kanban UI increment (waiting-card event visibility + drawer Copy-report), (3) TASK-102 if budget.
+
+Work Log:
+- SUPERVISOR SURVIVAL PROVEN: pgrep found the r522 supervisor ALIVE across the full 90-min patrol boundary (server 200, no re-arm needed) — the two-layer defense held; r522 open risk (1) closed with evidence.
+- QA golden paths FIRST (9/9, console 0 errors): Settings -> Model Relay + Intel ladder; Radar -> Frontier scroll; Workflows mount + 6000-char step paste + Run control; the r522 boot-probe fix verified. Nothing broken -> advanced the owed increment.
+- RUN-KANBAN INCREMENT SHIPPED (src/components/nexus/workflows/run-kanban.tsx, r522 handoff item (2)):
+  - Board cards: a waiting run now shows an amber pulsing hourglass chip carrying the EVENT NAME (derived from stepsJson wait sentinel via parseRunSteps — data already on the row, zero API change) with a title explaining "emit it on this board to resume". Previously the event name was drawer-only; operators could not see WHAT a parked run waits for at board glance.
+  - Detail drawer: one-click Copy-report button (Copy icon -> emerald Check for 1.6s on success) — serializes id/name/status/trigger/timestamps/error + numbered step lines (labels, per-step verdict: waiting-for-event / FAILED / output) + finalReport into clipboard text. Operator can paste a run's honest story into bug reports or handoffs without screenshotting the drawer.
+- QA script extended (scripts/cdp-qa-golden-r522.mjs): drawer check added — opens a server-run card when present, asserts the Copy-report button is present and clickable, closes the drawer; honestly skipped this run (no server-run card at poll time — the empty-vault sandbox stands dialable runs down).
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline. Post-edit QA re-run: 9/9, console 0 errors on the recompiled board.
+
+Stage Summary:
+- The TASK-101 waitForEvent operator loop is now visible end-to-end on the board: park -> amber chip names the awaited event ON THE CARD -> operator emits via EventEmitBar -> drawer Copy-report exports the honest trail. With r521's park/resume engine work this closes the human side of the durable-wait story.
+- TASK-102 NEXUS_BOT wave intentionally NOT started this round — kept the increment small and verifiable per doctrine; it is the next round's primary build target.
+
+Round Handoff:
+Round ID: r523 -> next patrol (job 473388)
+Open risks: (1) TASK-102 NEXUS_BOT wave is now the top P1 (AES vault + redaction choke per docs/strategy/TASKS.md). (2) drawer Copy-report UI check stays conditional — needs a server-run card to exercise (fire one run or wait for engine cycles). (3) Vault still EMPTY (r521 rollback) — owner re-entry + scripts/seedwrite.ts. (4) Supabase nexus-backups bucket + GitHub PAT rotation remain owner-side. (5) the sync route still overwrites stepsJson from client pushes — DB-authored waitFor survives only until that workflow's next tab sync (documented r521 limitation, still open).
+Blockers: none.
+Next recommended action: r524 — TASK-102 NEXUS_BOT wave slice 1 (read the TASK-102 spec in docs/strategy/TASKS.md first; land the smallest honest slice: NEXUS_BOT provider entry + adapter lane, no theatre), then QA golden paths, gates, ship.

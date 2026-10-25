@@ -180,6 +180,30 @@ async function main() {
     check("Run control reachable", typeof runBtn === "string" && runBtn.startsWith("run-btn"), String(runBtn));
     await shot(ws, "workflows-paste");
 
+    // ── 4) drawer: server-run card → Copy-report button (r523) ──
+    const cardClicked = await evalJs(ws, js(`
+      const b = [...document.querySelectorAll("button")].find((x) => (x.title ?? "").includes("click to inspect"));
+      if (b) { b.click(); return true; }
+      return false;
+    `));
+    if (cardClicked) {
+      await sleep(700);
+      const copyBtn = await evalJs(ws, js(`
+        const b = [...document.querySelectorAll("button")].find((x) => x.getAttribute("aria-label") === "Copy run report to clipboard");
+        if (b) { b.click(); return "clicked"; }
+        return "missing";
+      `));
+      check("drawer Copy-report present & clickable", copyBtn === "clicked", String(copyBtn));
+      await evalJs(ws, js(`
+        const b = [...document.querySelectorAll("button")].find((x) => x.getAttribute("aria-label") === "Close server run detail");
+        if (b) b.click();
+        return true;
+      `));
+      await sleep(400);
+    } else {
+      console.log("  (no server-run card present — drawer check skipped this round)");
+    }
+
     // ── console hygiene ──
     await sleep(800);
     check("console 0 errors across all golden paths", consoleErrors.length === 0, consoleErrors.slice(0, 3).join(" | "));
