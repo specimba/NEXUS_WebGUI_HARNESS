@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { decryptVaultKey, encryptVaultKey } from "@/lib/server/vault-crypto";
+import { ACQUISITION_PROVIDERS } from "@/lib/acquisition-registry";
+import { resolveAcquisitionSlot } from "@/lib/server/acquisition-vault";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,23 @@ export async function GET(req: Request) {
     const slots = await Promise.all(
       rows.map(async (r) => ({ ...r, key: await decryptVaultKey(r.key) })),
     );
+    // r551: LIVE key-source readout for acquisition lanes — resolved through
+    // the SAME probeSlotDial guard the frontier dials run. Source ONLY (never
+    // a key, not even masked): the card renders one honest chip per registry
+    // provider — "vault" (a slot is winning), "env" (machine-secret fallback),
+    // null (unconfigured — the lane stays silent). resolveAcquisitionSlot
+    // never throws, so this cannot break the slots read.
+    const acquisition = await Promise.all(
+      ACQUISITION_PROVIDERS.map(async (p) => {
+        const resolved = await resolveAcquisitionSlot(p.id);
+        return {
+          provider: p.id,
+          label: p.label,
+          envFallback: p.envFallback,
+          source: resolved?.source ?? null,
+        };
+      }),
+    );
     return NextResponse.json({
       vault: slots.map((r) => ({
         provider: r.provider,
@@ -62,6 +81,7 @@ export async function GET(req: Request) {
         // OLDEST resolvable slot (r207), so the card must show createdAt.
         createdAt: r.createdAt,
       })),
+      acquisition,
     });
   } catch (e) {
     return NextResponse.json(

@@ -13384,3 +13384,24 @@ Round ID: r550 -> next patrol (job 473388)
 Open risks: (1) live-wire keyed proofs for /v1/messages + Exa still need a real keyed endpoint (env-gated; vault slot would do — none stored yet, exaKeySource reads "env"-only today if EXA_API_KEY is set, else lane silent); (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands.
 Blockers: none.
 Next recommended action: r551 — golden QA sweep (r550 skipped the browser walk to protect the budget after the MultiEdit detour); then TASKS.md P1 tail is EMPTY — pick from: (a) brightdata/webshare registry rows as dormant registry entries with honest "unconfigured" chips, (b) vault-card live key-source readout for acquisition lanes (server probe of resolveAcquisitionSlot surfaced in /api/vault), or (c) TASK-101 durable-step semantics deepening.
+
+---
+Task ID: r551
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r550 handoff — golden QA browser sweep (r550's deferred walk), then increment (b): vault-card live key-source readout for acquisition lanes.
+
+Work Log:
+- GOLDEN QA 3/3 (agent-browser, console + page-errors empty at every step): settings → Model Relay section + free-reach census render; radar → Frontier tab clicked + scrolled (content rich, bodyW 1280 = winW, no horizontal overflow); workflows → panel renders, no overflow. Console: only Fast Refresh/HMR logs. Nothing broken — no fixes needed before new work.
+- INCREMENT (b) SHIPPED — the acquisition lane's key-source is now LIVE-VISIBLE at the exact surface where the Owner stores keys: (1) /api/vault GET now serves `acquisition[]` — one row per ACQUISITION_PROVIDERS registry entry (provider, label, envFallback, source) resolved through the SAME resolveAcquisitionSlot/probeSlotDial guard path the frontier dials run; source ONLY — never a key, not even masked (leak-check asserted live). resolveAcquisitionSlot never throws, so the readout cannot break the slots read. (2) Vault card: when the lane picker selects an acquisition provider, a rounded pill chip renders the guard's live verdict — emerald "Live: serving from your vault slot" / amber "Live: serving from EXA_API_KEY (machine env)" / muted "Live: unconfigured — the lane stays silent" (data-testid acq-source-exa). Store a key through this very picker and the chip flips emerald while the frontier lane picks the slot up on next refresh — the full loop is observable from one panel.
+- VERIFIED LIVE: curl /api/vault → acquisition [{provider exa, label Exa, envFallback EXA_API_KEY, source None}] (honest: no vault slot + no env → silent); UI: lane-provider select → exa → chip innerText "Live: unconfigured — the lane stays silent"; agent-browser errors 0 post-interaction.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT.
+- BUDGET: ~6/12 — clean, no restart, no bucket attempts, no MultiEdit detours this round (both file batches landed first try).
+
+Stage Summary:
+- r550's guard now has a face: the Owner can see WHICH source serves the acquisition lane at the vault card itself, resolved through the identical code path the frontier dial uses — no drift possible between what the card claims and what the lane does. TASK-102 wave is fully closed (dialect → vault-first → honesty chip → registry class → guard → live readout).
+
+Round Handoff:
+Round ID: r551 -> next patrol (job 473388)
+Open risks: (1) live-wire keyed proofs (/v1/messages + Exa) still need a real keyed endpoint — storing an Exa key in the vault would light the whole chain end-to-end; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r552 — P1 tail is empty; pick ONE: (a) dormant registry rows for brightdata/webshare in ACQUISITION_PROVIDERS with honest "awaiting token" chips (pure declarative, readout renders them automatically); (b) TASK-101 durable-step semantics deepening (resume-path QA); (c) if the Owner stores any acquisition key, a live-wire keyed proof instead.

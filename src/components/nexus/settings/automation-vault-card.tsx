@@ -90,6 +90,12 @@ export function AutomationVaultCard() {
   // the lanes the executor actually dials with deserve at least the same
   // guard the legacy builtin box gets.
   const [revealed, setRevealed] = React.useState<{ provider: string; key: string } | null>(null);
+  // r551: live acquisition key-source readout — the /api/vault GET now serves
+  // the probeSlotDial-resolved source per acquisition registry provider (source
+  // only, never a key). Rendered as one honest chip beside the acquisition note.
+  const [acqLanes, setAcqLanes] = React.useState<
+    { provider: string; label: string; envFallback: string; source: "vault" | "env" | null }[]
+  >([]);
   const [revealingProvider, setRevealingProvider] = React.useState<string | null>(null);
   const [confirmRemoveProvider, setConfirmRemoveProvider] = React.useState<string | null>(null);
   const revealTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,7 +118,16 @@ export function AutomationVaultCard() {
         cache: "no-store",
         headers: { "x-nexus-csrf": "1" },
       });
-      const json = (await res.json()) as { vault?: VaultSlot[]; error?: string };
+      const json = (await res.json()) as {
+        vault?: VaultSlot[];
+        acquisition?: {
+          provider: string;
+          label: string;
+          envFallback: string;
+          source: "vault" | "env" | null;
+        }[];
+        error?: string;
+      };
       // r413: a 500 answer carries vault:[] + error — swallowing res.ok would
       // render "no key stored" over a read that never succeeded (r411 class).
       // Keep last known slots on screen (r219 no-flicker) but flag the read.
@@ -121,6 +136,7 @@ export function AutomationVaultCard() {
         return;
       }
       setSlots(Array.isArray(json.vault) ? json.vault : []);
+      setAcqLanes(Array.isArray(json.acquisition) ? json.acquisition : []);
       setLoadFailed(false);
     } catch {
       /* local server briefly unreachable — keep last known slots, flag it */
@@ -634,15 +650,36 @@ export function AutomationVaultCard() {
               ))}
             </select>
             {providerById(laneProvider)?.lane === "acquisition" ? (
-              <p className="text-[11px] leading-snug text-amber-500/90">
-                Acquisition lane — this key powers Radar Frontier&apos;s Exa
-                search (picked up on the next Frontier refresh). Resolution
-                order: this vault slot first, then the machine&apos;s{" "}
-                <code className="font-mono text-[10px]">EXA_API_KEY</code> env
-                fallback; with neither, the lane stays silent. The executor
-                never dials it as an LLM step, so it can&apos;t win the dial-slot
-                marker below.
-              </p>
+              <>
+                {(() => {
+                  const lane = acqLanes.find((a) => a.provider === laneProvider);
+                  if (!lane) return null;
+                  const chip =
+                    lane.source === "vault"
+                      ? { text: "Live: serving from your vault slot", cls: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" }
+                      : lane.source === "env"
+                        ? { text: `Live: serving from ${lane.envFallback} (machine env)`, cls: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" }
+                        : { text: "Live: unconfigured — the lane stays silent", cls: "text-muted-foreground", dot: "bg-muted-foreground/40" };
+                  return (
+                    <p
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium"
+                      data-testid={`acq-source-${lane.provider}`}
+                    >
+                      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />
+                      <span className={chip.cls}>{chip.text}</span>
+                    </p>
+                  );
+                })()}
+                <p className="text-[11px] leading-snug text-amber-500/90">
+                  Acquisition lane — this key powers Radar Frontier&apos;s Exa
+                  search (picked up on the next Frontier refresh). Resolution
+                  order: this vault slot first, then the machine&apos;s{" "}
+                  <code className="font-mono text-[10px]">EXA_API_KEY</code> env
+                  fallback; with neither, the lane stays silent. The executor
+                  never dials it as an LLM step, so it can&apos;t win the dial-slot
+                  marker below.
+                </p>
+              </>
             ) : null}
             <Input
               type="password"
