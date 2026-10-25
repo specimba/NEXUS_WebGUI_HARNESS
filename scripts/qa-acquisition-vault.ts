@@ -172,6 +172,19 @@ async function main() {
     "mirror strip badge grammar: count rendered from candidates.length with the singular-safe 'waiting' suffix",
     stripSrc.includes("{candidates.length} waiting"),
   );
+  // r566: the lane-slots list is its own component — same seam pin as r562/564.
+  const listSrc = readFileSync(
+    new URL("../src/components/nexus/settings/lane-slots-list.tsx", import.meta.url),
+    "utf8",
+  );
+  check(
+    "lane list seam: chips + drift + census live in the list component, the card mounts it, the literals are gone from the card",
+    listSrc.includes("dials first") &&
+      listSrc.includes('data-testid="lane-census"') &&
+      listSrc.includes("key drifted \\u2014 re-mirror") &&
+      cardSrc.includes("<LaneSlotsList") &&
+      !cardSrc.includes("dials first"),
+  );
 
   console.log(`\n${pass} passed, ${failures.length} failed`);
   if (failures.length > 0) {
