@@ -73,6 +73,12 @@ export interface RelayWireHop {
   label?: string;
   /** True ⇒ server uses the built-in auto engine for this hop. */
   useAuto?: boolean;
+  /**
+   * r530 (TASK-102): "anthropic" rides the /v1/messages wire end-to-end for
+   * this hop (URL + x-api-key + shaped body + SSE translation). Produced by
+   * buildRelayWire from the provider registry; absent ⇒ OpenAI dialect.
+   */
+  dialect?: string;
 }
 
 /** How the chain should order itself for the task at hand. */
@@ -906,6 +912,11 @@ export function buildRelayWire(
       model: h.model,
       label: h.label,
       ...(h.providerId === "auto" ? { useAuto: true } : {}),
+      // r530 (TASK-102): the registry dialect rides the wire hop so the
+      // engine dials the right dialect per hop (vyce → /v1/messages).
+      ...(h.providerId !== "auto" && providerById(h.providerId)?.dialect === "anthropic"
+        ? { dialect: "anthropic" }
+        : {}),
     }));
 }
 

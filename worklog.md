@@ -12939,3 +12939,28 @@ Round ID: r529-b -> next patrol (job 473388)
 Open risks: unchanged from r529 — (1) chat-route hop build does not pass the registry dialect yet; (2) stop_sequences mapping gap (pre-existing, documented in-code); (3) live /v1/messages wire unexercised (vault empty — owner --import); (4) db/vault-master.key backup owner-side + stepsJson sync-overwrite; (5) Supabase bucket + PAT rotate owner-side.
 Blockers: none.
 Next recommended action: unchanged from r529 — r530 threads the provider-registry dialect through the chat-route hop build (EngineBody.dialect producer), or TASK-100 token-lean request shaping (the last 9router slice).
+
+---
+Task ID: r530
+Agent: patrol job 473388 (main session)
+Task: r529-b handoff — thread the provider-registry dialect through the relay hop build (EngineBody.dialect producer); QA golden paths first; gates; ship.
+
+Work Log:
+- SUPERVISOR alive across the boundary (server 200, pid 3571) — ninth consecutive patrol.
+- QA golden paths FIRST: 9/9, console 0 errors. Nothing broken -> advanced the handoff action.
+- DIALECT THREADING SHIPPED (completes TASK-102 slice 5 end-to-end):
+  - relay.ts: RelayWireHop.dialect?: string + buildRelayWire stamps dialect:"anthropic" from the provider registry on every non-auto hop — ONE isomorphic producer covering the client chat lane, workflow-runner runs, and utility-lane dials.
+  - agent-engine.ts: per-hop dial override `dialect: hop.dialect ?? body.dialect` in runRelayedCustom — a chain can now MIX OpenAI- and Anthropic-dialect hops; the hop's registry dialect wins over the request-level flag.
+  - chat-view.tsx: the pinned primary provider's registry dialect rides the primary dial (providerById lookup at body build).
+  - Engine side needed NO changes: r529's gate (body.dialect || isAnthropicStyleEndpoint(base)) + per-hop URL/auth/body/SSE machinery consume the flag as-is.
+- USER-VISIBLE (round mandate): the vault card's violet chip now reads "anthropic dialect · relay" — its title states the dialect rides relay chains per hop (r530), not just direct dials.
+- VERIFY (marker-gated chain, the r529-b discipline — no pipe exit codes trusted): qa-anthropic-sse 20/20; qa-anthropic-dialect 19/19; bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline; golden QA 9/9, console 0 errors. Honest limit: the live keyed vyce chat turn (the wire-level proof) stays unexercised until the vault has a key; OpenAI-lane behavior is byte-identical (the flag is additive).
+
+Stage Summary:
+- The Anthropic-dialect lane is now threaded END-TO-END through every chat-side path: registry -> buildRelayWire hop -> per-hop engine dial -> /v1/messages wire (URL, x-api-key, shaped body, SSE translation), all behind the same redaction choke. Chains can mix dialects hop-by-hop. TASK-102 remainder: Exa/BrightData acquisition lanes + the live-wire proof (vault empty).
+
+Round Handoff:
+Round ID: r530 -> next patrol (job 473388)
+Open risks: (1) Live /v1/messages wire unexercised (vault empty — owner --import; the first keyed vyce chat run proves the whole lane). (2) stop_sequences mapping gap (pre-existing, documented in-code). (3) workflow-runner/utility-lane PRIMARY dials get dialect only via the URL gate — only the chat primary stamps body.dialect explicitly today (cheap follow-up if a keyed anthropic-only provider joins those lanes). (4) db/vault-master.key backup owner-side; r521 stepsJson sync-overwrite open. (5) Supabase bucket + PAT rotate owner-side.
+Blockers: none.
+Next recommended action: r531 — TASK-102 tail: Exa/BrightData acquisition lanes (smallest honest slice: a research-lane adapter gated on a vault slot pairing an Exa-style endpoint, dial-free body-shaping qa), or TASK-100 token-lean request shaping (the last 9router slice) — both dial-free verifiable.

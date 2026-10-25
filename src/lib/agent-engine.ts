@@ -54,6 +54,12 @@ export interface RelayWireHop {
   label?: string;
   /** True ⇒ use the built-in auto engine for this hop (server-only). */
   useAuto?: boolean;
+  /**
+   * r530 (TASK-102): "anthropic" forces the /v1/messages wire for THIS hop
+   * (overrides the request-level body.dialect — a chain can mix dialects).
+   * Produced by buildRelayWire from the provider registry.
+   */
+  dialect?: string;
 }
 
 export interface EngineBody {
@@ -489,7 +495,16 @@ export async function runRelayedCustom(
         await autoRunner({ ...body, baseUrl: undefined, requestId }, sendGate, signal, audit);
       } else {
         await runCustomEngine(
-          { ...body, baseUrl: hop.baseUrl, apiKey: hop.apiKey, model: hop.model },
+          {
+            ...body,
+            baseUrl: hop.baseUrl,
+            apiKey: hop.apiKey,
+            model: hop.model,
+            // r530 (TASK-102): the hop's registry dialect wins — a chain can
+            // mix OpenAI- and Anthropic-dialect hops; the primary inherits the
+            // request-level dialect when its hop carries none.
+            dialect: hop.dialect ?? body.dialect,
+          },
           sendGate,
           signal,
           toolIO,

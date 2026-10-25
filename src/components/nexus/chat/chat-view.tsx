@@ -32,6 +32,7 @@ import { MessageItem } from "@/components/nexus/chat/message-item";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { resolveExplicitLlm, resolveLlm } from "@/lib/llm-config";
 import { buildRelayWire, recordRelayStatusLine, stripRelayMarkers } from "@/lib/relay";
+import { providerById } from "@/lib/providers";
 import {
   DEFAULT_TTS_VOICE,
   MAX_CONTEXT_MESSAGES,
@@ -290,6 +291,9 @@ export function ChatView() {
             // status, AND the r25 primary-hop rotator stamping were all
             // silently dead on the main chat path (suite-caught).
             providerId: llm.providerId,
+            // r530 (TASK-102): the pinned provider's registry dialect rides
+            // the primary dial (vyce → /v1/messages end-to-end, choke included).
+            ...(providerById(llm.providerId)?.dialect === "anthropic" ? { dialect: "anthropic" } : {}),
             temperature: selectedAgent.temperature,
             maxIterations: selectedAgent.maxIterations,
             system:
