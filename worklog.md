@@ -13165,3 +13165,19 @@ Round ID: r540 -> next patrol (job 473388)
 Open risks: (1) Live-wire keyed proofs pending — when a real Exa key lands (vault slot or .env), run the live-wire proof + harden exaResponseToHouse against the REAL payload; the frontier chip is the visible signal. (2) The page reader has LIVE-WIRE-UNTESTED surfaces too (real-world pages: cookie walls, CSP, redirects) — first real url-row research in dev.log is the witness; notes carry the page stats to sanity-check. (3) sed rendering artifacts can masquerade as broken edits — cross-check with rg/Read/git show first (r540 false alarm of record). (4) webDevReview 15-min cron still owner-side (staged text at scripts/webdevreview-payload.txt). (5) Owner-side: PAT rotation, Webshare token, Supabase bucket, preseed-key decision.
 Blockers: none.
 Next recommended action: r541 — seed 2-3 real url rows into the ResearchQueue (enqueueResearchTargets) to witness the page reader live within one AIE cycle (TASKS acceptance's last mile), or if a key lands first, the Exa live-wire proof.
+
+---
+Task ID: r540.1 (owner-direct followup, trace 1a1721dcc9663ce1)
+Agent: Z.ai Code (main session)
+Task: Complete the interrupted direct-task tail — confirm dual-remote push, ensure the 15-min webDevReview cron exists (≤2000 chars, no duplicates).
+
+Work Log:
+- Push state: origin AND fork both "Everything up-to-date" at 40583d6ae (r540) — r538/r539/r540 all landed on both remotes; dev server health 200.
+- Cron registry pre-create: only job 473388 (owner's 30-min agentTurn patrol) — the earlier interrupted create had NOT persisted.
+- CREATED job 473810 "NEXUS webDevReview (15-min)": kind=webDevReview, cron "0 */15 * * * ?", tz Europe/Istanbul, mandated Chinese payload (~700 chars ≤ 2000). Registry now = 2 jobs, different kind + cadence → no duplicates. Resolves r540 handoff open item (4).
+
+Stage Summary:
+- Owner direct task fully closed: db-undefined investigation (r538 — transient broken-edit window, healed; prisma client regenerated), engine wiring verified live (briefing/strategy/snapshot 200), golden 9/9 + console 0, gates green, worklog r538–r540 recorded, dual-push confirmed, webDevReview 15-min cron LIVE (473810).
+
+Round Handoff:
+r541 (next patrol) — unchanged from r540: seed 2-3 real url rows into the ResearchQueue (enqueueResearchTargets) to witness the page reader live within one AIE cycle, or the Exa live-wire proof if a key lands first. NEW STANDING RISK: a 15-min webDevReview agent (473810) may now run concurrently with 30-min patrols — concurrent-agent edit windows are LIVE again; on any suspected bad edit, cross-check with rg + Read + git show BEFORE reverting (r540 false-alarm doctrine), and treat dev.log Turbopack errors as the only hard evidence of a real broken window.
