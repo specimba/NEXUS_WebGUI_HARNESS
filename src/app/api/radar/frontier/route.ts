@@ -8,14 +8,15 @@ import { fuseScores, ruleScores } from "@/lib/frontier-scout";
 import {
   exaAuthHeaders,
   exaDialUrl,
-  exaKeyFromSources,
-  exaKeySourceFromSources,
   type ExaKeySource,
   exaResponseToHouse,
   frontierQueryToExaBody,
 } from "@/lib/exa-dialect";
 import { db } from "@/lib/db";
-import { decryptVaultKey } from "@/lib/server/vault-crypto";
+import {
+  probeSlotDial,
+  resolveAcquisitionSlot,
+} from "@/lib/server/acquisition-vault";
 import type { FrontierItem } from "@/lib/frontier-scout";
 
 // ─── GET /api/radar/frontier — Frontier Scout aggregation (r511) ─────────────
@@ -261,74 +262,58 @@ async function fetchArxivHarness(): Promise<{ items: FrontierItem[]; error?: str
 // ─── Source 4: Exa acquisition lane (r531 slice 6 — vault-first since r537) ──
 // The NEXUS_BOT wave's acquisition dialect: Exa /search (POST + x-api-key,
 // results[] rows) parsed into house FrontierItems via src/lib/exa-dialect.ts.
-// Key resolution: an AutomationVault "exa" slot (decrypted server-side)
-// FIRST, EXA_API_KEY as the machine-secret fallback. Unconfigured ⇒ the lane
-// contributes NOTHING (no items, no error row) and the three free hubs stay
-// byte-identical.
+// Key resolution (r550): the probeSlotDial guard — ONE server resolve path
+// (src/lib/server/acquisition-vault.ts over the acquisition registry class):
+// an AutomationVault "exa" slot (decrypted server-side) FIRST, EXA_API_KEY as
+// the machine-secret fallback. Unconfigured ⇒ the dial is NEVER INVOKED — the
+// lane contributes NOTHING (no items, no error row) and the three free hubs
+// stay byte-identical.
 
 const EXA_FRONTIER_QUERY =
   "agentic LLM workflow harness judge post-training release announcement";
 
-// r539: WHICH source served the acquisition lane — computed independently of
-// the dial (a 401/429 exa response still has a live key source worth showing).
-// Vault-first (an "exa" AutomationVault slot) → "vault"; EXA_API_KEY → "env";
-// neither → null (the lane is invisible by design, never an error row).
+// r539/r550: WHICH source served the acquisition lane — computed independently
+// of the dial (a 401/429 exa response still has a live key source worth
+// showing). Resolved through the SAME guard path as the dial: vault-first (an
+// "exa" AutomationVault slot) → "vault"; EXA_API_KEY → "env"; neither → null
+// (the lane is invisible by design, never an error row).
 async function exaLaneKeySource(): Promise<ExaKeySource> {
-  try {
-    const slots = await db.automationVault.findMany({
-      where: { provider: "exa" },
-      orderBy: { createdAt: "asc" },
-    });
-    const decrypted = await Promise.all(
-      slots.map(async (s) => ({ provider: s.provider, key: await decryptVaultKey(s.key) })),
-    );
-    return exaKeySourceFromSources(decrypted, process.env.EXA_API_KEY);
-  } catch {
-    // vault unavailable (master key missing / table absent) → env fallback only
-    return exaKeySourceFromSources(null, process.env.EXA_API_KEY);
-  }
+  const resolved = await resolveAcquisitionSlot("exa");
+  return resolved?.source ?? null;
 }
 
 async function fetchExaAcquisition(): Promise<{ items: FrontierItem[]; error?: string }> {
-  // r537: vault-first key resolution — an AutomationVault slot with provider
-  // "exa" (AES-256-GCM at rest, decrypted server-side only, oldest first —
-  // the executor's scan convention) wins; EXA_API_KEY is now the FALLBACK
-  // machine-secret (the r531 pattern, demoted one rung, still honored).
-  let key = "";
+  // r550: the probeSlotDial guard resolves vault-first (AutomationVault "exa"
+  // slot, decrypted server-side, oldest first — the executor's scan convention)
+  // with EXA_API_KEY as the machine-secret fallback, and NEVER invokes the dial
+  // when unconfigured (the lane stays silent — not an error). The dial body is
+  // byte-identical to the r537 shape; the network-error containment (timeout /
+  // unreachable → honest error row) wraps the GUARD call so a dead endpoint
+  // still reports exactly the r531 message.
   try {
-    const slots = await db.automationVault.findMany({
-      where: { provider: "exa" },
-      orderBy: { createdAt: "asc" },
+    const probe = await probeSlotDial("exa", async (key) => {
+      const res = await fetch(exaDialUrl("https://api.exa.ai"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": NEXUS_UA,
+          ...exaAuthHeaders(key),
+        },
+        body: JSON.stringify(frontierQueryToExaBody(EXA_FRONTIER_QUERY, { numResults: 8 })),
+        signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS),
+      });
+      if (res.status === 401 || res.status === 403) {
+        return { items: [], error: `exa: auth rejected (HTTP ${res.status})` };
+      }
+      if (res.status === 402 || res.status === 429) {
+        return { items: [], error: `exa: ${res.status === 402 ? "credits exhausted" : "rate-limited"}` };
+      }
+      if (!res.ok) return { items: [], error: `exa: HTTP ${res.status}` };
+      const payload: unknown = await res.json();
+      return exaResponseToHouse(payload, Date.now());
     });
-    const decrypted = await Promise.all(
-      slots.map(async (s) => ({ provider: s.provider, key: await decryptVaultKey(s.key) })),
-    );
-    key = exaKeyFromSources(decrypted, process.env.EXA_API_KEY);
-  } catch {
-    // vault unavailable (master key missing / table absent) → env fallback only
-    key = exaKeyFromSources(null, process.env.EXA_API_KEY);
-  }
-  if (!key) return { items: [] }; // lane unconfigured — silent, not an error
-  try {
-    const res = await fetch(exaDialUrl("https://api.exa.ai"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": NEXUS_UA,
-        ...exaAuthHeaders(key),
-      },
-      body: JSON.stringify(frontierQueryToExaBody(EXA_FRONTIER_QUERY, { numResults: 8 })),
-      signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS),
-    });
-    if (res.status === 401 || res.status === 403) {
-      return { items: [], error: `exa: auth rejected (HTTP ${res.status})` };
-    }
-    if (res.status === 402 || res.status === 429) {
-      return { items: [], error: `exa: ${res.status === 402 ? "credits exhausted" : "rate-limited"}` };
-    }
-    if (!res.ok) return { items: [], error: `exa: HTTP ${res.status}` };
-    const payload: unknown = await res.json();
-    return exaResponseToHouse(payload, Date.now());
+    if (probe.skipped) return { items: [] }; // lane unconfigured — silent, not an error
+    return probe.result;
   } catch (err) {
     const timedOut = err instanceof Error && /timeout|timed? ?out|aborted/i.test(err.message);
     return {

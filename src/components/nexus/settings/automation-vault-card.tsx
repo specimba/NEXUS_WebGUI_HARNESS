@@ -636,7 +636,10 @@ export function AutomationVaultCard() {
             {providerById(laneProvider)?.lane === "acquisition" ? (
               <p className="text-[11px] leading-snug text-amber-500/90">
                 Acquisition lane — this key powers Radar Frontier&apos;s Exa
-                search (picked up on the next Frontier refresh). The executor
+                search (picked up on the next Frontier refresh). Resolution
+                order: this vault slot first, then the machine&apos;s{" "}
+                <code className="font-mono text-[10px]">EXA_API_KEY</code> env
+                fallback; with neither, the lane stays silent. The executor
                 never dials it as an LLM step, so it can&apos;t win the dial-slot
                 marker below.
               </p>
