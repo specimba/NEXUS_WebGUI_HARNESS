@@ -13295,3 +13295,25 @@ Round ID: r546 -> next patrol (job 473388)
 Open risks: (1) PINNED LOOP: until a dev-server process restart, every research row is scored by boot-time (pre-r546) code — do NOT seed witness rows before confirming a restart (fresh-code signature in notes: "README head distilled from github.com HTML"); (2) ADAPT witness = first post-restart seed of a crewai/autogen-class repo; (3) pool tier dormant until a Webshare token lands in Settings → Egress; (4) run-panel long-paste QA re-run first thing; (5) webDevReview concurrency doctrine stands (cross-check before revert).
 Blockers: none.
 Next recommended action: r547 — re-run golden QA incl. the long-paste; if a natural restart has re-armed the loop (fresh-code signature in a new receipt's notes), seed ONE vocab-dense repo and witness ADAPT emerald; else advance the TASKS.md P1 tail (TASK-101/102 advance receipts already flow).
+
+---
+Task ID: r547
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r546 handoff — re-run golden QA incl. the deferred long-paste probe; ADAPT witness only if a natural restart re-armed the loop; else serverless P1 work.
+
+Work Log:
+- RESTART CHECK: dev-server process start 10:15:29 — PRE-dates r546's edits; the auto-loop is still pinned to boot-time (pre-r546) code (engine lastCycleAt 13:35Z, queue stable 0q/10r/0f). ADAPT witness stays restart-gated per doctrine — no seeds burned this round.
+- GOLDEN QA 3/3 + the deferred long-paste probe: settings console-clean with Model Relay intel-ladder + free-reach census rendering; radar Frontier tab scrolls with feed content; workflows long-paste — plan-paste dialog filled with a 6593-char multi-line plan: internal scroll holds (136px box / 3616px content), zero horizontal overflow (bodyW 1280 = winW), console 0 errors. Honest note: the probe used the plan-paste surface (the run-panel task box only renders during a real run — the ~8-line cap doctrine there is unchanged since r543/r544 verified it at 4680/4940 chars).
+- INCREMENT (ingest integrity — the platform's own id vocabulary round-trips): normalizeResearchTarget now accepts the `gh:owner/repo` shorthand as INPUT. r546 live-witnessed the gap: enqueueing the exact id format the panel itself surfaces returned {"invalid":1}. Shorthand lands in the same normalize path (case-insensitive, .git stripped, whitespace-trimmed, malformed rejected). VERIFIED 6/6 live via bun import of the shipped module (shorthand, GH: upper+git, full URL, padded shorthand, gh:noslash→null, junk→null).
+- USER-FACING: queue-panel helper text now says "full github URLs or the gh:owner/repo shorthand both work"; receipts header gained a muted lane summary — LIVE-witnessed rendering "Research receipts (latest verdicts)· lanes 4×html". Badge ternary refactored into a shared laneToken() (one vocabulary for badge + summary).
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; workflows console 0 errors post-edit.
+- BUDGET: 12/12 — clean exit, no bucket-timed experiments (r546's lesson applied: serverless verification only).
+
+Stage Summary:
+- The paste/ingest surfaces are now round-trip honest: what the panel shows is what it accepts. QA re-verified end-to-end including the r546-deferred long-paste. The ADAPT witness remains a single restart away — everything else is in place (enrichment code live in route context, rubric math predicts 8.5→9 for crewai/autogen-class repos).
+
+Round Handoff:
+Round ID: r547 -> next patrol (job 473388)
+Open risks: (1) PINNED LOOP persists (process up since 10:15:29) — research rows still score with boot-time code; fresh-code signature to watch for in new receipts' notes: "README head distilled from github.com HTML"; (2) ADAPT witness = first post-restart seed of a crewai/autogen-class repo (ONE bucket attempt max); (3) pool tier dormant until a Webshare token lands; (4) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r548 — check process start time FIRST; if the server restarted, seed ONE vocab-dense repo (gh: shorthand now works!) and witness ADAPT emerald within one bucket; if not, advance the TASKS.md P1 tail (TASK-101 durable-step / TASK-102 wave) with a serverless slice.

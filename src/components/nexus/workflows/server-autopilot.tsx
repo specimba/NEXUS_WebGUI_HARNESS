@@ -142,6 +142,25 @@ function verdictChip(v: string | null): string {
   return "border-violet-500/40 bg-violet-500/10 text-violet-300";
 }
 
+// r547: egress-lane token — one vocabulary shared by the receipt badge AND
+// the header lane summary (api / pool / html / page).
+function laneToken(source: string | null | undefined): string {
+  if (!source) return "api";
+  if (source.startsWith("api-pool")) return "pool";
+  if (source.startsWith("html-fallback")) return "html";
+  if (source.startsWith("page-reader")) return "page";
+  return "api";
+}
+
+function laneSummary(rs: { source?: string | null }[]): string {
+  const counts = new Map<string, number>();
+  for (const r of rs) {
+    const k = laneToken(r.source);
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([k, n]) => `${n}×${k}`).join(" · ");
+}
+
 // ── r497: Capability Radar view types (client mirror of the server digest) ──
 type RadarFindingView = {
   severity: "critical" | "warning" | "info";
@@ -1192,7 +1211,14 @@ export function ServerAutopilot() {
               {/* r543: research receipts — the engine's latest verdicts, visible */}
               {(autonomy.receipts?.length ?? 0) > 0 && (
                 <div className="mt-2">
-                  <p className="text-[11px] font-medium text-muted-foreground">Research receipts (latest verdicts)</p>
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    Research receipts (latest verdicts)
+                    {(autonomy.receipts?.length ?? 0) > 0 && (
+                      <span className="ml-1 font-normal tabular-nums opacity-80">
+                        · lanes {laneSummary(autonomy.receipts!)}
+                      </span>
+                    )}
+                  </p>
                   <ul className="mt-1 space-y-1">
                     {autonomy.receipts!.map((r) => (
                       <li key={r.id} className="flex items-center gap-1.5 rounded px-1 py-0.5 text-xs transition-colors hover:bg-muted/40" title={r.note ?? undefined}>
@@ -1207,13 +1233,7 @@ export function ServerAutopilot() {
                             className="shrink-0 rounded border border-muted-foreground/25 bg-muted/10 px-1 py-px text-[10px] text-muted-foreground"
                             title={`Research lane: ${r.source}`}
                           >
-                            {r.source.startsWith("api-pool")
-                              ? "pool"
-                              : r.source.startsWith("html-fallback")
-                                ? "html"
-                                : r.source.startsWith("page-reader")
-                                  ? "page"
-                                  : "api"}
+                            {laneToken(r.source)}
                           </span>
                         )}
                         <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
@@ -1269,8 +1289,8 @@ export function ServerAutopilot() {
               {/* Research queue mini-panel — import + honest counts */}
               <div className="mt-2 rounded-md border border-emerald-500/15 bg-background/60 p-2">
                 <p className="text-[11px] font-medium text-muted-foreground">
-                  Research queue — paste repo URLs (one per line; github URLs normalize to gh:owner/repo, dupes against
-                  any prior status are skipped, cap 500)
+                  Research queue — paste repo URLs (one per line; full github URLs or the gh:owner/repo
+                  shorthand both work, dupes against any prior status are skipped, cap 500)
                 </p>
                 <textarea
                   value={queueText}

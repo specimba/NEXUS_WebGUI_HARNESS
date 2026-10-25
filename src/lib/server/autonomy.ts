@@ -102,6 +102,10 @@ export interface NormalizedTarget {
 }
 
 const GH_RE = /github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/i;
+// r547: the platform's own id vocabulary ("gh:owner/repo", exactly what the
+// queue panel and API responses surface) is accepted as INPUT too — pasting
+// it back was rejected as invalid (live-witnessed r546: {"invalid":1}).
+const GH_SHORT_RE = /^gh:([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/i;
 
 /** "https://github.com/Owner/Repo/tree/main" → "gh:owner/repo"; anything
  * else that parses as an absolute http(s) URL → "url:<sha1-12>". */
@@ -115,6 +119,13 @@ export function normalizeResearchTarget(raw: string): NormalizedTarget | null {
   if (gh) {
     const owner = gh[1].toLowerCase().replace(/\.git$/, "");
     const repo = gh[2].toLowerCase().replace(/\.git$/, "");
+    if (!owner || !repo || owner === "." || repo === ".") return null;
+    return { id: `gh:${owner}/${repo}`, kind: "repo", owner, repo, url: `https://github.com/${owner}/${repo}` };
+  }
+  const short = s.match(GH_SHORT_RE);
+  if (short) {
+    const owner = short[1].toLowerCase();
+    const repo = short[2].toLowerCase().replace(/\.git$/, "");
     if (!owner || !repo || owner === "." || repo === ".") return null;
     return { id: `gh:${owner}/${repo}`, kind: "repo", owner, repo, url: `https://github.com/${owner}/${repo}` };
   }
