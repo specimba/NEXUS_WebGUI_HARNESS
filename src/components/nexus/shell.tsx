@@ -29,7 +29,7 @@ import {
 import { BrandMark, ThemeToggle } from "@/components/nexus/atoms";
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import { resolveLlm } from "@/lib/llm-config";
-import { FREE_PROVIDERS } from "@/lib/providers";
+import { CHAT_PROVIDERS } from "@/lib/providers";
 import { APP_VERSION, AIHUBMIX_INTRO_FLAG, VYCE_INTRO_FLAG } from "@/lib/constants";
 import type { View } from "@/lib/types";
 import { toast } from "sonner";
@@ -336,7 +336,7 @@ export function TopBar() {
   const resolved = React.useMemo(() => resolveLlm(settings), [settings]);
   const registryReady = React.useMemo(
     () =>
-      FREE_PROVIDERS.map((p) => ({
+      CHAT_PROVIDERS.map((p) => ({
         p,
         ready: p.noKey || !!settings.providerKeys?.[p.id]?.key?.trim(),
       })),

@@ -107,12 +107,17 @@ interface ResolvedDial {
  * opt-in key cannot be paired with a real registry endpoint — the executor
  * never invents endpoints or falls back to implicit credentials.
  */
-function probeSlotDial(
+export function probeSlotDial(
   vaultEntry: { provider: string; key: string } | null,
-): { dial: ResolvedDial } | { dial: null; why: "no-vault-key" | "no-resolvable-provider" } {
+): { dial: ResolvedDial } | { dial: null; why: "no-vault-key" | "no-resolvable-provider" | "acquisition-provider" } {
   if (!vaultEntry || !vaultEntry.key.trim()) return { dial: null, why: "no-vault-key" };
   const reg = providerById(vaultEntry.provider);
   if (!reg) return { dial: null, why: "no-resolvable-provider" }; // "builtin" or unknown id
+  // r536 TASK-102 slice 7: acquisition-class providers (Exa) hold vault keys
+  // for the Radar Frontier lane — they are NOT LLM dial targets. Refuse
+  // explicitly so a vault slot can never steer a step dial at a /search
+  // endpoint (the r531 honesty note, now enforced at the dial boundary).
+  if (reg.lane === "acquisition") return { dial: null, why: "acquisition-provider" };
   // registry models are ProviderModel objects — the dial needs the raw id
   const firstModel = Array.isArray(reg.models) ? reg.models[0] : undefined;
   const model =
@@ -229,12 +234,15 @@ async function dialNoKeyFallback(
   // congested dial) leads the candidate order; everything else keeps
   // registry order. All guards below apply to it like any other lane.
   const rescueId = liveRescueLaneId();
+  // r536: acquisition providers (Exa) are not dial targets — excluded from
+  // the rescue pool exactly like they are from every chat surface.
+  const chatPool = FREE_PROVIDERS.filter((r) => r.lane !== "acquisition");
   const ordered = rescueId
     ? [
-        ...FREE_PROVIDERS.filter((r) => r.id === rescueId),
-        ...FREE_PROVIDERS.filter((r) => r.id !== rescueId),
+        ...chatPool.filter((r) => r.id === rescueId),
+        ...chatPool.filter((r) => r.id !== rescueId),
       ]
-    : FREE_PROVIDERS;
+    : chatPool;
   let tried = 0;
   for (const reg of ordered) {
     if (tried >= FREE_LANE_FALLBACKS) break;

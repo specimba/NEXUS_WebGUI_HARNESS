@@ -35,7 +35,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DeepLinkShare } from "@/components/nexus/settings/deep-link-share";
-import { FREE_PROVIDERS, providerById } from "@/lib/providers";
+import { FREE_PROVIDERS, isChatProvider, providerById } from "@/lib/providers";
 import { fmtSlotAge, pickExecutorSlot } from "@/lib/automation-lane";
 import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -173,7 +173,9 @@ export function AutomationVaultCard() {
     .filter((s) => s.provider !== "builtin")
     .sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
   const dialSlot = React.useMemo(
-    () => pickExecutorSlot(slots, (p) => !!providerById(p)),
+    // r536: acquisition slots (Exa) are never the executor's dial — the
+    // winner marker must agree with probeSlotDial's refusal.
+    () => pickExecutorSlot(slots, (p) => isChatProvider(providerById(p))),
     [slots],
   );
   // r337: browser-saved provider keys NOT yet mirrored to the server vault —
@@ -610,9 +612,17 @@ export function AutomationVaultCard() {
               {FREE_PROVIDERS.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
+                  {p.lane === "acquisition" ? " — acquisition lane" : ""}
                 </option>
               ))}
             </select>
+            {providerById(laneProvider)?.lane === "acquisition" ? (
+              <p className="text-[11px] leading-snug text-amber-500/90">
+                Acquisition lane — this key powers Radar Frontier&apos;s Exa search.
+                The executor never dials it as an LLM step, so it can&apos;t win the
+                dial-slot marker below.
+              </p>
+            ) : null}
             <Input
               type="password"
               value={laneKey}

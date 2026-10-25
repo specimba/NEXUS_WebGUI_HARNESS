@@ -53,6 +53,14 @@ export interface FreeProvider {
    * Absent = OpenAI /chat/completions (every current default).
    */
   dialect?: "openai" | "anthropic";
+  /**
+   * r536 TASK-102 slice 7: provider LANE. Absent = "chat" — an LLM dial
+   * target the relay/rotation/chat surfaces may offer. "acquisition" = a
+   * data-acquisition API (Exa /search) the vault may hold a key for but the
+   * LLM lanes must NEVER dial: filtered from every chat surface, refused by
+   * the executor's probeSlotDial, consumed by Radar Frontier instead.
+   */
+  lane?: "chat" | "acquisition";
 }
 
 export const FREE_PROVIDERS: FreeProvider[] = [
@@ -535,12 +543,47 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       { id: "intern-decision-4b", label: "书生 Decision 4B", note: "SystemOne decisions ONLY (not a chat lane) · 200 RPM free decision quota · powers the decision gates" },
     ],
   },
+  {
+    // r536 TASK-102 slice 7: the ACQUISITION lane. lane: "acquisition" keeps
+    // it out of relay chains, rotation ladders, chat pickers and the
+    // executor's step dials (probeSlotDial refuses it with the dedicated
+    // "acquisition-provider" why); the Automation Vault is its key surface
+    // and Radar Frontier's Exa search (r531 dialect) its consumer.
+    id: "exa",
+    name: "Exa",
+    glyph: "⌕",
+    tagline: "Neural web-search acquisition lane (Radar Frontier)",
+    baseUrl: "https://api.exa.ai",
+    signupUrl: "https://exa.ai",
+    docsUrl: "https://docs.exa.ai",
+    lane: "acquisition",
+    limits: "Paid credits — free credit at signup; one /search call per Frontier refresh",
+    guide: [
+      "Create an account at exa.ai and open the dashboard",
+      "Copy the API key from the Keys section",
+      "Paste it into the Automation Vault (provider: Exa) — Radar Frontier picks it up on the next refresh",
+      "No key ⇒ the lane stays silent; the three free hubs still fill the Frontier",
+    ],
+    models: [
+      { id: "search", label: "Exa /search", note: "Neural search · news category · 30-day freshness window" },
+    ],
+  },
 ];
 
 export function providerById(id: string | undefined): FreeProvider | undefined {
   if (!id) return undefined;
   return FREE_PROVIDERS.find((p) => p.id === id);
 }
+
+/** r536: true when the provider is an LLM dial target (lane absent = chat). */
+export function isChatProvider(p: FreeProvider | undefined): boolean {
+  return !!p && p.lane !== "acquisition";
+}
+
+/** Registry entries the CHAT surfaces may render — acquisition lanes never. */
+export const CHAT_PROVIDERS: FreeProvider[] = FREE_PROVIDERS.filter(
+  (p) => p.lane !== "acquisition",
+);
 
 /** Resolve the endpoint URL, splicing the account id for Cloudflare-style providers. */
 export function providerBaseUrl(p: FreeProvider, accountId?: string): string {

@@ -17,7 +17,7 @@
 //    quality steps (writing/review) prefer flagships first. The chain order
 //    adapts to the task instead of one static ranking.
 
-import { FREE_PROVIDERS, providerBaseUrl, providerById } from "./providers";
+import { CHAT_PROVIDERS, providerBaseUrl, providerById } from "./providers";
 import { loadLiveCatalog } from "./providers";
 import { enabledAdoptedLanes } from "./lane-adopt";
 // r504: provider-level circuit breaker — N consecutive hard lane-fails dock
@@ -713,7 +713,7 @@ export function buildRelayChain(
   // treats noKey lanes as valid rotation targets (provider-rotation r306);
   // the per-call relay chain now agrees. Health memory self-corrects if a
   // free lane misbehaves — sick hops sink in the sort below.
-  for (const reg of FREE_PROVIDERS) {
+  for (const reg of CHAT_PROVIDERS) {
     if (reg.noKey !== true) continue;
     if (hops.some((h) => h.providerId === reg.id)) continue; // keyed pass covered it
     const model = reg.models[0]?.id;

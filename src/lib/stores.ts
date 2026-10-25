@@ -22,7 +22,7 @@ import type {
 import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS, TOOL_IDS } from "./constants";
 import { uid } from "./helpers";
 import { noteProvider429, provider429CooldownLeftMs } from "./provider-rotation";
-import { FREE_PROVIDERS } from "./providers";
+import { CHAT_PROVIDERS } from "./providers";
 
 // ─── Debounced localStorage (avoid writing on every streamed token) ─────────
 function debouncedStorage(delay = 500): StateStorage {
@@ -606,7 +606,7 @@ if (typeof window !== "undefined") {
           noteProvider429(providerId);
           return true;
         }
-        for (const reg of FREE_PROVIDERS) noteProvider429(reg.id);
+        for (const reg of CHAT_PROVIDERS) noteProvider429(reg.id);
         return true;
       },
       cooldownMs: (providerId) => provider429CooldownLeftMs(providerId),

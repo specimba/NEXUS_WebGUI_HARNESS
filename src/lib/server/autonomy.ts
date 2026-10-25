@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
-import { FREE_PROVIDERS, providerBaseUrl } from "@/lib/providers";
+import { CHAT_PROVIDERS, providerBaseUrl } from "@/lib/providers";
 import {
   provider429CooldownLeftMs,
   providerBillingDeadLeftMs,
@@ -197,7 +197,7 @@ async function latestRadarDigest(): Promise<RadarDigestShim | null> {
 // ─── The optional rationale enricher (the ONLY LLM dial in the engine) ───────
 
 function healthyFreeLane(): { id: string; baseUrl: string; model: string } | null {
-  for (const reg of FREE_PROVIDERS) {
+  for (const reg of CHAT_PROVIDERS) {
     if (reg.noKey !== true) continue;
     if (provider429CooldownLeftMs(reg.id) > 0) continue; // 429-cooling = not healthy
     if (providerBillingDeadLeftMs(reg.id) > 0) continue;

@@ -52,7 +52,7 @@ import {
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import { UI_THEMES, uiThemeById } from "@/lib/constants";
 import { providerReady, resolveLlm } from "@/lib/llm-config";
-import { FREE_PROVIDERS, loadLiveCatalog } from "@/lib/providers";
+import { CHAT_PROVIDERS, loadLiveCatalog } from "@/lib/providers";
 import { relayHealthSnapshot } from "@/lib/relay";
 import { withRelayHealth } from "@/lib/relay-health";
 import { ModelPicker, type PickerOption } from "@/components/nexus/model-picker";
@@ -630,7 +630,7 @@ export function Composer({
       { id: "auto::builtin", label: "Built-in engine", note: "Zero-config · always answers", group: "Auto" },
     ];
     const live = loadLiveCatalog();
-    for (const p of FREE_PROVIDERS) {
+    for (const p of CHAT_PROVIDERS) {
       if (!providerReady(settings, p.id)) continue; // keyed providers only — every row is answerable
       const seen = new Set<string>();
       for (const m of p.models) {

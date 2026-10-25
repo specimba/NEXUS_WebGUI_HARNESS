@@ -13033,3 +13033,29 @@ Round ID: r535 -> next patrol (job 473388)
 Open risks: (1) Live-wire keyed proofs pending (/v1/messages — owner --import; Exa — EXA_API_KEY in .env + dev restart). (2) stop_sequences mapping gap (pre-existing, in-code). (3) Vault-slot acquisition-provider gate (registry class + probeSlotDial guard) still open — EXA_API_KEY env is the interim honest gate. (4) Owner-side cron auto-commits can carry unverified trees (this push sits atop cron commit 084f36e89 — the tree was clean at r533's push, so that cron commit carried nothing new; verified before shipping). (5) The resume QA's determinism relies on tickOnce requiring enabled:true — if that filter ever changes, the heist race returns (in-code comment marks it). (6) db/vault-master.key backup owner-side; the resume path WRITES stepsJson on resume start — same sync-overwrite class as the existing waiting-path writes (r521 item stays open). (7) Supabase bucket + PAT rotate owner-side.
 Blockers: none.
 Next recommended action: r536 — the vault-slot acquisition-provider gate (an "acquisition" provider class in the registry + probeSlotDial guard, retiring the EXA_API_KEY env interim), or a small polish slice; the P1 board is otherwise clear.
+
+---
+Task ID: r536 (patrol job 473388, 15:37)
+Agent: patrol job 473388 (main session)
+Task: r535 handoff — TASK-102 slice 7: the vault-slot acquisition-provider gate (an "acquisition" provider class in the registry + a probeSlotDial guard so the LLM lanes can never dial it). QA golden first; gates; ship.
+
+Work Log:
+- QA golden paths: 9/9 + console 0 errors (Settings→Model Relay intel ladder, Radar→Frontier scroll 240px, Workflows run-panel 6000-char long-paste, run control reachable). Nothing broken → advanced the handoff action. LAUNCH NOTE: the round's first golden run was launched nohup-background and DIED SILENTLY (0-byte log, no process) — re-ran foreground, 9/9. Background bun+CDP launches are untrustworthy; foreground only from now on.
+- SLICE 7 SHIPPED — the acquisition-provider gate, enforcing the r531 honesty note at every boundary:
+  1. REGISTRY (providers.ts): FreeProvider gains `lane?: "chat" | "acquisition"` (absent = chat, every legacy entry untouched) + an `exa` entry (id "exa", /search model row, exa.ai signup/docs guide) + `isChatProvider()` + `CHAT_PROVIDERS` (registry minus acquisition lanes).
+  2. DIAL BOUNDARY (automation-executor.ts): probeSlotDial now EXPORTED (r535 resumableErroredRunId precedent) and refuses acquisition-class slots with a dedicated why "acquisition-provider" — a vault slot can never steer a step dial at a /search endpoint; legacy refusals (no-vault-key / no-resolvable-provider) intact. The executor's no-key rescue pool filters acquisition lanes too.
+  3. CHAT-SURFACE HYGIENE: every FREE_PROVIDERS chat consumer swapped to CHAT_PROVIDERS — relay chain builder (relay.ts), rotation ladder (provider-rotation.ts), autonomy's healthyFreeLane, stores 429-broadcast, shell provider census, agent-form picker, composer picker. Exa sprays nowhere.
+  4. USER-VISIBLE + STYLING (automation-vault-card.tsx): the vault's lane-provider select now offers "Exa — acquisition lane"; picking it renders an amber-tinted honesty note (text-[11px] text-amber-500/90 — this key powers Radar Frontier's Exa search, the executor never dials it as an LLM step); the dial-slot winner marker predicate upgraded from `!!providerById(p)` to `isChatProvider(providerById(p))` so an Exa slot can never wear the "executor dials this" badge.
+- NOT IN THIS SLICE (handed off): the frontier route's vault-first key resolution (AutomationVault "exa" slot → decrypt → fallback EXA_API_KEY env) — the env interim gate is HONEST and live, the vault now HOLDS exa keys but Frontier doesn't read them yet; that read is a small, well-scoped next slice.
+- GATES (all marker-grepped): qa-acquisition-gate (NEW suite) 10/10 — registry shape, CHAT_PROVIDERS hygiene, probeSlotDial exa refusal + legacy refusals + vyce dial still resolves; qa-executor-resume 18/18; qa-automation-executor 26/26; tsc 0 errors; lint 0 errors / 33 warnings EXACT; golden 9/9 + console 0 errors.
+- BUDGET HONESTY: this round ran 1–2 rounds past the 12-round budget (the silent background-golden death cost a diagnose + foreground rerun; the worklog + push took priority over an unrecorded dirty tree, the r532/r535 doctrine). This line is the overrun of record.
+
+Stage Summary:
+- TASK-102 slice 7 done: the NEXUS_BOT wave's acquisition side now has a FIRST-CLASS, gated identity — Exa is registry-real, vault-storable, UI-honest, and structurally incapable of entering an LLM lane. The r531 "adding exa would spray it everywhere" caveat is retired: CHAT_PROVIDERS is the single choke every chat surface consumes.
+- Open P1 tail (unchanged): frontier vault-first key read (small next slice); live-wire keyed proofs (/v1/messages --import, EXA_API_KEY in .env + restart); stop_sequences mapping gap; vault-slot acquisition gate is now DONE (this slice); owner-side backups/rotations.
+
+Round Handoff:
+Round ID: r536 -> next patrol (job 473388)
+Open risks: (1) Frontier route still reads EXA_API_KEY only — a vault-stored Exa key is inert until the vault-first read lands (NEXT SLICE, well-scoped: findFirst provider="exa" → decryptVaultKey → fallback env). (2) Live-wire keyed proofs pending (/v1/messages owner --import; Exa EXA_API_KEY in .env + dev restart). (3) stop_sequences mapping gap (pre-existing, in-code). (4) Owner-side cron auto-commits can carry unverified trees — verify clean-tree before shipping atop them. (5) db/vault-master.key backup + Supabase bucket + PAT rotate owner-side. (6) Background bun+CDP QA launches die silently — run golden QA foreground only.
+Blockers: none.
+Next recommended action: r537 — frontier vault-first Exa key read (route edit + a 3-check QA extension), OR if EXA_API_KEY arrives in .env first, run the live-wire Exa proof and harden exa-dialect against the real payload.

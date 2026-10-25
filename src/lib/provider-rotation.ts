@@ -17,7 +17,7 @@
 //     becomes the retry's wait (harness pacing for a saturated roster).
 
 import type { ResolvedLlm } from "./llm-config";
-import { FREE_PROVIDERS, providerBaseUrl, providerById } from "./providers";
+import { CHAT_PROVIDERS, providerBaseUrl, providerById } from "./providers";
 import type { Settings } from "./types";
 
 export const ROTATION_COOLDOWN_BASE_MS = 60_000;
@@ -199,7 +199,7 @@ export function nextRotation(
   now: number = Date.now()
 ): RotationPick | null {
   const picks: RotationPick[] = [];
-  for (const reg of FREE_PROVIDERS) {
+  for (const reg of CHAT_PROVIDERS) {
     if (reg.id === failedProviderId) continue;
     const known = providerById(reg.id);
     if (!known) continue;

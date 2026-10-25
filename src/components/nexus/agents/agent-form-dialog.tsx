@@ -28,7 +28,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { ModelPicker, type PickerOption } from "@/components/nexus/model-picker";
 import { AUTO_MODEL, TOOL_IDS, TOOL_META } from "@/lib/constants";
-import { FREE_PROVIDERS, loadLiveCatalog, providerModelOptions } from "@/lib/providers";
+import { CHAT_PROVIDERS, loadLiveCatalog, providerModelOptions } from "@/lib/providers";
 import { relayHealthSnapshot } from "@/lib/relay";
 import { withRelayHealth } from "@/lib/relay-health";
 import type { Agent, AgentColor, ToolId } from "@/lib/types";
@@ -119,7 +119,7 @@ export function AgentFormDialog({
     const out: PickerOption[] = [
       { id: AUTO_MODEL.id, label: AUTO_MODEL.label, note: AUTO_MODEL.note, group: "Built-in" },
     ];
-    for (const p of FREE_PROVIDERS) {
+    for (const p of CHAT_PROVIDERS) {
       const ready = p.noKey || !!providerSettings.providerKeys?.[p.id]?.key?.trim();
       const group = ready ? p.name : `${p.name} — no key yet`;
       for (const o of providerModelOptions(p, live)) {
