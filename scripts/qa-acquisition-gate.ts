@@ -8,6 +8,8 @@
 //   4. Legacy refusals intact (no key / unknown provider).
 //   5. A chat slot (vyce) still resolves to a real dial.
 import { CHAT_PROVIDERS, FREE_PROVIDERS, isChatProvider, providerById } from "../src/lib/providers";
+//   6. r537: exaKeyFromSources — vault-first ordering, env fallback, silence.
+import { exaKeyFromSources } from "../src/lib/exa-dialect";
 import { probeSlotDial } from "../src/lib/server/automation-executor";
 
 let pass = 0;
@@ -57,6 +59,14 @@ check(
   !!vyce.dial && typeof vyce.dial.url === "string" && vyce.dial.url.length > 0,
   JSON.stringify(vyce).slice(0, 140),
 );
+
+// 6 — r537: vault-first key resolution ordering (pure helper)
+const vaultOnly = exaKeyFromSources([{ provider: "exa", key: " vault-key " }], "env-key");
+check("vault slot wins over env", vaultOnly === "vault-key");
+const envFallback = exaKeyFromSources([{ provider: "vyce", key: "k" }], " env-key ");
+check("env fallback when no exa slot", envFallback === "env-key");
+const silentLane = exaKeyFromSources(null, undefined);
+check("no sources ⇒ empty key (lane silent)", silentLane === "");
 
 console.log(`${pass}/${pass + fail} checks passed`);
 process.exit(fail === 0 ? 0 : 1);

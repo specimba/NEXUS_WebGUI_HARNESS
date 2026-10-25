@@ -618,9 +618,10 @@ export function AutomationVaultCard() {
             </select>
             {providerById(laneProvider)?.lane === "acquisition" ? (
               <p className="text-[11px] leading-snug text-amber-500/90">
-                Acquisition lane — this key powers Radar Frontier&apos;s Exa search.
-                The executor never dials it as an LLM step, so it can&apos;t win the
-                dial-slot marker below.
+                Acquisition lane — this key powers Radar Frontier&apos;s Exa
+                search (picked up on the next Frontier refresh). The executor
+                never dials it as an LLM step, so it can&apos;t win the dial-slot
+                marker below.
               </p>
             ) : null}
             <Input

@@ -8,9 +8,12 @@ import { fuseScores, ruleScores } from "@/lib/frontier-scout";
 import {
   exaAuthHeaders,
   exaDialUrl,
+  exaKeyFromSources,
   exaResponseToHouse,
   frontierQueryToExaBody,
 } from "@/lib/exa-dialect";
+import { db } from "@/lib/db";
+import { decryptVaultKey } from "@/lib/server/vault-crypto";
 import type { FrontierItem } from "@/lib/frontier-scout";
 
 // ─── GET /api/radar/frontier — Frontier Scout aggregation (r511) ─────────────
@@ -253,18 +256,36 @@ async function fetchArxivHarness(): Promise<{ items: FrontierItem[]; error?: str
   }
 }
 
-// ─── Source 4: Exa acquisition lane (r531 — TASK-102 slice 6) ────────────────
+// ─── Source 4: Exa acquisition lane (r531 slice 6 — vault-first since r537) ──
 // The NEXUS_BOT wave's acquisition dialect: Exa /search (POST + x-api-key,
 // results[] rows) parsed into house FrontierItems via src/lib/exa-dialect.ts.
-// Gated on EXA_API_KEY — the SAME machine-secret pattern this route's GitHub
-// source already uses for GITHUB_TOKEN. Unconfigured ⇒ the lane contributes
-// NOTHING (no items, no error row) and the three free hubs stay byte-identical.
+// Key resolution: an AutomationVault "exa" slot (decrypted server-side)
+// FIRST, EXA_API_KEY as the machine-secret fallback. Unconfigured ⇒ the lane
+// contributes NOTHING (no items, no error row) and the three free hubs stay
+// byte-identical.
 
 const EXA_FRONTIER_QUERY =
   "agentic LLM workflow harness judge post-training release announcement";
 
 async function fetchExaAcquisition(): Promise<{ items: FrontierItem[]; error?: string }> {
-  const key = process.env.EXA_API_KEY?.trim();
+  // r537: vault-first key resolution — an AutomationVault slot with provider
+  // "exa" (AES-256-GCM at rest, decrypted server-side only, oldest first —
+  // the executor's scan convention) wins; EXA_API_KEY is now the FALLBACK
+  // machine-secret (the r531 pattern, demoted one rung, still honored).
+  let key = "";
+  try {
+    const slots = await db.automationVault.findMany({
+      where: { provider: "exa" },
+      orderBy: { createdAt: "asc" },
+    });
+    const decrypted = await Promise.all(
+      slots.map(async (s) => ({ provider: s.provider, key: await decryptVaultKey(s.key) })),
+    );
+    key = exaKeyFromSources(decrypted, process.env.EXA_API_KEY);
+  } catch {
+    // vault unavailable (master key missing / table absent) → env fallback only
+    key = exaKeyFromSources(null, process.env.EXA_API_KEY);
+  }
   if (!key) return { items: [] }; // lane unconfigured — silent, not an error
   try {
     const res = await fetch(exaDialUrl("https://api.exa.ai"), {

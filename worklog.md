@@ -13059,3 +13059,28 @@ Round ID: r536 -> next patrol (job 473388)
 Open risks: (1) Frontier route still reads EXA_API_KEY only — a vault-stored Exa key is inert until the vault-first read lands (NEXT SLICE, well-scoped: findFirst provider="exa" → decryptVaultKey → fallback env). (2) Live-wire keyed proofs pending (/v1/messages owner --import; Exa EXA_API_KEY in .env + dev restart). (3) stop_sequences mapping gap (pre-existing, in-code). (4) Owner-side cron auto-commits can carry unverified trees — verify clean-tree before shipping atop them. (5) db/vault-master.key backup + Supabase bucket + PAT rotate owner-side. (6) Background bun+CDP QA launches die silently — run golden QA foreground only.
 Blockers: none.
 Next recommended action: r537 — frontier vault-first Exa key read (route edit + a 3-check QA extension), OR if EXA_API_KEY arrives in .env first, run the live-wire Exa proof and harden exa-dialect against the real payload.
+
+---
+Task ID: r537 (patrol job 473388, 16:07)
+Agent: patrol job 473388 (main session)
+Task: r536 handoff — TASK-102 slice 8: the frontier route's vault-first Exa key read (a vault-stored Exa key becomes LIVE for Radar Frontier; EXA_API_KEY demoted to fallback), route edit + a 3-check QA extension. QA golden first; gates; ship.
+
+Work Log:
+- QA golden paths: 9/9 + console 0 errors (foreground per the r536 lesson; intel ladder, Frontier scroll, 6000-char long-paste, run control). Nothing broken → advanced the handoff action. No EXA_API_KEY in .env → the vault-first read (not the live-wire proof) was the correct slice.
+- SLICE 8 SHIPPED — vault-first key resolution for the acquisition lane:
+  1. PURE ORDERING (exa-dialect.ts): exaKeyFromSources(vaultSlots, envKey) — the resolution ORDER as a testable pure function: decrypted "exa" vault slot wins → EXA_API_KEY env fallback → "" (lane stays silent, no items no error row). Header GATING HONESTY comment updated to the r536/r537 reality (vault gate landed, env demoted one rung).
+  2. ROUTE (api/radar/frontier): fetchExaAcquisition now reads AutomationVault where provider="exa" (oldest first — the executor's scan convention), decrypts server-side via decryptVaultKey, resolves through exaKeyFromSources; vault read wrapped in try/catch (master key missing / table absent → env fallback only). Unconfigured behavior byte-identical: silent, three free hubs untouched.
+  3. QA EXTENSION: qa-acquisition-gate.ts grows 3 checks (vault slot wins over env incl. whitespace trim; env fallback when only non-exa slots; no sources ⇒ silent lane) — 13/13.
+  4. USER-VISIBLE + STYLING: the vault card's amber acquisition note now states the key is "picked up on the next Frontier refresh" — true as of this slice (r536's copy promised a consumer the route didn't yet honor; now it does).
+- FLAKE OF RECORD: first gate chain ran qa-automation-executor at 24/26 — re-run clean at 26/26 with every fromSlots/tick assertion visible-green. Matches the r535 race-class flake documentation (live dev server's claim loop vs tickOnce over shared fixtures); NOT a regression from the slice (r537 touched exa-dialect/route/QA/vault-card only — no executor path). The suite's flake class remains on the open-risks list.
+- GATES (all marker-grepped): qa-acquisition-gate 13/13; qa-executor-resume 18/18; qa-automation-executor 26/26 (re-run); tsc 0 errors; lint 0 errors / 33 warnings EXACT; golden 9/9 + console 0 errors.
+
+Stage Summary:
+- TASK-102 slice 8 done: the acquisition lane's key surface is now END-TO-END honest — store an Exa key in the Automation Vault and Radar Frontier actually uses it (vault-first, env fallback, silent when unconfigured). The r531→r536→r537 arc closes the "acquisition side" of the NEXUS_BOT wave except for live-wire proof (needs a real key).
+- Open P1 tail: live-wire keyed proofs (/v1/messages owner --import; Exa key — now obtainable via vault OR env); stop_sequences mapping gap; executor QA flake class (race vs dev-server claim loop); owner-side backups/rotations.
+
+Round Handoff:
+Round ID: r537 -> next patrol (job 473388)
+Open risks: (1) Live-wire keyed proofs pending — /v1/messages (owner --import) and Exa (real key in a vault slot or .env + dev restart; when it lands, harden exa-dialect against the REAL payload shape, the current parser is fixture-shaped). (2) stop_sequences mapping gap (pre-existing, in-code). (3) qa-automation-executor's race-class flake (24/26 once this round; clean on re-run) — a fixture-side heist guard (r535 pattern: enabled:false fixtures) would de-flake it for good. (4) Owner-side cron auto-commits can carry unverified trees — verify clean-tree before shipping atop them. (5) db/vault-master.key backup + Supabase bucket + PAT rotate owner-side. (6) Background bun+CDP QA launches die silently — golden QA foreground only.
+Blockers: none.
+Next recommended action: r538 — de-flake qa-automation-executor (port the r535 enabled:false fixture guard to its tick-integration fixtures so the 24/26 heist class dies), OR if a real Exa key arrives, the live-wire proof + real-payload hardening of exaResponseToHouse.

@@ -18,15 +18,13 @@
 //     double-prefix class bugs; qa-anthropic-dialect caught that family in
 //     r528 and this module is asserted the same way).
 //
-// GATING HONESTY (r531): the lane is wired in /api/radar/frontier behind
-// process.env.EXA_API_KEY — the SAME machine-secret pattern that route's
-// GitHub source already uses for GITHUB_TOKEN. A vault-slot gate (an
-// acquisition provider class in the registry + a probeSlotDial guard so the
-// LLM lanes can never dial it) is the documented follow-up — adding an exa
-// FreeProvider today would spray it into relay chains, rotation ladders and
-// chat pickers, which would be dishonest UI. Unconfigured ⇒ the lane
-// contributes NOTHING (no items, no error row) — the three free hubs stay
-// byte-identical.
+// GATING HONESTY (r531, updated r537): the lane is wired in
+// /api/radar/frontier. r536 added the vault-slot gate — an "acquisition"
+// provider class in the registry + a probeSlotDial guard so the LLM lanes
+// can never dial it — and r537 made the route resolve the key VAULT-FIRST
+// (an AutomationVault "exa" slot, decrypted server-side) with EXA_API_KEY
+// as the machine-secret fallback. Unconfigured ⇒ the lane contributes
+// NOTHING (no items, no error row) — the three free hubs stay byte-identical.
 //
 // The redaction choke (src/lib/redaction.ts) stays dialect-agnostic: it
 // deep-walks JSON bodies and masks secret-shaped strings, so the /search
@@ -39,6 +37,21 @@ import type { FrontierItem } from "./frontier-scout";
 /** Exa /search auth — x-api-key, never a Bearer literal in the body. */
 export function exaAuthHeaders(key: string): Record<string, string> {
   return { "x-api-key": key.trim() };
+}
+
+/**
+ * r537: the Exa lane's key resolution ORDER, pure so QA can drive it —
+ * a vault slot (provider "exa", already decrypted server-side) wins;
+ * the EXA_API_KEY machine-secret is the fallback; neither ⇒ "" (the lane
+ * stays silent — no items, no error row).
+ */
+export function exaKeyFromSources(
+  vaultSlots: { provider: string; key: string }[] | null,
+  envKey: string | undefined,
+): string {
+  const slot = (vaultSlots ?? []).find((s) => s.provider === "exa" && s.key.trim());
+  if (slot) return slot.key.trim();
+  return envKey?.trim() ?? "";
 }
 
 // ─── Body shaping ────────────────────────────────────────────────────────────
