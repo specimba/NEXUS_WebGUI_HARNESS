@@ -1215,7 +1215,7 @@ export function ServerAutopilot() {
                     Research receipts (latest verdicts)
                     {(autonomy.receipts?.length ?? 0) > 0 && (
                       <span className="ml-1 font-normal tabular-nums opacity-80">
-                        · lanes {laneSummary(autonomy.receipts!)}
+                        {" "}· lanes {laneSummary(autonomy.receipts!)}
                       </span>
                     )}
                   </p>

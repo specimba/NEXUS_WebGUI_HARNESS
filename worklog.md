@@ -13340,3 +13340,25 @@ Round ID: r548 -> next patrol (job 473388)
 Open risks: (1) PINNED LOOP persists — fresh-code signature to watch in new receipt notes: "README head distilled from github.com HTML"; (2) ADAPT witness = first post-restart seed of a vocab-dense repo (ONE bucket attempt max, gh: shorthand works); (3) pool tier dormant until a Webshare token lands; (4) receipts header spacing nit "(latest verdicts)· lanes" (missing space) — 1-line fix, skipped for budget; (5) workflows editor rows are not text-matchable by agent-browser — long-paste QA needs ref-based clicking next time; (6) webDevReview concurrency doctrine stands.
 Blockers: none.
 Next recommended action: r549 — check process start time FIRST (fresh-code signature in new receipts = restart); if re-armed, seed ONE vocab-dense repo and witness ADAPT emerald; else P1 tail (vault-slot gate for acquisition providers — registry class + probeSlotDial guard per TASKS.md TASK-102 remaining) + the 1-line receipts spacing fix.
+
+---
+Task ID: r549
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r548 handoff — restart check FIRST; if re-armed, seed ONE vocab-dense repo and witness ADAPT emerald; else P1 tail. Golden QA incl. the ref-based long-paste retry.
+
+Work Log:
+- RESTART DETECTED: dev-server etime 13:44 at round start (boot ≈22:23 local — AFTER the r546/r548 code landed); lastCycleAt ticked 14:34Z → 14:45Z post-boot. The PINNED-LOOP doctrine is closed: the auto-loop now executes r546 enrichment code.
+- ADAPT EMERALD WITNESSED (the r545→r548 arc payoff): seeded `gh:langgenius/dify` via the r547 shorthand ({"ok":true,"inserted":1}) — one idempotent cycle (cyc_2026-10-25T14:45Z, 2 executed / 0 failed, 933ms) researched it with the NEW code: verdict ADAPT, score 9/10, source "html-fallback (api.github.com rate-limited — topics+README recovered from github.com HTML)" = the r546 fresh-code signature live in the loop lane. Rubric prediction (8.5→9) hit exactly. Queue 0q/11r/0f. The panel now shows the emerald ADAPT chip beside the three pre-restart WATCH-6 old-code artifacts — old vs new scoring visible side-by-side.
+- GOLDEN QA 3/3 console-clean; long-paste probe CLOSED at 27,829 chars (4× r547's 6593): "Plan → Pipeline" dialog textarea — internal scroll holds (136px box / 11,016px content), bodyW 1280 = winW, 0 horizontal overflow, console 0 errors. Settings → Model Relay section verified via in-page probes (intel ladder ✓, free-reach census ✓); Radar Frontier tab clicked + scrolled, content verified. Console showed only Fast Refresh logs.
+- STYLING POLISH: receipts header innerText nit fixed — explicit {" "} text node before "· lanes" so copy/screen-readers render "(latest verdicts) · lanes 4×html" instead of the concatenated "(latest verdicts)· lanes" (visual ml-1 margin unchanged).
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT.
+- BUDGET: on pace ≤12; ONE bucket attempt total (r546's lesson held — the idempotent cycle ran first try, no waiting loops).
+
+Stage Summary:
+- The ADAPT witness arc is CLOSED: r545 diagnosed the half-blind ceiling, r546 built the egress ladder + HTML enrichment, r547 the ingest shorthand, r548 the realignment heal — r549 witnessed the first ADAPT emerald (dify 9/10) with the fresh-code signature in the loop lane. The engine demonstrably sorts vocab-dense repos into ADAPT after a process restart.
+
+Round Handoff:
+Round ID: r549 -> next patrol (job 473388)
+Open risks: (1) loop RE-ARMED — research receipts now reflect live code; the 3 old WATCH-6 rows remain in history (honest archive, never re-fetched); (2) pool tier dormant until a Webshare token lands; (3) Exa/BBR acquisition lanes still env-gated — TASK-102 remaining slice = vault-slot gate for acquisition providers (resolve the probe key through the vault slot first, env fallback, honest source labeling) is the natural r550 increment; (4) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r550 — advance TASK-102 remaining: vault-slot gate for acquisition providers (vault-slot key resolution + probeSlotDial guard in the radar frontier Exa probe, honest "via vault-slot/env/unconfigured" labeling, byte-identical when unconfigured) + serverless QA script; keep the ADAPT lane warm (witness already banked — seeds optional).
