@@ -3,7 +3,7 @@
 // by construction (module never sees them), last4 survives, clone safety.
 // Run: bun scripts/qa-redaction.ts
 
-import { redactDialBody, redactionStats } from "../src/lib/server/redaction";
+import { redactDialBody, redactionStats } from "../src/lib/redaction";
 
 let failed = 0;
 function check(name: string, ok: boolean, detail = ""): void {

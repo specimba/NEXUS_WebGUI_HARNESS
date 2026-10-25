@@ -6,7 +6,7 @@ import {
   providerBillingDeadLeftMs,
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
-import { redactDialBody } from "@/lib/server/redaction";
+import { redactDialBody } from "@/lib/redaction";
 import {
   advanceStrategyItem,
   appendDigestEntries,

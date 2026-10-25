@@ -23,6 +23,7 @@
 // CORS — the ladder simply falls through, never breaks the harness.
 
 import { buildRelayChain, type RelayHop } from "./relay";
+import { redactDialBody } from "./redaction";
 import type { Settings } from "./types";
 
 const JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
@@ -240,19 +241,24 @@ async function fastJudge(
           "Content-Type": "application/json",
           ...(hop.apiKey ? { Authorization: `Bearer ${hop.apiKey}` } : {}),
         },
-        body: JSON.stringify({
-          model: hop.model,
-          temperature: 0,
-          max_tokens: 80,
-          messages: [
+        body: JSON.stringify(
+          redactDialBody(
             {
-              role: "system",
-              content:
-                "You are a strict, calibrated judge. Reply with ONLY the raw JSON object — no prose, no markdown.",
+              model: hop.model,
+              temperature: 0,
+              max_tokens: 80,
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are a strict, calibrated judge. Reply with ONLY the raw JSON object — no prose, no markdown.",
+                },
+                { role: "user", content: prompt },
+              ],
             },
-            { role: "user", content: prompt },
-          ],
-        }),
+            hop.apiKey ? [hop.apiKey] : [],
+          ),
+        ),
         signal: composeTimeout(signal, FAST_JUDGE_TIMEOUT_MS),
       });
       if (!res.ok) throw new Error(`judge ${res.status}`);

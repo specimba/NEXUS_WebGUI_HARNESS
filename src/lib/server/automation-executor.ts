@@ -41,7 +41,7 @@ import {
   resetProvider429,
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
-import { redactDialBody } from "@/lib/server/redaction";
+import { redactDialBody } from "@/lib/redaction";
 
 export const CLAIM_INTERVAL_MS = 15_000;
 export const HEARTBEAT_STALE_MS = 120_000;

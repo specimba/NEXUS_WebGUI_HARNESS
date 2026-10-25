@@ -13,6 +13,7 @@
 // 400 fallback, tool-call-as-text salvage with grace rounds + digest fallback.
 
 import { CUSTOM_FALLBACK_MODEL, MAX_ITERATIONS_DEFAULT } from "./constants";
+import { redactDialBody } from "./redaction";
 import type { CortexConfig } from "./cortex-edge";
 import { isAuthRelayFailure, isDeadlyRelayFailure, isSoftRelayFailure } from "./relay-core";
 import {
@@ -772,14 +773,22 @@ export async function runCustomEngine(
             ...authHeaders,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            model,
-            messages: msgs,
-            temperature: typeof body.temperature === "number" ? body.temperature : 0.7,
-            [maxTokField]: body.maxTokens ?? 2048,
-            stream: true,
-            ...(tools.length > 0 && !isFinalPass ? { tools, tool_choice: "auto" } : {}),
-          }),
+          body: JSON.stringify(
+            redactDialBody(
+              {
+                model,
+                messages: msgs,
+                temperature: typeof body.temperature === "number" ? body.temperature : 0.7,
+                [maxTokField]: body.maxTokens ?? 2048,
+                stream: true,
+                ...(tools.length > 0 && !isFinalPass ? { tools, tool_choice: "auto" } : {}),
+              },
+              // the caller's key rides the AUTH HEADER (untouched); passing it
+              // here keeps it out of the BODY too, even when a quoted prompt
+              // or tool output accidentally embeds it.
+              body.apiKey ? [body.apiKey] : [],
+            ),
+          ),
           signal: composed.signal,
         });
       } catch (err) {

@@ -12812,3 +12812,30 @@ Round ID: r524 -> next patrol (job 473388)
 Open risks: (1) TASK-102 remainder — redactDialBody not yet in front of relay-core/client-lane dials (acceptance wants relay + engine + radar covered); AES-256-GCM vault port untouched; Anthropic-dialect + Exa/BrightData lanes untouched. (2) redactionStats() has no UI surface yet. (3) Vault still EMPTY (r521 rollback) — owner re-entry + scripts/seedwrite.ts. (4) Supabase bucket + PAT rotate owner-side. (5) r521 stepsJson sync-overwrite limitation still open.
 Blockers: none.
 Next recommended action: r525 — TASK-102 slice 2: wire redactDialBody into the relay-lane dial path (find the client-chain server dial; relay-core builds chains, the dial lives elsewhere — locate via "chat/completions" in src/lib), surface redactionStats() on the Engine panel (small user-visible win), then radar lane if budget allows.
+
+---
+Task ID: r525
+Agent: patrol job 473388 (main session)
+Task: r524 handoff — TASK-102 slice 2: relay-lane redaction wiring + redactionStats() surfaced on the Engine panel; QA golden paths first; gates; ship.
+
+Work Log:
+- SUPERVISOR alive across the boundary again (server 200) — fourth consecutive patrol with the two-layer defense holding.
+- QA golden paths FIRST: 9/9, console 0 errors. Nothing broken -> advanced TASK-102 slice 2.
+- RELAY-LANE DIALS LOCATED (rg "chat/completions" src/lib): src/lib/agent-engine.ts:676 (the isomorphic tool-loop engine) and src/lib/systemone.ts:237 (the System-One fast-judge ladder). relay-core only BUILDS chains; these two are where the bytes leave.
+- MODULE PROMOTED TO SHARED LANE (git mv src/lib/server/redaction.ts -> src/lib/redaction.ts): agent-engine runs in TWO places (server AND browser-direct); the choke must ride along. All three r524 importers updated (automation-executor, autonomy, scripts/qa-redaction.ts).
+- WIRED (total 5 of 5 known LLM dial bodies now behind the choke):
+  - agent-engine.ts: per-iteration SSE dial body wrapped in redactDialBody(..., body.apiKey ? [body.apiKey] : []) — covers chat runs, auto-engine fallback, vision lanes, tool-loop iterations (msgs re-redacted each dial so late-appending tool output is covered too).
+  - systemone.ts: fast-judge dial wrapped with hop.apiKey as exact-secret.
+- TELEMETRY USER-FACING SURFACE (round mandate): new route GET /api/automation/redaction ({ok, redaction:{hits,byClass}}) + a green "Redaction" cell on the Engine panel's Automation pulse grid (grid-cols-5 -> 6): "guard armed" at zero, "N masked" once the choke has bites; title explains the invariant. Polled best-effort alongside the existing sync poll.
+- VERIFY: bun scripts/qa-redaction.ts ALL PASSED; live route smoke {"ok":true,"redaction":{"hits":0,"byClass":{}}}; golden QA re-run 9/9, console 0 errors.
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline.
+
+Stage Summary:
+- The TASKS.md acceptance "one redaction module covers relay + engine + radar dials" is now materially true on the dial layer: every known outbound LLM dial body (engine tool-loop, engine server fallback, SystemOne judge, automation executor keyed+keyless, autonomy enricher) passes through src/lib/redaction.ts; the browser-direct lane is covered by the same isomorphic module. Radar's research dials are queue-scoring fetches, not LLM message dials — noted as the boundary of the claim.
+- TASK-102 remainder shrinks to: AES-256-GCM vault port, Anthropic-dialect lanes, Exa/BrightData acquisition lanes.
+
+Round Handoff:
+Round ID: r525 -> next patrol (job 473388)
+Open risks: (1) TASK-102 remainder — AES-256-GCM server-side vault port (acceptance "vault round-trips server-only"; the existing vault is plaintext-in-SQLite by documented r138 trust model — the port is a real crypto upgrade, needs its own round); Anthropic-dialect + Exa/BrightData lanes untouched. (2) Redaction cell shows process-boot in-memory counts — resets on restart, by design (honest, cheap). (3) Vault still EMPTY (r521 rollback) — owner re-entry + scripts/seedwrite.ts. (4) Supabase bucket + PAT rotate owner-side. (5) r521 stepsJson sync-overwrite limitation still open.
+Blockers: none.
+Next recommended action: r526 — TASK-102 slice 3: the AES-256-GCM vault port (smallest honest slice: encrypt AutomationVault.key values at rest via a server-held master key in env with an honest unencrypted-legacy read path + one-time migration on boot; verify with a round-trip script; NO schema change) — or, if the crypto design wants more deliberation, TASK-100's token-lean request shaping (the last 9router slice).

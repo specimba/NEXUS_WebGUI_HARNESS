@@ -281,12 +281,22 @@ export function ServerAutopilot() {
   const [radar, setRadar] = React.useState<RadarState | null>(null);
   const [radarBusy, setRadarBusy] = React.useState(false);
 
+  const [redactionHits, setRedactionHits] = React.useState(0);
   const poll = React.useCallback(async () => {
     try {
       const res = await fetch("/api/automation/sync", { cache: "no-store" });
       if (res.ok) setState((await res.json()) as SyncState);
     } catch {
       /* local server briefly unreachable — retry next tick */
+    }
+    try {
+      const r = await fetch("/api/automation/redaction", { cache: "no-store" });
+      if (r.ok) {
+        const j = (await r.json()) as { redaction?: { hits: number } };
+        setRedactionHits(j.redaction?.hits ?? 0);
+      }
+    } catch {
+      /* telemetry is best-effort */
     }
   }, []);
 
@@ -604,7 +614,7 @@ export function ServerAutopilot() {
         <div
           aria-label="Automation pulse"
           title="One-glance aggregation of the automation diagnostics: registry schedules, recent server-run outcomes, the evolution inbox, the capability radar's latest findings, and anything needing attention. Each number is explained by its dedicated surface below."
-          className="mb-3 grid grid-cols-2 gap-1.5 lg:grid-cols-5"
+          className="mb-3 grid grid-cols-2 gap-1.5 lg:grid-cols-6"
         >
           <div
             title="Enabled schedules in the local registry. “Parked” = disabled by the 3-strike failure breaker; “off” = disabled by you or the orphan guard (never failing)."
@@ -634,6 +644,15 @@ export function ServerAutopilot() {
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Evolution inbox</p>
             <p className="mt-0.5 text-xs font-semibold tabular-nums text-violet-300">
               {openProposals} open · {acceptedProposals} accepted
+            </p>
+          </div>
+          <div
+            title="The redaction choke (TASK-102): every outbound LLM dial body passes through one module that masks API-key patterns and exact vault values before leaving the process. Count = strings masked since server boot."
+            className="rounded-lg border border-emerald-500/15 bg-background/40 px-2 py-1.5"
+          >
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Redaction</p>
+            <p className="mt-0.5 text-xs font-semibold tabular-nums text-emerald-300">
+              {redactionHits === 0 ? "guard armed" : `${redactionHits} masked`}
             </p>
           </div>
           <button
