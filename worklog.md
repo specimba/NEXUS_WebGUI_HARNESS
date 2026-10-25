@@ -12964,3 +12964,23 @@ Round ID: r530 -> next patrol (job 473388)
 Open risks: (1) Live /v1/messages wire unexercised (vault empty — owner --import; the first keyed vyce chat run proves the whole lane). (2) stop_sequences mapping gap (pre-existing, documented in-code). (3) workflow-runner/utility-lane PRIMARY dials get dialect only via the URL gate — only the chat primary stamps body.dialect explicitly today (cheap follow-up if a keyed anthropic-only provider joins those lanes). (4) db/vault-master.key backup owner-side; r521 stepsJson sync-overwrite open. (5) Supabase bucket + PAT rotate owner-side.
 Blockers: none.
 Next recommended action: r531 — TASK-102 tail: Exa/BrightData acquisition lanes (smallest honest slice: a research-lane adapter gated on a vault slot pairing an Exa-style endpoint, dial-free body-shaping qa), or TASK-100 token-lean request shaping (the last 9router slice) — both dial-free verifiable.
+
+---
+Task ID: r532
+Agent: patrol job 473388 (main session)
+Task: complete the r531 interrupted ship — TASK-102 slice 6 (Exa acquisition lane) was code-complete in the tree when r531 hit its 12-round hard stop mid-ship-chain; r532 diagnoses the red qa gate, fixes the test, runs the full marker-gated chain, appends the missing record, ships.
+
+Work Log:
+- SUPERVISOR alive across the boundary (server 200) — eleventh consecutive patrol.
+- STATE ON ARRIVAL (honest): r531 ended AT the budget line — the Exa slice was code-complete in the working tree (exa-dialect.ts, frontier 4th probe, vault chip, TASKS.md mirror, qa-exa script) but the && ship chain had correctly halted at the qa-exa gate, so nothing was appended or committed by that session. Between sessions the Owner's chat-side cron automation committed the dirty tree itself: HEAD = 2c4713b22 "...-cron" (unpushed on both remotes) — the slice rode in on that commit; this round's job was the verification + record + push it never got.
+- THE RED GATE (diagnosed): qa-exa-dialect 9/10 — the parse assertion said summary.length <= 400 but trim400 returns 401 chars (400 + the ellipsis). Same family as r529's two test bugs: dialect code right, test assertion off by one. One-line fix (<= 401, reason inline); the adapter itself needed NO changes.
+- RE-VERIFIED (marker-gated chain, grep-for-marker — never pipe exit codes): qa-exa-dialect 10/10; qa-anthropic-sse 20/20; qa-anthropic-dialect 19/19; bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline; golden QA 9/9, console 0 errors (first golden pass against the modified frontier route — warmup compiled it before the golden run).
+
+Stage Summary:
+- TASK-102 slice 6 is now honestly shipped: the Radar Frontier's research ingestion has a live Exa acquisition lane (env-gated on EXA_API_KEY — the route's own GITHUB_TOKEN machine-secret pattern; unconfigured = byte-identical behavior), dial-free-proven 10/10, dialect lanes untouched (20/20 + 19/19), gates exact. The r531 interruption cost zero code — only the record and the push, delivered here.
+
+Round Handoff:
+Round ID: r532 -> next patrol (job 473388)
+Open risks: (1) Live wires unexercised: /v1/messages (vault empty — owner --import) and Exa /search (EXA_API_KEY unset — owner sets it in .env; a dev restart picks it up). (2) stop_sequences mapping gap (pre-existing, documented in-code). (3) Vault-slot gate for acquisition providers (registry class + probeSlotDial guard) still open — EXA_API_KEY env is the interim honest gate. (4) The Owner-side cron auto-commit ("...-cron" commits) can capture a dirty tree mid-ship: an interrupted chain's WIP may ride into a cron commit UNVERIFIED — future records must always state which state the push actually carries. (5) db/vault-master.key backup owner-side; r521 stepsJson sync-overwrite open. (6) Supabase bucket + PAT rotate owner-side.
+Blockers: none.
+Next recommended action: r533 — TASK-100 token-lean request shaping (the last 9router slice: budget-aware max_tokens / context trims per hop class, dial-free qa witnessing measured token deltas), or the vault-slot acquisition-provider gate if the owner registers an Exa key in the vault first.

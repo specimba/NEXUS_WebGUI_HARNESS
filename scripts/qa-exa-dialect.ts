@@ -102,7 +102,7 @@ check(
     first.id === "exa:https://example.com/harness-weekly" &&
     first.hub === "exa" &&
     first.kind === "paper" &&
-    first.summary.length <= 400 &&
+    first.summary.length <= 401 && // trim400 caps at 400 chars + the ellipsis
     first.authors === "A. Researcher" &&
     first.createdAt === "2026-10-20T00:00:00.000Z",
   JSON.stringify(house).slice(0, 160)
