@@ -12919,3 +12919,23 @@ Round ID: r528 -> next patrol (job 473388)
 Open risks: (1) vyce /v1/messages is advertised by the provider but not yet exercised against the LIVE wire (vault empty; the first real keyed run proves it — failure semantics unchanged: 429/timeout/billing paths all still apply). (2) Engine tool-loop still dials OpenAI dialect for anthropic-dialect providers (streaming translation = slice 5). (3) db/vault-master.key backup owner-side; vault still EMPTY pending owner --import. (4) r521 stepsJson sync-overwrite limitation still open. (5) Supabase bucket + PAT rotate owner-side.
 Blockers: none.
 Next recommended action: r529 — TASK-102 slice 5 (engine streaming-SSE dialect translation for anthropic-dialect hops: content_block_delta -> house delta events, tool_use blocks -> tool-call loop parity) — or, if that wants a live key to test honestly, TASK-100 token-lean request shaping (the last 9router slice, verifiable against the free gateway).
+
+---
+Task ID: r529-b (correction)
+Agent: patrol job 473388 (main session)
+Task: r529 post-push correction — the r529 ship chain's pipe masked a failing qa exit and two qa INDEX bugs (the shipped converter is correct); fix the test, re-verify everything honestly, append the true record.
+
+Work Log:
+- FOUND: the r529 ship chain relied on `set -o pipefail`, which this tool shell did NOT honor — `bun scripts/qa-anthropic-sse.ts | tail` exited 0 through tail even though the qa FAILED at "assistant tool_calls turn -> tool_use content blocks". Commit cb5b762c1 therefore pushed with a failing verification and a worklog claiming 20/20 — a false record. Correcting immediately, no source changes involved.
+- ROOT CAUSE (test bug, second of the round): openaiBodyToAnthropic REMOVES the system row, so the converted message array shifts down by one — the qa read turns[2]/turns[3] for the assistant-tool_calls/tool_result assertions (off by one; the assistant lands at turns[1], the tool_result turn at turns[2]). The converter's tool_use/tool_result folding was never wrong; the assertions inspected the wrong rows. Same class as the earlier args-assertion bug: dialect code right, test wrong.
+- CHAIN DISCIPLINE FIX for future rounds: this shell's `set -o pipefail` cannot be trusted inside the patrol chain — pass detection now greps for each check's own success marker ("20/20 checks passed" / "19 passed, 0 failed" / "33 problems (0 errors, 33 warnings)" / "9/9 checks passed"), with append/commit/push strictly behind &&.
+- RE-VERIFIED THIS ROUND (all marker-gated): qa-anthropic-sse 20/20; qa-anthropic-dialect 19/19; bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline; golden QA 9/9, console 0 errors. Only scripts/qa-anthropic-sse.ts assertion indices moved — the slice-5 source (anthropic-dialect.ts + agent-engine.ts) is unchanged from cb5b762c1.
+
+Stage Summary:
+- The record is now true: slice 5 ships with 20/20 + 19/19 + gates green, and the false 20/20 claim in the r529 section is hereby corrected by this section. Verification primitive going forward: grep-for-marker, never pipe exit codes.
+
+Round Handoff:
+Round ID: r529-b -> next patrol (job 473388)
+Open risks: unchanged from r529 — (1) chat-route hop build does not pass the registry dialect yet; (2) stop_sequences mapping gap (pre-existing, documented in-code); (3) live /v1/messages wire unexercised (vault empty — owner --import); (4) db/vault-master.key backup owner-side + stepsJson sync-overwrite; (5) Supabase bucket + PAT rotate owner-side.
+Blockers: none.
+Next recommended action: unchanged from r529 — r530 threads the provider-registry dialect through the chat-route hop build (EngineBody.dialect producer), or TASK-100 token-lean request shaping (the last 9router slice).

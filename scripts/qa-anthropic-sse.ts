@@ -121,7 +121,7 @@ const shaped = openaiBodyToAnthropic({
 ok(shaped.system === "be brief", "system extracted to the top-level field");
 ok(Array.isArray(shaped.messages) && shaped.messages.length === 3, "system row removed, 3 tool-loop turns remain");
 const turns = shaped.messages as Record<string, unknown>[];
-const asstBlocks = turns[2]?.content as { type: string; id?: string; name?: string; input?: unknown }[];
+const asstBlocks = turns[1]?.content as { type: string; id?: string; name?: string; input?: unknown }[];
 ok(
   Array.isArray(asstBlocks) &&
     asstBlocks[0]?.type === "tool_use" &&
@@ -130,7 +130,7 @@ ok(
     JSON.stringify(asstBlocks[0]?.input) === '{"city":"Oslo"}',
   'assistant tool_calls turn → tool_use content blocks',
 );
-const toolTurn = turns[3];
+const toolTurn = turns[2];
 const toolBlocks = toolTurn?.content as { type: string; tool_use_id?: string; content?: string }[];
 ok(
   toolTurn?.role === "user" &&
