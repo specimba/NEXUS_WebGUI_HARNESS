@@ -138,6 +138,21 @@ async function main() {
       cardSrc.includes("the acquisition lane consumes it through the guard") &&
       cardSrc.includes("closed-tab runs will dial with it"),
   );
+  // r562: the acquisition panel is its own component — pin the seam.
+  const panelSrc = readFileSync(
+    new URL("../src/components/nexus/settings/acquisition-lanes-panel.tsx", import.meta.url),
+    "utf8",
+  );
+  check(
+    "acquisition panel seam: header + fleet + census live in the panel component, the card mounts it, and the census counts guard-resolved keys",
+    panelSrc.includes("never LLM dials") &&
+      panelSrc.includes('data-testid="acq-cluster"') &&
+      panelSrc.includes('data-testid="acq-fleet"') &&
+      panelSrc.includes('data-testid="acq-census"') &&
+      panelSrc.includes("a.source !== null") &&
+      cardSrc.includes("<AcquisitionLanesPanel") &&
+      !cardSrc.includes('data-testid="acq-fleet"'),
+  );
 
   console.log(`\n${pass} passed, ${failures.length} failed`);
   if (failures.length > 0) {

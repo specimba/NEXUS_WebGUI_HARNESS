@@ -13639,3 +13639,28 @@ Round ID: r561 -> next patrol (job 473388)
 Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) the vault card is still ~1165 lines — the split was visual, not modular; a real component extraction is the next structural step if the card grows again.
 Blockers: none.
 Next recommended action: r562 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row). Else candidates: (a) extract the acquisition cluster into a real sub-component (AcquisitionLanesPanel) — r561's visual split makes the seam obvious; props: acqLanes, laneProvider, setLaneProvider, laneKeyRef; (b) the paste-plan dialog's step-count echo ("✓ N steps detected" + chars in one row) if the Owner case warrants; (c) a dial-free qa guard pinning the acq-cluster panel (header literal + fleet-inside-cluster) — cheap insurance for the new seam.
+
+---
+Task ID: r562
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r561 handoff — key check first (all acquisition sources null → no keyed proof, Owner-blocked); shipped candidates (a)+(c) with one honest user-facing addition: AcquisitionLanesPanel extracted as a real component, the seam pinned by a QA guard, and an at-a-glance keyed census added to the panel header.
+
+Work Log:
+- KEY CHECK: /api/vault acquisition all null (exa/brightdata/webshare) — keyed proofs stay Owner-blocked.
+- INCREMENT (a): acquisition-lanes-panel.tsx extracted (header + r554 registry note + r552 fleet strip move wholesale, copy verbatim); the vault card mounts <AcquisitionLanesPanel acqLanes laneProvider setLaneProvider laneKeyRef /> with an 8-line mount — the card shrinks ~87 lines. laneKeyRef typed STRUCTURALLY ({current: {focus, scrollIntoView} | null}) — version-proof against React ref-type drift.
+- USER-FACING INCREMENT: the panel header gains a live census chip (data-testid=acq-census): "0/3 keyed" — counted from the SAME guard-resolved acqLanes the chips render (source !== null; dormant rows holding tokens count as keyed — honest per the r556 vocabulary). The Owner sees acquisition coverage at a glance without parsing chip labels.
+- CANDIDATE (c): qa-acquisition-vault +1 seam guard = 28/28 — header/fleet/census literals live in the PANEL file, the card mounts <AcquisitionLanesPanel, the census counts a.source !== null, and the card no longer carries acq-fleet (the seam can't silently regress into duplication).
+- WITNESS: header renders ("Acquisition lanes — search & tool keys,…"), census "0/3 keyed" (honest — all sources null), exa fleet chip click → select flips to exa + key input FOCUSED=true + census persists. No DB writes (select/focus only — nothing to clean).
+- SPLICE DOCTRINE round 2: scripts/r562-panel-extract.py — line-precise cut with asserted boundaries (r561 comment → mirrorCandidates), import inserted after the acquisition-registry import, ONE structural grep (acq-cluster refs in card = 0) + tsc. Zero retries this time (r561 cost two).
+- GOLDEN QA: #settings walked (vault witness + INTEL=9/RELAY=true fresh this round); radar Frontier role-tab eval-click → BODY=1280. agent-browser errors: EMPTY → console 0.
+- GATES: tsc 0 errors (re-run in the ship chain); lint 0 errors / 33 warnings EXACT; qa-acquisition-vault 28/28; qa-executor-resume 32/32.
+- BUDGET: ~9/12 — no retries, no restart, no bucket attempts.
+
+Stage Summary:
+- The acquisition seam is now real architecture: its own component file, an honest keyed census on top, a QA guard pinning the boundary, and the vault card reading as "store LLM keys" + "mount the acquisition panel". Copy untouched, affordances untouched, one new at-a-glance signal.
+
+Round Handoff:
+Round ID: r562 -> next patrol (job 473388)
+Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) the census counts dormant-token lanes as "keyed" — if the Owner ever stores a brightdata/webshare token, the number reads 1/3 while the dial stays pending; the chips' per-row text remains the honest detail view (by design, but watch for confusion).
+Blockers: none.
+Next recommended action: r563 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row) — the census chip will flip off 0/3 the same round, a built-in witness. Else candidates: (a) the paste-plan dialog's step-count echo ("✓ N steps detected" + chars in one row) — last unshipped r560 handoff candidate, tiny; (b) dial the census into the fleet chips' aria-labels ("N of 3 lanes keyed") for screen-reader parity; (c) if the vault card still reads long, the mirror-candidates block could join the panel file as its own tiny component (same extraction pattern, ~30 lines).
