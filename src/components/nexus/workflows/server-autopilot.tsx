@@ -27,10 +27,12 @@ import { useUiStore, useWorkflowsStore } from "@/lib/stores";
 import { copyText } from "@/lib/helpers";
 import {
   computeStaleRegistry,
+  hasMemoizedTrail,
   humanizeLaneReason,
   isResumableStepFailure,
   resumePlanFromError,
   type ExecutorLaneState,
+  type ResumePlan,
 } from "@/lib/automation-lane";
 import { cn } from "@/lib/utils";
 import { classifyRunError, runErrorKindLabel, SELF_HEAL_KINDS } from "@/lib/workflow-runner";
@@ -70,11 +72,15 @@ type RegistryRow = {
 };
 type RunRow = {
   id: string;
+  workflowId: string;
   workflowName: string;
   trigger: string;
   status: string;
   currentStep: number;
   stepsTotal: number;
+  // r557: the sync API serves full run rows — the trail rides along so the
+  // resume claims can verify a memoized prefix EXISTS before claiming one.
+  stepsJson: string;
   finalReport: string | null;
   error: string | null;
   startedAt: string;
@@ -541,6 +547,25 @@ export function ServerAutopilot() {
 
   const driving = state?.serverDriving === true;
   const active = state?.registry.filter((r) => r.enabled) ?? [];
+  // r557 (TASK-101): the schedule row is where the Owner ARMS schedules, yet
+  // the "↻ resumes" plan only lived in the run archive below. Join the SAME
+  // parsed plan onto armed schedule rows. Runs arrive newest-first (sync API
+  // orderBy startedAt desc), so the FIRST schedule-trigger run per workflow
+  // is the run resumableErroredRunId would pick up on the next fire — the
+  // executor's own LATEST-run rule. Map value null ⇒ resumable but
+  // unparseable shape (generic copy); absent key ⇒ NO resume claim at all —
+  // a step-1 death (no memoized prefix) gets honest silence, not a chip,
+  // because the executor runs FRESH there (resumableErroredRunId ⇒ null).
+  const resumeByWf = new Map<string, ResumePlan | null>();
+  for (const run of state?.runs ?? []) {
+    if (run.trigger !== "schedule" || resumeByWf.has(run.workflowId)) continue;
+    const resumable =
+      run.status === "error" &&
+      isResumableStepFailure(run.error) &&
+      hasMemoizedTrail(run.stepsJson);
+    if (!resumable) continue;
+    resumeByWf.set(run.workflowId, resumePlanFromError(run.error));
+  }
   // r137: lane-true countdowns. The DB registry's nextRunAt only advances
   // when the EXTERNAL scheduler claims a due run — while the tab drives
   // (BYOK), it goes stale-past and the panel showed "due" on pipelines that
@@ -865,27 +890,48 @@ export function ServerAutopilot() {
 
       {active.length > 0 ? (
         <ul className="mt-2.5 space-y-1">
-          {active.map((r) => (
-            <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-              <span className="font-medium">{r.name}</span>
-              <span className="text-muted-foreground">
-                every {Math.max(1, Math.round(r.intervalMs / 60_000))}m · next{" "}
-                {fmtIn(localNextByWf.get(r.id) ?? r.nextRunAt)}
-                {r.failStreak > 0 ? ` · ⚠ ${r.failStreak} fail${r.failStreak === 1 ? "" : "s"}` : ""}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy === r.id}
-                onClick={() => void runNow(r.id, r.name)}
-                className="ml-auto h-6 gap-1 border-sky-500/30 px-1.5 text-[10px] text-sky-300/90 transition-colors hover:bg-sky-500/10 hover:text-sky-200"
-                title="Fire this pipeline on the local server now (headless lane)"
-              >
-                <Server className="h-3 w-3" aria-hidden />
-                Run on server
-              </Button>
-            </li>
-          ))}
+          {active.map((r) => {
+            // r557: the armed schedule row speaks the resume plan (TASK-101) —
+            // same parsed vocabulary as the archive badge, surfaced where
+            // schedules are armed. plan === null ⇒ resumable but the error
+            // shape resisted parsing → the generic copy, exactly like the
+            // drawer note's fallback.
+            const plan = resumeByWf.get(r.id);
+            const planTitle = plan
+              ? `Next scheduled fire re-enters at step ${plan.step}/${plan.total} ("${plan.label}") — the memoized prefix is not re-dialed`
+              : "Next scheduled fire resumes this run at its failed step (completed steps are memoized)";
+            return (
+              <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                <span className="font-medium">{r.name}</span>
+                <span className="text-muted-foreground">
+                  every {Math.max(1, Math.round(r.intervalMs / 60_000))}m · next{" "}
+                  {fmtIn(localNextByWf.get(r.id) ?? r.nextRunAt)}
+                  {r.failStreak > 0 ? ` · ⚠ ${r.failStreak} fail${r.failStreak === 1 ? "" : "s"}` : ""}
+                </span>
+                {plan !== undefined ? (
+                  <span
+                    data-testid={`schedule-resume-${r.id}`}
+                    title={planTitle}
+                    className="inline-flex items-center rounded-md border border-amber-400/30 bg-amber-400/5 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-400"
+                  >
+                    ↻ next fire resumes
+                    {plan ? ` at step ${plan.step}/${plan.total}` : " at the failed step"}
+                  </span>
+                ) : null}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy === r.id}
+                  onClick={() => void runNow(r.id, r.name)}
+                  className="ml-auto h-6 gap-1 border-sky-500/30 px-1.5 text-[10px] text-sky-300/90 transition-colors hover:bg-sky-500/10 hover:text-sky-200"
+                  title="Fire this pipeline on the local server now (headless lane)"
+                >
+                  <Server className="h-3 w-3" aria-hidden />
+                  Run on server
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className="mt-2.5 text-xs text-muted-foreground">
@@ -1407,7 +1453,14 @@ export function ServerAutopilot() {
               const cls = r.status === "error" && r.error ? classifyRunError(r.error) : null;
               // r535: resumable (memoized resume on the next fire) outranks
               // the transient badge — same amber family, truer message.
-              const resumable = r.status === "error" && isResumableStepFailure(r.error);
+              // r557: the executor also refuses to resume a run with NO
+              // memoized prefix (first step died ⇒ next fire is fresh) — the
+              // badge now demands the same, so it never promises a resume
+              // the executor won't deliver.
+              const resumable =
+                r.status === "error" &&
+                isResumableStepFailure(r.error) &&
+                hasMemoizedTrail(r.stepsJson);
               // r553: the badge speaks the resume plan on hover — which step
               // the next fire re-enters, parsed from the executor's OWN
               // message (same contract the QA asserts).

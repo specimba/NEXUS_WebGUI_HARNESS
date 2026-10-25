@@ -154,3 +154,22 @@ export function resumePlanFromError(error: string | null | undefined): ResumePla
   if (!Number.isFinite(step) || !Number.isFinite(total)) return null;
   return { step, total, label: m[3] ?? "" };
 }
+
+// r557: the predicate above is necessary but NOT sufficient for an honest
+// resume claim — the executor refuses to resume a run whose FIRST step died
+// (resumableErroredRunId: no memoized done rows ⇒ null ⇒ fresh run). A UI
+// that says "↻ resumes at step 1/5" for a step-1 death lies: the next fire
+// re-dials step 1 as a brand-new run. This client-side mirror shares the
+// executor's fuller rule; the label-match against the CURRENT steps stays
+// executor-side (the prefix guard) — the UI claims the memoized resume only
+// when a memoized prefix EXISTS.
+export function hasMemoizedTrail(stepsJson: string | null | undefined): boolean {
+  if (!stepsJson) return false;
+  try {
+    const parsed = JSON.parse(stepsJson) as unknown;
+    if (!Array.isArray(parsed)) return false;
+    return parsed.some((e) => (e as { ok?: unknown } | null)?.ok === true);
+  } catch {
+    return false;
+  }
+}

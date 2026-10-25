@@ -26,6 +26,7 @@ import {
   resumableErroredRunId,
 } from "../src/lib/server/automation-executor";
 import {
+  hasMemoizedTrail,
   isResumableStepFailure,
   resumePlanFromError,
 } from "../src/lib/automation-lane";
@@ -279,6 +280,50 @@ try {
   ok(
     drawerRegion.includes("the next scheduled fire re-enters at the failed step"),
     "contract: the drawer's generic fallback survives for unexpected shapes",
+  );
+
+  // ── r557: schedule-row drift guard (source-level) ──
+  // The ARMED SCHEDULE rows must speak the same parsed plan (TASK-101): the
+  // join must mirror the executor's LATEST-schedule-run rule (trigger filter
+  // + first-hit-wins over the newest-first runs array) and re-use the badge
+  // predicate, and the row must interpolate step/total while keeping the
+  // generic fallback. A wording or join drift fails here, not the Owner's eyes.
+  const joinIdx = autopilotSrc.indexOf("const resumeByWf");
+  const joinRegion = joinIdx >= 0 ? autopilotSrc.slice(joinIdx, joinIdx + 400) : "";
+  ok(
+    joinRegion.includes('run.trigger !== "schedule"') &&
+      joinRegion.includes("hasMemoizedTrail(run.stepsJson)") &&
+      joinRegion.includes("if (!resumable) continue;"),
+    "contract: the join picks the workflow's LATEST schedule-trigger run, demands the memoized prefix, and stays SILENT (no chip) on a step-1 death",
+  );
+  const schedRowIdx = autopilotSrc.indexOf("data-testid={`schedule-resume-");
+  const schedRowRegion = schedRowIdx >= 0 ? autopilotSrc.slice(schedRowIdx, schedRowIdx + 400) : "";
+  ok(
+    schedRowRegion.includes("title={planTitle}") &&
+      schedRowRegion.includes("at step ${plan.step}/${plan.total}") &&
+      schedRowRegion.includes("at the failed step"),
+    "contract: the schedule row carries the plan tooltip, interpolates step/total, keeps the generic fallback",
+  );
+
+  // ── r557: the memoized-prefix honesty guard ──
+  // A step-1 death leaves NO memoized prefix — the executor runs FRESH — so
+  // neither the schedule-row chip nor the archive badge may claim a resume.
+  // The claims now demand hasMemoizedTrail; these checks consume the REAL
+  // fire-1 trail (Alpha landed, Beta died ⇒ prefix EXISTS) against the
+  // all-fail shape (first step died ⇒ prefix ABSENT ⇒ fresh run).
+  ok(
+    f1run?.stepsJson != null &&
+      hasMemoizedTrail(f1run.stepsJson) &&
+      !hasMemoizedTrail('[{"label":"Solo probe","ok":false,"output":"dial 500"}]') &&
+      !hasMemoizedTrail("not json") &&
+      !hasMemoizedTrail(null),
+    "contract: hasMemoizedTrail is true for the real fire-1 trail, false for a step-1 death / corrupt / null",
+  );
+  const joinWire = (autopilotSrc.match(/hasMemoizedTrail\(run\.stepsJson\)/g) ?? []).length;
+  const badgeWire = (autopilotSrc.match(/hasMemoizedTrail\(r\.stepsJson\)/g) ?? []).length;
+  ok(
+    joinWire >= 1 && badgeWire >= 1,
+    `contract: BOTH resume claims (schedule-row join + archive badge) demand the memoized prefix (join ${joinWire}, badge ${badgeWire})`,
   );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);
