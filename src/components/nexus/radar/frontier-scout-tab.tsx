@@ -428,7 +428,7 @@ export function FrontierScoutTab() {
             {seeds.slice(0, 3).map((seed, i) => seedRow(seed, i))}
             {seeds.length > 3 ? (
               <details className="mt-0.5">
-                <summary className="cursor-pointer text-[11px] text-muted-foreground hover:underline">
+                <summary className="cursor-pointer text-[11px] text-muted-foreground transition-colors hover:text-foreground hover:underline">
                   +{seeds.length - 3} older seed{seeds.length - 3 === 1 ? "" : "s"}
                 </summary>
                 <div className="mt-1">{seeds.slice(3).map((seed, i) => seedRow(seed, i))}</div>

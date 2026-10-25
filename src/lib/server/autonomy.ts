@@ -552,6 +552,126 @@ async function fetchGithub(url: string, accept: string): Promise<Response> {
   }
 }
 
+// ── r540: the url-kind research lane (TASKS P2) ───────────────────────────
+// Queued url rows used to blanket-skip with "no research lane wired" — they
+// now get a DIRECT page reader: title + og:description + visible text head,
+// scored through the SAME deterministic rubric as repos (scoreRepo over a
+// synthesized GithubRepo). No stars/topics/freshness signals exist for a
+// plain page, so those terms score neutrally; the vocabulary haystack still
+// decides. Never dials an LLM. Failures land in the same honest-failure
+// shape as repos (status failed + error class note).
+
+const PAGE_TIMEOUT_MS = 15_000;
+const PAGE_CAP = 400_000;
+
+async function fetchPage(url: string): Promise<string> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), PAGE_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "nexus-webgui-autonomy", Accept: "text/html,application/xhtml+xml" },
+      signal: ac.signal,
+      cache: "no-store",
+      redirect: "follow",
+    });
+    if (!res.ok) throw new Error(`http ${res.status}`);
+    const type = res.headers.get("content-type") ?? "";
+    if (type && !/text\/html|application\/xhtml|text\/plain/i.test(type)) {
+      throw new Error(`non-html content-type: ${type.split(";")[0]}`);
+    }
+    return (await res.text()).slice(0, PAGE_CAP);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
+}
+
+/** Deterministic extraction — og: tags first with honest fallbacks, entity-
+ *  decoded, whitespace collapsed. Exported for the fixture QA. */
+export function pageToHouse(
+  html: string,
+): { title: string; description: string; textHead: string } {
+  const pick = (re: RegExp): string => {
+    const m = html.match(re);
+    return m?.[1] ? decodeHtmlEntities(m[1]).replace(/\s+/g, " ").trim() : "";
+  };
+  const title =
+    pick(/<meta[^>]+property="og:title"[^>]+content="([^"]*)"/i) ||
+    pick(/<title[^>]*>([^<]*)<\/title>/i);
+  const description =
+    pick(/<meta[^>]+property="og:description"[^>]+content="([^"]*)"/i) ||
+    pick(/<meta[^>]+name="description"[^>]+content="([^"]*)"/i);
+  const textHead = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 1_200);
+  return { title, description, textHead };
+}
+
+/** Research one queued url-kind row by reading the page directly. */
+async function researchUrlPage(row: { id: string; url: string }): Promise<string> {
+  try {
+    const parsed = (() => {
+      try {
+        return new URL(row.url);
+      } catch {
+        return null;
+      }
+    })();
+    if (!parsed) throw new Error("unparsable URL");
+    const html = await fetchPage(row.url);
+    const { title, description, textHead } = pageToHouse(html);
+    if (!title && !description && !textHead) {
+      throw new Error("page carried no title/description/text worth distilling");
+    }
+    const synthesized: GithubRepo = {
+      full_name: `${parsed.host}${parsed.pathname.slice(0, 80)}`,
+      description: description || undefined,
+      stargazers_count: 0,
+      forks_count: 0,
+      pushed_at: undefined,
+      topics: [],
+      language: undefined,
+      license: undefined,
+      archived: false,
+    };
+    const { score, keywords } = scoreRepo(synthesized, `${title}\n${textHead}`);
+    const verdict = verdictFor(score);
+    const notes = [
+      `${row.url}`,
+      `title: ${title || "(none)"}`,
+      `description: ${description || "(no og:description / meta description)"}`,
+      `keywords: ${keywords.length ? keywords.join(", ") : "(none)"}`,
+      `page: ${html.length.toLocaleString()} chars fetched · ${textHead.length} chars of visible text distilled`,
+      `source: page-reader (direct fetch, deterministic rubric — no LLM)`,
+    ].join("\n");
+    await db.researchQueue.update({
+      where: { id: row.id },
+      data: { status: "researched", score: Math.round(score), verdict, notes: trunc(notes, NOTES_MAX), researchedAt: new Date() },
+    });
+    return `researched ${parsed.host}: score ${Math.round(score)}/10 → ${verdict} (page reader)`;
+  } catch (e) {
+    const cls = errorClass(e);
+    await db.researchQueue.update({
+      where: { id: row.id },
+      data: { status: "failed", notes: `error class: ${cls}`, researchedAt: new Date() },
+    });
+    return `honest failure — ${cls}`;
+  }
+}
+
 /** Research one queued repo against the REAL unauthenticated GitHub API and
  * distill it locally (deterministic — never dials an LLM here). The
  * ResearchQueue row IS the cache: status flips to researched (or failed) and
@@ -564,11 +684,18 @@ async function researchRepo(queueId: string): Promise<string> {
   }
   if (row.status !== "queued") return `not queued (status ${row.status}) — honest no-op`;
   if (row.kind !== "repo" || !row.owner || !row.repo) {
+    // r540: url rows get a REAL lane now — a direct page reader (title +
+    // og:description + visible text head, same deterministic scoring shape).
+    // Rows without a fetchable URL keep the honest skip.
+    if (row.kind === "url" && row.url && /^https?:\/\//i.test(row.url)) {
+      // narrow at the call site — the whole-row pass defeats TS's url narrowing
+      return researchUrlPage({ id: row.id, url: row.url });
+    }
     await db.researchQueue.update({
       where: { id: row.id },
-      data: { status: "skipped", notes: "non-repo target — no research lane wired for plain URLs yet", researchedAt: new Date() },
+      data: { status: "skipped", notes: "non-repo target without a fetchable URL — no research lane", researchedAt: new Date() },
     });
-    return "skipped: non-repo target (url rows have no research lane yet)";
+    return "skipped: non-repo target without a fetchable URL";
   }
 
   try {

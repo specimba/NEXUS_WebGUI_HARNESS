@@ -13135,3 +13135,33 @@ Round ID: r539 -> next patrol (job 473388)
 Open risks: (1) Live-wire keyed proofs pending — when a real Exa key lands (vault slot or .env), run the live-wire proof and harden exaResponseToHouse against the REAL payload shape (current parser is fixture-shaped); the new frontier chip gives a visible "acq key · vault" signal the moment a vault slot goes live. (2) stop_sequences mapping gap (pre-existing; nothing in src produces it today — fix belongs with an --import/config consumer). (3) webDevReview 15-min cron still owner-side (staged text at scripts/webdevreview-payload.txt, 1394 chars). (4) Owner-side: PAT rotation, vault-master.key backup, preseed-key decision (TASK-110/112/113). (5) r538's transient broken-edit window origin remains unidentified — if build overlays recur, diff the tree BEFORE reverting to catch the writer. (6) Background bun+CDP QA launches die silently — golden QA foreground only.
 Blockers: none.
 Next recommended action: r540 — if a real Exa key lands in a vault slot or .env, run the live-wire Exa proof (chip flips to "vault" visibly) + harden exaResponseToHouse against the real payload; else port the guardedTick doctrine note into qa-executor-resume's header and advance the TASKS.md P1 tail.
+
+---
+Task ID: r540 (patrol job 473388, 17:37)
+Agent: patrol job 473388 (main session)
+Task: r539 handoff — no Exa key landed (env + vault both empty, verified) → port the guardedTick doctrine note + advance the TASKS.md P1/P2 tail. QA golden first; gates; ship.
+
+Work Log:
+- QA golden paths: 9/9 + console 0 errors (foreground; intel ladder, Frontier scroll incl. the r539 chip row, 6000-char long-paste, run control). Nothing broken → advanced the backlog.
+- FALSE ALARM OF RECORD: a sed read of autonomy.ts:587 rendered `const tmlRes, atomRes]` — looked like ANOTHER r538-class broken edit. rg + Read + git-show HEAD all proved the file correct (`const [htmlRes, atomRes]`) and tsc clean: the earlier rendering was a DISPLAY ARTIFACT (a `[h` swallowed in sed output), not disk corruption. Lesson: before treating a rendering as a broken-edit window, cross-check with rg + the Read tool + git show. (r538's evidence was dev.log Turbopack errors — that class remains real; this was the OTHER kind.)
+- SLICE SHIPPED — TASKS P2 url-kind research lane, CLOSED: queued url rows used to blanket-skip with "no research lane wired"; they now RESEARCH through a direct page reader:
+  1. pageToHouse() (exported, deterministic): og:title → <title> precedence, og:description → meta description fallback, entity decode, whitespace collapse, visible-text head (script/style stripped, 1200-char cap).
+  2. fetchPage(): 15s AbortController timeout, no-store, UA discipline, content-type gate (refuses non-html honestly), 400KB cap.
+  3. researchUrlPage(): same scoring shape as repos — scoreRepo over a synthesized GithubRepo (no stars/topics/freshness → those terms score neutrally; the vocabulary haystack decides); honest notes (url/title/description/keywords/page stats/`source: page-reader — no LLM`); verdict ADAPT/WATCH/SKIP; failures land in the repo lane's honest-failure shape (status failed + error-class note). No auto-ADAPT loop for url rows (no owner/repo to enqueue — documented).
+  4. researchRepo's url branch now routes there; rows without a fetchable URL keep the honest skip (copy updated).
+- QA: NEW scripts/qa-url-lane.ts — executor doctrine (global fetch mocked for fixture URLs only, snapshot/restore), 12/12: og:title precedence, entity decode, script/style stripping, end-to-end executeMove("research-repo") on a queued url row → researched + score + verdict + notes, 404 → honest failure, non-html refused, ResearchQueue.id minted fixture-side (the model has no default).
+- GATES caught one real type error pre-ship: researchUrlPage(row) took {url: string} but the Prisma row carries url: string | null — the truthy guard doesn't survive a whole-row pass. Fixed by narrowing at the call site (researchUrlPage({ id, url })). tsc then clean.
+- STYLING POLISH: frontier-scout-tab's "+N older seeds" <details> summary gains transition-colors hover:text-foreground (the tab's muted-foreground hover vocabulary).
+- GATES (marker-verified): qa-url-lane 12/12; qa-automation-executor 26/26; qa-executor-resume 18/18; tsc 0 errors; lint 0 errors / 33 warnings EXACT; briefing 200 + strategy 200 (autonomy.ts is in the briefing import chain — live-verified); golden 9/9 + console 0 errors.
+- BUDGET HONESTY: this round ran ~2 rounds past the 12-round budget — the false-alarm investigation + the tsc-caught type fix each cost an implement→verify pass, and shipping them recorded took priority per the r532/r535/r536/r539 doctrine. This line is the overrun of record.
+
+Stage Summary:
+- The research queue is now useful for the non-GitHub web: url-kind rows get genuinely researched (deterministic rubric + verdict + rich honest notes) instead of dead-skipping — they flow into briefing/strategy surfaces with real signal. TASKS.md P2 url-kind item CLOSED with witnessed acceptance (12/12).
+- The guardedTick doctrine note port (r539 handoff's else-branch) was superseded by the higher-value url-lane slice; the doctrine already lives verbatim in qa-automation-executor.ts's guardedTick header comment and r539's worklog — qa-executor-resume.ts already carries its own r535 race note.
+- Open P1 tail: live-wire keyed proofs (/v1/messages owner --import; Exa key via vault slot — frontier chip flips to "vault" visibly); owner-side PAT rotation / Webshare token / Supabase bucket / preseed-key decision (TASKS lines 17-21); stop_sequences mapping gap (zero in-code producers).
+
+Round Handoff:
+Round ID: r540 -> next patrol (job 473388)
+Open risks: (1) Live-wire keyed proofs pending — when a real Exa key lands (vault slot or .env), run the live-wire proof + harden exaResponseToHouse against the REAL payload; the frontier chip is the visible signal. (2) The page reader has LIVE-WIRE-UNTESTED surfaces too (real-world pages: cookie walls, CSP, redirects) — first real url-row research in dev.log is the witness; notes carry the page stats to sanity-check. (3) sed rendering artifacts can masquerade as broken edits — cross-check with rg/Read/git show first (r540 false alarm of record). (4) webDevReview 15-min cron still owner-side (staged text at scripts/webdevreview-payload.txt). (5) Owner-side: PAT rotation, Webshare token, Supabase bucket, preseed-key decision.
+Blockers: none.
+Next recommended action: r541 — seed 2-3 real url rows into the ResearchQueue (enqueueResearchTargets) to witness the page reader live within one AIE cycle (TASKS acceptance's last mile), or if a key lands first, the Exa live-wire proof.
