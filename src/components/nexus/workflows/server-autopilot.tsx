@@ -1143,7 +1143,7 @@ export function ServerAutopilot() {
               <>
               <div aria-label="Autonomy KPIs" className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
                 <div
-                  title="The research backlog: repos/URLs waiting for the engine's vault-free GitHub research (max 2 per 10-min cycle — the 60 req/h unauthenticated budget governs)."
+                  title="The research backlog: repos/URLs waiting for the engine's vault-free research (max 2 repos + 2 urls per 10-min cycle — the 60 req/h unauthenticated GitHub budget governs; rate-limited rows fall back to html-lane scoring with topics/README unavailable)."
                   className="rounded-lg border border-emerald-500/15 bg-background/40 px-2 py-1.5"
                 >
                   <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Queue depth</p>

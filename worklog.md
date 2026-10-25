@@ -13249,3 +13249,26 @@ Round ID: r544 -> next patrol (job 473388)
 Open risks: (1) ADAPT chip color still unexercised (needs an ≥8/10 repo — seed a high-vocabulary-match repo to witness it); (2) auto-loop planner stays pre-r542 until a natural dev restart — new URL drafts need manual POST {action:"cycle"} (repo drafts unaffected — old planner always covered them); (3) live-wire keyed proofs pending a real key (frontier chip flip = signal); (4) webDevReview concurrency doctrine stands.
 Blockers: none.
 Next recommended action: r545 — optionally witness ADAPT (seed one rubric-matching repo, e.g. a fresh harness/evals repo rich in the scoring vocabulary), then resume the P1 tail in docs/strategy/TASKS.md (TASK-101 durable-step semantics is accumulating advance receipts; keyed proofs when a key lands).
+
+---
+Task ID: r545
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r544 handoff — witness the ADAPT chip; resume P1 tail. Found + fixed a real verdict/score consistency bug; root-caused WHY ADAPT was unreachable.
+
+Work Log:
+- BUG FIXED (display-integrity): the r544 receipts showed "WATCH 7/10" — a contradiction (documented rule: >=7 is ADAPT). Root cause: scoreRepo returned a 1-decimal float, the verdict was judged on it, but the DB column is Int and every surface rounds to "N/10" — 6.5-6.94 displayed as 7 while verdicting WATCH. FIX: scoreRepo now returns an INTEGER (Math.round) — verdict / DB / result string / UI agree forever; the 6.5-6.94 band shifts WATCH→ADAPT honestly. url-lane 12/12, executor 26/26, tsc 0, lint 0+33 — no test relied on decimals.
+- ADAPT CHASE (honest failure → real finding): seeded claude-code then langchain-ai/langchain (90k+ stars, fresh, vocab-dense by expectation) — both researched to WATCH 6/10. Reading the langchain receipt's notes exposed the true ceiling: "source: html-fallback (api.github.com rate-limited from sandbox egress)" — topics: (none), README not fetched, description polluted by GitHub's fallback text ("Contribute to…"). Without topics/readme the vocab term caps at ~0.8 → score ceiling ~6.3 → ADAPT is EGRESS-limited, not code-limited. Queue now 0q/8r/0f (8 real targets, 0 failed).
+- NEW STANDING GAP (of record): the GitHub radar has the Webshare-pool 403/429 escape hatch (r516); the RESEARCH lane does NOT inherit it — rate-limited rows score half-blind. Porting the pool retry to researchRepo's repo/readme fetches (or the owner PAT, TASKS lines 17-21) unlocks topics/README → full vocabulary → the ADAPT band, AND removes polluted-description scoring.
+- ADAPT chip color: still unexercised — now with a PROVEN environmental reason (same ternary family as WATCH; not a code risk).
+- STYLING POLISH: queue-depth KPI tooltip documents the real budget math ("max 2 repos + 2 urls per 10-min cycle; rate-limited rows fall back to html-lane scoring with topics/README unavailable") — the panel now explains its own scores.
+- Golden QA 3/3 + console 0 errors (settings 71, radar frontier, workflows 4940-char paste contained=true).
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; url-lane 12/12; executor 26/26.
+
+Stage Summary:
+- The receipts surface is now display-integrity-safe (no verdict/score contradiction can recur on new rows), and the ADAPT mystery is closed with evidence: it is a rate-limit story, tying the research lane to the standing PAT/pool P1 items. Two new honest ceilings of record: html-fallback rows cap at WATCH; full-rubric rows need pool/PAT egress.
+
+Round Handoff:
+Round ID: r545 -> next patrol (job 473388)
+Open risks: (1) research lane lacks the radar's Webshare-pool escape hatch — port it to researchRepo (repo + readme fetches) so rate-limited rows get topics/README; this is the highest-value next slice (unlocks ADAPT band + kills polluted scoring); (2) auto-loop planner stays pre-r542 until a natural dev restart (url drafts need manual triggers); (3) live-wire keyed proofs pending a real key; (4) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r546 — port the Webshare-pool 403/429 retry into researchRepo's GitHub fetches (mirror the radar's r516 escape hatch), re-seed one high-signal repo, and witness the full-rubric score (topics/README lift) — the ADAPT chip should finally light. Then resume the TASKS.md P1 tail.

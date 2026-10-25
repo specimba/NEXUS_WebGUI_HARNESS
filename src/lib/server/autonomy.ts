@@ -557,7 +557,12 @@ function scoreRepo(repo: GithubRepo, readmeExcerpt: string): { score: number; ke
   const hits = PLATFORM_VOCAB.filter((v) => haystack.includes(v)).length;
   score += Math.min(2, hits * 0.4);
   if (repo.archived) score = Math.min(score, 3.5);
-  return { score: Math.max(0, Math.min(10, Math.round(score * 10) / 10)), keywords };
+  // r545 consistency fix: return an INTEGER score. The DB column is Int and
+  // every surface displays "N/10", but the verdict was judged on the 1-decimal
+  // float — producing the witnessed contradiction "WATCH 7/10" (6.5-6.94
+  // rounds to 7 for display while the documented rule says >=7 is ADAPT).
+  // Integer alignment makes verdict / DB / result string / UI agree forever.
+  return { score: Math.max(0, Math.min(10, Math.round(score))), keywords };
 }
 
 function verdictFor(score: number): "ADAPT" | "WATCH" | "SKIP" {
