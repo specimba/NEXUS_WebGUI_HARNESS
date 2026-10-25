@@ -676,7 +676,7 @@ export function AutomationVaultCard() {
                   <span className="font-medium">{slotName}</span>
                   {providerById(s.provider)?.dialect === "anthropic" ? (
                     <span
-                      title="This provider pairs an Anthropic-style /v1/messages endpoint — closed-tab step dials ride the Anthropic dialect (x-api-key auth, system as a top-level field), shaped behind the same redaction choke as every other lane."
+                      title="This provider pairs an Anthropic-style /v1/messages endpoint — step dials AND the engine's streaming tool-loop ride the Anthropic dialect (x-api-key auth, system as a top-level field, SSE deltas translated), shaped behind the same redaction choke as every other lane."
                       className="rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0 text-[10px] font-medium text-violet-600 dark:text-violet-400"
                     >
                       anthropic dialect

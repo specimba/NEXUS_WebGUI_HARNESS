@@ -27,6 +27,17 @@ import {
 } from "./tools-defs";
 import type { RouteReceipt, ToolCallInfo, ToolId } from "./types";
 
+// r529 — TASK-102 slice 5: the Anthropic-dialect lane adapter (body shaping,
+// x-api-key auth headers, streaming-SSE translation) shared with
+// automation-executor's step dial (r528 slice 4).
+import {
+  anthropicAuthHeaders,
+  anthropicDialectUrl,
+  AnthropicSSETranslator,
+  isAnthropicStyleEndpoint,
+  openaiBodyToAnthropic,
+} from "./anthropic-dialect";
+
 // ─── Wire types ──────────────────────────────────────────────────────────────
 
 export interface EngineImage {
@@ -49,6 +60,12 @@ export interface EngineBody {
   baseUrl?: string;
   apiKey?: string;
   model?: string;
+  /**
+   * r529 slice 5 (TASK-102): "anthropic" forces the /v1/messages wire for
+   * this dial (URL + x-api-key auth + shaped body + SSE translation).
+   * Absent ⇒ the dial base URL itself decides (isAnthropicStyleEndpoint).
+   */
+  dialect?: string;
   /** Registry id of the primary provider (r25) — lets the engine stamp the
    *  primary hop's health-memory key so primary failures demote it too. */
   providerId?: string;
@@ -675,6 +692,13 @@ export async function runCustomEngine(
   const base = (body.baseUrl || "").replace(/\/+$/, "");
   // Accept both a base URL (…/v1) and a full chat-completions endpoint.
   const url = base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
+  // r529 slice 5 (TASK-102): an Anthropic-dialect hop dials /v1/messages —
+  // URL, auth, body shape AND the SSE event stream all differ. Gate = an
+  // explicit dialect flag or the dial base itself being anthropic-style;
+  // threading the provider-registry flag through the chat-route hop build
+  // stays the documented next slice.
+  const anthropicDial = body.dialect === "anthropic" || isAnthropicStyleEndpoint(base);
+  const dialUrl = anthropicDial ? anthropicDialectUrl(base) : url;
   // FIRST-TOKEN budget (r25): OrcaRouter internally fails over 1-5 upstreams
   // before the first byte arrives — give its header→first-byte window a
   // looser deadline than the default.
@@ -695,7 +719,9 @@ export async function runCustomEngine(
   }
   const model = !body.model || body.model === "auto" ? CUSTOM_FALLBACK_MODEL : body.model;
   const authHeaders: Record<string, string> = body.apiKey
-    ? { Authorization: `Bearer ${body.apiKey}` }
+    ? anthropicDial
+      ? anthropicAuthHeaders(body.apiKey)
+      : { Authorization: `Bearer ${body.apiKey}` }
     : {};
   const toolIds = (body.tools ?? []).filter(Boolean);
   const maxIterations = clampIter(body.maxIterations);
@@ -767,7 +793,7 @@ export async function runCustomEngine(
         // egress-aware dial (routing map → direct/pool per upstream; no token
         // configured = byte-identical direct fetch). Browser-direct callers
         // pass nothing and get the platform fetch, unchanged.
-        res = await (dial ?? fetch)(url, {
+        res = await (dial ?? fetch)(dialUrl, {
           method: "POST",
           headers: {
             ...authHeaders,
@@ -775,17 +801,27 @@ export async function runCustomEngine(
           },
           body: JSON.stringify(
             redactDialBody(
-              {
-                model,
-                messages: msgs,
-                temperature: typeof body.temperature === "number" ? body.temperature : 0.7,
-                [maxTokField]: body.maxTokens ?? 2048,
-                stream: true,
-                ...(tools.length > 0 && !isFinalPass ? { tools, tool_choice: "auto" } : {}),
-              },
+              anthropicDial
+                ? openaiBodyToAnthropic({
+                    model,
+                    messages: msgs,
+                    temperature: typeof body.temperature === "number" ? body.temperature : 0.7,
+                    max_tokens: body.maxTokens ?? 2048,
+                    stream: true,
+                    ...(tools.length > 0 && !isFinalPass ? { tools } : {}),
+                  })
+                : {
+                    model,
+                    messages: msgs,
+                    temperature: typeof body.temperature === "number" ? body.temperature : 0.7,
+                    [maxTokField]: body.maxTokens ?? 2048,
+                    stream: true,
+                    ...(tools.length > 0 && !isFinalPass ? { tools, tool_choice: "auto" } : {}),
+                  },
               // the caller's key rides the AUTH HEADER (untouched); passing it
               // here keeps it out of the BODY too, even when a quoted prompt
-              // or tool output accidentally embeds it.
+              // or tool output accidentally embeds it. The SHAPED body is what
+              // the choke walks — dialect-agnostic (r528 invariant).
               body.apiKey ? [body.apiKey] : [],
             ),
           ),
@@ -1161,6 +1197,9 @@ export async function consumeUpstreamSSE(
   let sawDone = false;
   let sawFinishReason = false;
   const toolCalls: UpstreamToolCall[] = [];
+  // r529 slice 5: lazily created the first time an Anthropic-dialect event
+  // shows up — the OpenAI path never constructs one.
+  let anthropicTranslator: AnthropicSSETranslator | null = null;
 
   // ── Phase A: FIRST-TOKEN deadline ─────────────────────────────────────────
   // The timer itself lives in the ENGINE (armed when the upstream fetch
@@ -1203,6 +1242,7 @@ export async function consumeUpstreamSSE(
     let chunk: {
       error?: unknown;
       model?: string;
+      type?: string;
       choices?: Array<{
         finish_reason?: string | null;
         delta?: {
@@ -1232,6 +1272,27 @@ export async function consumeUpstreamSSE(
     // Pollinations injects sponsored chunks from a separate "ad-system" model
     // into the same stream — they are not assistant output, drop them.
     if (chunk.model === "ad-system") return;
+    // r529 slice 5 (TASK-102): an Anthropic-dialect stream speaks EVENTS
+    // (`type: content_block_delta …`) instead of choices[].delta — translate
+    // through the stateful dialect translator. Chunk-level sniffing keeps the
+    // OpenAI path byte-identical and costs it nothing.
+    if (!chunk.choices && typeof chunk.type === "string") {
+      anthropicTranslator ??= new AnthropicSSETranslator();
+      const d = anthropicTranslator.feed(chunk);
+      if (!d) return;
+      if (d.reasoning) {
+        reasoning += d.reasoning;
+        send({ type: "reasoning", text: d.reasoning });
+      }
+      if (d.text) {
+        content += d.text;
+        send({ type: "token", text: d.text });
+      }
+      if (d.toolCall) toolCalls[d.toolCall.index] = { id: d.toolCall.id, name: d.toolCall.name, args: d.toolCall.args };
+      if (d.finished) sawFinishReason = true;
+      if (d.done) sawDone = true;
+      return;
+    }
     const choice = chunk.choices?.[0];
     if (choice?.finish_reason) sawFinishReason = true;
     const delta = choice?.delta;
