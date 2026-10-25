@@ -1473,6 +1473,12 @@ export function ServerAutopilot() {
               // the next fire re-enters, parsed from the executor's OWN
               // message (same contract the QA asserts).
               const resumePlan = resumable ? resumePlanFromError(r.error) : null;
+              // r559: the drawer's "failStreak still counts" parenthetical
+              // used to be abstract — surface the CURRENT count from the
+              // workflow's registry row so the number is the Owner's, not
+              // the doctrine's.
+              const wfFailStreak =
+                state?.registry.find((w) => w.id === r.workflowId)?.failStreak ?? 0;
               const transient = !resumable && cls != null && SELF_HEAL_KINDS.includes(cls.kind);
               return (
                 <li key={r.id} className="text-xs">
@@ -1529,7 +1535,7 @@ export function ServerAutopilot() {
                           {resumePlan
                             ? `the next scheduled fire re-enters at step ${resumePlan.step}/${resumePlan.total} ("${resumePlan.label}") — `
                             : "the next scheduled fire re-enters at the failed step — "}
-                          completed steps are memoized (failStreak still counts).
+                          completed steps are memoized (failStreak now {wfFailStreak} — every fire counts, resumed or not).
                         </p>
                       ) : null}
                       {cls ? (

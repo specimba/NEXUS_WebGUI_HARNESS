@@ -281,6 +281,11 @@ try {
     drawerRegion.includes("the next scheduled fire re-enters at the failed step"),
     "contract: the drawer's generic fallback survives for unexpected shapes",
   );
+  ok(
+    drawerRegion.includes("failStreak now {wfFailStreak}") &&
+      drawerRegion.includes("every fire counts, resumed or not"),
+    "contract: the drawer's failStreak parenthetical interpolates the CURRENT registry count (r559)",
+  );
 
   // ── r557: schedule-row drift guard (source-level) ──
   // The ARMED SCHEDULE rows must speak the same parsed plan (TASK-101): the

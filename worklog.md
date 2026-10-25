@@ -13566,3 +13566,27 @@ Round ID: r558 -> next patrol (job 473388)
 Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) deep-paste re-verification now 3 rounds stale (candidate a).
 Blockers: none.
 Next recommended action: r559 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row). Else candidates: (a) "Plan → Pipeline" editor deep-paste re-verification with role-dialog scoping — overdue, do it FIRST if no key lands; (b) TASK-101 tail: the drawer note's "(failStreak still counts)" parenthetical could surface the CURRENT failStreak number from the row it sits on (parsed vocabulary already loaded); (c) if the Vault section grew again, the r556 deferred acquisition-cluster sub-card split.
+
+---
+Task ID: r559
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r558 handoff — key check first (all acquisition sources null → no keyed proof, Owner-blocked); shipped candidate (b): the run-drawer's abstract "(failStreak still counts)" parenthetical now interpolates the CURRENT registry count — and CLOSED the 4-round-stale candidate (a): the paste-plan dialog deep-paste re-verified with the button's REAL name.
+
+Work Log:
+- KEY CHECK: /api/vault acquisition all null — keyed proofs stay Owner-blocked.
+- INCREMENT (b): drawer note now reads "(failStreak now N — every fire counts, resumed or not)" — N joined from the workflow's registry row (state.registry.find by workflowId), so the number is the Owner's live count, not doctrine. qa-executor-resume +1 interpolation guard = 31/31.
+- LIVE WITNESS (witness run qa-r559-witness, cleanup verified): chip click → drawer expanded → the note rendered "failStreak now 1 — every fire counts, resumed or not)." VERBATIM (wf-deep-dossier's real registry failStreak=1); cleanup → chips 0 (honest silence held).
+- CANDIDATE (a) CLOSED — "Plan → Pipeline" mystery solved: the button's real accessible name is "Create a pipeline from a pasted plan" (ref e3254) — the r549-era name was a stale near-match, which is why name-greps missed it 4 rounds. Deep-paste verified live: 8,011 chars injected (native value setter + input event), textarea box 460/460 scrollW=460 overflowX=false, value tail intact ("END-MARKER"), body 1280/1280 no bleed. r549's 27,829-char closure now has a fresh companion.
+- LOCATOR/EVAL DOCTRINE (new): (1) agent-browser eval shares ONE global context across calls — a bare `const` poisons every later eval (SyntaxError: already declared); wrap ad-hoc probes in an IIFE. (2) name-greps for buttons must fall back to semantic grep (plan|pipeline|edit) when a remembered name misses — names drift, roles don't.
+- GOLDEN QA: workflows walked twice (witness + dialog), radar Frontier role-tab click → body 1280/1280, #settings Model Relay/intel ladder renders (5 hits). Page-errors EMPTY; console error count 0.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; qa-executor-resume 31/31; qa-acquisition-vault 27/27 (r558 state, unchanged inputs).
+- BUDGET: ~7/12 — clean; witness chain and golden walks each in a single chained call; no restart, no bucket attempts.
+
+Stage Summary:
+- The drawer's resume note now speaks the Owner's numbers (live failStreak interpolated, QA-guarded), and the longest-standing verification debt (paste-plan deep-paste, 4 rounds stale) is paid with a root-cause: the button was never "Plan → Pipeline" — the locator doctrine now says semantic-grep over remembered names.
+
+Round Handoff:
+Round ID: r559 -> next patrol (job 473388)
+Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) eval-context pollution + button-name drift recorded as locator doctrine.
+Blockers: none.
+Next recommended action: r560 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect). Else candidates: (a) update docs/strategy/TASKS.md TASK-102 to name the REAL paste-plan button ("Create a pipeline from a pasted plan") in its verification recipe so no future round chases the ghost name; (b) the paste-plan dialog textarea (clientW 460) could show a live char-count badge for long pastes (8k+ is the realistic Owner case) — tiny polish with the proven injection pattern; (c) if the Vault section grew again, the r556 deferred acquisition-cluster sub-card split.
