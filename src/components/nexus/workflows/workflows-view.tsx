@@ -881,7 +881,24 @@ function PlanPipelineDialog({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="plan-text">Plan or goal</Label>
+            {/* r560: live char count — long pastes (8k+ chars are the realistic
+                Owner case) get an amber badge so scale is visible at a glance. */}
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="plan-text">Plan or goal</Label>
+              {planText.length > 0 ? (
+                <span
+                  data-testid="plan-char-count"
+                  className={cn(
+                    "rounded-md border px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums transition-colors",
+                    planText.length >= 4000
+                      ? "border-amber-400/30 bg-amber-400/5 text-amber-400"
+                      : "border-border bg-muted/40 text-muted-foreground"
+                  )}
+                >
+                  {planText.length.toLocaleString()} chars
+                </span>
+              ) : null}
+            </div>
             <textarea
               id="plan-text"
               value={planText}

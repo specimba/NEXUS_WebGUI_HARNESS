@@ -353,6 +353,24 @@ try {
     "contract: the schedule chip is a button that opens the run's drawer, and the title says so",
   );
 
+  // ── r560: the paste-plan dialog's live char count ──
+  // Long pastes (8k+ chars are the realistic Owner case — r549's 27,829-char
+  // closure, r559's 8,011-char re-verification) now show their scale live.
+  const planSrc = readFileSync(
+    new URL("../src/components/nexus/workflows/workflows-view.tsx", import.meta.url),
+    "utf8",
+  );
+  const badgeIdx = planSrc.indexOf('data-testid="plan-char-count"');
+  // r560: the badge's long base-className string pushes toLocaleString past a
+  // 420 window — widen to 560 (fix the window, not the product; r558 lesson).
+  const badgeRegion = badgeIdx >= 0 ? planSrc.slice(badgeIdx, badgeIdx + 560) : "";
+  ok(
+    badgeRegion.includes("planText.length.toLocaleString()") &&
+      badgeRegion.includes("planText.length >= 4000") &&
+      planSrc.includes('id="plan-text"'),
+    "contract: the paste-plan textarea carries a live char-count badge (toLocaleString'd, amber at the 4k long-paste threshold) wired to the planText state",
+  );
+
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);
 } catch (err) {

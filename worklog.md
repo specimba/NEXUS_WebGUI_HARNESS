@@ -13590,3 +13590,28 @@ Round ID: r559 -> next patrol (job 473388)
 Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) eval-context pollution + button-name drift recorded as locator doctrine.
 Blockers: none.
 Next recommended action: r560 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect). Else candidates: (a) update docs/strategy/TASKS.md TASK-102 to name the REAL paste-plan button ("Create a pipeline from a pasted plan") in its verification recipe so no future round chases the ghost name; (b) the paste-plan dialog textarea (clientW 460) could show a live char-count badge for long pastes (8k+ is the realistic Owner case) — tiny polish with the proven injection pattern; (c) if the Vault section grew again, the r556 deferred acquisition-cluster sub-card split.
+
+---
+Task ID: r560
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r559 handoff — key check first (all acquisition sources null → no keyed proof, Owner-blocked); shipped candidates (a)+(b): TASK-102's verification recipe now names the REAL paste-plan button, and the paste-plan textarea gained a live char-count badge for long pastes.
+
+Work Log:
+- KEY CHECK: /api/vault acquisition all null (exa/brightdata/webshare) — keyed proofs stay Owner-blocked.
+- NOTE: r559 was found ALREADY self-run by the parallel session (f87e23fbd in git log, full worklog section present) — this round continued the handoff as r560 per the r556 doctrine.
+- INCREMENT (b): the paste-plan dialog's "Plan or goal" label row now carries a live char-count badge (data-testid=plan-char-count): planText.length.toLocaleString() + " chars", muted below 4k, amber (amber-400/30 border, amber-400/5 bg) at the 4k long-paste threshold — 8k+ pastes are the realistic Owner case (r549's 27,829-char closure, r559's 8,011-char re-verification).
+- CANDIDATE (a): TASKS.md TASK-102 entry gains the verification recipe: the toolbar button's ACCESSIBLE NAME is "Create a pipeline from a pasted plan" (visible label "Plan → Pipeline") — grep the aria-label, not the label; the "names drift, roles don't" locator doctrine now lives where future rounds will read it.
+- qa-executor-resume +1 badge contract guard = 32/32; the guard initially failed on a STALE REGION WINDOW (the badge's long base-className string pushed toLocaleString past 420 chars — r558 lesson applied: fixed the window 420→560, NOT the product code).
+- LIVE WITNESS (no DB writes — dialog is client-state; cleanup = close): clicked "Create a pipeline from a pasted plan" → injected 18,316 chars via the proven native-setter + input-event pattern → badge rendered "18,316 chars" AMBER=true verbatim, textarea box 460/460 scrollW=460 ovx=false, body 1280/1280.
+- GOLDEN QA: workflows walked during the witness; radar Frontier — snapshot-ref grep missed (REF empty), so the tab was clicked via role-tab eval (new locator variant: eval-click beats snapshot-ref when the grep misses); BODY=1280 no overflow. #settings Model Relay renders: INTEL=9 benchmark hits, RELAY=y. agent-browser errors: EMPTY → console 0.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; qa-executor-resume 32/32; qa-acquisition-vault 27/27.
+- BUDGET: ~12/12 — two mega-chains (witness+golden; verify+radar+console); one guard-window fix round. No restart, no bucket attempts.
+
+Stage Summary:
+- The paste-plan dialog now shows the Owner the SIZE of what they pasted (live, amber when it's a monster), and TASKS.md no longer sends future rounds chasing the ghost button name — the 5-round "Plan → Pipeline" mystery is recorded where it belongs.
+
+Round Handoff:
+Round ID: r560 -> next patrol (job 473388)
+Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) locator doctrine extended: role-tab eval-click when snapshot-ref grep misses; region windows need slack proportional to className length.
+Blockers: none.
+Next recommended action: r561 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row). Else candidates: (a) the Vault section's acquisition-cluster sub-card split (deferred since r556 — check if the card grew again before committing); (b) the paste-plan badge could also show a live step-count echo next to the detected-steps line ("✓ N steps detected" + chars in one row) — tiny, but only if the Owner case (multi-thousand-char plans) warrants it; (c) a QA guard that the schedule-row chip's amber stays in sync with the drawer note's failStreak interpolation (cross-component consistency, one grep each side).
