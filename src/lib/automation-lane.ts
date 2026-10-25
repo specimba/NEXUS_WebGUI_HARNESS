@@ -120,3 +120,37 @@ export function fmtSlotAge(iso: string, now: number = Date.now()): string {
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
 }
+
+// ─── TASK-101 slice 4 contract (r553): the "↻ resumes" badge vocabulary ─────
+// Moved here from server-autopilot.tsx (r535 defined it inline next to the
+// badge) so the UI badge, the executor's message mint, and the QA contract
+// test share ONE definition of which run errors carry resume semantics.
+// The executor's step-scoped failure path (executeWorkflow) mints errors as
+// `step N/M "label" failed: …`; the wait-timeout path uses the same
+// `step N/M "label"` prefix with a different suffix. Both carry resume
+// semantics; anything else (dial resolve failures, null, malformed) does not.
+
+export function isResumableStepFailure(error: string | null | undefined): boolean {
+  if (!error) return false;
+  return /^step \d+\/\d+ "/.test(error);
+}
+
+export interface ResumePlan {
+  step: number;
+  total: number;
+  label: string;
+}
+
+/** Parse the executor's step-failure message into the resume plan the badge
+ *  tooltip speaks: the next scheduled fire re-enters at step N/M ("label")
+ *  with the memoized prefix reloaded. Null when the error is not a
+ *  step-scoped failure (isResumableStepFailure false ⇒ null). */
+export function resumePlanFromError(error: string | null | undefined): ResumePlan | null {
+  if (!error) return null;
+  const m = /^step (\d+)\/(\d+) "([^"]*)"/.exec(error);
+  if (!m) return null;
+  const step = Number(m[1]);
+  const total = Number(m[2]);
+  if (!Number.isFinite(step) || !Number.isFinite(total)) return null;
+  return { step, total, label: m[3] ?? "" };
+}

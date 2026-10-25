@@ -24,6 +24,10 @@ import {
   resolveServerDialFromSlots,
   resumableErroredRunId,
 } from "../src/lib/server/automation-executor";
+import {
+  isResumableStepFailure,
+  resumePlanFromError,
+} from "../src/lib/automation-lane";
 
 let pass = 0, fail = 0;
 const ok = (c: boolean, m: string) => {
@@ -141,11 +145,13 @@ async function resetFixture(steps: { label: string; prompt: string }[]) {
   });
 }
 
-type RunRow = { id: string; status: string; stepsJson: string; finalReport: string | null };
+type RunRow = { id: string; status: string; stepsJson: string; finalReport: string | null; error: string | null };
 
 async function runRow(id: string): Promise<RunRow | null> {
   const r = await db.automationRun.findUnique({ where: { id } });
-  return r ? { id: r.id, status: r.status, stepsJson: r.stepsJson, finalReport: r.finalReport } : null;
+  // r553: error joined the row — the badge-contract asserts consume the REAL
+  // executor mint, not a fixture copy.
+  return r ? { id: r.id, status: r.status, stepsJson: r.stepsJson, finalReport: r.finalReport, error: r.error } : null;
 }
 
 try {
@@ -223,6 +229,33 @@ try {
   );
   const alphaDials = dialLog.filter((p) => p.includes("ALPHA")).length;
   ok(alphaDials === 3, `fire 4: the guard re-dialed Alpha (3 Alpha dials across 4 fires, got ${alphaDials})`);
+
+  // ── r553: cross-layer contract — the "↻ resumes" badge predicate ──
+  // The badge (server-autopilot.tsx) and the executor MUST agree on which
+  // error strings carry resume semantics. These checks consume the REAL
+  // error string fire 1 produced (f1run.error) — not a fixture copy — so a
+  // message-format drift on either side fails here before it misleads the
+  // Owner's archive view.
+  ok(
+    f1run?.error != null && isResumableStepFailure(f1run.error),
+    `contract: the executor's REAL step-failure message matches the badge predicate (${String(f1run?.error).slice(0, 44)}…)`,
+  );
+  const plan1 = resumePlanFromError(f1run?.error ?? null);
+  ok(
+    plan1?.step === 2 && plan1.total === 3 && plan1.label === "Beta probe",
+    "contract: the resume plan parses step/total/label out of the real message (2/3 \"Beta probe\")",
+  );
+  const waitShaped = 'step 1/2 "Hold" timed out waiting for event "go" (90s budget)';
+  ok(
+    isResumableStepFailure(waitShaped) && resumePlanFromError(waitShaped)?.label === "Hold",
+    "contract: the wait-timeout failure shape also carries resume semantics",
+  );
+  ok(
+    !isResumableStepFailure("dial resolve failed: no resolvable slot") &&
+      !isResumableStepFailure(null) &&
+      !isResumableStepFailure('step x/y "junk"'),
+    "contract: non-step failures (dial resolve, null, malformed) never render as resumable",
+  );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);

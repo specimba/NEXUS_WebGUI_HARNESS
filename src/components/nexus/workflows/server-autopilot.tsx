@@ -28,6 +28,8 @@ import { copyText } from "@/lib/helpers";
 import {
   computeStaleRegistry,
   humanizeLaneReason,
+  isResumableStepFailure,
+  resumePlanFromError,
   type ExecutorLaneState,
 } from "@/lib/automation-lane";
 import { cn } from "@/lib/utils";
@@ -48,10 +50,9 @@ function isTransientRunError(error: string | null | undefined): boolean {
 // executor's step-scoped failure path (`step N/M "…" …`) carries that
 // semantics; rendered as amber "↻ resumes", subsuming the transient badge
 // (resumption is the stronger, truer claim about the same next fire).
-function isResumableStepFailure(error: string | null | undefined): boolean {
-  if (!error) return false;
-  return /^step \d+\/\d+ "/.test(error);
-}
+// r553: the predicate itself now lives in src/lib/automation-lane.ts — ONE
+// definition shared with the QA contract test (message-format drift fails
+// the QA, not the Owner's eyes).
 
 // ─── v20: Server autopilot panel (Workflow Studio) ───────────────────────────
 // Surfaces the headless layer: whether the local server or the open browser
@@ -1407,6 +1408,10 @@ export function ServerAutopilot() {
               // r535: resumable (memoized resume on the next fire) outranks
               // the transient badge — same amber family, truer message.
               const resumable = r.status === "error" && isResumableStepFailure(r.error);
+              // r553: the badge speaks the resume plan on hover — which step
+              // the next fire re-enters, parsed from the executor's OWN
+              // message (same contract the QA asserts).
+              const resumePlan = resumable ? resumePlanFromError(r.error) : null;
               const transient = !resumable && cls != null && SELF_HEAL_KINDS.includes(cls.kind);
               return (
                 <li key={r.id} className="text-xs">
@@ -1417,6 +1422,13 @@ export function ServerAutopilot() {
                     aria-expanded={expanded}
                   >
                     <span
+                      title={
+                        resumePlan
+                          ? `Next scheduled fire re-enters at step ${resumePlan.step}/${resumePlan.total} ("${resumePlan.label}") — the memoized prefix is not re-dialed`
+                          : resumable
+                            ? "Next scheduled fire resumes this run at its failed step (completed steps are memoized)"
+                            : undefined
+                      }
                       className={cn(
                         "font-semibold",
                         r.status === "done"

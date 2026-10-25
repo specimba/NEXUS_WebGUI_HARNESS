@@ -13426,3 +13426,26 @@ Round ID: r552 -> next patrol (job 473388)
 Open risks: (1) live-wire keyed proofs (/v1/messages + Exa) remain the LAST TASK-102 item — blocked on the Owner storing a real key (vault slot or env); (2) pool tier dormant until a Webshare token lands (now visible as a sky/hollow chip, not a mystery); (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands.
 Blockers: none.
 Next recommended action: r553 — TASK-102 needs a key from the Owner; advance (b) TASK-101 durable-step deepening instead: serverless resume-path QA (arm a failing scheduled run fixture, witness the memoized resume re-enter at the failed step, assert the amber "↻ resumes" chip data) or, if the Owner stored any acquisition key mid-cycle, do the live-wire keyed proof FIRST.
+
+---
+Task ID: r553
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r552 handoff — no acquisition key stored (checked live) → advance TASK-101 durable-step deepening: cross-layer resume-badge contract + user-facing tooltip; golden QA.
+
+Work Log:
+- KEY CHECK FIRST: /api/vault acquisition sources all null → the live-wire keyed proof (TASK-102's last item) stays Owner-blocked; per handoff, advanced the TASK-101 slice instead.
+- GAP FOUND: the amber "↻ resumes" badge predicate (r535) lived INLINE in server-autopilot.tsx with NO contract QA against the error strings the executor actually mints — a message-format drift would silently kill the badge while every executor-level QA stayed green (the exact drift class qa-automation-executor's 17/18 run once caught test-side).
+- INCREMENT SHIPPED: (1) isResumableStepFailure MOVED to src/lib/automation-lane.ts (pure, shared) — one definition for the UI badge, the executor mint, and QA; plus NEW resumePlanFromError() parsing `step N/M "label"` into {step, total, label}. (2) USER-FACING: the "↻ resumes" badge now speaks its resume plan on hover — "Next scheduled fire re-enters at step 2/3 (\"Beta probe\") — the memoized prefix is not re-dialed" (parsed from the run's OWN error message; graceful generic fallback when the shape is ever unexpected). (3) CONTRACT QA appended to scripts/qa-executor-resume.ts (+4): the executor's REAL fire-1 error matches the predicate; the plan parses step/total/label from that same real string (2/3 "Beta probe"); the wait-timeout failure shape also carries resume semantics; non-step failures (dial resolve, null, malformed) never render resumable.
+- HONEST MISS→FIX: first run 20/22 — runRow's type/selection omitted `error` (added); second run 21/22 — my assert expected total=2 but the fixture pipeline has 3 steps (the real message correctly says step 2/3; assert corrected to 2/3). 22/22 on the third run — the contract now consumes the executor's true mint, exactly the anti-drift point of the slice.
+- GOLDEN QA (agent-browser): workflows panel renders, no overflow, console/page-errors clean; radar Frontier clicked + scrolled clean; settings fleet strip still live ("Exa · unconfigured — silent"). No page errors at any step.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; qa-executor-resume 22/22; qa-acquisition-vault untouched (25/25 stands).
+- BUDGET: ~8/12 — clean; no restart, no bucket attempts.
+
+Stage Summary:
+- The resume badge can no longer drift away from the executor: one predicate, one plan parser, and a contract that feeds on the REAL failure message. The Owner now also gets the resume plan on hover instead of a bare "↻ resumes". TASK-101's resume semantics are now contract-tested end-to-end (resolver → executor → message → badge).
+
+Round Handoff:
+Round ID: r553 -> next patrol (job 473388)
+Open risks: (1) TASK-102's live-wire keyed proofs remain the only open item — blocked on the Owner storing any acquisition key (vault slot or env); (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r554 — if a key landed, do the live-wire keyed proof FIRST (frontier ?fresh=1 → exa items/error row + vault chip flip); else pick a small P2 slice or a polish pass (candidates: the run drawer's resume note gaining the same resumePlan wording as the tooltip for vocabulary consistency; or dormant acquisition rows gaining a "store key anyway" affordance so a token stored today resolves through the guard the moment its dialect ships).
