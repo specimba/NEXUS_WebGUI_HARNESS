@@ -42,6 +42,17 @@ function isTransientRunError(error: string | null | undefined): boolean {
   return SELF_HEAL_KINDS.includes(classifyRunError(error).kind);
 }
 
+// TASK-101 slice 4 (r535): the server lane now RESUMES an errored run at
+// its failed step on the next scheduled fire (memoized completed prefix —
+// resumableErroredRunId + executeWorkflow). Any run that died through the
+// executor's step-scoped failure path (`step N/M "…" …`) carries that
+// semantics; rendered as amber "↻ resumes", subsuming the transient badge
+// (resumption is the stronger, truer claim about the same next fire).
+function isResumableStepFailure(error: string | null | undefined): boolean {
+  if (!error) return false;
+  return /^step \d+\/\d+ "/.test(error);
+}
+
 // ─── v20: Server autopilot panel (Workflow Studio) ───────────────────────────
 // Surfaces the headless layer: whether the local server or the open browser
 // tab is currently driving scheduled runs, what is registered, and recent
@@ -1327,7 +1338,10 @@ export function ServerAutopilot() {
               // "↻ retried" (schedule survived, backoff armed) instead of
               // the red terminal "✗ error" reserved for hard failures.
               const cls = r.status === "error" && r.error ? classifyRunError(r.error) : null;
-              const transient = cls != null && SELF_HEAL_KINDS.includes(cls.kind);
+              // r535: resumable (memoized resume on the next fire) outranks
+              // the transient badge — same amber family, truer message.
+              const resumable = r.status === "error" && isResumableStepFailure(r.error);
+              const transient = !resumable && cls != null && SELF_HEAL_KINDS.includes(cls.kind);
               return (
                 <li key={r.id} className="text-xs">
                   <button
@@ -1341,7 +1355,7 @@ export function ServerAutopilot() {
                         "font-semibold",
                         r.status === "done"
                           ? "text-emerald-500"
-                          : transient
+                          : resumable || transient
                             ? "text-amber-400"
                             : r.status === "error"
                               ? "text-red-400"
@@ -1352,9 +1366,11 @@ export function ServerAutopilot() {
                         ? `⟳ step ${r.currentStep}/${r.stepsTotal}`
                         : r.status === "done"
                           ? "✓ done"
-                          : transient
-                            ? "↻ retried"
-                            : "✗ error"}
+                          : resumable
+                            ? "↻ resumes"
+                            : transient
+                              ? "↻ retried"
+                              : "✗ error"}
                     </span>
                     <span className="font-medium">{r.workflowName}</span>
                     <span className="text-muted-foreground">
@@ -1362,7 +1378,17 @@ export function ServerAutopilot() {
                     </span>
                   </button>
                   {expanded ? (
-                    <div className="mx-1.5 mt-1 rounded-md border bg-background/60 p-2">
+                    <div
+                      className={cn(
+                        "mx-1.5 mt-1 rounded-md border bg-background/60 p-2",
+                        resumable && "border-amber-400/30 bg-amber-400/5",
+                      )}
+                    >
+                      {resumable ? (
+                        <p className="mb-1 text-[10.5px] font-semibold text-amber-400">
+                          ↻ Resumable — completed steps are memoized; the next scheduled fire re-enters at the failed step (failStreak still counts).
+                        </p>
+                      ) : null}
                       {cls ? (
                         <p className={cn("mb-1 text-[10.5px] font-semibold", transient ? "text-amber-400" : "text-red-400")}>
                           {runErrorKindLabel(cls.kind)}

@@ -29,10 +29,17 @@ const ok = (c: boolean, m: string) => {
 };
 
 // ── deterministic dial mock ─────────────────────────────────────────────────
+// r535 repair: vyce is registry dialect "anthropic" since r528 — the server
+// lane dials /v1/messages (x-api-key, content-block response), so the old
+// /chat/completions-only mock went blind and EVERY dial hit the real
+// gateway. The mock now intercepts both URLs and answers in the matching
+// wire shape, keeping the same dialStatus contract (200 = success).
 let dialStatus = 200;
 const realFetch = globalThis.fetch.bind(globalThis);
 (globalThis as { fetch: typeof fetch }).fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
-  if (String(url).includes("/chat/completions")) {
+  const u = String(url);
+  if (u.includes("/chat/completions") || u.includes("/v1/messages")) {
+    const anthropic = u.includes("/v1/messages");
     if (dialStatus !== 200) {
       return new Response(JSON.stringify({ error: { message: "invalid api key" } }), {
         status: dialStatus,
@@ -40,7 +47,11 @@ const realFetch = globalThis.fetch.bind(globalThis);
       });
     }
     return new Response(
-      JSON.stringify({ choices: [{ message: { content: "E-OK mocked completion" } }] }),
+      JSON.stringify(
+        anthropic
+          ? { content: [{ type: "text", text: "E-OK mocked completion" }] }
+          : { choices: [{ message: { content: "E-OK mocked completion" } }] },
+      ),
       { status: 200, headers: { "content-type": "application/json" } },
     );
   }
@@ -152,7 +163,10 @@ try {
   const resolvedOk = resolveServerDialFromSlots([{ provider: PROVIDER, key: " sk-qa-space-key " }]);
   ok(
     resolvedOk.dial !== null &&
-      resolvedOk.dial.url.endsWith("/chat/completions") &&
+      // r535 repair: vyce is registry dialect "anthropic" since r528 — the
+      // resolved dial is anthropicDialectUrl(base) (/v1/messages), not the
+      // OpenAI /chat/completions shape this assertion pre-registered.
+      resolvedOk.dial.url.endsWith("/v1/messages") &&
       resolvedOk.dial.key === "sk-qa-space-key" &&
       resolvedOk.dial.model.length > 0,
     "fromSlots(1-slot probe): registry provider resolves baseUrl + model id + trimmed key",

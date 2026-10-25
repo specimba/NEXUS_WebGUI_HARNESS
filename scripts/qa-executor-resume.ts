@@ -1,0 +1,234 @@
+// TASK-101 slice 4 (r535) — memoized resume-after-failure QA.
+// Drives executeWorkflow + resumableErroredRunId DIRECTLY against the real
+// database (snapshot/restore discipline as scripts/qa-automation-executor.ts).
+// DELIBERATELY not via tickOnce(): the claim loop would race the live dev
+// server's own executor over the same due row (both processes see the stale
+// heartbeat) — a 15s-cadence heist mid-test flaked the first chain run. The
+// production RESUME lookup itself is the exported function under test; only
+// the 3-line claim-side wiring stays unwitnessed here (tsc-covered).
+// The dial is mocked per-step-prompt so the failure/resume choreography is
+// deterministic:
+//   fire 1  Alpha=200 Beta=500       → run errors at step 2 (breaker 1)
+//   fire 2  all 200                  → RESUMES the same run at step 2,
+//                                      memoized Alpha output reused
+//                                      byte-identical, resume trail visible
+//   fire 3  Beta=500 again           → latest run is DONE → fresh run
+//                                      (healed pipelines don't resurrect)
+//   fire 4  Alpha renamed, all 200   → prefix guard trips → fresh run from
+//                                      step 1 (memoization never skips
+//                                      edited pipelines)
+
+import { db } from "../src/lib/db";
+import {
+  executeWorkflow,
+  resolveServerDialFromSlots,
+  resumableErroredRunId,
+} from "../src/lib/server/automation-executor";
+
+let pass = 0, fail = 0;
+const ok = (c: boolean, m: string) => {
+  console.log(`${c ? "  ✓" : "  ✗"} ${m}`);
+  if (c) pass++; else fail++;
+};
+
+// ── per-prompt dial mock (deterministic choreography) ──────────────────────
+// NOTE: vyce is registry dialect "anthropic" since r528 — the server lane
+// dials /v1/messages with a content-block response, NOT /chat/completions.
+// The mock intercepts BOTH URLs and answers in the matching wire shape.
+const statusFor: Record<string, number> = { ALPHA: 200, BETA: 500, GAMMA: 200 };
+const dialLog: string[] = [];
+const realFetch = globalThis.fetch.bind(globalThis);
+(globalThis as { fetch: typeof fetch }).fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+  const u = String(url);
+  if (u.includes("/chat/completions") || u.includes("/v1/messages")) {
+    const anthropic = u.includes("/v1/messages");
+    let prompt = "";
+    try {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { messages?: { role?: string; content?: string }[] };
+      const msgs = Array.isArray(body.messages) ? body.messages : [];
+      prompt = [...msgs].reverse().find((m) => m?.role === "user")?.content ?? "";
+    } catch { /* unreadable body → empty prompt → GAMMA bucket */ }
+    dialLog.push(prompt);
+    const key = prompt.includes("ALPHA") ? "ALPHA" : prompt.includes("BETA") ? "BETA" : "GAMMA";
+    const status = statusFor[key] ?? 500;
+    if (status !== 200) {
+      return new Response(JSON.stringify({ error: { message: `mock ${status}` } }), {
+        status,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    const text = `E-OK ${key}`;
+    return new Response(
+      JSON.stringify(
+        anthropic
+          ? { content: [{ type: "text", text }] }
+          : { choices: [{ message: { content: text } }] },
+      ),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }
+  return realFetch(url as Parameters<typeof realFetch>[0], init);
+}) as typeof fetch;
+
+const WF_ID = "qa-resume-wf";
+const PROVIDER = "vyce"; // real registry id — probeSlotDial must resolve it
+
+// ── state snapshots (restored in finally — the r204 discipline) ────────────
+type WfSnap = { id: string; enabled: boolean; nextRunAt: Date; failStreak: number };
+let wfSnapshot: WfSnap[] = [];
+let vaultSnapshot: { provider: string; key: string; label: string | null }[] = [];
+let runIdSnapshot: Set<string> = new Set();
+
+async function snapshotState() {
+  wfSnapshot = (await db.automationWorkflow.findMany({})).map((r) => ({
+    id: r.id,
+    enabled: r.enabled,
+    nextRunAt: r.nextRunAt,
+    failStreak: r.failStreak,
+  }));
+  vaultSnapshot = (await db.automationVault.findMany({})).map((v) => ({
+    provider: v.provider,
+    key: v.key,
+    label: v.label,
+  }));
+  runIdSnapshot = new Set((await db.automationRun.findMany({ select: { id: true } })).map((r) => r.id));
+}
+
+async function restoreState() {
+  for (const s of wfSnapshot) {
+    await db.automationWorkflow.update({
+      where: { id: s.id },
+      data: { enabled: s.enabled, nextRunAt: s.nextRunAt, failStreak: s.failStreak },
+    });
+  }
+  await db.automationVault.deleteMany({});
+  for (const v of vaultSnapshot) {
+    await db.automationVault.create({ data: v });
+  }
+  // delete only runs the test created (anything not in the pre-test snapshot)
+  await db.automationRun.deleteMany({
+    where: { id: { notIn: [...runIdSnapshot] } },
+  });
+}
+
+const STEPS_V1 = [
+  { label: "Alpha probe", prompt: "Say ALPHA" },
+  { label: "Beta probe", prompt: "Say BETA" },
+  { label: "Gamma probe", prompt: "Say GAMMA" },
+];
+
+async function resetFixture(steps: { label: string; prompt: string }[]) {
+  await db.automationWorkflow.deleteMany({ where: { id: WF_ID } });
+  await db.automationVault.deleteMany({});
+  await db.automationWorkflow.create({
+    data: {
+      id: WF_ID,
+      name: "QA resume fixture",
+      task: "",
+      stepsJson: JSON.stringify(steps),
+      intervalMs: 3_600_000,
+      // enabled:false keeps the fixture INVISIBLE to the live dev server's
+      // claim loop (tickOnce requires enabled:true) — with a stale real
+      // heartbeat the server would heist the due fixture between fires and
+      // corrupt the run trail with its own unmocked 401 runs.
+      enabled: false,
+      nextRunAt: new Date(Date.now() - 500),
+      failStreak: 0,
+    },
+  });
+  await db.automationVault.create({
+    data: { provider: PROVIDER, key: "sk-qa-resume-key", label: "qa" },
+  });
+}
+
+type RunRow = { id: string; status: string; stepsJson: string; finalReport: string | null };
+
+async function runRow(id: string): Promise<RunRow | null> {
+  const r = await db.automationRun.findUnique({ where: { id } });
+  return r ? { id: r.id, status: r.status, stepsJson: r.stepsJson, finalReport: r.finalReport } : null;
+}
+
+try {
+  await snapshotState();
+  // the direct-drive dial: resolve through the SAME production resolver the
+  // claim loop uses (vyce slot → anthropic-dialect /v1/messages dial)
+  const dial = resolveServerDialFromSlots([{ provider: PROVIDER, key: "sk-qa-resume-key" }]).dial;
+  if (!dial) throw new Error("dial did not resolve — fixture broken");
+
+  // ── fire 1: Beta dead → run errors at step 2, Alpha memoized ──
+  await resetFixture(STEPS_V1);
+  statusFor.ALPHA = 200; statusFor.BETA = 500; statusFor.GAMMA = 200;
+  const wf1 = await db.automationWorkflow.findUnique({ where: { id: WF_ID } });
+  if (!wf1) throw new Error("fixture workflow missing");
+  const f1 = await executeWorkflow(wf1, dial);
+  ok(f1.status === "error", "fire 1: step 2 failure fails the run honestly");
+  const f1run = await runRow(f1.runId);
+  ok(f1run?.status === "error", "fire 1: run row is error");
+  const f1steps = JSON.parse(f1run?.stepsJson ?? "[]") as { label: string; ok: boolean; output: string }[];
+  ok(f1steps.length === 2 && f1steps[0]?.ok === true && f1steps[1]?.ok === false, "fire 1: trail = [Alpha ok, Beta failed]");
+  const wfAfter1 = await db.automationWorkflow.findUnique({ where: { id: WF_ID } });
+  ok(wfAfter1?.failStreak === 1, "fire 1: breaker counts the fire (failStreak 1)");
+  const f1RunId = f1.runId;
+
+  // ── fire 2: all lanes healthy → RESUME the same run at step 2 ──
+  statusFor.BETA = 200;
+  const resumeId2 = await resumableErroredRunId(WF_ID, STEPS_V1);
+  ok(resumeId2 === f1RunId, "fire 2: the production resolver serves the errored run for resume");
+  const f2 = await executeWorkflow(wf1, dial, resumeId2 ?? undefined);
+  ok(f2.status === "done" && f2.runId === f1RunId, "fire 2: the SAME run id resumes and completes (memoized, not a fresh copy)");
+  const f2run = await runRow(f2.runId);
+  const f2steps = JSON.parse(f2run?.stepsJson ?? "[]") as { label: string; ok: boolean; output: string }[];
+  ok(f2steps.length === 3 && f2steps.every((s) => s.ok), "fire 2: trail = 3 ok rows");
+  ok(f2steps[0]?.output === "E-OK ALPHA", "fire 2: Alpha output reused byte-identical (memoized, never re-dialed)");
+  ok(
+    (f2steps[1]?.output ?? "").startsWith("[resumed at this step after the prior fire failed:") &&
+      (f2steps[1]?.output ?? "").includes("dial 500"),
+    "fire 2: Beta row opens with the resume trail quoting the prior failure",
+  );
+  ok(!!f2run?.finalReport && f2run.finalReport.includes("## Gamma probe"), "fire 2: final report carries all three sections");
+  const wfAfter2 = await db.automationWorkflow.findUnique({ where: { id: WF_ID } });
+  ok(wfAfter2?.failStreak === 0, "fire 2: success resets the breaker (failStreak 0)");
+  ok(dialLog.filter((p) => p.includes("ALPHA")).length === 1, "fire 2: Alpha was NOT re-dialed (one dial total across fires 1-2)");
+
+  // ── fire 3: Beta dead again, latest run is DONE → honest fresh run ──
+  statusFor.BETA = 500;
+  const resumeId3 = await resumableErroredRunId(WF_ID, STEPS_V1);
+  ok(resumeId3 === null, "fire 3: resolver refuses a DONE latest run (healed pipelines don't resume)");
+  const f3 = await executeWorkflow(wf1, dial);
+  ok(f3.status === "error" && f3.runId !== f1RunId, "fire 3: fresh run errors (the done run was never resurrected)");
+  const f3RunId = f3.runId;
+
+  // ── fire 4: completed-step label renamed → prefix guard trips ──
+  const STEPS_V2 = [
+    { label: "Alpha renamed", prompt: "Say ALPHA" },
+    { label: "Beta probe", prompt: "Say BETA" },
+    { label: "Gamma probe", prompt: "Say GAMMA" },
+  ];
+  await db.automationWorkflow.update({ where: { id: WF_ID }, data: { stepsJson: JSON.stringify(STEPS_V2) } });
+  statusFor.BETA = 200;
+  const resumeId4 = await resumableErroredRunId(WF_ID, STEPS_V2);
+  ok(resumeId4 === null, "fire 4: the prefix guard refuses the stale memo (renamed completed step)");
+  // the claim loop re-READS the row at fire time — mirror that here so the
+  // run executes the EDITED steps (the stale wf1 object carried old labels;
+  // the 17/18 run caught exactly that test-side staleness)
+  const wf4 = await db.automationWorkflow.findUnique({ where: { id: WF_ID } });
+  if (!wf4) throw new Error("fixture workflow missing");
+  const f4 = await executeWorkflow(wf4, dial);
+  ok(f4.status === "done" && f4.runId !== f3RunId, "fire 4: edited pipeline runs fresh to done");
+  const f4run = await runRow(f4.runId);
+  const f4steps = JSON.parse(f4run?.stepsJson ?? "[]") as { label: string; output: string }[];
+  ok(
+    f4steps[0]?.label === "Alpha renamed" && !(f4steps[0]?.output ?? "").startsWith("[resumed"),
+    "fire 4: step 1 re-executed under its new label with NO resume trail",
+  );
+  const alphaDials = dialLog.filter((p) => p.includes("ALPHA")).length;
+  ok(alphaDials === 3, `fire 4: the guard re-dialed Alpha (3 Alpha dials across 4 fires, got ${alphaDials})`);
+
+  console.log(`\n${pass}/${pass + fail} checks passed`);
+  if (fail > 0) process.exit(1);
+} catch (err) {
+  console.error("QA crashed:", err);
+  process.exit(1);
+} finally {
+  await restoreState();
+}

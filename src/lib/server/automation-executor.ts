@@ -566,6 +566,51 @@ function remainingStepsNeedDial(steps: VaultStep[], from: number): boolean {
   return steps.some((s, idx) => idx >= from && !(s.waitFor?.event?.trim()));
 }
 
+// ─── TASK-101 slice 4 (r535): memoized resume-after-failure ────────────────
+// Before this slice, a step failure ended the run as "error" and the NEXT
+// scheduled fire re-executed the whole pipeline from step 1 — the persisted
+// completed steps (stepsJson has carried every landed step since r80) were
+// thrown away. The schedule's next fire now RESUMES the errored run at the
+// failed step: the memoized prefix is reloaded, only the failed step
+// re-dials, and the run keeps its identity (one row in the archive tells
+// the whole story). Honest guards:
+//   • only the workflow's LATEST run is resumable — a done run after the
+//     error means the pipeline already healed (fresh run);
+//   • server-lane runs only (trigger "schedule") — browser-lane archives
+//     are a different memory;
+//   • the persisted prefix must still MATCH the workflow's CURRENT step
+//     labels — an edited pipeline re-runs fresh (memoization never skips
+//     new or renamed steps);
+//   • nothing memoized (the first step died) → fresh run, byte-identical
+//     to the old behavior;
+//   • the breaker still counts every fire: a doomed pipeline parks at
+//     BREAKER_LIMIT fires, not BREAKER_LIMIT × steps (failStreak parity
+//     with the client lane is untouched — resume reuses work, not lives).
+// Exported for qa-executor-resume.ts: the QA drives executeWorkflow +
+// this resolver DIRECTLY (deterministic — driving tickOnce would race the
+// live server's own claim loop over the same due row).
+export async function resumableErroredRunId(
+  workflowId: string,
+  steps: VaultStep[],
+): Promise<string | null> {
+  const latest = await db.automationRun.findFirst({
+    where: { workflowId, trigger: "schedule" },
+    orderBy: { startedAt: "desc" },
+  });
+  if (!latest || latest.status !== "error") return null;
+  let parsed: { label?: string; ok?: boolean }[] = [];
+  try {
+    const p = JSON.parse(latest.stepsJson) as unknown;
+    if (Array.isArray(p)) parsed = p as { label?: string; ok?: boolean }[];
+  } catch {
+    return null; // corrupt trail → fresh run (honest)
+  }
+  const doneRows = parsed.filter((e) => e && e.ok && typeof e.label === "string");
+  if (doneRows.length === 0) return null;
+  const matches = doneRows.every((row, idx) => steps[idx]?.label === row.label);
+  return matches ? latest.id : null;
+}
+
 /** Execute one claimed workflow end-to-end with honest run bookkeeping. */
 export async function executeWorkflow(
   wf: { id: string; name: string; task: string; stepsJson: string; intervalMs: number },
@@ -587,6 +632,9 @@ export async function executeWorkflow(
   let outputs: { label: string; output: string; ms: number; ok: boolean }[] = [];
   let startIndex = 0;
   let resumeWait: WaitCheckpoint | null = null;
+  // TASK-101 slice 4 (r535): the prior fire's failure message — prefixed onto
+  // the first re-executed step's output so the run drawer sees the resume.
+  let resumeNote: string | null = null;
 
   const existing = resumeRunId
     ? await db.automationRun.findUnique({ where: { id: resumeRunId } })
@@ -605,8 +653,18 @@ export async function executeWorkflow(
     }
     const trail = parsed[parsed.length - 1];
     if (trail?.waiting) resumeWait = trail.waiting;
+    // TASK-101 slice 4 (r535): resuming an ERRORED run drops its failed-step
+    // row instead of carrying it (the old filter mapped it as-if done and
+    // startIndex would have skipped the failed step) — completed steps are
+    // memoized, the failed step re-executes, and the prior failure's message
+    // rides a visible trail on the first re-executed step (the r520
+    // recovered-trail pattern; no silent masking of what died before).
+    if (existing.status === "error") {
+      const failedRow = parsed.find((e) => e && !e.waiting && !e.ok);
+      if (failedRow) resumeNote = failedRow.output.replace(/^step failed: /, "").slice(0, 160);
+    }
     outputs = parsed
-      .filter((e) => !(e && e.waiting))
+      .filter((e) => e && !e.waiting && e.ok)
       .map((e) => ({ label: e.label, output: e.output, ms: e.ms, ok: e.ok }));
     startIndex = Math.min(outputs.length, steps.length);
     runId = existing.id;
@@ -706,9 +764,16 @@ export async function executeWorkflow(
         const { text, firstFailure } = await dialStepWithRetry(dial, step.prompt || step.label);
         // TASK-101: a recovered step is still a succeeded step (ok:true — the
         // stats stay honest), but the drawer sees the save explicitly.
-        const output = firstFailure
+        // r535: a resumed-after-error run prefixes its first re-executed step
+        // with the PRIOR fire's failure (slice 4 trail) — both trails can
+        // coexist (prior fire failed AND this dial needed attempt 2).
+        let output = firstFailure
           ? `[recovered on attempt 2 — attempt 1 failed: ${firstFailure.slice(0, 160)}]\n\n${text}`
           : text;
+        if (resumeNote) {
+          output = `[resumed at this step after the prior fire failed: ${resumeNote}]\n\n${output}`;
+          resumeNote = null;
+        }
         outputs.push({ label: step.label, output, ms: Date.now() - t0, ok: true });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -926,6 +991,11 @@ async function tickOnceInner(now: Date): Promise<TickResult> {
     // branch (park on first arrival) before any dial field is read.
     dial = { url: "", key: "", model: "", providerLabel: "no-dial (wait-only workflow)", providerId: "" };
   }
+  // TASK-101 slice 4 (r535): the schedule's next fire after a step failure
+  // resumes the errored run at the failed step (memoized prefix), instead of
+  // re-executing the whole pipeline. resumableErroredRunId returns null for
+  // every non-resumable shape → byte-identical fresh-run behavior.
+  const resumeRunId = await resumableErroredRunId(wf.id, wfRowSteps);
   const outcome = await executeWorkflow(
     {
       id: wf.id,
@@ -935,6 +1005,7 @@ async function tickOnceInner(now: Date): Promise<TickResult> {
       intervalMs: wf.intervalMs,
     },
     dial,
+    resumeRunId ?? undefined,
   );
   return { claimed: 1, workflowIds: [wf.id], outcome };
 }
