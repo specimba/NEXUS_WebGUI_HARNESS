@@ -826,6 +826,21 @@ function PlanPipelineDialog({
     : planSteps;
   const canCreate = goal.length > 0 && selected.length > 0;
 
+  // r563: concrete rotation preview — "mapped to agents in order" now NAMES
+  // the agents. create() maps step i to selected[i % selected.length]; the
+  // preview shows the same round-robin for the first min(steps, 3) steps,
+  // with an ellipsis when the rotation continues past the preview.
+  const rosterNames = selected
+    .map((id) => agents.find((a) => a.id === id)?.name ?? "")
+    .filter(Boolean);
+  const previewCount = Math.min(stepLines.length, 3);
+  const rotationEcho =
+    rosterNames.length > 0 && planSteps.length > 0
+      ? ` (${rosterNames
+          .slice(0, previewCount)
+          .join(" → ")}${stepLines.length > previewCount ? " → …" : ""})`
+      : "";
+
   const toggle = (id: string) =>
     setSelected((cur) =>
       cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
@@ -921,7 +936,7 @@ function PlanPipelineDialog({
             >
               {goal
                 ? planSteps.length
-                  ? `✓ ${planSteps.length} step${planSteps.length === 1 ? "" : "s"} detected — mapped to agents in order`
+                  ? `✓ ${planSteps.length} step${planSteps.length === 1 ? "" : "s"} detected — mapped to agents in order${rotationEcho}`
                   : "No step lines — a Research → Draft scaffold will be composed for you"
                 : "Tip: one step per line; bullets and numbering are stripped automatically"}
             </p>

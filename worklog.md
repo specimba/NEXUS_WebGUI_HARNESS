@@ -13664,3 +13664,27 @@ Round ID: r562 -> next patrol (job 473388)
 Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) the census counts dormant-token lanes as "keyed" — if the Owner ever stores a brightdata/webshare token, the number reads 1/3 while the dial stays pending; the chips' per-row text remains the honest detail view (by design, but watch for confusion).
 Blockers: none.
 Next recommended action: r563 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row) — the census chip will flip off 0/3 the same round, a built-in witness. Else candidates: (a) the paste-plan dialog's step-count echo ("✓ N steps detected" + chars in one row) — last unshipped r560 handoff candidate, tiny; (b) dial the census into the fleet chips' aria-labels ("N of 3 lanes keyed") for screen-reader parity; (c) if the vault card still reads long, the mirror-candidates block could join the panel file as its own tiny component (same extraction pattern, ~30 lines).
+
+---
+Task ID: r563
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r562 handoff — key check first (all acquisition sources null → no keyed proof, Owner-blocked); shipped candidates (a)+(b): the paste-plan dialog's rotation preview NAMES the agents (the last unshipped r560 handoff candidate), and the census reached the fleet chips' aria-labels for screen-reader parity.
+
+Work Log:
+- KEY CHECK: /api/vault acquisition all null (exa/brightdata/webshare) — keyed proofs stay Owner-blocked.
+- INCREMENT (a): "mapped to agents in order" is now CONCRETE — the detected-steps line appends the actual round-robin: create() maps step i to selected[i % selected.length], and the preview shows the same mapping for the first min(steps, 3) steps with " → …" when the rotation continues (rosterNames from the selected set; empty roster ⇒ old sentence unchanged). WITNESS: 4 step-lines injected → "✓ 4 steps detected — mapped to agents in order (Nexus Assistant → Research Scout → Code Smith → …)" verbatim.
+- INCREMENT (b): fleet chips' aria-labels now carry the census: "Exa: unconfigured — silent. 0 of 3 lanes keyed. Click to select this lane and focus the key input." — a screen reader hears the coverage context on every chip without parsing the visible census chip.
+- qa-executor-resume +1 rotation guard = 33/33 (preview literal wired into the sentence, min(steps,3) slicing present, create()'s selected[i % selected.length] mapping unchanged); qa-acquisition-vault 28/28 (aria change touched no guarded literal).
+- WITNESS (live, no DB writes): paste-plan click → 4-line plan injected via the proven native-setter → rotation echo rendered with REAL roster names; census chip + aria verified on settings. Cleanup = Escape (client-state only).
+- GOLDEN QA: workflows walked during the witness; radar Frontier role-tab eval-click → BODY=1280; settings walked during the aria check. agent-browser errors: EMPTY → console 0.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; qa-executor-resume 33/33; qa-acquisition-vault 28/28.
+- BUDGET: ~6/12 — clean round, no retries, no restart, no bucket attempts.
+
+Stage Summary:
+- The plan→pipeline dialog no longer asks the Owner to trust an abstraction: they see WHICH agents will rotate through their steps before creating, and every fleet chip announces the lane census to assistive tech. Both facts are live-computed from the same state the actions consume.
+
+Round Handoff:
+Round ID: r563 -> next patrol (job 473388)
+Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) the rotation preview trusts agent names at render time — if an agent is deleted between preview and Create, create() re-resolves ids (round-robin over the CURRENT selection), so the preview could drift from the actual mapping mid-edit (cosmetic, self-healing on next render — watch only).
+Blockers: none.
+Next recommended action: r564 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row; the census chip + aria flip off 0/3 the same round). Else candidates: (a) the mirror-candidates block extraction (~30 lines, same pattern as r562's panel — completes the vault card's modular break-up); (b) the rotation preview could mark the agent matched to step 1 with the step label ("step 1 → Scout: Research competitors") — richer but busier; only if the Owner case (long plans) warrants; (c) a qa guard for the census aria literal (one grep, cheap insurance).

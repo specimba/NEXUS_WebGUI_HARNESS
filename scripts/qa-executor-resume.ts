@@ -371,6 +371,14 @@ try {
     "contract: the paste-plan textarea carries a live char-count badge (toLocaleString'd, amber at the 4k long-paste threshold) wired to the planText state",
   );
 
+  // ── r563: the rotation preview speaks create()'s mapping ──
+  ok(
+    planSrc.includes("mapped to agents in order${rotationEcho}") &&
+      planSrc.includes("Math.min(stepLines.length, 3)") &&
+      planSrc.includes("selected[i % selected.length]"),
+    "contract: the paste-plan rotation preview names the agents and mirrors create()'s round-robin (min(steps, 3) names, ellipsis when more)",
+  );
+
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);
 } catch (err) {

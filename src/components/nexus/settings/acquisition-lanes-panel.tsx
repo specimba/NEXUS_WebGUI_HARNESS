@@ -130,7 +130,7 @@ export function AcquisitionLanesPanel({
               type="button"
               data-testid={`acq-fleet-${p.id}`}
               title={`${p.blurb} — click to store a token below`}
-              aria-label={`${p.label} — ${text}. Click to select this lane and focus the key input.`}
+              aria-label={`${p.label}: ${text}. ${keyed} of ${ACQUISITION_PROVIDERS.length} lanes keyed. Click to select this lane and focus the key input.`}
               onClick={() => {
                 setLaneProvider(p.id);
                 laneKeyRef.current?.focus();
