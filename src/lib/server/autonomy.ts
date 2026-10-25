@@ -46,6 +46,9 @@ const ENRICH_TIMEOUT_MS = 6_000;
 const GITHUB_TIMEOUT_MS = 8_000;
 /** GitHub unauthenticated budget is 60 req/h — hard cap per cycle. */
 const MAX_REPOS_PER_CYCLE = 2;
+// r542: url-kind rows ride the same per-cycle research budget family (page
+// fetches are external calls too — 15s timeout, 400KB cap each).
+const MAX_URLS_PER_CYCLE = 2;
 const QUEUE_CAP = 500;
 const NOTES_MAX = 2_000;
 const RESULT_MAX = 2_000;
@@ -289,7 +292,7 @@ export async function generateNextMoves(
     return { moves: [], suppressed: true, laneUsed: "deterministic" };
   }
 
-  const [queuedRows, repoRows, vaultSlots, digest, run24] = await Promise.all([
+  const [queuedRows, repoRows, urlRows, vaultSlots, digest, run24] = await Promise.all([
     db.researchQueue.findMany({
       where: { status: "queued" },
       orderBy: { createdAt: "asc" },
@@ -303,6 +306,16 @@ export async function generateNextMoves(
       where: { status: "queued", kind: "repo", owner: { not: null }, repo: { not: null } },
       orderBy: { createdAt: "asc" },
       take: MAX_REPOS_PER_CYCLE,
+    }),
+    // r542 fix: the planner drained ONLY kind:"repo" rows — the r540
+    // page-reader lane (url rows) was executor-ready but never drafted, so
+    // queued url rows starved forever (witnessed: 3 seeded url rows, 3
+    // buckets, queue stuck 3q/0r/0f). Filter-first-then-take, same doctrine
+    // as the r515 fix above.
+    db.researchQueue.findMany({
+      where: { status: "queued", kind: "url", url: { not: null } },
+      orderBy: { createdAt: "asc" },
+      take: MAX_URLS_PER_CYCLE,
     }),
     db.automationVault.count(),
     latestRadarDigest(),
@@ -327,6 +340,21 @@ export async function generateNextMoves(
       kind: "research-repo",
       title: `Research ${row.owner}/${row.repo}`,
       rationale: `Backlog: ${queuedCount} queued${oldestQueued ? `, oldest ${Math.max(1, Math.round((Date.now() - oldestQueued.createdAt.getTime()) / 60_000))}m` : ""} — unauthenticated GitHub research is vault-free and cached (researched rows never re-fetched).`,
+      payload: { queueId: row.id },
+    });
+  }
+
+  // 1b) URL-kind rows — the r540 page-reader lane. Direct fetch, no LLM, no
+  //     GitHub budget: same drain-first rank as repo rows (research is the
+  //     only move that produces new first-party data).
+  for (const row of urlRows) {
+    if (!row.url) continue; // typed-narrowing guard; where already filters
+    const label = trunc(row.url.replace(/^https?:\/\//, "").replace(/\/$/, ""), 48);
+    drafts.push({
+      rank: nextRank(),
+      kind: "research-repo",
+      title: `Research ${label}`,
+      rationale: `URL backlog: ${queuedCount} queued — page-reader lane (r540): direct fetch + rubric score, notes carry page stats; researched rows never re-fetched.`,
       payload: { queueId: row.id },
     });
   }
