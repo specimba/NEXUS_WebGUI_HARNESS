@@ -12984,3 +12984,28 @@ Round ID: r532 -> next patrol (job 473388)
 Open risks: (1) Live wires unexercised: /v1/messages (vault empty — owner --import) and Exa /search (EXA_API_KEY unset — owner sets it in .env; a dev restart picks it up). (2) stop_sequences mapping gap (pre-existing, documented in-code). (3) Vault-slot gate for acquisition providers (registry class + probeSlotDial guard) still open — EXA_API_KEY env is the interim honest gate. (4) The Owner-side cron auto-commit ("...-cron" commits) can capture a dirty tree mid-ship: an interrupted chain's WIP may ride into a cron commit UNVERIFIED — future records must always state which state the push actually carries. (5) db/vault-master.key backup owner-side; r521 stepsJson sync-overwrite open. (6) Supabase bucket + PAT rotate owner-side.
 Blockers: none.
 Next recommended action: r533 — TASK-100 token-lean request shaping (the last 9router slice: budget-aware max_tokens / context trims per hop class, dial-free qa witnessing measured token deltas), or the vault-slot acquisition-provider gate if the owner registers an Exa key in the vault first.
+
+---
+Task ID: r533
+Agent: patrol job 473388 (main session)
+Task: r532 handoff — TASK-100 token-lean request shaping (the last 9router slice: budget-aware max_tokens / context trims per hop class, dial-free qa witnessing measured token deltas); QA golden paths first; gates; ship.
+
+Work Log:
+- SUPERVISOR alive across the boundary (server 200) — twelfth consecutive patrol.
+- QA golden paths FIRST: 9/9, console 0 errors. Nothing broken -> advanced the handoff action.
+- TASK-100 SHIPPED — token-lean request shaping (src/lib/token-lean.ts, isomorphic + pure):
+  - Hop classes: primary (i=0) spreads NOTHING — byte-identical happy path; first fallback max_tokens x0.85 + 18-turn window; deep fallbacks x0.7 + 10-turn window; floor 512; never raises; an operator budget already below the floor spreads nothing (their explicit number wins).
+  - The trim drops WHOLE oldest turns only — the house EngineBody carries NO system rows in messages (system rides body.system) and no tool rows (they live in the engine's wire loop), so nothing can be orphaned; the window walks back to a user-role row (the Anthropic wire rejects assistant-first); embedded leading system rows are respected as a walk floor.
+  - WIRED: runRelayedCustom spreads tokenLeanOverride(body, i) into every runCustomEngine hop call — one line, both dialects inherit it (maxTokens/messages are read downstream of the dialect split), and the redaction choke keeps sitting in front of the dial after shaping (shaping only shrinks).
+- VERIFY (marker-gated chain): qa-token-lean 10/10 — primary empty spread, measured deltas (2048 -> 1740 -> 1433), windows 18/10 opening on user rows, never-raise + default-base rules, an awkward assistant-cluster cut walks back to a user row, a 5-hop storm walked with zero manual toggles and strictly shrinking request cost (2532 -> 1956 -> 1553 on the chars/4 estimator), shaped body still choke-compatible. HONEST test-side note: the first dry run failed 4 assertions — all test bugs, same family as r529/r531 (2048x0.85 is 1740 not 1748; system rows do NOT live in the house messages; the sub-floor budget correctly spreads nothing; the awkward fixture was shorter than the window; the storm chain is strictly decreasing, not partially flat) — the module needed no code changes. qa-anthropic-sse 20/20 + qa-anthropic-dialect 19/19 (dialect lanes untouched) + qa-exa-dialect 10/10; bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline; golden QA 9/9, console 0 errors.
+- USER-VISIBLE (round mandate): the Model Relay card's description now states the token-lean contract (fallback hops dial leaner per hop class, primary byte-identical) — the shaping itself is the user-facing feature: storms across the chain cost less and small free-tier lanes last longer.
+- TASKS.md TASK-100 marked [x] with the acceptance note.
+
+Stage Summary:
+- The 9router item is COMPLETE: the ladder (r504/r493) survives provider storms; the token-lean layer (r533) makes every retry cheaper — measured, deterministic, dial-free-proven, primary byte-identical. The P1 backlog's open items are now TASK-101 (durable-step semantics) + the NEXUS_BOT tail (live-wire keyed proofs, vault-slot acquisition gate).
+
+Round Handoff:
+Round ID: r533 -> next patrol (job 473388)
+Open risks: (1) Live-wire keyed proofs still pending (vault empty — owner --import; EXA_API_KEY unset). (2) The shaping is per-ATTEMPT, not per-token-metered — no billing telemetry claims (estimateLeanTokens is a chars/4 witness, documented as such). (3) Utility-lane dials (systemone, workflow-runner primary) do not ride the hop ladder and thus get no lean shaping — honest scope: they are single-shot, not storm lanes. (4) db/vault-master.key backup owner-side; r521 stepsJson sync-overwrite open. (5) Supabase bucket + PAT rotate owner-side.
+Blockers: none.
+Next recommended action: r534 — TASK-101 durable-step semantics (per-step retry + resume-after-restart on the existing QStash wiring; acceptance: a scheduled server run that dies mid-way resumes at the failed step, visible in the run archive) — the last big open P1; or, if that wants its own design round, small polish slices off the NEXUS_BOT tail.

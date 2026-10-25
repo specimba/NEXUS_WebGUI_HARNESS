@@ -37,6 +37,7 @@ import {
   isAnthropicStyleEndpoint,
   openaiBodyToAnthropic,
 } from "./anthropic-dialect";
+import { tokenLeanOverride } from "./token-lean";
 
 // ─── Wire types ──────────────────────────────────────────────────────────────
 
@@ -504,6 +505,11 @@ export async function runRelayedCustom(
             // mix OpenAI- and Anthropic-dialect hops; the primary inherits the
             // request-level dialect when its hop carries none.
             dialect: hop.dialect ?? body.dialect,
+            // r533 (TASK-100): token-lean shaping per hop class — the primary
+            // (i = 0) spreads NOTHING (byte-identical); fallback hops dial
+            // leaner bodies (max_tokens scaled, oldest turns trimmed) so a
+            // storm across the chain spends less budget per retry.
+            ...tokenLeanOverride(body, i),
           },
           sendGate,
           signal,

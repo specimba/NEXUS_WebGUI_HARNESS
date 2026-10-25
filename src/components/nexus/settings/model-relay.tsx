@@ -386,7 +386,10 @@ export function ModelRelayCard() {
           tier first, then quality, then the built-in engine as the last resort.
           The chain also adapts per task: research steps (search tools) try
           fast models first, writing/review steps try flagships first — and
-          hops that failed recently are demoted automatically.
+          hops that failed recently are demoted automatically. Every fallback
+          hop also dials leaner (token-lean shaping): max_tokens scaled per
+          hop class and the oldest turns trimmed, so a storm across the chain
+          spends less budget per retry — the primary hop stays byte-identical.
         </CardDescription>
       </CardHeader>
       <div className="flex items-start justify-between gap-3 rounded-lg border border-sky-500/25 bg-sky-500/[0.04] p-3">
