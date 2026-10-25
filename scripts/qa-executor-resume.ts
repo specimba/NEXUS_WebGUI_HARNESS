@@ -18,6 +18,7 @@
 //                                      step 1 (memoization never skips
 //                                      edited pipelines)
 
+import { readFileSync } from "node:fs";
 import { db } from "../src/lib/db";
 import {
   executeWorkflow,
@@ -255,6 +256,29 @@ try {
       !isResumableStepFailure(null) &&
       !isResumableStepFailure('step x/y "junk"'),
     "contract: non-step failures (dial resolve, null, malformed) never render as resumable",
+  );
+
+  // ── r555: drawer-note drift guard (source-level) ──
+  // The amber drawer note must speak the SAME parsed plan as the badge
+  // tooltip (r553) — interpolated step/total/label from the executor's real
+  // message — while keeping the generic fallback for unexpected shapes.
+  // Static-source checks: the drawer template in server-autopilot.tsx is
+  // UI-only (unimportable from a serverless QA), but its drift would be the
+  // same Owner-facing lie the r553 badge contract guards against.
+  const autopilotSrc = readFileSync(
+    new URL("../src/components/nexus/workflows/server-autopilot.tsx", import.meta.url),
+    "utf8",
+  );
+  const drawerIdx = autopilotSrc.indexOf("↻ Resumable");
+  const drawerRegion = drawerIdx >= 0 ? autopilotSrc.slice(drawerIdx, drawerIdx + 500) : "";
+  ok(
+    drawerRegion.includes("resumePlan") &&
+      drawerRegion.includes('re-enters at step ${resumePlan.step}/${resumePlan.total}'),
+    "contract: the run-drawer note interpolates the parsed resume plan (step/total/label)",
+  );
+  ok(
+    drawerRegion.includes("the next scheduled fire re-enters at the failed step"),
+    "contract: the drawer's generic fallback survives for unexpected shapes",
   );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);

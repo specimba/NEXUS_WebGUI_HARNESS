@@ -185,6 +185,10 @@ export function AutomationVaultCard() {
   // reads; the builtin slot above is legacy client-lane.
   const [laneProvider, setLaneProvider] = React.useState(FREE_PROVIDERS[0]?.id ?? "");
   const [laneKey, setLaneKey] = React.useState("");
+  // r555: the fleet-strip chips are one-click storage affordances — clicking
+  // a chip selects that lane AND puts the cursor in this input, so "awaiting
+  // token" → stored key is one click + one paste.
+  const laneKeyRef = React.useRef<HTMLInputElement>(null);
   const [laneSaving, setLaneSaving] = React.useState(false);
   // r210: display slots in DIAL order (oldest first — the executor's actual
   // scan order, not the API's provider-asc order) and mark the winner.
@@ -726,21 +730,29 @@ export function AutomationVaultCard() {
                           ? "text-amber-600 dark:text-amber-400"
                           : "text-muted-foreground";
                 return (
-                  <span
+                  <button
                     key={p.id}
+                    type="button"
                     data-testid={`acq-fleet-${p.id}`}
-                    title={p.blurb}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium"
+                    title={`${p.blurb} — click to store a token below`}
+                    aria-label={`${p.label} — ${text}. Click to select this lane and focus the key input.`}
+                    onClick={() => {
+                      setLaneProvider(p.id);
+                      laneKeyRef.current?.focus();
+                      laneKeyRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-left text-[10px] font-medium transition-colors hover:border-foreground/30 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     <span aria-hidden className={dot} />
                     <span className={tone}>
                       {p.label} · {text}
                     </span>
-                  </span>
+                  </button>
                 );
               })}
             </div>
             <Input
+              ref={laneKeyRef}
               type="password"
               value={laneKey}
               onChange={(e) => setLaneKey(e.target.value)}

@@ -13472,3 +13472,26 @@ Round ID: r554 -> next patrol (job 473388)
 Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) remain the only open P1 item — blocked on the Owner storing a real key (vault slot or env); with r554 the dormant rows are UI-storable the moment tokens land; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands.
 Blockers: none.
 Next recommended action: r555 — key check first as always; if a brightdata/webshare/exa key landed, witness the fleet chip flip (sky "key stored — dial pending" for dormant rows) and run the live-wire keyed proof for whichever lane has a dialect (exa). Else small polish candidates: (a) acquisition picker options for dormant rows could carry a one-click "store token here" prefill focus; (b) the radar Frontier tab find-failure from this round deserves one snapshot-based retry to re-verify scrolling; (c) TASK-101 tail: assert the drawer note wording in qa-executor-resume (the parsed-plan contract currently covers badge+tooltip only).
+
+---
+Task ID: r555
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r554 handoff — key check first (none landed → no keyed proof); shipped candidate (a) fleet-chip one-click store affordance + candidate (c) drawer-note drift guard in QA; candidate (b) Frontier snapshot-based retry folded into golden QA.
+
+Work Log:
+- KEY CHECK: /api/vault acquisition all null (exa live/None · brightdata dormant/None · webshare dormant/None) — keyed proofs stay Owner-blocked; advanced the handoff's polish candidates.
+- INCREMENT (a) SHIPPED — the fleet strip is no longer read-only: each ACQUISITION LANES chip (r552) is now a <button> — clicking a chip selects that provider in the server-lane picker AND focuses the key input (laneKeyRef + scrollIntoView nearest/smooth), so "awaiting token" → stored key is one click + one paste. Styling polish: hover border/bg lift (transition-colors), text-left, focus-visible ring, extended title ("… — click to store a token below"), full aria-label per chip. The whole r551–r555 loop is now: see the honest state → click its chip → paste → watch the chip flip (emerald/sky) — no select digging.
+- INCREMENT (c) SHIPPED — qa-executor-resume +2 source-level drift guards (24/24): the run-drawer amber note must interpolate the parsed resume plan (step/total/label — the r553 vocabulary) and must keep the generic fallback; guards read server-autopilot.tsx around the "↻ Resumable" anchor, so a UI-side wording drift now fails QA the same way an executor-side drift would.
+- VERIFIED LIVE (agent-browser): clicking the "Bright Data · awaiting token — dormant" chip → select=brightdata AND activeElement=INPUT(Lane provider key for closed-tab runs) — the affordance works end-to-end. (b) RESOLVED: r554's "Frontier text-find" miss was a locator limitation, not broken UI — role-based ref click works (tab "Frontier" @e31), scrolled, body 1280/1280 no overflow. Workflows: body 1280/1280, textarea accepted a 7,689-char paste (box 912/912, no bleed). "Plan → Pipeline" name-match flaked this round (85 buttons; dialog untouched by r555 edits — r549's 27,829-char closure stands as the deep verification).
+- ERRORS: page-errors EMPTY; console error/warn EMPTY at every stop (Fast Refresh/HMR logs only).
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; qa-executor-resume 24/24; qa-acquisition-vault 25/25.
+- BUDGET: ~7/12 — clean; no restart, no bucket attempts, all edits first-try.
+
+Stage Summary:
+- The acquisition fleet strip graduated from honest readout to honest control surface: state → affordance → input in one click, with QA now guarding the drawer's resume vocabulary too. TASK-102 remains blocked on exactly one thing: a real token from the Owner.
+
+Round Handoff:
+Round ID: r555 -> next patrol (job 473388)
+Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing any acquisition key (vault slot or env); with r554+r555 the storage path is one click from the strip; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands.
+Blockers: none.
+Next recommended action: r556 — key check first as always; if any acquisition source flips non-null, run the live-wire keyed proof for the lane with a dialect (exa: frontier refresh → items/error-row; chip should read vault). Else candidates: (a) the r551 selection-gated chip and the r552 fleet strip now overlap — consider folding the picker-selection chip into the strip (one source of truth, less duplication); (b) "Plan → Pipeline" find flake — verify the editor dialog still deep-pastes on the next golden walk (name may need role-dialog scoping); (c) TASK-101: extend the drawer-note guard pattern to the transient "↻ retried" note (classifyRunError kinds) if it has any interpolable structure.
