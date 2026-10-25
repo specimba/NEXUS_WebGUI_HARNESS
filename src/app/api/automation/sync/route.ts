@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { decryptVaultKey } from "@/lib/server/vault-crypto";
 import { resolveServerDialFromSlots, scheduleStaggerMs } from "@/lib/server/automation-executor";
 import { type ExecutorLaneState } from "@/lib/automation-lane";
 
@@ -127,6 +128,11 @@ export async function GET() {
       // alone (the r133 read) made the panel claim a lane the executor refuses.
       db.automationVault.findMany({ orderBy: { createdAt: "asc" } }),
     ]);
+    // r526: vault rows hold AES-256-GCM ciphertext at rest — decrypt
+    // server-side once, then let lane resolution + masking read raw keys.
+    const vaultSlots = await Promise.all(
+      vaultRows.map(async (s) => ({ ...s, key: await decryptVaultKey(s.key) })),
+    );
     const lastSeen = state?.lastSeenAt?.getTime() ?? 0;
     const mask = (k: string) =>
       k.length > 12 ? `${k.slice(0, 4)}••••${k.slice(-4)}` : "••••••••";
@@ -135,7 +141,7 @@ export async function GET() {
     // what a due closed-tab run would do RIGHT NOW, over the same slot list
     // the executor reads (oldest first, first resolvable wins). Masked only.
     const resolved = resolveServerDialFromSlots(
-      vaultRows.map((s) => ({ provider: s.provider, key: s.key })),
+      vaultSlots.map((s) => ({ provider: s.provider, key: s.key })),
     );
     const executorLane: ExecutorLaneState = resolved.dial
       ? {
@@ -144,18 +150,18 @@ export async function GET() {
           providerLabel: resolved.dial.providerLabel,
           maskedKey: mask(resolved.slot.key),
           slotProvider: resolved.slot.provider,
-          slotCount: vaultRows.length,
+          slotCount: vaultSlots.length,
         }
       : {
           ready: false,
           reason: resolved.why,
           providerLabel: null,
-          maskedKey: vaultRows[0] ? mask(vaultRows[0].key) : null,
-          slotProvider: vaultRows[0]?.provider ?? null,
-          slotCount: vaultRows.length,
+          maskedKey: vaultSlots[0] ? mask(vaultSlots[0].key) : null,
+          slotProvider: vaultSlots[0]?.provider ?? null,
+          slotCount: vaultSlots.length,
         };
 
-    const builtinSlot = vaultRows.find((r) => r.provider === "builtin") ?? null;
+    const builtinSlot = vaultSlots.find((r) => r.provider === "builtin") ?? null;
     return NextResponse.json({
       serverDriving: Date.now() - lastSeen > HEARTBEAT_STALE_MS,
       lastSeenAt: state?.lastSeenAt ?? null,

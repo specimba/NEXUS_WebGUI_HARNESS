@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { decryptVaultKey } from "@/lib/server/vault-crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -128,7 +129,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       provider: row.provider,
-      key: row.key,
+      // r526: rows hold AES-256-GCM ciphertext at rest — decrypt server-side.
+      key: await decryptVaultKey(row.key),
       updatedAt: row.updatedAt,
     });
   } catch (e) {

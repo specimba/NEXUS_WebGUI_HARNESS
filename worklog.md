@@ -12839,3 +12839,32 @@ Round ID: r525 -> next patrol (job 473388)
 Open risks: (1) TASK-102 remainder — AES-256-GCM server-side vault port (acceptance "vault round-trips server-only"; the existing vault is plaintext-in-SQLite by documented r138 trust model — the port is a real crypto upgrade, needs its own round); Anthropic-dialect + Exa/BrightData lanes untouched. (2) Redaction cell shows process-boot in-memory counts — resets on restart, by design (honest, cheap). (3) Vault still EMPTY (r521 rollback) — owner re-entry + scripts/seedwrite.ts. (4) Supabase bucket + PAT rotate owner-side. (5) r521 stepsJson sync-overwrite limitation still open.
 Blockers: none.
 Next recommended action: r526 — TASK-102 slice 3: the AES-256-GCM vault port (smallest honest slice: encrypt AutomationVault.key values at rest via a server-held master key in env with an honest unencrypted-legacy read path + one-time migration on boot; verify with a round-trip script; NO schema change) — or, if the crypto design wants more deliberation, TASK-100's token-lean request shaping (the last 9router slice).
+
+---
+Task ID: r526
+Agent: patrol job 473388 (main session)
+Task: r525 handoff — TASK-102 slice 3: AES-256-GCM vault at-rest port; QA golden paths first; gates; ship.
+
+Work Log:
+- SUPERVISOR alive across the boundary (server 200, pid 3571) — fifth consecutive patrol.
+- QA golden paths FIRST: 9/9, console 0 errors. Nothing broken -> advanced TASK-102 slice 3.
+- TASK-102 SLICE 3 SHIPPED — vault at-rest encryption (src/lib/server/vault-crypto.ts):
+  - WebCrypto AES-256-GCM, isomorphic (no static node: imports — r519 Edge-silence discipline kept); wire format enc:v1:<iv_b64>:<ct||tag_b64>; 12-byte random IV per encryption.
+  - Master key: NEXUS_VAULT_MASTER_KEY env (32B hex/base64; invalid env fails LOUDLY, no silent fallback) else machine file db/vault-master.key (0600, generated on first use, .gitignore'd r526).
+  - Honest legacy read path: values without the enc:v1: prefix decrypt as-is; boot migration (instrumentation.ts) re-encrypts plaintext rows exactly once (idempotent, logged with key source); vault-seed rehydration now writes ciphertext directly.
+  - THREAT MODEL HONESTY (module header): defends the DB FILE (a copied dev.db no longer yields keys), not full-disk compromise — the master key lives beside the machine's own trust anchors.
+- WIRED (all 8 vault touch points): vault route GET/POST (masked previews decrypt server-side), consume, test-dial, backup export (still raw-key by contract, now via decrypt)/import (encrypts), sync route lane resolution + masking, providers/recheck probe, automation-executor both claim paths.
+- USER-VISIBLE (round mandate): vault card carries a new emerald "AES-256-GCM at rest" badge (title explains the invariant); CardDescription now says "encrypted at rest".
+- VERIFY: scripts/qa-vault-crypto.ts (persisted, dial-free) — 9/9 PASS (round-trip, envelope format, random IV, legacy passthrough, tamper rejection, wrong-key rejection, unicode).
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline.
+- QA NOTE (honest): the first post-edit golden re-run caught 3x transient 500s — the sync route was hot-patched seconds before the run and dev-server recompile 500'd in-flight requests; all routes curl 200 after compile settled, zero exceptions in dev.log, and the re-run below is the clean gate.
+
+Stage Summary:
+- The vault now round-trips server-only through AES-256-GCM: a copied/exfiltrated dev.db alone no longer yields usable provider keys. TASK-102 remainder shrinks to Anthropic-dialect lanes + Exa/BrightData acquisition lanes — the two safety-critical slices (redaction choke, vault at-rest) are live and unit-proven.
+- Debt note (honest): TASKS.md NEXUS_BOT mirror not touched this round (budget) — this worklog is the source of truth for slice-3 state; mirror update queued for r527.
+
+Round Handoff:
+Round ID: r526 -> next patrol (job 473388)
+Open risks: (1) db/vault-master.key is gitignored — a fresh clone booting an ENCRYPTED vault with no env key generates a NEW file key and cannot decrypt pre-existing ciphertext rows (the legacy plaintext path does not apply to them). Owner-side: back up db/vault-master.key beside db/vault-seed.json, or set NEXUS_VAULT_MASTER_KEY. (2) Vault still EMPTY (r521 rollback) — owner re-entry + scripts/seedwrite.ts (rehydration now encrypts at rest on write). (3) r521 stepsJson sync-overwrite limitation still open. (4) Supabase nexus-backups bucket + GitHub PAT rotate owner-side.
+Blockers: none.
+Next recommended action: r527 — update the TASKS.md NEXUS_BOT mirror for slices 1-3, then either the Anthropic-dialect lane slice (negotiation behind the same redaction choke) or scripts/seedwrite.ts so the vault can be re-populated end-to-end through the new encrypted write path.

@@ -42,6 +42,7 @@ import {
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
 import { redactDialBody } from "@/lib/redaction";
+import { decryptVaultKey } from "@/lib/server/vault-crypto";
 
 export const CLAIM_INTERVAL_MS = 15_000;
 export const HEARTBEAT_STALE_MS = 120_000;
@@ -826,7 +827,11 @@ async function tickOnceInner(now: Date): Promise<TickResult> {
       const needsDial = steps.length === 0 ? true : remainingStepsNeedDial(steps, doneCount);
       let dial: ResolvedDial;
       if (needsDial) {
-        const vaultSlots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
+        // r526: rows hold AES-256-GCM ciphertext at rest — resolve on raw keys.
+        const fetchedSlots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
+        const vaultSlots = await Promise.all(
+          fetchedSlots.map(async (s) => ({ ...s, key: await decryptVaultKey(s.key) })),
+        );
         const resolved = resolveServerDialFromSlots(
           vaultSlots.map((s) => ({ provider: s.provider, key: s.key })),
         );
@@ -871,7 +876,11 @@ async function tickOnceInner(now: Date): Promise<TickResult> {
       : remainingStepsNeedDial(wfRowSteps, 0);
   let dial: ResolvedDial;
   if (claimNeedsDial) {
-    const vaultSlots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
+    // r526: rows hold AES-256-GCM ciphertext at rest — resolve on raw keys.
+    const fetchedSlots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
+    const vaultSlots = await Promise.all(
+      fetchedSlots.map(async (s) => ({ ...s, key: await decryptVaultKey(s.key) })),
+    );
     const resolved = resolveServerDialFromSlots(
       vaultSlots.map((s) => ({ provider: s.provider, key: s.key })),
     );

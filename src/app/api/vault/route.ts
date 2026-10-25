@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { decryptVaultKey, encryptVaultKey } from "@/lib/server/vault-crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -46,8 +47,13 @@ export async function GET(req: Request) {
   if (!csrfOk(req)) return csrfReject();
   try {
     const rows = await db.automationVault.findMany({ orderBy: { provider: "asc" } });
+    // r526: rows hold AES-256-GCM ciphertext at rest — decrypt server-side for
+    // the masked preview (legacy plaintext passes through unchanged).
+    const slots = await Promise.all(
+      rows.map(async (r) => ({ ...r, key: await decryptVaultKey(r.key) })),
+    );
     return NextResponse.json({
-      vault: rows.map((r) => ({
+      vault: slots.map((r) => ({
         provider: r.provider,
         label: r.label,
         maskedKey: maskKey(r.key),
@@ -77,15 +83,17 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    // r526: the raw key is encrypted (AES-256-GCM) before it touches SQLite.
+    const stored = await encryptVaultKey(key);
     const row = await db.automationVault.upsert({
       where: { provider },
-      create: { provider, key, label: body.label ?? null },
-      update: { key, label: body.label ?? null },
+      create: { provider, key: stored, label: body.label ?? null },
+      update: { key: stored, label: body.label ?? null },
     });
     return NextResponse.json({
       ok: true,
       provider: row.provider,
-      maskedKey: maskKey(row.key),
+      maskedKey: maskKey(key),
       updatedAt: row.updatedAt,
     });
   } catch (e) {

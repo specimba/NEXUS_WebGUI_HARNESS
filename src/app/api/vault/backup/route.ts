@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { decryptVaultKey, encryptVaultKey } from "@/lib/server/vault-crypto";
 import { localFailure } from "@/lib/local-failure";
 import { localGuard } from "@/lib/vault-local";
 
@@ -60,13 +61,17 @@ export async function GET(req: Request) {
       app: "nexus-automation-vault",
       version: 1,
       exportedAt: new Date().toISOString(),
-      slots: rows.map((r) => ({
-        provider: r.provider,
-        label: r.label,
-        key: r.key, // raw — the whole point of a backup; guarded + documented above
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      })),
+      slots: await Promise.all(
+        rows.map(async (r) => ({
+          provider: r.provider,
+          label: r.label,
+          // raw — the whole point of a backup; guarded + documented above
+          // (r526: decrypts the at-rest ciphertext server-side before export)
+          key: await decryptVaultKey(r.key),
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        })),
+      ),
     });
   } catch (e) {
     return NextResponse.json(
@@ -117,10 +122,12 @@ export async function POST(req: Request) {
         continue;
       }
       const label = typeof raw?.label === "string" && raw.label.trim().length > 0 ? raw.label.trim() : null;
+      // r526: imported raw keys are encrypted before they touch SQLite.
+      const stored = await encryptVaultKey(key);
       await db.automationVault.upsert({
         where: { provider },
-        create: { provider, key, label },
-        update: { key, label },
+        create: { provider, key: stored, label },
+        update: { key: stored, label },
       });
       providers.push(provider);
       imported += 1;

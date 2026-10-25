@@ -558,6 +558,13 @@ export function AutomationVaultCard() {
           <Badge variant="outline" className="border-cyan-500/40 text-cyan-600 dark:text-cyan-400">
             local-only
           </Badge>
+          <Badge
+            variant="outline"
+            className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+            title="Keys are encrypted at rest with AES-256-GCM before they touch local SQLite (machine-held master key). A copied DB file alone no longer yields usable keys."
+          >
+            AES-256-GCM at rest
+          </Badge>
           <DeepLinkShare anchor="vault" label="the Automation vault" />
         </div>
         <CardDescription>
@@ -565,7 +572,7 @@ export function AutomationVaultCard() {
           leave the browser. When the tab is closed, the local server claims due schedules
           itself but dials only with a registry-provider key stored below; with no key,
           runs stay queued instead of falling back to anything implicit. Stored in local
-          SQLite, never telemetered, displayed masked.
+          SQLite, encrypted at rest (AES-256-GCM), never telemetered, displayed masked.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

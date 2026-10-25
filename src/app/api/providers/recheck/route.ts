@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { decryptVaultKey } from "@/lib/server/vault-crypto";
 import { providerById } from "@/lib/providers";
 import {
   provider429CooldownLeftMs,
@@ -60,7 +61,11 @@ export async function POST(req: NextRequest) {
   // Server vault: oldest first; use the newest slot that has a key for this
   // provider (the executor's own resolution order, minus rotation logic —
   // this probe is about TRUTH, not lane selection).
-  const slots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
+  // r526: rows hold AES-256-GCM ciphertext at rest — probe the raw key.
+  const fetchedSlots = await db.automationVault.findMany({ orderBy: { createdAt: "asc" } });
+  const slots = await Promise.all(
+    fetchedSlots.map(async (s) => ({ ...s, key: await decryptVaultKey(s.key) })),
+  );
   const slot = [...slots].reverse().find((s) => s.provider === providerId && s.key.trim());
   if (!slot) {
     return NextResponse.json({

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { decryptVaultKey } from "@/lib/server/vault-crypto";
 import { KEYED_ENDPOINTS } from "@/lib/provider-refresh";
 
 export const runtime = "nodejs";
@@ -106,7 +107,8 @@ export async function POST(req: Request) {
         { status: 404 }
       );
     }
-    key = row.key;
+    // r526: rows hold AES-256-GCM ciphertext at rest — decrypt server-side.
+    key = await decryptVaultKey(row.key);
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : String(e) },

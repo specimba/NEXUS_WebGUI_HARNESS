@@ -56,6 +56,9 @@ export async function register(): Promise<void> {
   // table has ZERO slots.
   try {
     const { db: bootDb } = await import("@/lib/db");
+    // r526: rehydrated slots go straight to at-rest ciphertext (the migration
+    // below would re-encrypt any plaintext on the next boot — belt and braces).
+    const { encryptVaultKey } = await import("@/lib/server/vault-crypto");
     // r519 — edge-bundler silence: the node builtins below are loaded through
     // runtime-constructed importers. register() already stands down outside
     // the nodejs runtime, so runtime behavior is unchanged — but the Edge
@@ -86,10 +89,11 @@ export async function register(): Promise<void> {
         if (!provider || !key) continue;
         const label =
           typeof s.label === "string" && s.label.trim() ? s.label.trim() : null;
+        const stored = await encryptVaultKey(key);
         await bootDb.automationVault.upsert({
           where: { provider },
-          create: { provider, key, label },
-          update: { key, label },
+          create: { provider, key: stored, label },
+          update: { key: stored, label },
         });
         n += 1;
       }
@@ -102,6 +106,41 @@ export async function register(): Promise<void> {
     // executor; the next boot re-checks.
     console.warn(
       "[boot] vault rehydration skipped:",
+      err instanceof Error ? err.message : err
+    );
+  }
+  // r526 — TASK-102 slice 3: one-time at-rest migration. Any vault row still
+  // holding legacy plaintext (r138 trust model) is re-encrypted with
+  // AES-256-GCM here; rows already carrying the enc:v1: prefix are untouched,
+  // so the pass is idempotent and free on every later boot.
+  try {
+    const { db: migDb } = await import("@/lib/db");
+    const { encryptVaultKey, isEncryptedVaultKey, vaultKeySource } = await import(
+      "@/lib/server/vault-crypto"
+    );
+    const rows = await migDb.automationVault.findMany();
+    let n = 0;
+    for (const r of rows) {
+      const k = r.key.trim();
+      if (!k || isEncryptedVaultKey(k)) continue;
+      await migDb.automationVault.update({
+        where: { id: r.id },
+        data: { key: await encryptVaultKey(k) },
+      });
+      n += 1;
+    }
+    if (n > 0) {
+      console.info(
+        `[boot] vault at-rest migration: encrypted ${n} slot(s) with AES-256-GCM (master key: ${
+          vaultKeySource() === "env" ? "NEXUS_VAULT_MASTER_KEY env" : "machine file db/vault-master.key"
+        })`
+      );
+    }
+  } catch (err) {
+    // Never block boot — the legacy plaintext read path keeps the lane alive
+    // and the next boot retries the migration.
+    console.warn(
+      "[boot] vault at-rest migration skipped:",
       err instanceof Error ? err.message : err
     );
   }
