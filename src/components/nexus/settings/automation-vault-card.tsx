@@ -674,6 +674,14 @@ export function AutomationVaultCard() {
                 <li key={s.provider} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                   <KeyRound className={cn("h-3 w-3 shrink-0", isDialSlot ? "text-cyan-400" : "text-cyan-500/60")} aria-hidden />
                   <span className="font-medium">{slotName}</span>
+                  {providerById(s.provider)?.dialect === "anthropic" ? (
+                    <span
+                      title="This provider pairs an Anthropic-style /v1/messages endpoint — closed-tab step dials ride the Anthropic dialect (x-api-key auth, system as a top-level field), shaped behind the same redaction choke as every other lane."
+                      className="rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0 text-[10px] font-medium text-violet-600 dark:text-violet-400"
+                    >
+                      anthropic dialect
+                    </span>
+                  ) : null}
                   {isDialSlot ? (
                     <span
                       title="The executor dials THIS slot for closed-tab runs: the oldest stored slot whose provider pairs with a registry endpoint (newer keys wait their turn — delete this one to promote the next)."

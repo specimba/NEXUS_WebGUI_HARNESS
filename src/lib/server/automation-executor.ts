@@ -42,6 +42,13 @@ import {
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
 import { redactDialBody } from "@/lib/redaction";
+import {
+  isAnthropicStyleEndpoint,
+  anthropicDialectUrl,
+  anthropicAuthHeaders,
+  openaiBodyToAnthropic,
+  anthropicResponseToHouse,
+} from "@/lib/anthropic-dialect";
 import { decryptVaultKey } from "@/lib/server/vault-crypto";
 
 export const CLAIM_INTERVAL_MS = 15_000;
@@ -113,9 +120,16 @@ function probeSlotDial(
       ? firstModel
       : ((firstModel as { id?: string } | undefined)?.id ?? "");
   if (!reg.baseUrl && !providerBaseUrl(reg)) return { dial: null, why: "no-resolvable-provider" };
+  // r528 TASK-102 slice 4: providers whose registry entry carries
+  // dialect:"anthropic" pair an Anthropic-style /v1/messages endpoint — the
+  // dial URL follows the dialect (dialStep shapes the wire accordingly).
+  const dialBase = providerBaseUrl(reg).replace(/\/$/, "");
   return {
     dial: {
-      url: `${providerBaseUrl(reg).replace(/\/$/, "")}/chat/completions`,
+      url:
+        reg.dialect === "anthropic"
+          ? anthropicDialectUrl(dialBase) // strips a trailing /v1 — no /v1/v1
+          : `${dialBase}/chat/completions`,
       key: vaultEntry.key.trim(),
       model,
       providerLabel: reg.name,
@@ -306,32 +320,49 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), DIAL_TIMEOUT_MS);
   let res: Response;
+  // r528: true when the dial rides the Anthropic /v1/messages dialect
+  // (dialect:"anthropic" registry provider — vyce today).
+  const anthropicLane = isAnthropicStyleEndpoint(dial.url);
   try {
     // r514: the server-lane dial rides the egress layer (per-upstream routing;
     // no token stored = byte-identical plain fetch). A typed EgressDialError
     // (pool armed but broken) rethrows honestly below — never masked as a
     // timeout, so the congestion memory is not fed a false lane death.
+    // r528 TASK-102 slice 4: anthropic-dialect endpoints get x-api-key +
+    // anthropic-version auth and a shaped body (system → top-level field);
+    // the OpenAI dialect keeps Bearer. The redaction choke wraps EITHER
+    // shape — it is dialect-agnostic by design (same r524 invariant).
+    const stepSystem =
+      "You are executing one step of a scheduled automation pipeline. Answer the step prompt directly and concisely.";
     res = await egressRelayDial(dial.url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${dial.key}`,
+        ...(anthropicLane
+          ? anthropicAuthHeaders(dial.key)
+          : { authorization: `Bearer ${dial.key}` }),
       },
       body: JSON.stringify(
         redactDialBody(
-          {
-            model: dial.model,
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are executing one step of a scheduled automation pipeline. Answer the step prompt directly and concisely.",
+          anthropicLane
+            ? openaiBodyToAnthropic({
+                model: dial.model,
+                messages: [
+                  { role: "system", content: stepSystem },
+                  { role: "user", content: prompt },
+                ],
+                max_tokens: 2000,
+                temperature: 0.7,
+              })
+            : {
+                model: dial.model,
+                messages: [
+                  { role: "system", content: stepSystem },
+                  { role: "user", content: prompt },
+                ],
+                max_tokens: 2000,
+                temperature: 0.7,
               },
-              { role: "user", content: prompt },
-            ],
-            max_tokens: 2000,
-            temperature: 0.7,
-          },
           // the vault key rides the AUTH HEADER (untouched — the provider needs
           // it); passing it here guarantees it can never leak through the BODY
           // either, even when a workflow prompt quotes it by accident.
@@ -400,8 +431,12 @@ export async function dialStep(dial: ResolvedDial, prompt: string): Promise<stri
     }
     const j = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
+      content?: { type?: string; text?: string }[];
     };
-    const text = j.choices?.[0]?.message?.content?.trim();
+    // r528: the anthropic dialect answers a content-block list, not choices[].
+    const text = anthropicLane
+      ? anthropicResponseToHouse(j).text
+      : j.choices?.[0]?.message?.content?.trim();
     if (!text) {
       // r438: an empty completion is a lane failure — spend a matching
       // rescue proof here too (non-abort failure semantics, r437 parity).

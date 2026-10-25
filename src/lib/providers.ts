@@ -44,6 +44,15 @@ export interface FreeProvider {
   liveCatalog?: string;
   /** Optional account-info endpoint (relative to baseUrl) for a credits widget, e.g. "/v1/me". */
   mePath?: string;
+  /**
+   * r528 TASK-102 slice 4: wire dialect the SERVER-LANE step dial uses for
+   * this provider. "anthropic" = the provider pairs an Anthropic-style
+   * /v1/messages endpoint (x-api-key + anthropic-version auth, system as a
+   * top-level field) — the executor shapes bodies via
+   * src/lib/anthropic-dialect.ts behind the same redaction choke.
+   * Absent = OpenAI /chat/completions (every current default).
+   */
+  dialect?: "openai" | "anthropic";
 }
 
 export const FREE_PROVIDERS: FreeProvider[] = [
@@ -78,6 +87,9 @@ export const FREE_PROVIDERS: FreeProvider[] = [
       { id: "deepseek-v4-flash-lr", label: "DeepSeek V4 Flash LR", note: "Long-run variant · $0.15/$0.60" },
     ],
     mePath: "/v1/me",
+    // r528: vyce advertises a bonus Anthropic-style /v1/messages endpoint in
+    // its own guide — the server-lane step dial rides that dialect.
+    dialect: "anthropic",
   },
   {
     id: "aihubmix",

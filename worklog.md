@@ -12892,3 +12892,30 @@ Round ID: r527 -> next patrol (job 473388)
 Open risks: (1) db/vault-master.key backup is owner-side (fresh clone + encrypted rows + new file key = undecryptable rows); seedwrite export is the plaintext backup that pairs with it. (2) Vault still EMPTY pending owner --import (path now proven E2E + surfaced in the card UI). (3) r521 stepsJson sync-overwrite limitation still open. (4) Supabase nexus-backups bucket + GitHub PAT rotate owner-side. (5) qa-seedwrite writes/deletes a throwaway row — safe to re-run anytime.
 Blockers: none.
 Next recommended action: r528 — TASK-102 slice 4: Anthropic-dialect lane support (smallest honest slice: a dialect adapter in src/lib that shapes Anthropic /v1/messages bodies behind the SAME redaction choke, gated on a vault slot whose provider pairs an Anthropic-style endpoint; verify dial-free with a body-shaping script), or — if the dialect design wants deliberation — TASK-100 token-lean request shaping (the last 9router slice).
+
+---
+Task ID: r528
+Agent: patrol job 473388 (main session)
+Task: r527 handoff — TASK-102 slice 4: Anthropic-dialect lane support (dialect adapter behind the same redaction choke, gated on a vault slot whose provider pairs an Anthropic-style endpoint); QA golden paths first; gates; ship.
+
+Work Log:
+- SUPERVISOR alive across the boundary (server 200, pid 3571) — seventh consecutive patrol.
+- QA golden paths FIRST: 9/9, console 0 errors. Nothing broken -> advanced slice 4.
+- TASK-102 SLICE 4 SHIPPED — Anthropic-dialect lane (src/lib/anthropic-dialect.ts, isomorphic like redaction.ts):
+  - openaiBodyToAnthropic: system extracted to the top-level field, only user/assistant roles remain, max_tokens defaulted (the wire REQUIRES it — 4096).
+  - anthropicAuthHeaders: x-api-key + anthropic-version 2023-06-01 — NOT Bearer (the redaction choke never touches auth headers; the r524 invariant holds across dialects).
+  - anthropicResponseToHouse: content-block list → house text (joined) + tool_use blocks → house tool_calls.
+  - isAnthropicStyleEndpoint + anthropicDialectUrl (strips a trailing /v1 — the qa script caught a real /v1/v1/messages double-prefix bug on first run; the resolver assertion was too weak with endsWith and is now exact-URL equality).
+- GATED IN THE REGISTRY: FreeProvider.dialect?: "openai" | "anthropic" — vyce carries "anthropic" (its own guide advertises the /v1/messages bonus endpoint); probeSlotDial derives the dial URL from the dialect; dialStep branches auth + body shaping + response parsing. Honest scope: the SERVER-LANE step dial only (non-streaming, no tools) — the engine tool-loop's streaming SSE translation is the documented NEXT slice, not claimed here.
+- USER-VISIBLE (round mandate): vault slots whose provider is anthropic-dialect show a violet "anthropic dialect" chip (title explains the wire difference + the same-choke guarantee).
+- VERIFY: scripts/qa-anthropic-dialect.ts (persisted, dial-free) — 19/19 PASS after the /v1/v1 fix (endpoint gate, auth headers, system extraction, max_tokens default, tool_use translation, choke over the SHAPED body, and the gate through the REAL resolveServerDialFromSlots -> exactly https://vyceai.com/v1/messages).
+- GATES: bunx tsc --noEmit = 0 errors; bun run lint = 0 errors / 33 warnings EXACT baseline. Post-edit golden QA: 9/9, console 0 errors.
+
+Stage Summary:
+- A vault slot for an anthropic-dialect provider now dials the Anthropic wire end-to-end in the closed-tab lane: registry gate -> /v1/messages URL -> x-api-key auth -> shaped body -> content-block parse, all inside the same redaction choke. TASK-102 remainder: engine streaming-SSE dialect translation + Exa/BrightData acquisition lanes.
+
+Round Handoff:
+Round ID: r528 -> next patrol (job 473388)
+Open risks: (1) vyce /v1/messages is advertised by the provider but not yet exercised against the LIVE wire (vault empty; the first real keyed run proves it — failure semantics unchanged: 429/timeout/billing paths all still apply). (2) Engine tool-loop still dials OpenAI dialect for anthropic-dialect providers (streaming translation = slice 5). (3) db/vault-master.key backup owner-side; vault still EMPTY pending owner --import. (4) r521 stepsJson sync-overwrite limitation still open. (5) Supabase bucket + PAT rotate owner-side.
+Blockers: none.
+Next recommended action: r529 — TASK-102 slice 5 (engine streaming-SSE dialect translation for anthropic-dialect hops: content_block_delta -> house delta events, tool_use blocks -> tool-call loop parity) — or, if that wants a live key to test honestly, TASK-100 token-lean request shaping (the last 9router slice, verifiable against the free gateway).
