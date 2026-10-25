@@ -13615,3 +13615,27 @@ Round ID: r560 -> next patrol (job 473388)
 Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) locator doctrine extended: role-tab eval-click when snapshot-ref grep misses; region windows need slack proportional to className length.
 Blockers: none.
 Next recommended action: r561 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row). Else candidates: (a) the Vault section's acquisition-cluster sub-card split (deferred since r556 — check if the card grew again before committing); (b) the paste-plan badge could also show a live step-count echo next to the detected-steps line ("✓ N steps detected" + chars in one row) — tiny, but only if the Owner case (multi-thousand-char plans) warrants it; (c) a QA guard that the schedule-row chip's amber stays in sync with the drawer note's failStreak interpolation (cross-component consistency, one grep each side).
+
+---
+Task ID: r561
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r560 handoff — key check first (all acquisition sources null → no keyed proof, Owner-blocked); shipped candidate (a): the r556-deferred acquisition-cluster sub-card split — the cluster now reads as its own sky sub-panel below the store row.
+
+Work Log:
+- KEY CHECK: /api/vault acquisition all null (exa/brightdata/webshare) — keyed proofs stay Owner-blocked.
+- INCREMENT (a): the vault card's acquisition cluster (r554 registry note + r552 fleet strip) moved OUT of the store flex-row into its own sub-panel (data-testid=acq-cluster, sky-500/20 border + sky-500/5 bg — the chips' "pending" palette, r556) with the honest header "Acquisition lanes — search & tool keys, never LLM dials"; the redundant inner label span dropped. The select → key → Store flow for LLM lanes is no longer broken up by the cluster. Copy verbatim-unchanged (27/27 file-wide guards passed untouched).
+- BEHAVIOR PRESERVED (live): brightdata fleet chip click → select flips to brightdata AND the lane key input takes focus — the r555 one-click-store affordance survived the relocation (scrollIntoView nearest still lands).
+- TOOLING DOCTRINE: the 110-line MultiEdit byte-match failed (transcription drift — missed a w-full and exact em-dash lines); a line-precise python splice (scripts/r561-vault-split.py) with content-asserted boundaries did it in one pass. The splice's FIRST attempt had a double-adjustment bug (ins pre-shifted → lines[ins:] re-included the cut tail) — caught by tsc JSX imbalance, file restored via git checkout, script patched to a single splice against original indices, re-run clean. Doctrine: relocate-by-line-number with asserted markers beats giant old_str matching; verify with exactly one structural grep (1× acq-fleet) + tsc before anything else.
+- CANDIDATE (c) SKIPPED as subsumed: the chip↔drawer one-voice consistency the handoff asked for is already pinned by the r557 guard (chip interpolates "at step ${plan.step}/${plan.total}") + the r559 guard (drawer interpolates "failStreak now {wfFailStreak}") — a third grep would be theatre.
+- GOLDEN QA: #settings walked via the vault witness (all locators hit, page renders); radar Frontier via role-tab eval-click → BODY=1280; Model Relay intel ladder verified r560 (1 round old, settings page unchanged this round — INTEL=9 then). agent-browser errors: EMPTY → console 0.
+- GATES: tsc 0 errors; lint 0 errors / 33 warnings EXACT; qa-acquisition-vault 27/27; qa-executor-resume 32/32.
+- BUDGET: ~9/12 — splice debugging ate 2 rounds (caught honestly, restored, fixed, persisted as scripts/r561-vault-split.py); no restart, no bucket attempts.
+
+Stage Summary:
+- The vault card now reads in two clean registers: the LLM key store flow (select → key → Store, unbroken) and the acquisition lanes as their own sky class below — same copy, same behavior, one honest header. The r556 readability debt is paid.
+
+Round Handoff:
+Round ID: r561 -> next patrol (job 473388)
+Open risks: (1) TASK-102 live-wire keyed proofs (/v1/messages + Exa) — the ONLY open P1 item, blocked on the Owner storing a real key; (2) pool tier dormant until a Webshare token lands; (3) 3 old WATCH-6 radar rows remain as honest archive; (4) webDevReview concurrency doctrine stands; (5) the vault card is still ~1165 lines — the split was visual, not modular; a real component extraction is the next structural step if the card grows again.
+Blockers: none.
+Next recommended action: r562 — key check first; if any acquisition source flips non-null, run the live-wire keyed proof (exa dialect: frontier refresh → items/error-row). Else candidates: (a) extract the acquisition cluster into a real sub-component (AcquisitionLanesPanel) — r561's visual split makes the seam obvious; props: acqLanes, laneProvider, setLaneProvider, laneKeyRef; (b) the paste-plan dialog's step-count echo ("✓ N steps detected" + chars in one row) if the Owner case warrants; (c) a dial-free qa guard pinning the acq-cluster panel (header literal + fleet-inside-cluster) — cheap insurance for the new seam.

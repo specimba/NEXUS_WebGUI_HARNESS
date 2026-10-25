@@ -689,6 +689,39 @@ export function AutomationVaultCard() {
                 </option>
               ))}
             </select>
+            <Input
+              ref={laneKeyRef}
+              type="password"
+              value={laneKey}
+              onChange={(e) => setLaneKey(e.target.value)}
+              placeholder="paste the provider key for closed-tab runs"
+              // r419 audit: placeholders are not reliable accessible names —
+              // this password field had no label plumbing at all.
+              aria-label="Lane provider key for closed-tab runs"
+              autoComplete="off"
+              spellCheck={false}
+              className="min-w-0 flex-1 font-mono text-xs"
+            />
+            <Button type="button" onClick={saveLane} disabled={laneSaving || !laneKey.trim()}>
+              {laneSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <KeyRound className="h-3.5 w-3.5" aria-hidden />
+              )}
+              Store
+            </Button>
+          </div>
+          {/* r561: the acquisition cluster reads as its own class — a sky
+              sub-panel (the chips' "pending" palette, r556) below the store
+              row, so the select → key → Store flow for LLM lanes stays
+              unbroken and the search/tool lanes stop breaking it up. */}
+          <div
+            className="space-y-2 rounded-lg border border-sky-500/20 bg-sky-500/5 p-3"
+            data-testid="acq-cluster"
+          >
+            <p className="text-[10px] font-medium uppercase tracking-wide text-sky-600 dark:text-sky-400">
+              Acquisition lanes — search &amp; tool keys, never LLM dials
+            </p>
             {(() => {
               // r554: registry-aware note — dormant rows get the honest
               // "dials later" wording, live rows keep the r551 copy; both
@@ -724,9 +757,6 @@ export function AutomationVaultCard() {
               );
             })()}
             <div className="flex w-full flex-wrap items-center gap-1.5" data-testid="acq-fleet">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Acquisition lanes
-              </span>
               {ACQUISITION_PROVIDERS.map((p) => {
                 // r552: the always-on fleet readout — one honest pill per
                 // registry row, resolved through the same guard data the
@@ -785,27 +815,6 @@ export function AutomationVaultCard() {
                 );
               })}
             </div>
-            <Input
-              ref={laneKeyRef}
-              type="password"
-              value={laneKey}
-              onChange={(e) => setLaneKey(e.target.value)}
-              placeholder="paste the provider key for closed-tab runs"
-              // r419 audit: placeholders are not reliable accessible names —
-              // this password field had no label plumbing at all.
-              aria-label="Lane provider key for closed-tab runs"
-              autoComplete="off"
-              spellCheck={false}
-              className="min-w-0 flex-1 font-mono text-xs"
-            />
-            <Button type="button" onClick={saveLane} disabled={laneSaving || !laneKey.trim()}>
-              {laneSaving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              ) : (
-                <KeyRound className="h-3.5 w-3.5" aria-hidden />
-              )}
-              Store
-            </Button>
           </div>
           {mirrorCandidates.length > 0 && (
             <div className="space-y-1.5 rounded-md border border-dashed border-violet-500/30 bg-violet-500/5 px-2.5 py-2">
