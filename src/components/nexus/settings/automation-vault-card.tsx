@@ -676,10 +676,10 @@ export function AutomationVaultCard() {
                   <span className="font-medium">{slotName}</span>
                   {providerById(s.provider)?.dialect === "anthropic" ? (
                     <span
-                      title="This provider pairs an Anthropic-style /v1/messages endpoint — step dials, the engine's streaming tool-loop AND relay chains (dialect threaded per hop) ride the Anthropic dialect (x-api-key auth, system as a top-level field, SSE deltas translated), shaped behind the same redaction choke as every other lane."
+                      title="This provider pairs an Anthropic-style /v1/messages endpoint — step dials, the engine's streaming tool-loop AND relay chains (dialect threaded per hop) ride the Anthropic dialect (x-api-key auth, system as a top-level field, SSE deltas translated), shaped behind the same redaction choke as every other lane. The wave's acquisition side rides the same discipline: the Radar Frontier's Exa lane (r531) dials a shaped /search body behind EXA_API_KEY."
                       className="rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-0 text-[10px] font-medium text-violet-600 dark:text-violet-400"
                     >
-                      anthropic dialect · relay
+                      anthropic dialect · relay + acquisition
                     </span>
                   ) : null}
                   {isDialSlot ? (

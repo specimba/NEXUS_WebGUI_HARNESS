@@ -5,10 +5,17 @@ import { decodeXml, parseArxivFeed } from "@/lib/server/tools";
 // so they are safe on the server (the novelty axis is refined client-side
 // against the real seed ledger; here it scores against an empty ledger).
 import { fuseScores, ruleScores } from "@/lib/frontier-scout";
+import {
+  exaAuthHeaders,
+  exaDialUrl,
+  exaResponseToHouse,
+  frontierQueryToExaBody,
+} from "@/lib/exa-dialect";
 import type { FrontierItem } from "@/lib/frontier-scout";
 
 // ─── GET /api/radar/frontier — Frontier Scout aggregation (r511) ─────────────
-// Trend ingestion for the judge cascade: three parallel source probes →
+// Trend ingestion for the judge cascade: three parallel free-hub source probes
+// + one optional Exa acquisition lane (r531 — TASK-102 slice 6, env-gated) →
 // normalized FrontierItem[] → cross-source dedupe (HF upvotes beat arXiv) →
 // rule-rubric sort, capped. Partial-success doctrine: one source failing
 // (403/429/timeout/garbage) never sinks the others — failures ride back as
@@ -246,6 +253,50 @@ async function fetchArxivHarness(): Promise<{ items: FrontierItem[]; error?: str
   }
 }
 
+// ─── Source 4: Exa acquisition lane (r531 — TASK-102 slice 6) ────────────────
+// The NEXUS_BOT wave's acquisition dialect: Exa /search (POST + x-api-key,
+// results[] rows) parsed into house FrontierItems via src/lib/exa-dialect.ts.
+// Gated on EXA_API_KEY — the SAME machine-secret pattern this route's GitHub
+// source already uses for GITHUB_TOKEN. Unconfigured ⇒ the lane contributes
+// NOTHING (no items, no error row) and the three free hubs stay byte-identical.
+
+const EXA_FRONTIER_QUERY =
+  "agentic LLM workflow harness judge post-training release announcement";
+
+async function fetchExaAcquisition(): Promise<{ items: FrontierItem[]; error?: string }> {
+  const key = process.env.EXA_API_KEY?.trim();
+  if (!key) return { items: [] }; // lane unconfigured — silent, not an error
+  try {
+    const res = await fetch(exaDialUrl("https://api.exa.ai"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": NEXUS_UA,
+        ...exaAuthHeaders(key),
+      },
+      body: JSON.stringify(frontierQueryToExaBody(EXA_FRONTIER_QUERY, { numResults: 8 })),
+      signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS),
+    });
+    if (res.status === 401 || res.status === 403) {
+      return { items: [], error: `exa: auth rejected (HTTP ${res.status})` };
+    }
+    if (res.status === 402 || res.status === 429) {
+      return { items: [], error: `exa: ${res.status === 402 ? "credits exhausted" : "rate-limited"}` };
+    }
+    if (!res.ok) return { items: [], error: `exa: HTTP ${res.status}` };
+    const payload: unknown = await res.json();
+    return exaResponseToHouse(payload, Date.now());
+  } catch (err) {
+    const timedOut = err instanceof Error && /timeout|timed? ?out|aborted/i.test(err.message);
+    return {
+      items: [],
+      error: timedOut
+        ? "exa: timed out after 15s"
+        : `exa: ${err instanceof Error ? err.message : "unreachable"}`,
+    };
+  }
+}
+
 // ─── Cross-source dedupe + rule-rubric sort ──────────────────────────────────
 
 function normalizeTitle(t: string): string {
@@ -257,11 +308,12 @@ async function aggregate(): Promise<FrontierPayload> {
     fetchHfPapers(),
     fetchGithubRepos(),
     fetchArxivHarness(),
+    fetchExaAcquisition(),
   ]);
 
   const ordered: FrontierItem[] = [];
   const errors: string[] = [];
-  const labels = ["huggingface-papers", "github", "arxiv"] as const;
+  const labels = ["huggingface-papers", "github", "arxiv", "exa"] as const;
 
   settled.forEach((r, i) => {
     if (r.status === "fulfilled") {
