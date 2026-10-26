@@ -10,6 +10,7 @@ import {
   MAX_AUTO_RESUME_TRIPS,
 } from "@/lib/gateway-cadence";
 import { buildAngleHistory, latestScoredNovelty, maybeProposeSpawn, withFrontierSeed, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
+import { buildDefaultConstraints } from "@/lib/constraint-block";
 import type { FrontierSeedRef } from "@/lib/spawn-proposal-engine";
 // r511 frontier seeding: the browser-side seed ledger the radar's Frontier tab
 // writes — stall proposals get enriched with the freshest unused seed.
@@ -965,6 +966,9 @@ export async function executeWorkflowRun(
           sourceRunId: runId,
           taskExcerpt,
           angleHistory,
+          // r581: automatic stall proposals carry the same nexent constraint
+          // block as the manual path — bounds derived from the source pipeline.
+          constraints: buildDefaultConstraints(wf.steps.length),
         });
         if (proposal) {
           // ── r511 frontier seeding (owner: "self-development automation with

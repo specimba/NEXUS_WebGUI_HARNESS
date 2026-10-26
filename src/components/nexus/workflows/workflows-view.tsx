@@ -69,6 +69,7 @@ import {
 } from "@/lib/stores";
 import type { SpawnProposal, Workflow, WorkflowRun, WorkflowSchedule, WorkflowStep } from "@/lib/types";
 import { buildAngleHistory, buildVariationProposal, latestScoredNovelty, withFrontierSeed, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
+import { buildDefaultConstraints, formatConstraintBlock, validateConstraintBlock } from "@/lib/constraint-block";
 import type { FrontierSeedRef } from "@/lib/spawn-proposal-engine";
 // r511 frontier seeding + lane experiments: the browser-side seed ledger and
 // the radar-adopted lane registry are read client-side (BYOK intact).
@@ -495,6 +496,9 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
                         threshold,
                         manual: true,
                         angleHistory,
+                        // r581: nexent constraint block derived from the source
+                        // pipeline's own shape — the editor re-validates on spawn.
+                        constraints: buildDefaultConstraints(wf.steps.length),
                       });
                       try {
                         const usedTitles = new Set(
@@ -1281,9 +1285,31 @@ function EvolutionInbox() {
       overflow > 0
         ? ` · 8-step cap — ${overflow} more proposal line${overflow === 1 ? "" : "s"} will not run`
         : "";
-    const stepLines = parsed.steps.length
+    // r581: the editor VALIDATES the proposal's nexent constraint block before
+    // spawning — a stale/tampered block (persisted localStorage, older schema)
+    // refuses to spawn with the first violation cited. A valid block bounds the
+    // WHOLE spawned pipeline, review gate included: generated lines are sliced
+    // to leave room for the review step, so the spawn never exceeds the cap.
+    let constraintCap: number | null = null;
+    if (p.constraints != null) {
+      const v = validateConstraintBlock(p.constraints);
+      if (!v.ok) {
+        toast.error(`Constraint block failed validation — not spawning: ${v.violations[0]}`);
+        return;
+      }
+      constraintCap = v.block?.stepCap ?? null;
+    }
+    const baseLines = parsed.steps.length
       ? parsed.steps
       : ["Research the goal and gather context", "Draft the deliverable"];
+    const stepLines =
+      constraintCap != null
+        ? baseLines.slice(0, Math.max(1, constraintCap - 1))
+        : baseLines;
+    const constraintNote =
+      constraintCap != null && baseLines.length > stepLines.length
+        ? ` · constraint cap ${constraintCap} steps — ${baseLines.length - stepLines.length} more line${baseLines.length - stepLines.length === 1 ? "" : "s"} not run`
+        : "";
     const steps: WorkflowStep[] = stepLines.map((label, i) => ({
       id: uid("step"),
       agentId: roster[i % roster.length],
@@ -1303,7 +1329,7 @@ function EvolutionInbox() {
     addWf({
       id: spawnedId,
       name: truncateAtWord(parsed.goal, 80),
-      description: `Evolution spawn · from "${p.sourceWorkflowName}" · ${p.reason}${capNote}`,
+      description: `Evolution spawn · from "${p.sourceWorkflowName}" · ${p.reason}${capNote}${constraintNote}`,
       steps,
       depth: "standard",
       runs: [],
@@ -1378,6 +1404,35 @@ function EvolutionInbox() {
                   {proposalAge(p.createdAt)}
                 </span>
               </p>
+              {/* r581: the nexent constraint block, visible — a valid block renders
+                  its bounds as one emerald chip; a stale/tampered one renders an
+                  honest amber refusal BEFORE the Spawn button is trusted. */}
+              {p.constraints != null &&
+                (() => {
+                  const v = validateConstraintBlock(p.constraints);
+                  return v.ok && v.block ? (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span
+                        data-testid="proposal-constraints"
+                        className="inline-flex items-center rounded-md border border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-emerald-600 dark:text-emerald-400"
+                        title={`nexent constraint block — the editor validates this before spawning · ${formatConstraintBlock(v.block)}`}
+                      >
+                        bound · {formatConstraintBlock(v.block)}
+                      </span>
+                      <span className="text-[10px] text-stone-500 dark:text-stone-400">constraint-bound</span>
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                      <span
+                        data-testid="proposal-constraints-invalid"
+                        className="inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-600 dark:text-amber-400"
+                        title={v.violations.join("; ")}
+                      >
+                        constraints invalid — spawn refused
+                      </span>
+                    </div>
+                  );
+                })()}
               {/* r511: a frontier-seeded proposal cites its source paper/repo —
                   one compact link line, the row stays spawn-first. */}
               {p.frontierRef && (

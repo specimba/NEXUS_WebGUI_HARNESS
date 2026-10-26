@@ -1,4 +1,6 @@
 import type { SpawnProposal } from "@/lib/types";
+import type { ConstraintBlock } from "@/lib/constraint-block";
+import { validateConstraintBlock } from "@/lib/constraint-block";
 import { truncateAtWord } from "@/lib/helpers";
 
 /**
@@ -212,6 +214,8 @@ export interface MaybeProposeSpawnInput {
   novelty?: number;
   /** Stall threshold override (Settings → Evolution). Missing = NOVELTY_SPAWN_THRESHOLD. */
   threshold?: number;
+  /** r581: nexent constraint block candidate — validated in buildVariationProposal. */
+  constraints?: unknown;
   /** workflowIds that already have an open proposal (anti-spam cap). */
   openSourceIds: string[];
   sourceWorkflowId: string;
@@ -242,6 +246,7 @@ export function maybeProposeSpawn(
     novelty: input.novelty,
     threshold: input.threshold,
     angleHistory: input.angleHistory,
+    constraints: input.constraints,
   });
 }
 
@@ -258,6 +263,10 @@ export interface BuildVariationProposalInput {
   manual?: boolean;
   /** r190: past proposals for this source — the branch router's history. */
   angleHistory?: AngleHistoryEntry[];
+  /** r581 nexent constraint block — usually buildDefaultConstraints(source
+   *  workflow). Validated HERE: a valid block rides the proposal; an invalid
+   *  one never attaches and the reason says why. */
+  constraints?: unknown;
 }
 
 /**
@@ -290,15 +299,34 @@ export function buildVariationProposal(
         ? "the router is exploring — every scored branch is exhausted, so the least-tried angle gets its turn"
         : "";
   const rotationNote = `branch rotated after ${prior} prior proposal${prior === 1 ? "" : "s"} for this pipeline`;
+  // r581: the nexent constraint block — validated before it rides. A valid
+  // block attaches as the STRUCTURED `constraints` field (the inbox renders
+  // its bounds as a chip; the editor re-validates and slices to stepCap on
+  // spawn). The prose plan list stays step-pure on purpose: a "Constraints:"
+  // line in planLines would become a bogus step via parsePlan. An invalid
+  // block NEVER attaches and the reason cites the first violation (honest,
+  // never-throw).
+  let constraints: ConstraintBlock | undefined;
+  let constraintRejection = "";
+  if (input.constraints != null) {
+    const v = validateConstraintBlock(input.constraints);
+    if (v.ok && v.block) {
+      constraints = v.block;
+    } else {
+      constraintRejection = v.violations[0] ?? "malformed constraint block";
+    }
+  }
+  const reason =
+    (prior > 0
+      ? `${coreReason} — ${decisionNote || rotationNote} (repeating the old angle would replay the same search trajectory)`
+      : coreReason) + (constraintRejection ? ` — constraint block rejected: ${constraintRejection}` : "");
   return {
     id: crypto.randomUUID(),
     createdAt: Date.now(),
     status: "open",
     goal: `${base} — approach it from ${angle}`,
-    reason:
-      prior > 0
-        ? `${coreReason} — ${decisionNote || rotationNote} (repeating the old angle would replay the same search trajectory)`
-        : coreReason,
+    reason,
+    ...(constraints ? { constraints } : {}),
     sourceWorkflowId: input.sourceWorkflowId,
     sourceWorkflowName: input.sourceWorkflowName,
     sourceRunId: input.sourceRunId,

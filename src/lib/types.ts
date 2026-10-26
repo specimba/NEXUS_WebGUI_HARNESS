@@ -1,6 +1,7 @@
 // ─── NEXUS WebGUI · Shared Types ─────────────────────────────────────────────
 
 import type { CortexConfig } from "./cortex-edge";
+import type { ConstraintBlock } from "./constraint-block";
 
 export type View = "chat" | "agents" | "workflows" | "settings" | "radar";
 
@@ -491,6 +492,10 @@ export interface WorkflowSchedule {
  * pipeline (Research→Draft scaffold + review gate), dismissing archives it.
  */
 export interface SpawnProposal {
+  /** r581 nexent constraint block — hard bounds the editor validates before
+   *  spawning (stepCap/toolBudget/laneCaps/dialPolicy). Optional: proposals
+   *  from before r581 (and rejections) carry none. */
+  constraints?: ConstraintBlock;
   id: string;
   createdAt: number;
   status: "open" | "accepted" | "dismissed";
@@ -498,6 +503,8 @@ export interface SpawnProposal {
   goal: string;
   /** Optional extra step lines (bullets/numbering stripped on accept). */
   planLines?: string[];
+  // NOTE: the Constraints plan line (see buildVariationProposal) is prose —
+  // the structured bounds live in `constraints` above.
   /** Why this was proposed — shown verbatim in the inbox row. */
   reason: string;
   /** r511 — set when a judged Frontier Scout item inspired the variation,
