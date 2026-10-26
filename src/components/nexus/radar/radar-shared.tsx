@@ -110,7 +110,11 @@ export function CacheStatus({
         aria-label="Refresh results"
       >
         <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} aria-hidden />
-        Refresh
+        {/* r589: the spin alone never said what was happening — same in-flight
+            honesty the plugin packs (r583), freellm census (r587) and intel
+            badge (r588) got. Shared component, so every radar tab's Refresh
+            speaks: HF, GitHub, Frontier, Models, … */}
+        {refreshing ? "checking…" : "Refresh"}
       </Button>
     </div>
   );

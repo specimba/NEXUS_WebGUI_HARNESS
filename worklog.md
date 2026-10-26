@@ -598,3 +598,27 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r589 — ONE batched opening. Then: (a) golden legs all three fresh; (b) then Owner-asked work or genuine polish only (backlog fully paid — do NOT invent surface; the relay age-sweep is now COMPLETE — find polish elsewhere, do not re-skin this panel again); (c) keep the increment to ONE edit + ONE gates call + ONE witness.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583-r588, UI-only diff since)
+
+---
+Task ID: r589
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r589 per r588 handoff — HEAD f03c11d01 = own r588, no parallel session → ran AS r589. ONE batched opening; golden legs all three fresh; increment hunted EVIDENCE-FIRST across candidate surfaces (relay panel off-limits per handoff); one edit + one gates + one witness; gates; ship.
+
+Work Log:
+- OPENING (single bash): key check all sources null → TASK-102 stays Owner-blocked; runs same 5 error (dial-401 credential class) → peer slice 2 stays sighting-blocked; registry ONE clean pack; server 200; tree clean.
+- GOLDEN LEGS, all three fresh GREEN, zero bugs: settings = Model Relay badges in DOM (census "live · …" + intel present), ticker recon shows it ALREADY honest ("synced 3h ago" — not a debt), console 0/0; workflows = Run trigger → long-paste 1316 chars, chip re-witnessed ("1,316 chars"), console 0/0; radar = trusted Radix click → strip persisted (emerald "reproduced ·4" + census "1/1 reproduced"), inner scroll 755, console 0/0.
+- INCREMENT HUNT (honest negative results first): (a) model tracker ticker — already age-honest, skip; (b) frontier board header — recon via the census test-id anchor's closest tabpanel (the naive [role=tabpanel] probe bit a hidden sibling — probe artifact, noted) shows it ALREADY honest ("cached just now" + stale deepening + minute tick via shared CacheStatus), skip; (c) THE REAL ONE: CacheStatus's Refresh button (radar-shared.tsx, used by EVERY radar tab) disables + spins during fetch but its label never changes — the exact in-flight debt paid three times on other panels (packs r583, census r587, intel r588), here living in ONE shared component.
+- INCREMENT (one edit): CacheStatus Refresh label → "checking…" while refreshing, with a comment naming the lineage. Because CacheStatus is shared, a single edit upgrades the in-flight honesty of every radar board's Refresh at once (HF, GitHub, Frontier, Models, …).
+- LIVE WITNESS (both arms caught in the wild): clicked Frontier's "Refresh results" — mid-fetch the button read {"label":"checking…","disabled":true}; after settle {"label":"Refresh","disabled":false,"stamp":"cached just now"}. Console 0/0 throughout.
+- GATES: tsc=0; lint=0 errors (33 warnings — exact baseline, summary-line grep); qa-seed-reproduction + qa-constraint-block chained && OK (UI-only diff in ONE shared component; vault/resume/peer/harness/rrf green r583-r588, no lib/server diff).
+- BUDGET: 11/12 — opening (1), three legs (3), recon (panel-text+rg, read CacheStatus region, read header region = 3), edit (1), gates (1), witness (1), ship (1).
+
+Stage Summary:
+- The in-flight honesty pattern is now station-wide: relay data surfaces (r583/r587/r588) AND every radar board's Refresh (r589, via the shared CacheStatus). Both arms witnessed live in the wild. Increment hunt recorded three honest dead-ends before the find — the age/in-flight doctrine is nearly exhausted, r590 should expect to look elsewhere.
+
+Round Handoff:
+Round ID: r590 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) peer slice 2 still sighting-blocked (all 5 runs dial-401 credential class); (4) frontier judge queue stays rubric-only until the Owner keys a lane; (5) intel boards were on curated-snapshot fallback at r588 patrol hour — if still "snapshot" next visit that is board reachability, not a regression; (6) the age/in-flight honesty lane is nearly EXHAUSTED (ticker, boards, relay all honest) — r590 should NOT hunt more of the same; look for a different class of polish or a QA-found bug; (7) probe doctrines: census test-id anchor + closest tabpanel for panel text (naive [role=tabpanel] bites hidden siblings); scrollBehavior='auto' before asserting scrollTop; trusted clicks for Radix triggers; grep the lint SUMMARY line.
+Next recommended action: r590 — ONE batched opening. Then: (a) golden legs all three fresh; (b) then Owner-asked work or genuine polish OUTSIDE the age-honesty lane (backlog fully paid — do NOT invent surface); (c) keep the increment to ONE edit + ONE gates call + ONE witness.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583-r589, UI-only diff since)
