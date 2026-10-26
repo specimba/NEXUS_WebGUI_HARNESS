@@ -530,3 +530,25 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r586 — ONE batched opening (git log + worklog tail + key check + registry + runs-via-PRAGMA + server, single bash). Then: (a) golden legs all three fresh (settings / workflows incl. chip sighting / radar with the tab doctrine: trusted clicks for Radix triggers, plain clicks for React buttons); (b) then Owner-asked work or genuine polish only (backlog fully paid — do NOT invent surface); (c) keep the increment to ONE edit + ONE gates call; NEVER repeat this round's 3-round sqlite drift.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583/r584, UI-only diff since)
+
+---
+Task ID: r586
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r586 per r585 handoff — HEAD ab8327211 = own r585, NO parallel session this time → ran AS r586. ONE batched opening (doctrine held — no sqlite-drift repeat); golden legs all three fresh; one increment; gates; ship.
+
+Work Log:
+- OPENING (single bash, r585's cost centers avoided): key check all sources null → TASK-102 stays Owner-blocked; runs same 5, all error (dial-401 credential class) → peer slice 2 stays sighting-blocked; registry exactly ONE clean pack; server 200; tree clean.
+- GOLDEN LEGS, all three fresh GREEN: settings = Model Relay click → "Benchmark intelligence" panel + "Free reach · freellm.sh / live census" chip, console 0/0. Workflows = Run trigger → task textarea long-paste 1516 chars, console 0/0 — and r585's task-char-count chip LIVE-WITNESSED en passant ("1,516 chars | emerald:true"), closing r585's honest gap. Radar = trusted Radix click on Frontier → seed strip persisted across sessions (emerald "reproduced ·4" + "1/1 reproduced" from the localStorage ledger), board cards render, NO Partial-fetch line this round → the arxiv leg RECOVERED (risk 5 watch closed); inner-scroll evidence re-armed: the first probe read scrollTop 0 because scroll-behavior:smooth animates the assignment — forcing scrollBehavior='auto' then assigning sticks scrollTop 755 (container ch=349 matches the r577 container; probe doctrine: set auto before asserting). Console 0/0 on every leg.
+- INCREMENT (census speaks — born from the radar walk): the strip's census chip was a neutral Chip saying "1/1 reproduced" with zero explanation — the verdicts behind it lived only in per-seed chips and Evolution. Shipped in frontier-scout-tab.tsx: the census now carries data-testid="seed-census" (QA-reachable like its sibling seed-reproduction), a tooltip naming the AWorld 4-check doctrine with the EXACT breakdown ("X/Y reproduced · N not-reproduced · M unverifiable — each seed carries an AWorld 4-check verdict (provenance · claim · directive · promotion band)"), and a tint that follows the ledger's worst verdict (amber when a check broke / emerald when every seed reproduced / neutral while purely unverifiable — the per-seed chip palette, house 10.5px language preserved). LIVE-WITNESSED post-rebuild: "1/1 reproduced | emerald:true | title:1/1 reproduced · 0 not-reproduced · 0 unverifiable…", console 0/0. Amber path NOT witnessed (needs a failing seed; synthetic forcing declined — the neutral path is also proven via the old build's default).
+- GATES: tsc=0; lint=0 errors (33 warnings — exact baseline, summary-line grep); qa-seed-reproduction + qa-constraint-block chained with && OK (UI-only diff in ONE component; vault/resume/peer/harness/rrf green r583-r585 with no lib/server diff since).
+- BUDGET: 12/12 exactly — batched opening (1), three legs (3), census recon (2 reads + 2 rg, one rg whiffed on a wrong file scope), edit (1), gates (1), witness (1), this ship (1).
+
+Stage Summary:
+- All three golden legs green in one round with the r585 gap closed and the arxiv watch retired; the seed census now explains itself in the house chip language. Parallel-session disposition not needed this round. Cap held at exactly 12.
+
+Round Handoff:
+Round ID: r587 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) peer slice 2 still sighting-blocked (all 5 runs dial-401 credential class); (4) frontier judge queue stays rubric-only until the Owner keys a lane; (5) the census chip's AMBER path is unproven live (needs a not-reproduced seed — synthetic forcing declined; the emerald and neutral paths are witnessed); (6) probe doctrine to keep: scrollBehavior='auto' before asserting scrollTop; trusted clicks for Radix triggers; grep the lint SUMMARY line, not the word "error".
+Next recommended action: r587 — ONE batched opening. Then: (a) golden legs all three fresh; (b) then Owner-asked work or genuine polish only (backlog fully paid — do NOT invent surface); (c) keep the increment to ONE edit + ONE gates call + ONE witness.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583-r586, UI-only diff since)

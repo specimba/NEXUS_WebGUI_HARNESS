@@ -483,10 +483,39 @@ export function FrontierScoutTab() {
                 {seeds.length} seed{seeds.length === 1 ? "" : "s"} → Evolution pulls from
                 this ledger
               </Chip>
-              <Chip>
-                {seeds.filter((s) => s.reproduction?.verdict === "reproduced").length}/{seeds.length}{" "}
-                reproduced
-              </Chip>
+              {/* r586: the census speaks at a glance — tint follows the ledger's
+                  worst verdict (amber when a check broke, emerald when every
+                  seed reproduced, neutral while purely unverifiable), the
+                  tooltip names the AWorld 4-check doctrine and the exact
+                  breakdown, and the chip is QA-reachable by test id like its
+                  per-seed sibling (data-testid="seed-reproduction"). */}
+              {(() => {
+                const reproduced = seeds.filter(
+                  (s) => s.reproduction?.verdict === "reproduced",
+                ).length;
+                const notReproduced = seeds.filter(
+                  (s) => s.reproduction?.verdict === "not-reproduced",
+                ).length;
+                const unverifiable = seeds.length - reproduced - notReproduced;
+                const tint =
+                  notReproduced > 0
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : reproduced === seeds.length
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "";
+                return (
+                  <span
+                    data-testid="seed-census"
+                    className="inline-flex"
+                    title={`${reproduced}/${seeds.length} reproduced · ${notReproduced} not-reproduced · ${unverifiable} unverifiable — each seed carries an AWorld 4-check verdict (provenance · claim · directive · promotion band)`}
+                  >
+                    <Chip className={tint}>
+                      {reproduced}/{seeds.length}{" "}
+                      reproduced
+                    </Chip>
+                  </span>
+                );
+              })()}
             </div>
             {seeds.slice(0, 3).map((seed, i) => seedRow(seed, i))}
             {seeds.length > 3 ? (
