@@ -120,38 +120,86 @@ export interface AgentUsage {
 // tint — the pack-author vocabulary aid from the r575 correction, in the UI.
 // r577: preset keys outside the base schema surface as "·drift" (amber chip +
 // tooltip line) — registry-time detection of the r575 algo/op drift class.
-function PluginPacksPanel() {
-  const [data, setData] = React.useState<{
-    packs: {
-      id: string;
+// r583: the strip no longer re-fetches on EVERY mount (each #agents visit used
+// to burn one /api/tools/registry round-trip and paint nothing while it flew).
+// Module-level cache + in-flight dedupe + background revalidate (SWR): first
+// paint is instant from cache, a fresh fetch lands in place, and a live/cached
+// age chip names the data's vintage — with an explicit refresh affordance so
+// the Owner can re-scan the registry without a full page reload.
+type PacksData = {
+  packs: {
+    id: string;
+    name: string;
+    version: string;
+    dir: string;
+    tools: {
       name: string;
-      version: string;
-      dir: string;
-      tools: {
-        name: string;
-        base: string;
-        description: string;
-        args: string[];
-        preset: Record<string, unknown> | null;
-        unknownPresetKeys: string[];
-      }[];
+      base: string;
+      description: string;
+      args: string[];
+      preset: Record<string, unknown> | null;
+      unknownPresetKeys: string[];
     }[];
-    invalid: { dir: string; errors: string[] }[];
-  } | null>(null);
+  }[];
+  invalid: { dir: string; errors: string[] }[];
+  checkedAt: number;
+};
 
+// Module-level (NOT per-mount) state: navigating away and back to #agents is
+// instant, and concurrent mounts share one request instead of racing.
+let packsCache: PacksData | null = null;
+let packsInflight: Promise<PacksData | null> | null = null;
+
+function fetchPacks(): Promise<PacksData | null> {
+  if (packsInflight) return packsInflight;
+  packsInflight = fetch("/api/tools/registry")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      if (j && Array.isArray(j.packs)) {
+        packsCache = { packs: j.packs, invalid: j.invalid ?? [], checkedAt: Date.now() };
+        return packsCache;
+      }
+      return null;
+    })
+    .catch(() => null)
+    .finally(() => {
+      packsInflight = null;
+    });
+  return packsInflight;
+}
+
+function PluginPacksPanel() {
+  // Hydrate from the cache synchronously — no flash of nothing on revisit.
+  const [data, setData] = React.useState<PacksData | null>(() => packsCache);
+  const [live, setLive] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  // Background revalidate: the cached paint stays up while a fresh fetch runs;
+  // only a NEW payload object (new checkedAt) replaces the state.
   React.useEffect(() => {
     let alive = true;
-    fetch("/api/tools/registry")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (alive && j && Array.isArray(j.packs))
-          setData({ packs: j.packs, invalid: j.invalid ?? [] });
-      })
-      .catch(() => {});
+    fetchPacks().then((j) => {
+      if (alive && j) {
+        setData(j);
+        setLive(true);
+      }
+    });
     return () => {
       alive = false;
     };
   }, []);
+
+  const refresh = () => {
+    setRefreshing(true);
+    setLive(false);
+    void fetchPacks().then((j) => {
+      if (j) {
+        setData(j);
+        setLive(true);
+      }
+      setRefreshing(false);
+    });
+  };
 
   if (!data || (data.packs.length === 0 && data.invalid.length === 0)) return null;
   const toolCount = data.packs.reduce((n, p) => n + p.tools.length, 0);
@@ -165,9 +213,32 @@ function PluginPacksPanel() {
         <span className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400">
           {data.packs.length} pack{data.packs.length === 1 ? "" : "s"} · {toolCount} tool{toolCount === 1 ? "" : "s"}
         </span>
+        <span
+          title={
+            live
+              ? "Fresh from /api/tools/registry this visit"
+              : "Rendered from the cached registry payload — the background revalidate keeps it honest"
+          }
+          className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400"
+        >
+          {live ? "live" : "cached"} ·{" "}
+          {new Date(data.checkedAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={refreshing}
+          title="Re-scan the plugins folder registry now — no page reload needed"
+          className="rounded-md px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-cyan-500/10 hover:text-cyan-700 disabled:opacity-50 dark:hover:text-cyan-300"
+        >
+          {refreshing ? "checking…" : "refresh"}
+        </button>
         <span className="text-xs text-muted-foreground">
           declared in plugins/*/manifest.json — preset tools over builtin
-          executors, live after reload
+          executors, re-scan without reload
         </span>
       </div>
       <div className="space-y-1.5">
