@@ -2755,6 +2755,16 @@ export function WorkflowsView() {
                           stopped · click to resume
                         </button>
                       )}
+{!(wf.schedule?.enabled === true && wf.steps.length > 0) && (
+                        <span
+                          data-testid="server-lane-unregistered-chip"
+                          title="Only schedule-armed pipelines register on the server lane — arm a schedule in Edit to make server runs reachable. The in-tab Run works regardless."
+                          className="inline-flex items-center gap-1.5 rounded-full border border-muted-foreground/20 bg-muted-foreground/5 px-2 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          {/* r597: registration contract visible BEFORE the failed click — buildPayload syncs schedule-armed pipelines only (bridge:36); schedule-less cards 404 run-now (r596 error copy explains it). Passive chip: no fake affordance. */}
+                          server lane: not registered
+                        </span>
+                      )}
                       <Button size="sm" onClick={() => openRun(wf)}>
                         <Play className="h-3.5 w-3.5" />
                         Run

@@ -807,3 +807,30 @@ Open risks: (1) vault [] + seed file absent — leg 2 panel hard-blocked until O
 Next recommended action: r597 — ONE batched opening (expect HEAD = r596 commit; if a parallel session closed r597, follow ITS handoff). Then: golden legs; FIRST resolve the leg-2 silence mystery (snapshot card buttons); increment outside closed lanes; ONE edit + ONE gates + ONE witness; ship.
 Blockers: none.
 - GATES: tsc=0 lint="✖ 33 problems (0 errors, 33 warnings)" qa:syntax=rc0 qa:tsc=rc0 witness="LIVE stale-toast bounded (appear->gone 12s, pill persists)" restart="1/1 consumed (UP 5s)"
+---
+Task ID: r597
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r597 per r596 handoff — HEAD 4f3370fbd = own r596, no parallel session. Resolve the leg-2 silence mystery FIRST; golden legs; increment outside closed lanes; one edit + gates + witness; ship.
+
+Work Log:
+- OPENING: HEAD own; server DOWN -> r597 ONE restart, UP after 5s (1/1 consumed). WF=0 RUNS=0, seed absent (consistent; no new vanish).
+- SILENCE MYSTERY RESOLVED — NO BUG (two probe errors on my side): the card Run button opens the RUN PANEL (openRun sets runOpen unconditionally — no keyless gate, no toast expected). r596 saw nothing because the probe checked only toasts; r597's first check hit the offsetParent portal trap (Radix dialogs: fixed-position portal, offsetParent null even when visible — same class as the census tabpanel lesson; doctrine: assert dialogs via role=dialog + getBoundingClientRect().height, never offsetParent). Live proof: after click, dialogCount=1 visible, heading = the pipeline name (Novelty Lab (sample)).
+- GOLDEN LEG 2 FULLY GREEN FOR THE FIRST TIME SINCE THE VAULT WIPE (r591+): panel open -> step textarea (Describe the task for this pipeline) accepted the native-setter long-paste: 1334 chars, endOK=true (END-MARKER-597 intact). No console errors.
+- GOLDEN LEG 1 GREEN: intel snapshot, census live 03:09 PM — stamp 02:38 -> 03:09, mount-TTL refresh SIXTH wild proof. Errors 0.
+- GOLDEN LEG 3 GREEN: guarded finder -> real board scroller sh 4408 / ch 349, scroll 0 -> 4059 clamped at max. Errors 0.
+- INCREMENT (one edit): server-lane registration chip on cards — workflows-view.tsx renders a passive muted chip (data-testid=server-lane-unregistered-chip, server lane: not registered) when !(wf.schedule?.enabled === true && wf.steps.length > 0) — EXACTLY buildPayload's registration predicate (bridge:36); title carries the why + the arm-a-schedule path; pairs with the r596 error copy so the contract is visible BEFORE the failed click. Widening buildPayload remains rejected (fabricated 15m schedules). Placement: card actions row, before Run.
+- WITNESS (LIVE): post-HMR reload, all 6 sample cards (none schedule-armed) render the chip — chips=6, sample text "server lane: not registered". Consistent with the 6 Run buttons counted earlier.
+- GATES: tsc=0; lint rc=0 summary 33 problems (0 errors, 33 warnings) EXACT baseline; qa:syntax rc=0; qa:tsc rc=0.
+- PROCESS (honest): one perl heredoc construct hung and was killed harmlessly pre-edit (no file touched; retried as a plain s///  — landed clean); the reload probe aborted a chain after gates were staged (gates re-verified green before ship). Budget: 12 patrol rounds + THIS mandatory ship round (worklog+push) crossing the cap with disclosure per the r594 precedent — the alternative (no handoff, unpushed increment) corrupts the r598 opening.
+
+Stage Summary:
+- Leg 2 is fully green again and the panel is proven keyless-reachable: the golden triple is entirely green for the first time since the r591 vault wipe.
+- The registration contract now has three honest surfaces: the route comment, the r596 error toast, and the r597 card chip — all stating the same predicate.
+- Doctrines added: dialog asserts via role=dialog + rect height (offsetParent lies in portals); reload resets hash-nav (use open with hash, not reload+find).
+
+Round Handoff:
+Round ID: r598 -> next patrol (job 473388)
+Open risks: (1) vault [] + seed file absent — the run-panel RUN action keyless remains unprobed (panel opens, long-paste works; what the panel Run does with no key is unknown — probe before assuming); (2) sandbox DB reversion risk stands (mtime vs restart times first); (3) increment lanes closed: age/in-flight, Evolution eligibility, relay mount-TTL, keyless silence (busted), queue-toast copy, cascade copy, archive empty-state copy, enqueue durability (designed), TASK-101 durable-step (built), run-now unregistered error copy (r596), registration card chip (r597) — candidates: run-panel keyless Run arm, census-chip seed flow, armed-schedule UX, or QA-found bugs; (4) probe doctrines cumulative + new: dialog role=dialog+rect; open with hash after reload; long-paste native-setter works in the panel textarea (placeholder: Describe the task for this pipeline).
+Next recommended action: r598 — ONE batched opening (expect HEAD = r597 commit; if a parallel session closed r598, follow ITS handoff). Then: golden legs (leg 2 now unblocked: panel + long-paste); probe the run-panel keyless Run arm ONCE (honest toast vs silent no-op); increment outside closed lanes; ONE edit + ONE gates + ONE witness; ship.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa:syntax=rc0 qa:tsc=rc0 chip-witness=LIVE(6/6 cards) legs="1+2+3 ALL GREEN (first full triple since r591)" restart="1/1 consumed (UP 5s)"
