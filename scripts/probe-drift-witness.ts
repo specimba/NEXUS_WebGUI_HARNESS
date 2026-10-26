@@ -3,6 +3,10 @@
 // never touched, no restart spent. Creates a temporary pack with one inert
 // pin (current_time has no schema args) and one known-key pin, asserts the
 // registry readout flags exactly the right one, then removes the pack.
+// r577-correction: the first version called process.exit() INSIDE the try —
+// exit skips finally, the cleanup never ran, and the probe pack leaked into
+// the r577 commit. Result now rides an exitCode variable; process.exit runs
+// AFTER the finally block, so the pack is removed on EVERY path.
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 const dir = "plugins/probe-drift-pack";
@@ -35,6 +39,7 @@ writeFileSync(
   ),
 );
 
+let exitCode = 1;
 try {
   const { GET } = await import("../src/app/api/tools/registry/route");
   const res = await GET();
@@ -42,29 +47,30 @@ try {
   const pack = j.packs.find((p: { id: string }) => p.id === "probe-drift-pack");
   if (!pack) {
     console.log("PROBE MISSING — FAIL");
-    process.exit(1);
+  } else {
+    const now = pack.tools.find((t: { name: string }) => t.name === "probe_now");
+    const stamp = pack.tools.find((t: { name: string }) => t.name === "probe_stamp");
+    const pass =
+      JSON.stringify(now.unknownPresetKeys) === '["timezone"]' &&
+      JSON.stringify(stamp.unknownPresetKeys) === "[]" &&
+      JSON.stringify(stamp.preset) === '{"op":"sha256"}' &&
+      now.args.length === 0 &&
+      stamp.args.includes("op");
+    console.log(
+      "PROBE pack_now drift:",
+      JSON.stringify(now.unknownPresetKeys),
+      "| pack_stamp drift:",
+      JSON.stringify(stamp.unknownPresetKeys),
+      "| stamp preset:",
+      JSON.stringify(stamp.preset),
+      "| stamp args include op:",
+      stamp.args.includes("op"),
+    );
+    console.log(pass ? "DRIFT-FLAG POSITIVE WITNESS: PASS" : "DRIFT-FLAG WITNESS: FAIL");
+    exitCode = pass ? 0 : 1;
   }
-  const now = pack.tools.find((t: { name: string }) => t.name === "probe_now");
-  const stamp = pack.tools.find((t: { name: string }) => t.name === "probe_stamp");
-  const pass =
-    JSON.stringify(now.unknownPresetKeys) === '["timezone"]' &&
-    JSON.stringify(stamp.unknownPresetKeys) === "[]" &&
-    JSON.stringify(stamp.preset) === '{"op":"sha256"}' &&
-    now.args.length === 0 &&
-    stamp.args.includes("op");
-  console.log(
-    "PROBE pack_now drift:",
-    JSON.stringify(now.unknownPresetKeys),
-    "| pack_stamp drift:",
-    JSON.stringify(stamp.unknownPresetKeys),
-    "| stamp preset:",
-    JSON.stringify(stamp.preset),
-    "| stamp args include op:",
-    stamp.args.includes("op"),
-  );
-  console.log(pass ? "DRIFT-FLAG POSITIVE WITNESS: PASS" : "DRIFT-FLAG WITNESS: FAIL");
-  process.exit(pass ? 0 : 1);
 } finally {
   rmSync(dir, { recursive: true, force: true });
   console.log("probe pack removed:", !existsSync(dir));
 }
+process.exit(exitCode);

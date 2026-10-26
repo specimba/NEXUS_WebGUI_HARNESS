@@ -320,3 +320,21 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r578 — key check first (trigger unchanged). Then: (a) slice 2 only if the Owner asks (agent-picker integration / lanes-crews declarations); (b) census-chip extraction stays parked (watch-only); (c) if a feature round is wanted, the registry-readout arg-name advisory thread is now fully absorbed — pick from TASKS.md P1 backlog or ask the Owner.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=40/40 probe-witness=PASS
+
+---
+Task ID: r577-correction (post-ship, same session)
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Correct the r577 record and tree — the probe pack leaked INTO the commit; the script's "removes the pack in finally" claim was false.
+
+Work Log:
+- WHAT HAPPENED: both r577 probe runs called process.exit() INSIDE the try block — in Bun/Node process.exit terminates immediately and the finally block never runs, so plugins/probe-drift-pack/manifest.json survived on disk and git add -A swept it into 323990217 (visible as "create mode ... plugins/probe-drift-pack/manifest.json" in the commit output). The r577 worklog's "removes the pack in finally" claim was therefore FALSE, and the committed pack's description says "(auto-removed)" — a lie the dev server's NEXT restart would have surfaced in the live registry as a permanent amber ·drift chip for a phantom pack.
+- FIXED: (1) plugins/probe-drift-pack/ removed from the tree (plugins/ now holds only sample-research-pack); (2) scripts/probe-drift-witness.ts restructured — the result rides an exitCode variable and process.exit runs AFTER the finally block, so cleanup executes on EVERY path; re-run witnessed: PASS + "probe pack removed: true" + dir-absent confirmed; (3) tsc re-run 0; (4) this correction entry.
+- LESSON (script doctrine): process.exit() inside try skips finally — any probe/fixture script that mutates shared state must compute an exit code and exit OUTSIDE the try/finally. Same class as the r575 overclaim: the record must match the machine, and the machine must match the record, before shipping.
+
+Stage Summary:
+- The shipped tree is truthful again: no stray pack, the witness tool cleans up on every path, and the correction is on the record. Round budget note: r577 + this correction ran over 12 — the overrun bought the removal of a shipped falsehood, per the honesty-outranks-budget precedent (r575-correction).
+
+Round Handoff:
+Round ID: r578 (handoff unchanged: key check first; slice 2 only if the Owner asks; census-chip extraction stays parked). One addition: r578's registry readout should show exactly ONE pack (sample-research-pack, 2 tools, both clean) — if a probe-drift-pack ever appears there, the witness script leaked again (it cannot — cleanup is now unconditional).
+Blockers: none.
+- GATES: tsc=0 (script-only change; lint/vault/resume unchanged from the r577 ship)
