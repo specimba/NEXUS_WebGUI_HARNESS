@@ -128,7 +128,17 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   if (!csrfOk(req)) return csrfReject();
   try {
-    const provider = new URL(req.url).searchParams.get("provider") ?? "builtin";
+    // r567: the identifier is REQUIRED. A bare DELETE used to fall through to
+    // "builtin" and report ok while the intended slot survived untouched — the
+    // r566 witness-cleanup no-op that left a fake vyce key in this vault.
+    // Missing param is now a loud 400, never a silent guess.
+    const provider = new URL(req.url).searchParams.get("provider")?.trim() ?? "";
+    if (!provider) {
+      return NextResponse.json(
+        { ok: false, error: "provider search param is required (?provider=<name>)" },
+        { status: 400 }
+      );
+    }
     await db.automationVault.deleteMany({ where: { provider } });
     return NextResponse.json({ ok: true, provider });
   } catch (e) {
