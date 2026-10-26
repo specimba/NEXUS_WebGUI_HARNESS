@@ -126,6 +126,11 @@ export interface AgentUsage {
 // paint is instant from cache, a fresh fetch lands in place, and a live/cached
 // age chip names the data's vintage — with an explicit refresh affordance so
 // the Owner can re-scan the registry without a full page reload.
+// r604: a REQUESTED re-scan that never lands is no longer a silent no-op —
+// the strip grows an amber "re-scan failed" chip (same vocabulary as the
+// drift chips) while the last good scan stays on the wall with its true old
+// vintage. The background revalidate failing at mount stays quiet: nothing
+// was requested there, and the cached chip already names the paint's age.
 type PacksData = {
   packs: {
     id: string;
@@ -173,6 +178,10 @@ function PluginPacksPanel() {
   const [data, setData] = React.useState<PacksData | null>(() => packsCache);
   const [live, setLive] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  // r604: the last requested re-scan failed to land — never true from a mere
+  // mount revalidate, so the chip only appears when the Owner asked and the
+  // registry answered with silence.
+  const [failed, setFailed] = React.useState(false);
 
   // Background revalidate: the cached paint stays up while a fresh fetch runs;
   // only a NEW payload object (new checkedAt) replaces the state.
@@ -192,10 +201,15 @@ function PluginPacksPanel() {
   const refresh = () => {
     setRefreshing(true);
     setLive(false);
+    setFailed(false);
     void fetchPacks().then((j) => {
       if (j) {
         setData(j);
         setLive(true);
+      } else {
+        // r604: honesty face — the re-scan the Owner requested did not land.
+        // Keep the cached paint (it is still the newest truth) and say so.
+        setFailed(true);
       }
       setRefreshing(false);
     });
@@ -227,6 +241,14 @@ function PluginPacksPanel() {
             minute: "2-digit",
           })}
         </span>
+        {failed && (
+          <span
+            title="The re-scan fetch did not land (registry API unreachable this visit) — the strip still shows the last good scan; nothing was invented while it failed. Hit refresh to retry."
+            className="rounded-md border border-amber-500/40 bg-amber-500/[0.07] px-1.5 py-0.5 text-[10.5px] font-medium text-amber-600 dark:text-amber-400"
+          >
+            re-scan failed
+          </span>
+        )}
         <button
           type="button"
           onClick={refresh}
