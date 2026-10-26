@@ -1124,3 +1124,26 @@ Round ID: r608 -> next patrol (job 473388)
 Next recommended action: r608 — batched opening (expect HEAD = r607 commit; else follow ITS handoff); qa:golden (1 round); increment = SQLite WAL pragma in lib/db.ts (small, verifiable via pragma query probe) OR archiver-500 repro; gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4-PASS probe="probe-r607 20/20 PASS (classification contract + code order)" witness="deterministic probe; live outage E2E deferred to next real Vyce-class event (no theatre)" restart="0/1 consumed"
+
+---
+Task ID: r608
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270437)
+Task: Patrol per r607 handoff — qa:golden QA face, P1 SQLite WAL + busy_timeout hardening, gates, witness, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = 78c93e82b (r607 closed by a parallel session — endpoint-unreachable rotation); followed ITS handoff → this dispatch = r608. Server UP at open. QA in ONE round: qa:golden 4/4 PASS (leg1 badges snapshot+live, leg2 frontier guard, leg3 long-paste, console 0->0).
+- P1 increment: src/lib/db.ts was a bare PrismaClient — the archiver-500 / WF-row-revert class is 'database is locked' (writer-vs-writer + reader-vs-writer on a rollback-journal file). ONE edit adds the canonical stack: connection_limit=1 (single pooled connection — own queries queue instead of racing, per-connection pragmas cover every query), journal_mode=WAL (readers stop blocking the writer; persists in the db FILE so the workflow-scheduler inherits it with zero changes), busy_timeout=5000 (competing writer waits 5s instead of throwing), synchronous=NORMAL (recommended WAL pairing). Pragmas land once per process with honest failure-swallowing (non-SQLite datasource or boot-time lock keeps prior behavior — nothing invented).
+- LIVE LESSON (doctrine): the pragma probe run against the LIVE pre-WAL dev server wedged it — journal-mode flip under an active old engine killed the server (HTTP 000) mid-round. Restart 1/1 consumed; the server now BOOTS ON the hardened config and qa:golden went 4/4 on it. Never flip journal_mode under a live engine — do it at boot (the new code makes this automatic for every future process).
+- Probe findings (honest corrections): (1) SQLite PRAGMA result columns are named 'timeout', not 'busy_timeout' — first run's 2 FAILs were assertion-key errors; observed VALUES were exactly the intended 5000. (2) A fresh independent PrismaClient already reports busy_timeout=5000 (Prisma's own SQLite default) — the scheduler always had the timeout; WAL is the genuinely new file-level gift to other processes. Witness = scripts/probe-r608-sqlite-pragmas.ts, 6 checks: all three pragmas on the shared connection; WAL file-persistence seen by a fresh independent client; fresh-client default documented; queries still execute.
+- Budget disclosure: round overran. Root causes: (a) two transport-rejected oversized single-call commands (heredoc + long commit message — empty tool errors, zero side effects, verified by guards); (b) probe assertion bugs (BigInt stringify crash, destructure slip, PRAGMA key name); (c) a live-server wedge requiring the restart. No silent spinning — each retry was a distinct compact operation; recovery compressed dedup + all gates into single guarded rounds.
+
+Stage Summary:
+- Meta-review P1 'SQLite lock contention' is now mechanism-level: WAL + busy_timeout + connection_limit=1 on the shared singleton; scheduler inherits WAL via file persistence (its busy_timeout was already Prisma's 5s default). connection_limit=1 also removes in-process pool self-racing.
+- Remaining queue r609+: (P2) archiver-500 repro + stack capture; (P2) vault seeding path (needs an Owner key — never invented); (P3) backlog drain-rate rebalance; (P3) enricher fail-open timeout retune.
+- Doctrines added: never flip journal_mode under a live engine; Prisma SQLite PRAGMA rows are BigInt with short key names ('timeout') — safe-stringify + verify keys in probes; [row] destructure already IS the row; unique-anchor sed beats Edit-from-memory for same-round patches; keep single-call bash payloads small (transport rejects oversized chains).
+
+Round Handoff:
+Round ID: r609 -> next patrol (job 473388)
+Next recommended action: r609 — batched opening (expect HEAD = r608 commit; else follow ITS handoff); qa:golden (1 round); increment = archiver-500 repro + stack capture (P2) OR backlog drain rebalance (P3); gates + witness; ship under 12. Budget guard: author probe scripts in ONE clean Write, never memory-patch in the same round; keep every bash call small.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 (on the restarted hardened server) probe="probe-r608 6/6 PASS after key-name correction" restart="1/1 consumed (journal-mode wedge; server boots ON hardened config)"
