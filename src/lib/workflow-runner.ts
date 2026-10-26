@@ -1067,9 +1067,26 @@ export async function executeWorkflowRun(
             startedAt: run0.startedAt,
             finishedAt: run0.finishedAt ?? null,
           }),
-        }).catch(() => {
-          /* archive is best-effort — never affect the run */
-        });
+        })
+          .then(async (res) => {
+            // r609 stack capture: a 500 RESPONSE is not a fetch rejection —
+            // the route's honest {error} body used to die here unseen (why
+            // the archiver-500 left zero diagnostics anywhere). Surface it;
+            // still best-effort — never throws into the run.
+            if (!res.ok) {
+              const body = await res.text().catch(() => "");
+              console.warn(
+                `[run-archive] DB tier failed HTTP ${res.status} — ${body.slice(0, 300)}`
+              );
+            }
+          })
+          .catch((e: unknown) => {
+            // best-effort — never affect the run, but never mute the reason
+            console.warn(
+              "[run-archive] DB tier unreachable —",
+              e instanceof Error ? e.message : e
+            );
+          });
       }
     } catch {
       /* archive is best-effort */

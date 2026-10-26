@@ -102,3 +102,7 @@ agent-ctx/
 # r522 liveness supervisor runtime artifacts
 dev-supervisor.log
 scripts/.liveness-supervisor.pid
+
+# r609: WAL sidecars are volatile runtime state (WAL mode since r608) - the .db itself stays tracked
+db/custom.db-shm
+db/custom.db-wal

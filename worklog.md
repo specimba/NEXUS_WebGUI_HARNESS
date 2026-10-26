@@ -1147,3 +1147,27 @@ Round ID: r609 -> next patrol (job 473388)
 Next recommended action: r609 — batched opening (expect HEAD = r608 commit; else follow ITS handoff); qa:golden (1 round); increment = archiver-500 repro + stack capture (P2) OR backlog drain rebalance (P3); gates + witness; ship under 12. Budget guard: author probe scripts in ONE clean Write, never memory-patch in the same round; keep every bash call small.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 (on the restarted hardened server) probe="probe-r608 6/6 PASS after key-name correction" restart="1/1 consumed (journal-mode wedge; server boots ON hardened config)"
+
+---
+Task ID: r609
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270514)
+Task: Patrol per r608 handoff — qa:golden QA face, P2 archiver-500 repro + stack capture, gates, witness, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = 097ebfd9f — NOT r608's b540e0120. Inspection: an automated cron-labeled commit touching ONLY the db/custom.db-shm/-wal sidecar binaries (they were tracked as of r608 and churn on every such commit — hygiene debt confirmed). Worklog's last section was still r608 → this dispatch = r609. Server UP. qa:golden 4/4 PASS (console 0->0) — no QA bugs.
+- P2 hunt (archiver-500 diagnostics): the Owner-visible failure was "Step 10 archiver — Request failed (500)" with zero surviving diagnostics. Root shape found in workflow-runner.ts (DB-tier archive, /api/runs/archive): the client used .catch(() => {}) AND never checked res.ok — a 500 RESPONSE is not a fetch rejection, so the route's honest {error} body died unseen. Server-side, the route's POST catch returned the message body but never console.error'd the stack → dev.log rotation erased everything. cloud-mirror.ts already models the correct in-house pattern (!res.ok -> read body -> classify) — mirrored it.
+- ONE increment, 2 hunks: (1) client arm — .then checks res.ok and console.warns "[run-archive] DB tier failed HTTP <status> — <body.slice(0,300)>" + rejection arm console.warns "DB tier unreachable — <reason>"; still best-effort, never throws into the run. (2) route arm — POST catch now console.errors "[run-archive] write failed:" with the real error object (no-console is off; 21 existing usages; baseline untouched).
+- LIVE REPRO (the P2's "repro" half, deterministic, on the real server): POST /api/runs/archive with a truthy-but-invalid startedAt ("not-a-date") -> new Date(...) = Invalid Date -> Prisma upsert throws PrismaClientValidationError -> 500 with the FULL honest body ("Invalid value for argument startedAt: Provided Date object is invalid" + the whole invocation dump) -> dev.log captures "[run-archive] write failed: Error [PrismaClientValidationError]:" with the stack. Nothing persisted (the write failed — that is the point). Root cause of the ORIGINAL 500s (lock contention) was already addressed by r608 WAL; this round makes the NEXT failure of any kind diagnosable in one look.
+- Hygiene bundled: db/custom.db-shm + db/custom.db-wal untracked (git rm --cached) + .gitignore entries (volatile WAL runtime state; the .db itself stays tracked). Ends the sidecar churn in cron commits (097ebfd9f-class).
+- Gates: tsc=0, qa:tsc=rc0, qa:syntax=PASS, lint=0 errors/33 warnings (exact baseline), qa:golden=4/4 post-edit (console 0->0). Budget discipline held: every bash call small, no heredocs, worklog via Edit — 12/12 target.
+
+Stage Summary:
+- Archiver-500 lane (P2) CLOSED: repro + stack capture both live-verified. The diagnostic chain is now end-to-end: route stack -> dev.log; route body -> client console.warn; nothing muted, nothing invented.
+- Remaining meta-review queue r610+: (P2) vault seeding path (needs an Owner key — never invented); (P3) backlog drain-rate rebalance; (P3) enricher fail-open timeout retune.
+- Doctrines added: a 500 RESPONSE is not a fetch rejection — every fetch().catch() in the codebase should be audited for a paired res.ok check (cloud-mirror already right; runner now right); forcing Prisma validation errors with truthy-invalid scalars (new Date("not-a-date")) is a deterministic, non-polluting 500 repro for any write route; WAL sidecars must never be tracked.
+
+Round Handoff:
+Round ID: r610 -> next patrol (job 473388)
+Next recommended action: r610 — batched opening (expect HEAD = r609 commit; else follow ITS handoff; ignore sidecar-only cron commits, they are now gitignored); qa:golden (1 round); increment = fetch-catch audit sweep (find remaining .catch(() => {}) / missing res.ok pairs on user-facing wires — same class as r609, small verifiable hunks) OR backlog drain rebalance (P3); gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="LIVE repro: 500 + honest body + '[run-archive] write failed' stack in dev.log; client arm code-verified (res.ok + body surface)" restart="0/1 consumed"

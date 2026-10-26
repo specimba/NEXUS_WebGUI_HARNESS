@@ -140,6 +140,10 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, id: row.id });
   } catch (err) {
+    // r609 stack capture: the {error} body alone did not survive log rotation
+    // (the archiver-500 left zero diagnostics) — the real stack now lands in
+    // dev.log too, tagged for the archiver-500 class.
+    console.error("[run-archive] write failed:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "archive write failed" },
       { status: 500 }
