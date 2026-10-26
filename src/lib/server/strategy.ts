@@ -499,18 +499,27 @@ export interface StrategyContext {
   digest: DigestEntry[];
   radar: { at: string | null; findings: number; criticals: number; tryables: number };
   queue: { queued: number; researched: number; failed: number };
+  /** r580: queued/researched rows for the Strategy card's hybrid search (head-capped notes). */
+  queueDocs: { id: string; label: string; text: string }[];
   lastAieReport: { at: string; summary: string } | null;
   engine: { armed: boolean };
   ownerActions: StrategyItemDTO[];
 }
 
 export async function getStrategyContext(): Promise<StrategyContext> {
-  const [items, digest, check, queueRows, lastReport] = await Promise.all([
+  const [items, digest, check, queueRows, lastReport, queueList] = await Promise.all([
     db.strategyItem.findMany({ orderBy: [{ priority: "asc" }, { createdAt: "asc" }], take: 200 }),
     readDigest(),
     db.capabilityCheck.findFirst({ orderBy: { createdAt: "desc" } }),
     db.researchQueue.groupBy({ by: ["status"], _count: { _all: true } }),
     db.autonomyLog.findFirst({ where: { kind: "report" }, orderBy: { createdAt: "desc" } }),
+    // r580: docs for the Strategy card's hybrid search — head-capped notes, small payload.
+    db.researchQueue.findMany({
+      where: { status: { in: ["queued", "researched"] } },
+      orderBy: { updatedAt: "desc" },
+      take: 40,
+      select: { id: true, url: true, notes: true },
+    }),
   ]);
   const dtos = items.map(toDTO);
   const byStatus: Record<string, number> = {};
@@ -539,6 +548,11 @@ export async function getStrategyContext(): Promise<StrategyContext> {
       tryables: (radarDigest.findings ?? []).filter((f) => (f as { tryable?: string }).tryable).length,
     },
     queue: Object.fromEntries(queueRows.map((r) => [r.status, r._count._all])) as StrategyContext["queue"],
+    queueDocs: queueList.map((r) => ({
+      id: r.id,
+      label: r.url || r.id,
+      text: (r.notes || r.url || r.id).slice(0, 400),
+    })),
     lastAieReport: lastReport ? { at: lastReport.createdAt.toISOString(), summary: lastReport.summary } : null,
     engine: { armed: g.__autonomyEngineArmed === true },
     ownerActions: dtos.filter((i) => i.kind === "owner-action" && i.status !== "done"),

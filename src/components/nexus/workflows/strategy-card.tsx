@@ -67,6 +67,7 @@ interface StrategyPayload {
   digest?: DigestEntry[];
   radar?: { at: string | null; findings: number; criticals: number; tryables: number };
   queue?: { queued?: number; researched?: number; failed?: number };
+  queueDocs?: { id: string; label: string; text: string }[];
   lastAieReport?: { at: string; summary: string } | null;
   engine?: { armed: boolean };
   error?: string;
@@ -183,24 +184,34 @@ export function StrategyCard() {
   // trigram-cosine, RRF-fused, all client-side on the already-fetched rows
   // (no extra API call; the fuse layer is embedder-agnostic by construction).
   const retriever = React.useMemo(() => {
-    if (!items.length) return null;
-    return new HybridRetriever(
-      items.map((it) => ({
+    // r580: corpus = backlog items + the research queue docs the payload now carries
+    // (rq: prefixed ids — one fused ranking space, still zero extra API calls).
+    const docs = [
+      ...items.map((it) => ({
         id: it.id,
         text: [it.title, it.nextAction, it.acceptance ?? "", it.kind, it.status].join(" \n "),
       })),
-    );
-  }, [items]);
+      ...(data?.queueDocs ?? []).map((d) => ({ id: `rq:${d.id}`, text: `${d.label} \n ${d.text}` })),
+    ];
+    return docs.length ? new HybridRetriever(docs) : null;
+  }, [items, data]);
   const searchResults = React.useMemo(() => {
     const q = search.trim();
     if (!q || !retriever) return null;
     return retriever.hybrid(q, 5);
   }, [search, retriever]);
-  const itemById = React.useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  type QueueDoc = { id: string; label: string; text: string };
+  type BacklogHit = { kind: "item"; it: StrategyItem } | { kind: "rq"; doc: QueueDoc };
+  const hitIndex = React.useMemo(() => {
+    const m = new Map<string, BacklogHit>();
+    for (const it of items) m.set(it.id, { kind: "item", it });
+    for (const d of data?.queueDocs ?? []) m.set(`rq:${d.id}`, { kind: "rq", doc: d });
+    return m;
+  }, [items, data]);
   const fusedHits = searchResults
     ? searchResults
-        .map((r) => ({ r, it: itemById.get(r.id) }))
-        .filter((h): h is { r: RankedDoc; it: StrategyItem } => Boolean(h.it))
+        .map((r) => ({ r, hit: hitIndex.get(r.id) }))
+        .filter((h): h is { r: RankedDoc; hit: BacklogHit } => Boolean(h.hit))
     : null;
   const maxRrf = searchResults?.[0]?.rrfScore ?? 1;
 
@@ -259,7 +270,7 @@ export function StrategyCard() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Hybrid-search the backlog — BM25 × trigram cosine, RRF-fused…"
+          placeholder="Hybrid-search the backlog + research corpus — BM25 × trigram cosine, RRF-fused…"
           className="h-8 text-xs"
           aria-label="Hybrid search strategy items"
         />
@@ -354,10 +365,10 @@ export function StrategyCard() {
             </p>
           ) : (
             <ul className="space-y-2">
-              {fusedHits.map(({ r, it }) => (
-                <li key={it.id} role="listitem" className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.05] p-3">
+              {fusedHits.map(({ r, hit }) => (
+                <li key={r.id} role="listitem" className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.05] p-3">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{it.id}</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{r.id}</span>
                     <span
                       className={cn(
                         "rounded border px-1.5 py-0.5 font-mono text-[10px]",
@@ -379,10 +390,21 @@ export function StrategyCard() {
                       <span className="font-mono text-[10px] text-muted-foreground">{r.rrfScore.toFixed(4)}</span>
                     </span>
                   </div>
-                  <p className="mt-1 text-sm font-medium leading-snug">{it.title}</p>
-                  {it.nextAction ? (
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">→ {it.nextAction}</p>
-                  ) : null}
+                  {hit.kind === "item" ? (
+                    <>
+                      <p className="mt-1 text-sm font-medium leading-snug">{hit.it.title}</p>
+                      {hit.it.nextAction ? (
+                        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">→ {hit.it.nextAction}</p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-1 truncate font-mono text-xs text-cyan-200/90" title={hit.doc.label}>
+                        {hit.doc.label}
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{hit.doc.text}</p>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
