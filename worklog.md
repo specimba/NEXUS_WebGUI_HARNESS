@@ -1236,3 +1236,23 @@ Round ID: r613 -> next patrol (job 473388)
 Next recommended action: r613 — batched opening (expect HEAD = r612 commit; else follow ITS handoff); qa:golden (1 round); increment = pick from docs/strategy/TASKS.md P2 lanes (plugin-manifest slice 2: agent-picker ToolId integration) OR an honest small UI increment on the AIE panel (per-cycle ms trend is queued); gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS(441) qa:tsc=rc0 qa:golden=4/4 witness="retune: 6s->4s with r611 latency evidence; feed: amber suppressed chip + dimmed rows, synced doctrine text; incident: server HTTP 000 mid-round, 1 restart, same-tree gates green pre/post" restart="1/1 consumed"
+
+---
+Task ID: r613
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270707)
+Task: Patrol per r612 handoff — qa:golden QA face, AIE per-cycle ms trend (the handoff's queued UI increment), gates, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = 8e6e2b053 (r612, expected), server UP. qa:golden 4/4 PASS (console 0->0) — no QA bugs.
+- INCREMENT — per-cycle latency trend on the Engine log header (server-autopilot.tsx, ONE hunk): client-side readout computed from the ALREADY-FETCHED log rows (kind==="cycle" filter, safe finite-number coercion of stats.ms via the existing parseLogStats, report rows excluded) — "latency min X · avg Y · max Z" in house tabular-nums vocabulary, amber tint when max > 4000ms (the r612 enricher cap) with an honest tooltip attributing >4s to GitHub/page-fetch latency or pre-retune cycles. No new API, no invented data; renders nothing when no cycle stats exist yet. Styling-polish slice = the strip itself (tabular-nums, amber degraded-state tint consistent with the r612 suppressed chip vocabulary).
+- Why this over plugin-manifest slice 2 (the handoff's other option): ToolId typing surgery is a deep cross-file change with overrun risk inside a 12-round patrol; the ms trend is the natural companion to r611's drain evidence + r612's retune and completes the latency story in the UI. Slice 2 stays the top P2 pick for a longer dev round.
+- Clean round: no restart consumed, no incident.
+
+Stage Summary:
+- The AIE panel now shows the engine's wall-time behavior, not just outcomes — the r611 probe's evidence is a permanent on-panel readout. Remaining meta-review queue r614+: (P2) plugin-manifest slice 2 (agent-picker ToolId integration + lanes/crews declarations) — top pick; (P2) vault seeding path (needs Owner key — never invented); (P2) Supabase backup bucket (Owner action).
+
+Round Handoff:
+Round ID: r614 -> next patrol (job 473388)
+Next recommended action: r614 — batched opening (expect HEAD = r613 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 (agent-picker ToolId integration, TASKS.md P2) if round budget allows a real start, else a small honest UI/engine increment; gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS(441) qa:tsc=rc0 qa:golden=4/4 witness="latency strip: min/avg/max from already-fetched cycle rows, amber >4s (r612 cap), honest tooltip; clean round" restart="0/1 consumed"

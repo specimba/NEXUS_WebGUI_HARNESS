@@ -1394,7 +1394,33 @@ export function ServerAutopilot() {
 
               {/* Logs feed — last 6 cycle/report rows, expandable stats */}
               <div className="mt-2">
-                <p className="text-[11px] font-medium text-muted-foreground">Engine log (last {autonomy.logs.length})</p>
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  Engine log (last {autonomy.logs.length})
+                  {/* r613: per-cycle latency trend — honest readout computed
+                     client-side from the ALREADY-FETCHED log rows (no new API,
+                     no invented data). Cycles above 4s get the amber tint: the
+                     r612 enricher cap is 4s, so a >4s cycle is paying GitHub /
+                     page-fetch latency or predates the retune. */}
+                  {(() => {
+                    const msValues = autonomy.logs
+                      .filter((l) => l.kind === "cycle")
+                      .map((l) => parseLogStats(l.statsJson).ms)
+                      .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0);
+                    if (msValues.length === 0) return null;
+                    const min = Math.min(...msValues);
+                    const max = Math.max(...msValues);
+                    const avg = msValues.reduce((a, b) => a + b, 0) / msValues.length;
+                    const fmt = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${Math.round(v)}ms`);
+                    return (
+                      <span
+                        className={cn("ml-1.5 font-normal tabular-nums", max > 4000 ? "text-amber-300/90" : "opacity-80")}
+                        title={`Cycle wall-time across the ${msValues.length} logged cycles — min ${fmt(min)} · avg ${fmt(avg)} · max ${fmt(max)}. Above 4s = GitHub/page-fetch latency or a pre-r612 cycle (the enricher dial itself now caps at 4s and fails open).`}
+                      >
+                        · latency min {fmt(min)} · avg {fmt(avg)} · max {fmt(max)}
+                      </span>
+                    );
+                  })()}
+                </p>
                 {autonomy.logs.length > 0 ? (
                   <ul className="mt-1 max-h-56 space-y-1 overflow-y-auto pr-1">
                     {autonomy.logs.map((log) => {
