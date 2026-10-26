@@ -13,6 +13,7 @@ import {
   Plus,
   RefreshCw,
   ScrollText,
+  Search,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { HybridRetriever, type RankedDoc } from "@/lib/rrf-retrieval";
 import { cn } from "@/lib/utils";
 
 // ─── r515-c: Strategy & doctrine card (Strategic Context Layer) ──────────────
@@ -105,6 +107,7 @@ export function StrategyCard() {
   const [formNext, setFormNext] = React.useState("");
   const [formPriority, setFormPriority] = React.useState("2");
   const [formKind, setFormKind] = React.useState("integration");
+  const [search, setSearch] = React.useState("");
 
   const load = React.useCallback(async () => {
     try {
@@ -176,6 +179,31 @@ export function StrategyCard() {
   const visible = expanded ? openItems : openItems.slice(0, 4);
   const digest = data?.digest ?? [];
 
+  // r579: hybrid retrieval over the backlog (P3 shim) — Okapi BM25 × hashed
+  // trigram-cosine, RRF-fused, all client-side on the already-fetched rows
+  // (no extra API call; the fuse layer is embedder-agnostic by construction).
+  const retriever = React.useMemo(() => {
+    if (!items.length) return null;
+    return new HybridRetriever(
+      items.map((it) => ({
+        id: it.id,
+        text: [it.title, it.nextAction, it.acceptance ?? "", it.kind, it.status].join(" \n "),
+      })),
+    );
+  }, [items]);
+  const searchResults = React.useMemo(() => {
+    const q = search.trim();
+    if (!q || !retriever) return null;
+    return retriever.hybrid(q, 5);
+  }, [search, retriever]);
+  const itemById = React.useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  const fusedHits = searchResults
+    ? searchResults
+        .map((r) => ({ r, it: itemById.get(r.id) }))
+        .filter((h): h is { r: RankedDoc; it: StrategyItem } => Boolean(h.it))
+    : null;
+  const maxRrf = searchResults?.[0]?.rrfScore ?? 1;
+
   return (
     <Card className="p-4 md:p-6" aria-label="Strategy and doctrine">
       {/* Header */}
@@ -224,6 +252,21 @@ export function StrategyCard() {
         <code className="rounded bg-muted px-1 py-0.5 text-[10px]">TASKS.md</code> ·{" "}
         <code className="rounded bg-muted px-1 py-0.5 text-[10px]">WORKLOGS.md</code>.
       </p>
+
+      {/* r579 hybrid search (P3 shim) */}
+      <div className="mt-3 flex items-center gap-2">
+        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Hybrid-search the backlog — BM25 × trigram cosine, RRF-fused…"
+          className="h-8 text-xs"
+          aria-label="Hybrid search strategy items"
+        />
+        {searchResults ? (
+          <span className="shrink-0 text-[10px] text-muted-foreground">{fusedHits?.length ?? 0} fused hits</span>
+        ) : null}
+      </div>
 
       {/* New-item form */}
       {showForm ? (
@@ -302,9 +345,49 @@ export function StrategyCard() {
         </div>
       ) : null}
 
-      {/* Backlog */}
+      {/* Backlog (or fused hybrid-search results) */}
       <div className="mt-3 max-h-96 overflow-y-auto pr-1" role="list" aria-label="Open strategy items">
-        {visible.length === 0 ? (
+        {fusedHits ? (
+          fusedHits.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
+              No fused hits — try different terms (at least one leg must rank a row for it to surface).
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {fusedHits.map(({ r, it }) => (
+                <li key={it.id} role="listitem" className="rounded-lg border border-cyan-500/25 bg-cyan-500/[0.05] p-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{it.id}</span>
+                    <span
+                      className={cn(
+                        "rounded border px-1.5 py-0.5 font-mono text-[10px]",
+                        r.bm25Rank && r.vecRank
+                          ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+                          : "border-amber-500/40 bg-amber-500/10 text-amber-300",
+                      )}
+                      title="Per-leg ranks inside the fused top-5: lexical (BM25) × semantic (trigram cosine). Cyan = both legs agree the row is relevant."
+                    >
+                      bm25 #{r.bm25Rank ?? "–"} · vec #{r.vecRank ?? "–"}
+                    </span>
+                    <span className="ml-auto flex items-center gap-1.5">
+                      <span className="h-1 w-16 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-emerald-500/70"
+                          style={{ width: `${Math.max(8, Math.round((r.rrfScore / maxRrf) * 100))}%` }}
+                        />
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{r.rrfScore.toFixed(4)}</span>
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm font-medium leading-snug">{it.title}</p>
+                  {it.nextAction ? (
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">→ {it.nextAction}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )
+        ) : visible.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
             Backlog empty — hit <span className="text-foreground">Sync signals</span> to seed it from the repo sweep,
             radar tryables, and owner actions.
