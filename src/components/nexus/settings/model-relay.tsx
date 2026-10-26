@@ -462,22 +462,42 @@ export function ModelRelayCard() {
             <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
               <Gauge className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
               Benchmark intelligence
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[10px] font-normal",
-                  intel?.origin === "live"
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                    : "border-amber-500/40 bg-amber-500/10 text-amber-300"
-                )}
-                title={
-                  intel?.origin === "live"
-                    ? "At least one leaderboard board was parsed live for this index"
-                    : "Boards unreachable — curated snapshot in effect (honest fallback, never invented)"
-                }
-              >
-                {intel ? (intel.origin === "live" ? "live boards" : "snapshot") : "loading…"}
-              </Badge>
+              {/* r588: age honesty — the badge said "live boards"/"snapshot"
+                  regardless of when the boards payload landed (mount
+                  auto-refresh only fires past the TTL). Same honest chip
+                  language the freellm census got in r587 and the plugin-packs
+                  strip in r583: live/cached · HH:MM naming the vintage,
+                  tooltip carrying the refresh doctrine. */}
+              {(() => {
+                const age = intel
+                  ? new Date(intel.asOf).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "";
+                return (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] font-normal tabular-nums",
+                      intel?.origin === "live"
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                        : "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                    )}
+                    title={
+                      intel?.origin === "live"
+                        ? `At least one leaderboard board was parsed live for this index, as of ${age} — auto-refreshes on mount past its freshness window; Refresh forces a live fetch.`
+                        : "Boards unreachable — curated snapshot in effect (honest fallback, never invented)"
+                    }
+                  >
+                    {intel
+                      ? intel.origin === "live"
+                        ? `${intelligenceStale(intel) ? "cached" : "live"} boards · ${age}`
+                        : "snapshot"
+                      : "loading…"}
+                  </Badge>
+                );
+              })()}
             </p>
             <Button
               type="button"
@@ -489,7 +509,7 @@ export function ModelRelayCard() {
               onClick={() => void loadIntel(true)}
             >
               <RefreshCw className={cn("h-3 w-3", intelLoading && "animate-spin")} aria-hidden />
-              Refresh
+              {intelLoading ? "checking…" : "Refresh"}
             </Button>
           </div>
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">

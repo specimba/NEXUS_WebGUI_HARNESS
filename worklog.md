@@ -575,3 +575,26 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r588 — ONE batched opening. Then: (a) golden legs all three fresh; (b) then Owner-asked work or genuine polish only (backlog fully paid — do NOT invent surface); (c) keep the increment to ONE edit + ONE gates call + ONE witness.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583-r587, UI-only diff since)
+
+---
+Task ID: r588
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r588 per r587 handoff — HEAD b92dc222a = own r587, no parallel session → ran AS r588. ONE batched opening; golden legs all three fresh; genuine polish increment completing the relay panel's age-honesty sweep (one edit + one gates + one witness); gates; ship.
+
+Work Log:
+- OPENING (single bash): key check all sources null → TASK-102 stays Owner-blocked; runs same 5 error (dial-401 credential class) → peer slice 2 stays sighting-blocked; registry ONE clean pack; server 200; tree clean.
+- GOLDEN LEGS, all three fresh GREEN, zero bugs: settings = Model Relay click → Benchmark intelligence + free-reach census (r587's "live · 05:44 AM" badge visible in place), console 0/0; workflows = Run trigger → long-paste 1116 chars, r585's chip re-witnessed ("1,116 chars"), console 0/0; radar = trusted Radix click → seed strip persisted (emerald "reproduced ·4" + census "1/1 reproduced" via test ids), inner scroll scrollTop 755 (sh:4528/ch:349, auto-behavior doctrine), console 0/0.
+- INCREMENT (age honesty on the Benchmark intelligence badge — completing the relay panel sweep, born from the settings-leg recon): the intel badge said "live boards"/"snapshot" with NO vintage (the paragraph below even admits "cached 6h" while hiding WHEN), Refresh spun without a word. One edit in model-relay.tsx mirroring r587's freellm twin exactly: badge now reads "live boards · HH:MM" / "cached boards · HH:MM" (intelligenceStale ternary, tabular-nums added), tooltip carrying the vintage + refresh doctrine on the live arm and keeping the honest-fallback text on the snapshot arm; Refresh label flips to "checking…" in flight. IntelligenceIndex.asOf + intelligenceStale confirmed isomorphic to freellm before the edit (lib grep).
+- LIVE WITNESS (honest): on the rebuilt page the badge renders "snapshot" with the full honest-fallback tooltip — the boards are unreachable at patrol hour, so the amber fallback arm is what's TRUE right now and it witnessed cleanly; the "live boards · HH:MM" arm is the same ternary shape proven live in r587's freellm twin and was visible pre-edit as plain "snapshot" in this round's own recon. Census badge re-checked coexisting ("live · 05:44 AM"). Console 0/0.
+- GATES: tsc=0; lint=0 errors (33 warnings — exact baseline, summary-line grep); qa-seed-reproduction + qa-constraint-block chained && OK (UI-only diff in ONE component; vault/resume/peer/harness/rrf green r583-r587, no lib/server diff).
+- BUDGET: 9/12 — opening (1), three legs (3), recon folded into legs (2 rg), read (1), edit (1), gates (1), witness (1), ship (1).
+
+Stage Summary:
+- All three golden legs green with zero fixes; the Model Relay panel's three data surfaces (plugin packs r583, free-reach census r587, benchmark intelligence r588) now ALL speak their own vintage in one chip language. The relay panel's age-honesty sweep is complete.
+
+Round Handoff:
+Round ID: r589 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) peer slice 2 still sighting-blocked (all 5 runs dial-401 credential class); (4) frontier judge queue stays rubric-only until the Owner keys a lane; (5) intel boards fell back to curated snapshot at patrol hour — if the Owner's next visit sees "snapshot" persist across sessions, that is the arena/AA boards being unreachable, NOT a regression (honest fallback by design); (6) the intel badge's "live boards · HH:MM" arm unwitnessed this round (boards down) — same ternary proven r587, natural sighting when boards recover; (7) probe doctrines: scrollBehavior='auto' before asserting scrollTop; trusted clicks for Radix triggers; grep the lint SUMMARY line; reload on update-overlay banners.
+Next recommended action: r589 — ONE batched opening. Then: (a) golden legs all three fresh; (b) then Owner-asked work or genuine polish only (backlog fully paid — do NOT invent surface; the relay age-sweep is now COMPLETE — find polish elsewhere, do not re-skin this panel again); (c) keep the increment to ONE edit + ONE gates call + ONE witness.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583-r588, UI-only diff since)
