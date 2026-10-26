@@ -22,7 +22,7 @@ export function MirrorCandidatesStrip({
 }) {
   if (candidates.length === 0) return null;
   return (
-    <div className="space-y-1.5 rounded-md border border-dashed border-violet-500/30 bg-violet-500/5 px-2.5 py-2">
+    <div className="space-y-1.5 rounded-md border border-violet-500/30 bg-violet-500/5 px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[10.5px] text-muted-foreground">
           Saved in this browser, not mirrored yet — one click stores it for

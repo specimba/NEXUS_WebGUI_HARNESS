@@ -781,14 +781,18 @@ function LaneExperimentDialog({
  * run panel carries "tag [X] ≠ worker" chips inline) and the goal is
  * word-truncated — persisted text is never torn mid-word.
  */
-function parsePlan(text: string): { goal: string; steps: string[] } {
+function parsePlan(text: string): {
+  goal: string;
+  steps: string[];
+  overflow: number;
+} {
   const lines = text
     .split("\n")
     .map((l) => stripUiChipArtifacts(l.trim()))
     .filter(Boolean);
-  if (lines.length === 0) return { goal: "", steps: [] };
+  if (lines.length === 0) return { goal: "", steps: [], overflow: 0 };
   const goal = truncateAtWord(lines[0].replace(/^#+\s*/, ""), 200);
-  const steps = lines
+  const cleaned = lines
     .slice(1)
     .map((l) =>
       l
@@ -796,9 +800,12 @@ function parsePlan(text: string): { goal: string; steps: string[] } {
         .replace(/^step\s*\d+\s*[:.]\s*/i, "")
         .trim()
     )
-    .filter(Boolean)
-    .slice(0, 8);
-  return { goal, steps };
+    .filter(Boolean);
+  // r569: the 8-step cap stops being silent — the dialog counts what the cap
+  // drops, so a long plan warns instead of quietly losing its tail.
+  const overflow = Math.max(0, cleaned.length - 8);
+  const steps = cleaned.slice(0, 8);
+  return { goal, steps, overflow };
 }
 
 function PlanPipelineDialog({
@@ -819,7 +826,11 @@ function PlanPipelineDialog({
     if (open) setSelected(agents.map((a) => a.id));
   }, [open, agents]);
 
-  const { goal, steps: planSteps } = parsePlan(planText);
+  const {
+    goal,
+    steps: planSteps,
+    overflow: planOverflow,
+  } = parsePlan(planText);
   const scaffold = planSteps.length === 0;
   const stepLines = scaffold
     ? ["Research the goal and gather context", "Draft the deliverable"]
@@ -956,6 +967,16 @@ function PlanPipelineDialog({
                   : "No step lines — a Research → Draft scaffold will be composed for you"
                 : "Tip: one step per line; bullets and numbering are stripped automatically"}
             </p>
+            {planOverflow > 0 ? (
+              <p
+                data-testid="plan-step-cap"
+                className="text-xs text-amber-600 dark:text-amber-400"
+              >
+                8-step cap — {planOverflow} more pasted{" "}
+                {planOverflow === 1 ? "line" : "lines"} will not run; split the
+                plan into two workflows.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">

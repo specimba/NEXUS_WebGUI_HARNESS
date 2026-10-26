@@ -381,6 +381,14 @@ try {
     "contract: the paste-plan rotation preview names the agents WITH their step indices ({i + 1} spans) and mirrors create()'s round-robin (min(steps, 3) names, ellipsis when more)",
   );
 
+  // ── r569: the 8-step cap is honest ──
+  ok(
+    planSrc.includes('data-testid="plan-step-cap"') &&
+      planSrc.includes("8-step cap") &&
+      planSrc.includes("Math.max(0, cleaned.length - 8)"),
+    "contract: the 8-step cap warns — parsePlan counts the overflow and the dialog shows an amber cap note instead of silently dropping the plan tail",
+  );
+
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);
 } catch (err) {
