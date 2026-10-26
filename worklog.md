@@ -296,3 +296,27 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r577 — key check first (trigger unchanged). Then: (a) the timezone schema-drift one-liner if trivial (add timezone to current_time's def properties so the advisory shows it); (b) slice 2 only if the Owner asks; (c) census-chip extraction stays parked (watch-only).
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=40/40
+
+---
+Task ID: r577
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r577 per r576 handoff — key check; resolve the timezone schema-drift open risk; golden QA; gates; ship.
+
+Work Log:
+- OPENING: HEAD 6a673a6df (own r576) — no parallel session. Key check: all acquisition sources null → TASK-102 keyed proofs stay Owner-blocked. Chose handoff action (a): the timezone drift open risk.
+- ROOT-CAUSED BEFORE FIXING: the current_time executor (doCurrentTime) takes NO args and its schema properties:{} is truthful — the drift was on the PACK side: pack_now's {"timezone":"UTC"} pin was inert (merged under caller args, ignored by the executor). Adding timezone to the schema def (the handoff's suggested direction) would have advertised an arg that does nothing — wrong side. Honest fix: clean the sample pack + turn the advisory into a flag.
+- SHIPPED: (1) registry readout computes unknownPresetKeys per tool (preset keys not in the base's schema args); (2) panel chips render amber + "·drift" marker + tooltip line "Unknown preset keys (not in the base schema): …" when non-empty (cyan ·pin emphasis unchanged for clean pins); (3) sample manifest cleanup — pack_now is now a dial-free alias (preset field removed, descriptions updated; the pin-styling demo survives via pack_stamp's op pin); (4) resume-QA r576 guard strengthened with unknownPresetKeys (count stable at 40).
+- DOCTRINE REFINEMENT (loader cache): the live registry showed the NEW manifest immediately after the route edit WITHOUT a restart — a real content change to a route re-instantiates its bundle and refreshes the per-process plugin-loader cache. The r575-correction-2 doctrine stands for mtime no-op touches; this adds the positive case (real route edits DO reset the loader cache).
+- POSITIVE WITNESS (in-process, dev server untouched): because the route edit reset the cache before the flag could catch the old manifest live, the flag's positive state was witnessed via scripts/probe-drift-witness.ts — a fresh bun process that creates a temporary probe pack (inert timezone pin + known op pin), runs the REAL route GET, asserts probe_now drift ["timezone"] / probe_stamp drift [] / preset+args correct, and removes the pack in finally. PASS on both runs. The warm dev server never saw the probe (no restart spent).
+- GOLDEN WALK (fresh, post console --clear): settings relay+census (6 mentions); radar Frontier present + INNER-CONTAINER scroll evidenced (scrollTop 755 — closes the r576 open risk #4: future walks target the container, not window); workflows warm load + Run clicked + 220-char paste took; agents panel chips=2 pin=true drift=false (clean sample, correct post-cleanup) with tooltips "Schema args: none" / "Schema args: op, value, secret, length | Pinned preset: op". Console 0 errors.
+- GATES: tsc=0 (after one tsc-arbitrated fix: the probe's .ts import extension tripped TS5097 — extensionless per the other QA scripts' pattern); lint=0 errors (33 warnings); vault=32/32; resume=40/40; probe witness PASS ×2.
+
+Stage Summary:
+- The r576 advisory is now a real registry-time drift flag, positive-witnessed end to end; the sample pack models clean practice (no inert pins); the loader-cache doctrine has its complete form (no-op touches don't reset the cache, real route edits do). Budget 12/12 — exactly on budget.
+
+Round Handoff:
+Round ID: r578 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) probe-drift-witness.ts is a one-off tool kept in scripts/ — reuse it for future flag work, do not wire it into gates (it mutates plugins/ transiently); (4) the amber ·drift UI branch is positive-witnessed at the API layer only — a live UI render needs a real drifted pack on the running server (by design absent after the cleanup); fine to leave.
+Next recommended action: r578 — key check first (trigger unchanged). Then: (a) slice 2 only if the Owner asks (agent-picker integration / lanes-crews declarations); (b) census-chip extraction stays parked (watch-only); (c) if a feature round is wanted, the registry-readout arg-name advisory thread is now fully absorbed — pick from TASKS.md P1 backlog or ask the Owner.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=40/40 probe-witness=PASS

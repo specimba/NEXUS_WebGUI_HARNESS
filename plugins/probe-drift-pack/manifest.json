@@ -1,0 +1,24 @@
+{
+  "id": "probe-drift-pack",
+  "name": "Probe Drift Pack",
+  "version": "0.0.1",
+  "description": "temporary in-process drift-flag probe (auto-removed)",
+  "tools": [
+    {
+      "name": "probe_now",
+      "base": "current_time",
+      "description": "probe alias with an inert pin (timezone is not in the base schema)",
+      "preset": {
+        "timezone": "UTC"
+      }
+    },
+    {
+      "name": "probe_stamp",
+      "base": "uuid_hash",
+      "description": "probe with a known-key pin (op IS in the base schema)",
+      "preset": {
+        "op": "sha256"
+      }
+    }
+  ]
+}

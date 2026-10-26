@@ -14,6 +14,10 @@ import { loadPluginPacks } from "@/lib/server/plugin-loader";
 // sample pack once pinned "algo" where the executor reads args.op); the
 // readout now surfaces each base's schema-declared arg names so that drift
 // is diagnosable from the UI, without reading engine code.
+//
+// r577 — the advisory became a flag: preset keys outside the base's schema
+// vocabulary are surfaced as unknownPresetKeys (the exact drift class from
+// the r575 correction, caught at registry time instead of execution time).
 
 // Schema arg vocabulary per builtin — the isomorphic tool defs are the same
 // source of truth the browser-direct engine shares with this executor, so
@@ -42,6 +46,9 @@ export async function GET() {
         description: t.description,
         preset: t.preset ?? null,
         args: schemaArgs[t.base] ?? [],
+        unknownPresetKeys: t.preset
+          ? Object.keys(t.preset).filter((k) => !(schemaArgs[t.base] ?? []).includes(k))
+          : [],
       })),
     })),
     invalid,

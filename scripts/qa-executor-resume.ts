@@ -448,8 +448,9 @@ try {
     executeRouteSrc.includes("getPluginPreset") &&
       toolsEngineSrc.includes("[plugin:") &&
       registryRouteSrc.includes("loadPluginPacks") &&
-      registryRouteSrc.includes("args:"),
-    "contract: the plugin lane is pinned end-to-end — execute route imports getPluginPreset, engine stamps the '[plugin:' provenance tag, registry route loads packs via loadPluginPacks and surfaces the per-base schema args: advisory (the r575-correction vocabulary aid)",
+      registryRouteSrc.includes("args:") &&
+      registryRouteSrc.includes("unknownPresetKeys"),
+    "contract: the plugin lane is pinned end-to-end — execute route imports getPluginPreset, engine stamps the '[plugin:' provenance tag, registry route loads packs via loadPluginPacks, surfaces the per-base schema args: advisory AND flags unknownPresetKeys (preset keys outside the base schema — the r575-correction drift class, caught at registry time)",
   );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);
