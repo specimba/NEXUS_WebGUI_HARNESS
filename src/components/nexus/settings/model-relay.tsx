@@ -497,7 +497,7 @@ export function ModelRelayCard() {
                       intel?.origin === "live"
                         ? `At least one leaderboard board was parsed live for this index, as of ${age} — auto-refreshes on mount past its freshness window; Refresh forces a live fetch.`
                         : intel
-                          ? "Boards unreachable — curated snapshot in effect (honest fallback, never invented)"
+                          ? `Boards unreachable — curated snapshot in effect (honest fallback, never invented) — snapshot assembled ${age}; upstream is dark right now, so this is the newest parse this device holds`
                           : intelLoading
                             ? "No boards cached on this device yet — the first fetch is in flight; nothing is invented while it runs."
                             : "The first fetch has not landed (no boards cached on this device) — hit Refresh to seed it; nothing is invented in the meantime."

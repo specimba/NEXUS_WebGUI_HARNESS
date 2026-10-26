@@ -1020,3 +1020,32 @@ Open risks: (1) vault [] + seed file absent — unchanged; (2) sandbox DB WF=0 a
 Next recommended action: r605 — ONE batched opening (expect HEAD = r604 commit; if a parallel session closed r605, follow ITS handoff). Then: golden legs; ONE increment outside closed lanes; ONE edit + ONE gates + ONE witness; ship. r604 spent 13 rounds (over the 12 target: leg 1 needed two rounds, the increment check three — tighten by merging leg checks and picking pre-verified candidates); budget discipline: merge leg1 click into the opening browser round when the panel auto-renders.
 Blockers: none.
 - GATES: tsc=0 lint=0 (warnings re-verified from summary line at ship) qa:syntax=0-failures qa:tsc=rc0 witness="LIVE fetch-patch: live · 06:46 PM -> dark remount: failure-chip=false cached · 06:46 PM -> requested refresh: 're-scan failed' + honest title, vintage unchanged" legs="1+2+3 GREEN (relay honest fallback; frontier 942x300 sh=6181; paste 304 queued toast)" restart="1/1 consumed (server down at open)"
+
+---
+Task ID: r605
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270307)
+Task: Patrol round — worklog handoff follow, golden QA legs, one increment, gates, worklog, dual push.
+
+Work Log:
+- Opening batched: HEAD = a85bee538 (r604) — no parallel session; executed as r605 per own handoff. Server UP (HTTP 200), restart 0/1. Budget discipline applied: leg1 merged into one browser round (relay-nav eval-click); r604 fetch-patch residue cleared by fresh reload at leg1 start.
+- Golden leg 1 (Settings -> Model Relay): GREEN — intel badge "snapshot" (honest fallback), census chip "live · 06:39 PM" (an initial [role=status]-only probe said census ABSENT — false alarm: the census chip is not a status-role element; body-text probe found "Free reach · freellm.sh · live · 06:39 PM"), console 0 errors.
+- Golden leg 2 (Radar -> Frontier): GREEN — tab eval-click, scroll-guard 942x300 sh=6181 (warm dims stable), console 0 errors.
+- Golden leg 3 (Workflows run-panel long-paste): GREEN — paste 304, in-dialog Run enabled -> clicked -> toast "Running step 1/2 · queued just now", console 0 errors.
+- Increment candidate sweep (all CLEAN, logged to stop re-hunting): relay census refresh = honest (fresh-failure -> toast.error "Reach census refresh failed", r517); relay intel refresh = honest (toast.error "Benchmark refresh failed", r516); provider Refresh models = honest ("null on failure (error toasted)" per code comment); radar HF refresh = honest (r468 partial-failure toast + r516 inline refreshing line). Both relay Refresh buttons already have full in-flight affordances (disabled + spinning RefreshCw + "checking…").
+- FOUND: intel vintage asymmetry — the intel badge computes age (asOf -> HH:MM) but surfaces it ONLY in the origin==="live" branch (label "live boards · HH:MM" + title "as of HH:MM"); the snapshot fallback — the exact state where age matters most, since upstream is dark and the parse can be hours old — carried NO vintage anywhere (label "snapshot", title without "as of"). Census chip names its vintage in all states; intel did not.
+- ONE edit (model-relay.tsx, seen-anchored single-string replacement): snapshot-fallback title -> template literal "Boards unreachable — curated snapshot in effect (honest fallback, never invented) — snapshot assembled ${age}; upstream is dark right now, so this is the newest parse this device holds". Label-side vintage ("snapshot · HH:MM") deferred: label ternary lines recorded for r606 (sed evidence in worklog round) — the unseen middle needed one more round than the budget allowed.
+- Gates: tsc rc=0; lint tail re-confirmed at ship (see GATES); qa:syntax PASS; qa:tsc rc0.
+- Witness LIVE (reload -> #settings -> relay click): label=[snapshot] title now carries "— snapshot assembled 12:00 AM; upstream is dark right now…" — the 12:00 AM value is the cached curated parse's TRUE asOf (exactly the previously-invisible vintage), console 0 errors.
+
+Stage Summary:
+- New honest-copy face: the intel snapshot badge now tells the Owner HOW OLD the fallback parse is — in the one state (upstream dark) where the age is the difference between "trustworthy recent snapshot" and "stale relic presented as current".
+- Candidate ledger additions: relay census refresh failure (CLEAN r517), relay intel refresh failure (CLEAN r516), provider refresh models failure (CLEAN), HF partial-failure (CLEAN r468), relay Refresh in-flight affordances (CLEAN) — all CLOSED to re-hunting.
+- Open for r606: intel snapshot LABEL vintage ("snapshot" -> "snapshot · HH:MM") — exact label ternary now known: `${intelligenceStale(intel) ? "cached" : "live"} boards · ${age}` / `: "snapshot"`; also the census chip lacks a [role=status] equivalent for its vintage line (a11y asymmetry candidate, unverified).
+- Doctrines: intel "assembled HH:MM" may legitimately read midnight (curated parse's true asOf) — do not "fix" it as a bug; census chip is NOT a [role=status] element (probe via body text, not role).
+
+Round Handoff:
+Round ID: r606 -> next patrol (job 473388)
+Open risks: (1) vault [] + seed absent; (2) sandbox WF=0 heartbeat artifact; (3) fresh reload clears any document residue; (4) closed lanes: [r601-r605 list] + intel snapshot title vintage (r605) + the five clean refresh-surface lanes above; (5) r605 spent 13 rounds (mega-ship rounds keep saving the budget — merge legs, pre-verify candidates, and if the increment is a one-string edit, edit+gates+witness can share a round).
+Next recommended action: r606 — ONE batched opening (expect HEAD = r605 commit; else follow ITS handoff). Golden legs; increment: intel snapshot LABEL vintage (seen-anchored, ready) OR census a11y role=status asymmetry (verify first); ONE gates + ONE witness; ship. Keep under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0-exact-baseline qa:syntax=PASS qa:tsc=rc0 witness="LIVE: intel snapshot title now 'snapshot assembled 12:00 AM' (true asOf), label unchanged this round" legs="1+2+3 GREEN (snapshot honest + census live · 06:39 PM; frontier 942x300 sh=6181; paste 304 queued toast)" restart="0/1 consumed"
