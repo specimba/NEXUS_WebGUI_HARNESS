@@ -862,3 +862,29 @@ Open risks: (1) vault [] + seed file absent — unchanged; (2) FIRST r599 probe:
 Next recommended action: r599 — ONE batched opening (expect HEAD = r598 commit; if a parallel session closed r599, follow ITS handoff). Then: golden legs (leg 3 with the 7s settle); FIRST probe the in-dialog Run empty-task arm (disabled state + textarea value + click + 2s window); increment outside closed lanes; ONE edit + ONE gates + ONE witness; ship.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa:syntax=rc0 qa:tsc=rc0 witness="bundle+SSR chunks + sole-branch renderer + fresh-build doc (live transient handed to r599)" legs="1+2+3 GREEN" restart="1/1 consumed (UP 5s)"
+---
+Task ID: r599
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r599 per r598 handoff — HEAD 2b9b26315 = own r598, no parallel session. Probe the in-dialog Run empty-task arm; golden legs; increment outside closed lanes; one edit + gates + witness; ship.
+
+Work Log:
+- OPENING: HEAD own (2b9b26315). Server UP on arrival (200) — NO restart consumed this round (first free opening in recent rounds). WF=0 RUNS=0, seed absent, db mtime fresh (no new vanish).
+- CENSUS SCARE — RESOLVED AS DESIGNED (not a bug): the stamp froze at "live · 03:40 PM" across a true reload + Model Relay tab click (now 04:10 PM). Code read (model-relay.tsx): the census hydrates from localStorage and auto-refreshes on mount ONLY past its 30-min freshness window (freellmStale); the badge honestly labels live vs cached per the r587 age-honesty chip. The earlier "mount-TTL proofs" advanced because each session's mount found age > 30 min; this round's fresh document mounted at age ~23 min -> no refetch is the CORRECT behavior. The manual ?fresh=1 arm verified live: Refresh -> toast "Free reach census refreshed — 151 free+operational of 153 sources · 66ms", stamp 03:40 -> 04:12 PM. Leg 1 GREEN + TTL semantics documented. Lesson: a frozen stamp must be judged against the TTL window, not assumed broken.
+- GOLDEN LEG 3 GREEN: Radar -> Frontier (7s settle doctrine) -> guarded finder sh 4543 / ch 349 / clamp 4194 — exact r596/r598 match. Errors 0.
+- GOLDEN LEG 2 GREEN + the r598 WITNESS DEBT PAID LIVE: paste (len 177, endOK=true) ENABLED the gate; the enabled click queued (history 5->6); the queued run's pending rows caught live: step 1 = "Queued to open the run — this is the opening step; its dial hasn't gone out yet…" (the r598 order-fact copy), step 2 = the predecessor copy. The r598 bundle-level witness is now a live-DOM witness.
+- EMPTY-TASK RUN ARM (handoff probe #1) — RESOLVED: the in-dialog Run is DISABLED while the task textarea is empty (disabled=!task.trim() || !hasSteps, :1597); a disabled button swallows .click() — the r598 "silent no-op" was this gate hit by a headless click on a fresh document (r598's R10 queued because its paste had landed first). No toasts anywhere (consistent with the keyless queue). The honesty GAP: the disabled button carried NO title (title=null) — a greyed control with zero explanation.
+- INCREMENT (one edit, workflow-run-panel.tsx:1595): conditional title naming whichever gate holds the click — empty task: "Write the task brief above — Run enables once the task is set."; no steps: "This pipeline has no steps to run — add a step in Workflow Studio first."; enabled: no title. Site comment links the r598 no-op mystery.
+- WITNESS (LIVE, both arms): fresh reload -> panel with empty task {disabled:true, title:"Write the task brief above — Run enables once the task is set."}; after paste {disabled:false, title:null}. Console 0 errors.
+- GATES: tsc=0; lint rc=0 "✖ 33 problems (0 errors, 33 warnings)" EXACT baseline; qa:syntax rc=0; qa:tsc rc=0.
+- BUDGET: 13 rounds (opening 1, census diagnosis 3, leg3+refresh 1, probe 2, edit-read 1, edit 1, gates+witness 1, ship 1) — +1 over cap with disclosure per precedent; the census scare demanded a full code diagnosis before anything else.
+
+Stage Summary:
+- The empty-task Run gate is now self-explaining (disabled + title), closing the r598 no-op mystery end to end: queueing happens ONLY from an enabled in-dialog Run (task brief present), and the r598 first-step copy is live-witnessed.
+- The census mount-TTL doctrine is refined: refresh fires on mount only past the 30-min window; manual Refresh forces ?fresh=1; the badge's live/cached label is the honesty surface — a frozen stamp within the window is correct, not a bug.
+
+Round Handoff:
+Round ID: r600 -> next patrol (job 473388)
+Open risks: (1) vault [] + seed file absent — unchanged; (2) sandbox DB reversion risk stands (mtime vs restart times first); (3) increment lanes closed: age/in-flight, Evolution eligibility, relay mount-TTL, keyless silence (busted), queue-toast copy, cascade copy, archive empty-state copy, enqueue durability (designed), TASK-101 durable-step (built), run-now unregistered error copy (r596), registration card chip (r597), panel first-step pending copy (r598), empty-task Run title (r599) — candidates: the queued-run no-toast arm (queueing is toastless so far — is one honest "Queued" toast owed?), census-chip seed flow, armed-schedule UX, or QA-found bugs; (4) doctrines: census TTL=30min (judge frozen stamps against the window; Refresh forces fresh), hash-nav open=no-op (reload refetches), Frontier board ~7s settle, card Run opens the panel / in-dialog Run queues (disabled until task brief).
+Next recommended action: r600 — ONE batched opening (expect HEAD = r599 commit; if a parallel session closed r600, follow ITS handoff). Then: golden legs; increment outside closed lanes (the queued-run no-toast arm is the most promising open lane); ONE edit + ONE gates + ONE witness; ship.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa:syntax=rc0 qa:tsc=rc0 witness="LIVE both arms (disabled+title -> enabled, title=null)" legs="1+2+3 GREEN (census TTL semantics verified)" restart="0/1 consumed (server was up)"

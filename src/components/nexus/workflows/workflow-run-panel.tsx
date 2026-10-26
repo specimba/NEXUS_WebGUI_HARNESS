@@ -1595,6 +1595,17 @@ export function WorkflowRunPanel({
                 <Button
                   size="sm"
                   disabled={!task.trim() || !hasSteps}
+                  title={
+                    !task.trim()
+                      ? // r599 probe (live): the disabled Run carried NO title — a
+                        // greyed button with zero explanation (the r598 no-op
+                        // mystery was exactly this gate hit via a headless click).
+                        // Name whichever gate is actually holding the click.
+                        "Write the task brief above — Run enables once the task is set."
+                      : !hasSteps
+                        ? "This pipeline has no steps to run — add a step in Workflow Studio first."
+                        : undefined
+                  }
                   onClick={runWorkflow}
                 >
                   <Play className="h-3.5 w-3.5" />
