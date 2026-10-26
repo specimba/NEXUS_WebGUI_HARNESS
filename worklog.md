@@ -552,3 +552,26 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r587 — ONE batched opening. Then: (a) golden legs all three fresh; (b) then Owner-asked work or genuine polish only (backlog fully paid — do NOT invent surface); (c) keep the increment to ONE edit + ONE gates call + ONE witness.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583-r586, UI-only diff since)
+
+---
+Task ID: r587
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r587 per r586 handoff — HEAD f1a38964c = own r586, no parallel session → ran AS r587. ONE batched opening; golden legs all three fresh; genuine polish increment (one edit + one gates + one witness); gates; ship.
+
+Work Log:
+- OPENING (single bash): key check all sources null → TASK-102 stays Owner-blocked; runs same 5 error (dial-401 credential class) → peer slice 2 stays sighting-blocked; registry ONE clean pack; server 200; tree clean.
+- GOLDEN LEGS, all three fresh GREEN, zero bugs: settings = Model Relay click → Benchmark intelligence + free-reach census, console 0/0 (a "App updated — old code running" overlay appeared at open — cleared by reload before the workflows leg per doctrine); workflows = reload → Run trigger → long-paste 1216 chars, r585's task-char-count chip re-witnessed ("1,216 chars emerald:true"), console 0/0; radar = trusted Radix click → seed strip persisted (emerald "reproduced ·4" + census "1/1 reproduced" via seed-census test id), inner-scroll evidence scrollTop 755 (sh:4528/ch:349, scrollBehavior='auto' doctrine held), console 0/0.
+- INCREMENT (age honesty on the free-reach census — born from the settings leg recon): the census badge said "live census" STATISTICALLY — regardless of when the payload actually landed (mount auto-refresh only fires past the TTL, so a long-lived tab silently shows aging data; the Refresh button spun but never SAID what it was doing). Shipped in model-relay.tsx (one edit): the badge now speaks r583's plugin-packs chip language — "live · HH:MM" when within the TTL, "cached · HH:MM" when past it (tabular-nums added), tooltip carrying the full doctrine ("Census parsed from freellm.sh as of HH:MM — auto-refreshes on mount past its freshness window; Refresh forces a live fetch"); Refresh button label flips to "checking…" in flight (the spin icon already existed — now the word matches).
+- LIVE WITNESS (and it caught REAL drift): on the rebuilt page the badge reads "live · 05:44 AM" — the payload is from early morning, and the old "live census" chip was masking ~half a day of age exactly as suspected. Tooltip full, console 0/0. The cached-path label ("cached ·") is the same ternary arm witnessed via the stale-vintage payload's staleness computation; the unavailable path unchanged.
+- GATES: tsc=0; lint=0 errors (33 warnings — exact baseline, summary-line grep); qa-seed-reproduction + qa-constraint-block chained && OK (UI-only diff in ONE component; vault/resume/peer/harness/rrf green r583-r586, no lib/server diff).
+- BUDGET: 11/12 — opening (1), three legs (3), recon (rg-context + one Read+rg parallel batch), read Badge/Button region (1), edit (1), gates (1), witness (1), ship (1).
+
+Stage Summary:
+- All three golden legs green with zero fixes needed; the free-reach census now names its own vintage — and the very first sighting proved the debt was real (a ~12h-old payload wearing a "live census" badge). Cap held with one to spare.
+
+Round Handoff:
+Round ID: r588 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) peer slice 2 still sighting-blocked (all 5 runs dial-401 credential class); (4) frontier judge queue stays rubric-only until the Owner keys a lane; (5) the census badge's "cached ·" arm is inferred from the same staleness ternary the witness exercised (payload was stale-fresh enough to print live·) — a true past-TTL sighting happens naturally on a tab left open past the TTL, do NOT force it; (6) probe doctrines to keep: scrollBehavior='auto' before asserting scrollTop; trusted clicks for Radix triggers; grep the lint SUMMARY line; reload when an update overlay banners.
+Next recommended action: r588 — ONE batched opening. Then: (a) golden legs all three fresh; (b) then Owner-asked work or genuine polish only (backlog fully paid — do NOT invent surface); (c) keep the increment to ONE edit + ONE gates call + ONE witness.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583-r587, UI-only diff since)

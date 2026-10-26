@@ -567,22 +567,42 @@ export function ModelRelayCard() {
             <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
               <RadioTower className="h-3.5 w-3.5 text-teal-400" aria-hidden />
               Free reach · freellm.sh
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[10px] font-normal",
-                  freellm?.origin === "live"
-                    ? "border-teal-500/40 bg-teal-500/10 text-teal-300"
-                    : "border-stone-500/40 bg-stone-500/10 text-stone-400"
-                )}
-                title={
-                  freellm?.origin === "live"
-                    ? "The freellm.sh flight payload parsed live for this census"
-                    : "freellm.sh unreachable — no invented reach data, ever"
-                }
-              >
-                {freellm ? (freellm.origin === "live" ? "live census" : "unavailable") : "loading…"}
-              </Badge>
+              {/* r587: age honesty — the badge used to say "live census"
+                  regardless of when the payload actually landed (the mount
+                  auto-refresh only fires past the TTL, so a long-lived tab
+                  silently shows aging data). Same honest chip language the
+                  plugin-packs strip got in r583: live/cached · HH:MM naming
+                  the vintage, tooltip carrying the refresh doctrine. */}
+              {(() => {
+                const age = freellm
+                  ? new Date(freellm.asOf).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "";
+                return (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] font-normal tabular-nums",
+                      freellm?.origin === "live"
+                        ? "border-teal-500/40 bg-teal-500/10 text-teal-300"
+                        : "border-stone-500/40 bg-stone-500/10 text-stone-400"
+                    )}
+                    title={
+                      freellm?.origin === "live"
+                        ? `Census parsed from freellm.sh as of ${age} — auto-refreshes on mount past its freshness window; Refresh forces a live fetch.`
+                        : "freellm.sh unreachable — no invented reach data, ever"
+                    }
+                  >
+                    {freellm
+                      ? freellm.origin === "live"
+                        ? `${freellmStale(freellm) ? "cached" : "live"} · ${age}`
+                        : "unavailable"
+                      : "loading…"}
+                  </Badge>
+                );
+              })()}
             </p>
             <Button
               type="button"
@@ -594,7 +614,7 @@ export function ModelRelayCard() {
               onClick={() => void loadFreellm(true)}
             >
               <RefreshCw className={cn("h-3 w-3", freellmLoading && "animate-spin")} aria-hidden />
-              Refresh
+              {freellmLoading ? "checking…" : "Refresh"}
             </Button>
           </div>
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
