@@ -27,6 +27,11 @@ export interface PluginManifest {
   version: string;
   description: string;
   tools: PluginToolDecl[];
+  /** Slice-2 declarations (r614): which executor lanes / crews the pack's
+   * tools SERVE. Shape-validated free strings today — the vocabulary freeze
+   * lands with the picker's ToolId surgery, when these gain a consumer. */
+  lanes?: string[];
+  crews?: string[];
 }
 
 export interface ManifestValidation {
@@ -39,6 +44,34 @@ const ID_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const TOOL_NAME_RE = /^[a-z][a-z0-9_]{2,31}$/;
 const PRESET_JSON_BUDGET = 2048;
 const MAX_TOOLS_PER_PACK = 16;
+const DECL_RE = /^[a-z][a-z0-9_-]{1,23}$/;
+const MAX_DECLS_PER_FIELD = 8;
+
+/** Slice-2 declaration arrays (lanes/crews): optional, non-empty, bounded,
+ * lowercase-id shaped. Shape-only by design — the picker consumes these in
+ * the ToolId surgery and freezes the vocabulary then. */
+function validateDeclArray(value: unknown, field: string, errors: string[]): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length === 0) {
+    errors.push(`${field} must be a non-empty array of short lowercase ids (or omit it)`);
+    return undefined;
+  }
+  if (value.length > MAX_DECLS_PER_FIELD) {
+    errors.push(`${field} exceeds ${MAX_DECLS_PER_FIELD} entries`);
+    return undefined;
+  }
+  const out: string[] = [];
+  let ok = true;
+  value.forEach((v, i) => {
+    if (typeof v !== "string" || !DECL_RE.test(v)) {
+      errors.push(`${field}[${i}] must match ${DECL_RE.source} (got ${JSON.stringify(v)})`);
+      ok = false;
+      return;
+    }
+    if (!out.includes(v)) out.push(v);
+  });
+  return ok && out.length > 0 ? out : undefined;
+}
 
 export function validatePluginManifest(raw: unknown): ManifestValidation {
   const errors: string[] = [];
@@ -47,7 +80,7 @@ export function validatePluginManifest(raw: unknown): ManifestValidation {
   }
   const m = raw as Record<string, unknown>;
 
-  const known = ["id", "name", "version", "description", "tools"];
+  const known = ["id", "name", "version", "description", "tools", "lanes", "crews"];
   for (const key of Object.keys(m)) {
     if (!known.includes(key)) errors.push(`unknown top-level field: "${key}" (strict schema)`);
   }
@@ -131,6 +164,9 @@ export function validatePluginManifest(raw: unknown): ManifestValidation {
     });
   }
 
+  const lanes = validateDeclArray(m.lanes, "lanes", errors);
+  const crews = validateDeclArray(m.crews, "crews", errors);
+
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
@@ -141,6 +177,8 @@ export function validatePluginManifest(raw: unknown): ManifestValidation {
       version: m.version as string,
       description: m.description as string,
       tools,
+      ...(lanes ? { lanes } : {}),
+      ...(crews ? { crews } : {}),
     },
   };
 }

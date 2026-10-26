@@ -3,6 +3,8 @@
   "name": "Sample Research Pack",
   "version": "0.1.0",
   "description": "TASK-103 slice-1 sample pack: two dial-free preset tools demonstrating the manifest contract. pack_now aliases the builtin current_time executor (dial-free, no preset args — UTC by definition); pack_stamp pins uuid_hash with a fixed sha256 preset. Drop packs under plugins/<dir>/manifest.json — they appear in the tools registry after reload, and a pack never ships executable code.",
+  "lanes": ["utility", "workflow"],
+  "crews": ["research"],
   "tools": [
     {
       "name": "pack_now",

@@ -1256,3 +1256,25 @@ Round ID: r614 -> next patrol (job 473388)
 Next recommended action: r614 — batched opening (expect HEAD = r613 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 (agent-picker ToolId integration, TASKS.md P2) if round budget allows a real start, else a small honest UI/engine increment; gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS(441) qa:tsc=rc0 qa:golden=4/4 witness="latency strip: min/avg/max from already-fetched cycle rows, amber >4s (r612 cap), honest tooltip; clean round" restart="0/1 consumed"
+
+---
+Task ID: r614
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270737)
+Task: Patrol per r613 handoff — qa:golden QA face, plugin-manifest slice 2 declaration half + loader cache fix, gates, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = e1a52dde9 (r613, expected), server UP. qa:golden 4/4 PASS (console 0->0) — no QA bugs.
+- SCOPE CALL: full slice 2 (ToolId typing surgery) crosses the isomorphic/server boundary (buildToolDefs is isomorphic, presets live in the server loader) — too wide for a 12-round patrol. Shipped the DECLARATION HALF instead, per the handoff's fallback clause.
+- INCREMENT 1 — manifest lanes/crews declarations (plugin-manifest.ts): optional top-level lanes/crews arrays (strict schema: non-empty, max 8, lowercase-id shape ^[a-z][a-z0-9_-]{1,23}$, deduped, exactOptionalPropertyTypes-safe spread into the built manifest). Shape-only by design — the vocabulary freeze lands with the picker's ToolId surgery when these gain a consumer. Sample pack carries honest values (lanes utility/workflow, crews research). Registry route serves them; Agents-page Plugin packs strip renders cyan "lanes:" / "crews:" chips (house chip vocabulary) with tooltips.
+- INCREMENT 2 — loader mtime-sweep cache invalidation (plugin-loader.ts): the live witness EXPOSED the r575 cache wart — the first registry curl served lanes:[] because the per-process cache hid the edited manifest until a full reload. Fix: one readdir + N stats per cache hit; any manifest.json newer than the cache (or a vanished manifest = removal) forces a rescan; unreadable folder keeps the last good scan. Route comment synced ("appears on the next registry hit", no reload wait).
+- WITNESS (live, end-to-end): after the loader fix, curl /api/tools/registry returns {"lanes":["utility","workflow"],"crews":["research"]} — manifest edit -> next hit -> validated declarations served, zero restarts.
+
+Stage Summary:
+- Slice 2 is half-shipped: packs can now DECLARE their intent (lanes/crews) and the registry + Agents strip surface it; the ToolId typing surgery (picker selection, buildToolDefs preset defs, stores save-filter) remains the P2 frontier for a fresh-budget round. Loader cache semantics upgraded from reload-gated to hit-fresh.
+- Remaining meta-review queue r615+: (P2) plugin-manifest slice 2 second half (ToolId surgery — now unblocked: the declarations it will consume exist); (P2) vault seeding (Owner key); (P2) Supabase bucket (Owner action).
+
+Round Handoff:
+Round ID: r615 -> next patrol (job 473388)
+Next recommended action: r615 — batched opening (expect HEAD = r614 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 second half if budget allows a real start (ToolId widening + stores save-filter pass-through of pack tool ids is the smallest honest sliver), else a small UI/engine increment; gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS(441) qa:tsc=rc0 qa:golden=4/4 witness="live registry: sample pack serves lanes/crews after edit without reload (mtime sweep); strip chips cyan house vocabulary" restart="0/1 consumed"

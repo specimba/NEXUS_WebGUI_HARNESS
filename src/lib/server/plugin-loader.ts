@@ -5,9 +5,9 @@
 //     (a broken pack NEVER crashes boot — it lands in `invalid` with the
 //     honest reason, visible in the registry readout)
 //   • getPluginPreset()  → executor dispatch lookup for preset tools
-// Per-process cache: a pack dropped into the folder appears after the next
-// server reload — exactly the doctrine's "appears in the tools registry after
-// reload" (dev recompiles and production restarts both refresh the process).
+// r614: the per-process cache no longer hides dropped/edited manifests — a
+// quick mtime sweep of the watched folder invalidates it, so a new pack
+// appears on the NEXT registry/dispatch call instead of after a full reload.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -38,13 +38,37 @@ export interface PluginPresetRef {
 }
 
 let cache: PluginPackScan | null = null;
+let cacheBuiltAtMs = 0;
+
+/** r614: one readdir + N stats — cheap enough to run on every cache hit.
+ * Any manifest.json newer than the cache (or a pack dir that lost its
+ * manifest = a removal) forces a rescan. Unreadable folder keeps the last
+ * good scan (honest degradation, never a crash). */
+function watchedFolderChanged(): boolean {
+  if (!cache) return true;
+  try {
+    const entries = fs.readdirSync(pluginsRoot(), { withFileTypes: true });
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      try {
+        const st = fs.statSync(path.join(pluginsRoot(), e.name, "manifest.json"));
+        if (st.mtimeMs > cacheBuiltAtMs) return true;
+      } catch {
+        return true; // manifest vanished — pack removed, rescan
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 export function pluginsRoot(): string {
   return path.join(process.cwd(), "plugins");
 }
 
 export function loadPluginPacks(force = false): PluginPackScan {
-  if (cache && !force) return cache;
+  if (cache && !force && !watchedFolderChanged()) return cache;
   const root = pluginsRoot();
   const scan: PluginPackScan = { packs: [], invalid: [] };
   let dirs: string[] = [];
@@ -57,6 +81,7 @@ export function loadPluginPacks(force = false): PluginPackScan {
   } catch {
     // No watched folder yet — honest empty registry, not an error.
     cache = scan;
+    cacheBuiltAtMs = Date.now();
     return scan;
   }
   for (const dir of dirs) {
@@ -81,6 +106,7 @@ export function loadPluginPacks(force = false): PluginPackScan {
     }
   }
   cache = scan;
+  cacheBuiltAtMs = Date.now();
   return scan;
 }
 

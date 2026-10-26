@@ -137,6 +137,8 @@ type PacksData = {
     name: string;
     version: string;
     dir: string;
+    lanes?: string[];
+    crews?: string[];
     tools: {
       name: string;
       base: string;
@@ -270,6 +272,26 @@ function PluginPacksPanel() {
             <span className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400">
               v{p.version}
             </span>
+            {/* r614 slice-2 declarations: the lanes/crews a pack SERVES, verbatim
+               from its manifest (shape-validated there) — the future picker
+               filters on these; today they make the pack's intent visible
+               without reading the JSON. */}
+            {(p.lanes?.length ?? 0) > 0 && p.lanes && (
+              <span
+                title={`Declared lanes: ${p.lanes.join(", ")} — the executor contexts this pack's preset tools are meant for.`}
+                className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400"
+              >
+                lanes: {p.lanes.join(" · ")}
+              </span>
+            )}
+            {(p.crews?.length ?? 0) > 0 && p.crews && (
+              <span
+                title={`Declared crews: ${p.crews.join(", ")} — the crew contexts this pack's preset tools feed.`}
+                className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400"
+              >
+                crews: {p.crews.join(" · ")}
+              </span>
+            )}
             {p.tools.map((t) => {
               const pinned = t.preset ? Object.keys(t.preset) : [];
               const known = t.args ?? [];

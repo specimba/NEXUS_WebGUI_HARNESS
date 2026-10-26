@@ -4,8 +4,9 @@ import { buildToolDefs } from "@/lib/tools-defs";
 import { loadPluginPacks } from "@/lib/server/plugin-loader";
 
 // r575 — TASK-103 slice 1: the tools-registry readout. Builtins stay the
-// closed typed set; plugin packs appear here after the server reload picks
-// them up from plugins/<dir>/manifest.json. Invalid packs are listed WITH
+// closed typed set; plugin packs appear here on the next registry hit after
+// a drop/edit (r614: the loader's mtime sweep invalidates its cache — no
+// reload wait). Invalid packs are listed WITH
 // their validation errors (honest registry — a broken pack is visible, not
 // silently dropped and never boot-crashing).
 //
@@ -40,6 +41,8 @@ export async function GET() {
       version: p.manifest.version,
       description: p.manifest.description,
       dir: p.dir,
+      lanes: p.manifest.lanes ?? [],
+      crews: p.manifest.crews ?? [],
       tools: p.manifest.tools.map((t) => ({
         name: t.name,
         base: t.base,
