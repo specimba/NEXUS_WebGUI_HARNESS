@@ -1370,6 +1370,30 @@ export function WorkflowRunPanel({
             aria-label="Pipeline task"
             className="max-h-48 resize-none overflow-y-auto"
           />
+          {/* r585: visible paste receipt — a long instruction's landing was
+              only confirmable via devtools (the golden walk pastes 2000+
+              chars and reads the length back in console). The counter chip
+              gives the same receipt to the user in the house chip language:
+              muted while typing, emerald past the long-paste threshold with
+              an honest tooltip reminding that the box scrolls internally so
+              Run stays in reach. */}
+          {task.length > 0 ? (
+            <span
+              data-testid="task-char-count"
+              title={
+                task.length >= 1000
+                  ? "Long instruction loaded — the task box scrolls internally, the Run button stays in reach."
+                  : "Task length in characters."
+              }
+              className={
+                task.length >= 1000
+                  ? "mt-1.5 inline-flex w-fit items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10.5px] tabular-nums text-emerald-600 dark:text-emerald-400"
+                  : "mt-1.5 inline-flex w-fit items-center rounded-full border border-border bg-muted/50 px-2 py-0.5 font-mono text-[10.5px] tabular-nums text-muted-foreground"
+              }
+            >
+              {task.length.toLocaleString()} chars
+            </span>
+          ) : null}
           {/* r486-a successor wire (RSI continuity): when checked, the run's
               first step receives a labeled digest of this pipeline's last
               archived runs — successors build on prior outputs instead of
