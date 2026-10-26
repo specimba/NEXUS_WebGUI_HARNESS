@@ -92,6 +92,12 @@ async function snapshotState() {
     nextRunAt: r.nextRunAt,
     failStreak: r.failStreak,
   }));
+  // r570: self-heal crash debris — a hard-killed run (tool timeout SIGKILL)
+  // skips the finally-restore and leaves the qa key row behind. Sweep
+  // QA-signature rows BEFORE snapshotting so the restore can't resurrect them.
+  await db.automationVault.deleteMany({
+    where: { label: "qa", key: { startsWith: "sk-qa-" } },
+  });
   vaultSnapshot = (await db.automationVault.findMany({})).map((v) => ({
     provider: v.provider,
     key: v.key,
@@ -387,6 +393,13 @@ try {
       planSrc.includes("8-step cap") &&
       planSrc.includes("Math.max(0, cleaned.length - 8)"),
     "contract: the 8-step cap warns — parsePlan counts the overflow and the dialog shows an amber cap note instead of silently dropping the plan tail",
+  );
+  // r570: the GOAL line gets the same prefix hygiene as steps, and the dialog
+  // previews the cleaned name before Create.
+  ok(
+    planSrc.includes('data-testid="plan-goal-preview"') &&
+      planSrc.includes("r570: the goal gets the same prefix hygiene"),
+    "contract: pasted GOAL lines get the step-prefix strip and the dialog previews the cleaned workflow name (plan-goal-preview)",
   );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);

@@ -88,6 +88,12 @@ async function snapshotState() {
     nextRunAt: r.nextRunAt,
     failStreak: r.failStreak,
   }));
+  // r570: self-heal crash debris — a hard-killed run (tool timeout SIGKILL)
+  // skips the finally-restore and leaves the qa key row behind. Sweep
+  // QA-signature rows BEFORE snapshotting so the restore can't resurrect them.
+  await db.automationVault.deleteMany({
+    where: { label: "qa", key: { startsWith: "sk-qa-" } },
+  });
   vaultSnapshot = (await db.automationVault.findMany({})).map((v) => ({
     provider: v.provider,
     key: v.key,

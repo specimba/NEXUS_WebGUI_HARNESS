@@ -791,7 +791,15 @@ function parsePlan(text: string): {
     .map((l) => stripUiChipArtifacts(l.trim()))
     .filter(Boolean);
   if (lines.length === 0) return { goal: "", steps: [], overflow: 0 };
-  const goal = truncateAtWord(lines[0].replace(/^#+\s*/, ""), 200);
+  // r570: the goal gets the same prefix hygiene as step lines — pasting
+  // "Step 1: …" as the opener used to name the workflow literally "Step 1: …".
+  const goal = truncateAtWord(
+    lines[0]
+      .replace(/^#+\s*/, "")
+      .replace(/^step\s*\d+\s*[:.]\s*/i, "")
+      .trim(),
+    200
+  );
   const cleaned = lines
     .slice(1)
     .map((l) =>
@@ -951,6 +959,17 @@ function PlanPipelineDialog({
               }
               className="w-full resize-y rounded-lg border bg-transparent px-3 py-2 text-sm shadow-sm outline-none transition placeholder:text-muted-foreground/50 focus-visible:border-violet-500/40 focus-visible:ring-2 focus-visible:ring-violet-500/20"
             />
+            {goal ? (
+              <p
+                data-testid="plan-goal-preview"
+                className="truncate text-xs text-muted-foreground"
+              >
+                <span className="font-medium text-violet-500/90 dark:text-violet-400/90">
+                  Workflow name ·{" "}
+                </span>
+                {goal}
+              </p>
+            ) : null}
             <p
               className={cn(
                 "text-xs",
