@@ -254,3 +254,21 @@ Round Handoff:
 Round ID: r576 (unchanged from the r575 handoff — key check first; then the +1 plugin guard pin; slice 2 only if the Owner asks)
 Blockers: none.
 - GATES: tsc=0 qa-executor-resume=39/39 (lint/vault unchanged since r575 ship — no TS-bearing files touched in this correction)
+
+---
+Task ID: r575-correction-2 (post-ship, same session)
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Second record correction — the 1d9da397a "re-witnessed" claim was ALSO premature (stale loader cache).
+
+Work Log:
+- WHAT ACTUALLY HAPPENED: after the manifest fix, the loader's per-process cache still served the OLD manifest. Two refresh attempts failed before a green curl: touch of plugin-loader.ts (insufficient — lib-level touch does not re-instantiate route bundles) and touch of BOTH importing route files (Turbopack skips no-op content changes, so no recompile happened). The 1d9da397a "RE-WITNESSED: pack_stamp → SHA-256" claim was therefore false when shipped. Two false witness claims in one round is a serious honesty breach — closed here with the real transcript and a guard so it cannot recur silently.
+- CACHE DOCTRINE (final form): plugins/ JSON lives OUTSIDE the module graph; the loader's per-process cache resets only on a real module re-instantiation. mtime-only touches do NOT count (Turbopack hashes content and skips no-ops). The guaranteed path is scripts/dev-restart.sh (used here — the round's one allowed restart); the lesson: don't burn refresh attempts on touches when the watch-folder contract already says "after reload" — restart IS the reload.
+- THE REAL WITNESS (this transcript): POST pack_stamp {"value":"nexus-r575"} → ok:true, "[plugin:sample-research-pack · preset of uuid_hash] SHA-256 of 10 char(s): <hex>". Both sample tools now hold a genuine end-to-end witness. This correction shipped ONLY because a grep-guard on the live curl passed in the same chain (record ships when the witness is real, not before).
+- NO CODE CHANGED in this correction: the manifest fix was already committed in 1d9da397a; this entry corrects the RECORD and the doctrine only.
+
+Stage Summary:
+- Slice 1's witness is now complete and true for both sample tools; the watch-folder cache doctrine has its final, tested form; the honesty breach is documented in full rather than papered over.
+
+Round Handoff:
+Round ID: r576 (handoff unchanged: key check first; +1 plugin guard pin; slice 2 only if the Owner asks; registry-readout arg-name surfacing remains a slice-2 nicety)
+Blockers: none.
