@@ -13,8 +13,8 @@
     {
       "name": "pack_stamp",
       "base": "uuid_hash",
-      "description": "Deterministic sha256 stamp of an input string — the pack-flavored content hashing preset of uuid_hash.",
-      "preset": { "algo": "sha256" }
+      "description": "Deterministic SHA-256 stamp of an input string — the pack-flavored content hashing preset of uuid_hash (callers pass value; the pack pins op=sha256).",
+      "preset": { "op": "sha256" }
     }
   ]
 }

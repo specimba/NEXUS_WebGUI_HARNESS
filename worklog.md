@@ -234,3 +234,23 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r576 — key check first (trigger unchanged). Then: (a) qa-executor-resume +1 plugin guard (contiguous truths: 'getPluginPreset' import in the execute route, the '[plugin:' provenance tag, 'loadPluginPacks' in the registry route); (b) slice 2 if the Owner wants the picker integrated — else the watch-only census-chip extraction stays parked; (c) builtin box extraction parked.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=39/39
+
+---
+Task ID: r575-correction (post-ship, same session)
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Correct the r575 record — the commit/worklog overclaimed pack_stamp.
+
+Work Log:
+- THE OVERCLAIM: the r575 commit message and worklog said pack_stamp was witnessed returning a provenance-prefixed sha256. FALSE at ship time: pack_stamp returned an honest executor error ("Unknown op"") because the sample manifest declared the preset key "algo" while the uuid_hash executor reads args.op (payload key: value, not input). Only pack_now was a full end-to-end witness at ship time.
+- WHY THE WORKLOG PRIORITY WINS: a false permanent record poisons every future round that trusts it; the budget penalty is bounded. Honesty doctrine outranks the exhausted budget.
+- FIXED: manifest preset {"algo":"sha256"} → {"op":"sha256"} (+ description now states the caller contract: pass value, pack pins op). Loader cache refreshed via touch (per-process cache doctrine: plugins/ JSON is not in the module graph — a manifest edit needs the touch/reload, now recorded).
+- RE-WITNESSED: POST pack_stamp {"value":"nexus-r575"} → "[plugin:sample-research-pack · preset of uuid_hash] SHA-256 of 10 char(s): <hex>" — the full provenance + preset + dispatch chain now witnessed for BOTH sample tools; pack_now still green. tsc=0, qa-executor-resume 39/39 re-run.
+- LESSON (validator boundary): the manifest validator checks base membership, NOT arg vocabulary — arg-name drift between pack presets and executor arg names is pack-author responsibility. Slice 2 candidate: a tiny "preset keys" advisory in the registry readout (surface each base's known arg names) — only if trivial.
+
+Stage Summary:
+- The r575 record now tells the truth: slice 1 shipped, one incident (block-comment terminator), one overclaim (pack_stamp preset key) — both root-caused, fixed, and re-witnessed live.
+
+Round Handoff:
+Round ID: r576 (unchanged from the r575 handoff — key check first; then the +1 plugin guard pin; slice 2 only if the Owner asks)
+Blockers: none.
+- GATES: tsc=0 qa-executor-resume=39/39 (lint/vault unchanged since r575 ship — no TS-bearing files touched in this correction)
