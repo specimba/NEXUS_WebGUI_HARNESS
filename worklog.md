@@ -1077,3 +1077,26 @@ Open risks: (1) vault [] + seed absent; (2) sandbox WF=0 heartbeat artifact; (3)
 Next recommended action: r607 — ONE batched opening (expect HEAD = r606 commit; else follow ITS handoff). Golden legs merged (leg1+leg2 can share a browser round if you chain hash-navs); increment: fresh hunt (bug-led); ONE gates + ONE witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 witness="LIVE: intel label 'snapshot · 12:00 AM' + dashed border + title age intact" legs="1+2+3 GREEN" restart="0/1 consumed"
+
+---
+Task ID: meta-review-1 (Owner-requested, non-patrol)
+Agent: NEXUS WebGUI Harness
+Task: Owner meta-review — agents' last movements, cron performance, conversation-log review, automation-system assessment, recursive upgrade mechanism, deep search for fixes where we still hard-fail.
+
+Work Log:
+- Reviewed both Owner-uploaded logs (app UI dump + z.ai chat log r597-r606), git log r597-r606, worklog (44 sections), dev.log.
+- Cron performance audit (my own rounds): r601 11/12 (server crash mid-round, restart 1/1, ghost-session forensics) · r602 8/12 · r603 9/12 · r604 13/12 OVER (server down at open + 2-round leg1 + 3-round hunt) · r605 13/12 OVER (same drivers) · r606 8/12. 6/6 shipped + dual-pushed, console 0 errors every round, ~25 closed increment lanes accumulated.
+- Owner-visible hard-failures extracted from the UI dump: (1) Research Scout run FAILED step 3/13 — "network error — parked", LLM calls 7 recorded / 3 failed, ALL dials to Vyce AI x3 with ZERO relay hops (the ladder did not rotate on network-class failures); (2) prior run Step 10 archiver "Request failed (500)"; (3) Automation vault empty -> closed-tab lane cannot dial (app itself flags it "single highest-leverage experiment"); (4) evolution-cycles LLM rationale enricher "unavailable or failed open" (deterministic lane still executes 2 moves/cycle, 0 failed, but proposals suppressed by guard most cycles); (5) GitHub research backlog grows faster than it drains (42-48 queued, +54 import vs ~2/cycle drain).
+- Deep web search (z-ai SDK web_search, scripts/deep-search.ts) mapped to each: SQLite WAL + busy_timeout = canonical fix for lock-contention 500s (archiver + WF-row reverts are contention-shaped); industry failover gateways rotate on network errors/timeouts, not just 429s — matches our relay gap; Self-Harness paradigm (arXiv 2606.09498, Lilian Weng harness-engineering) = mine execution traces -> change scaffolding -> machine-verify.
+- SHIPPED the first recursive-upgrade mechanism: scripts/qa-golden.ts + package.json "qa:golden" — headless golden-path regression driving agent-browser CLI, baseline-aware console-error counting, exit 1 on any leg failure. First live run 4/4 PASS in one command (~45s). From r607 the patrol spends ONE tool round on QA instead of THREE (the chronic overrun driver).
+
+Stage Summary:
+- Patrol QA cost: 3 rounds -> 1 (qa:golden, verified 4/4). Budget overruns' root cause addressed at the mechanism level, not by discipline alone.
+- Hard-failure fix queue proposed for r607+: (P1) relay network-error rotation hunt — Vyce x3 + 0 hops must never recur; (P1) WAL + busy_timeout on the SQLite connection (archiver 500 + WF reverts); (P2) vault seeding path via the UI's own "Seed the closed-tab lane" affordance (needs an Owner key — never invented); (P2) archiver-500 repro + stack capture; (P3) backlog drain-rate vs import-rate rebalance; (P3) enricher fail-open timeout retune.
+- Doctrines: qa:golden is the legal minimum QA face for a patrol round (legs may still be run manually when investigating); deep-search script reusable at scripts/deep-search.ts.
+
+Round Handoff:
+Round ID: r607 -> next patrol (job 473388)
+Next recommended action: r607 — batched opening; run `bun run qa:golden` (1 round) instead of manual legs; increment = P1 relay network-error rotation hunt (reproduce: the parked run's lane classification) OR SQLite WAL pragma (lib/db.ts, small + verifiable via pragma query); keep <=12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:golden="4/4 PASS first live run"

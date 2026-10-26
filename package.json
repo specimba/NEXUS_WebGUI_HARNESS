@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "qa:syntax": "bun run scripts/qa-syntax-sweep.ts",
+    "qa:golden": "bun scripts/qa-golden.ts",
     "qa:tsc": "tsc --noEmit --incremental false"
   },
   "dependencies": {
