@@ -109,6 +109,88 @@ export interface AgentUsage {
   lastAt: number;
 }
 
+// ─── Plugin packs strip (r575 · TASK-103 slice 1) ──────────────────────
+// The tools-registry UI half: packs the server loader picked up from
+// plugins/*/manifest.json. Cyan = the lane/extension family; an invalid pack
+// shows its validation errors instead of vanishing (honest registry doctrine:
+// a broken pack is visible, never boot-crashing). No packs → renders nothing
+// (honest zero state, no noise).
+function PluginPacksPanel() {
+  const [data, setData] = React.useState<{
+    packs: {
+      id: string;
+      name: string;
+      version: string;
+      dir: string;
+      tools: { name: string; base: string; description: string }[];
+    }[];
+    invalid: { dir: string; errors: string[] }[];
+  } | null>(null);
+
+  React.useEffect(() => {
+    let alive = true;
+    fetch("/api/tools/registry")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (alive && j && Array.isArray(j.packs))
+          setData({ packs: j.packs, invalid: j.invalid ?? [] });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (!data || (data.packs.length === 0 && data.invalid.length === 0)) return null;
+  const toolCount = data.packs.reduce((n, p) => n + p.tools.length, 0);
+  return (
+    <div
+      data-testid="plugin-packs-panel"
+      className="mb-4 rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-3"
+    >
+      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">Plugin packs</span>
+        <span className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400">
+          {data.packs.length} pack{data.packs.length === 1 ? "" : "s"} · {toolCount} tool{toolCount === 1 ? "" : "s"}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          declared in plugins/*/manifest.json — preset tools over builtin
+          executors, live after reload
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {data.packs.map((p) => (
+          <div key={p.id} className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-medium text-foreground/85">{p.name}</span>
+            <span className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400">
+              v{p.version}
+            </span>
+            {p.tools.map((t) => (
+              <span
+                key={t.name}
+                title={`${t.description}\n\nDispatches through builtin "${t.base}" with the pack's pinned preset args.`}
+                className="rounded-md border border-cyan-500/20 bg-background/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground"
+              >
+                {t.name} <span aria-hidden className="text-cyan-500/70">→</span> {t.base}
+              </span>
+            ))}
+          </div>
+        ))}
+        {data.invalid.map((inv) => (
+          <div key={inv.dir} className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-md border border-amber-500/30 bg-amber-500/5 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-600 dark:text-amber-400">
+              invalid pack
+            </span>
+            <span className="text-xs text-muted-foreground" title={inv.errors.join("\n")}>
+              {inv.dir} — {inv.errors[0]}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function AgentsView() {
   const agents = useAgentsStore((s) => s.agents);
   const addAgent = useAgentsStore((s) => s.add);
@@ -327,6 +409,10 @@ export function AgentsView() {
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {/* r511 Harness Crew — alignment meters + presets, mounted above the grid */}
         <CrewPanel />
+        {/* r575 TASK-103 slice 1 — the tools-registry plugin strip: packs from
+            the watched plugins folder (manifest.json per dir), visible here
+            after reload (renders nothing when no packs exist — honest zero). */}
+        <PluginPacksPanel />
         {agents.length === 0 ? (
           <EmptyState
             emoji="🤖"

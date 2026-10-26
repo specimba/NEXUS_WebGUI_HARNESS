@@ -6,6 +6,7 @@ import { TOOL_META } from "../constants";
 import { buildToolDefs, type ToolDef, type ToolResult } from "../tools-defs";
 import { CORTEX_FALLBACK, cortexDeepScrape, cortexMemory, cortexSandbox, type CortexConfig } from "../cortex-edge";
 import { guardPublicUrl } from "./url-guard";
+import { getPluginPreset } from "./plugin-loader";
 
 // ─── Tool execution engine (server-side only) ────────────────────────────────
 // Schemas live in ../tools-defs.ts (isomorphic — the browser-direct engine
@@ -43,6 +44,24 @@ export async function executeTool(
     args = argsJson ? JSON.parse(argsJson) : {};
   } catch {
     args = {};
+  }
+
+  // r575: plugin preset tools (TASK-103 slice 1) — a pack declares a tool as a
+  // pinned preset of a BUILTIN executor. The dispatcher merges preset args
+  // UNDER the caller's args (caller wins), dials the base executor, and
+  // prefixes provenance so the pack is visible in every result. A pack never
+  // ships executable code — base is validated against BUILTIN_TOOL_IDS at
+  // manifest load, so this hop cannot recurse or escape the builtin set.
+  const preset = getPluginPreset(name);
+  if (preset) {
+    const merged = JSON.stringify({ ...preset.tool.preset, ...args });
+    const res = await executeTool(preset.tool.base, merged, signal, context);
+    const tag = `[plugin:${preset.packId} · preset of ${preset.tool.base}] `;
+    return {
+      ok: res.ok,
+      content: res.ok ? tag + res.content : res.content,
+      ms: Date.now() - started,
+    };
   }
 
   try {

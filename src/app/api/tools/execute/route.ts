@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeTool } from "@/lib/server/tools";
+import { getPluginPreset, loadPluginPacks } from "@/lib/server/plugin-loader";
 import type { CortexConfig } from "@/lib/cortex-edge";
 
 export const runtime = "nodejs";
@@ -65,7 +66,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   const name = body.name?.trim() ?? "";
-  if (!name || !KNOWN.has(name)) {
+  // r575: plugin preset tools (TASK-103 slice 1) are executable too — the
+  // pack loader validates their base against BUILTIN_TOOL_IDS, so a preset
+  // name passes the allowlist exactly when a loaded pack declares it.
+  if (!name || (!KNOWN.has(name) && !getPluginPreset(name))) {
     return NextResponse.json({ error: `Unknown tool "${name}"` }, { status: 400 });
   }
   const args = typeof body.args === "string" ? body.args : "{}";
@@ -80,7 +84,10 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(result);
 }
 
-/** GET: advertise the executable tool ids. */
+/** GET: advertise the executable tool ids (builtins + plugin preset tools). */
 export async function GET() {
-  return NextResponse.json({ tools: [...KNOWN] });
+  const pluginTools = loadPluginPacks().packs.flatMap((p) =>
+    p.manifest.tools.map((t) => t.name)
+  );
+  return NextResponse.json({ tools: [...KNOWN, ...pluginTools] });
 }

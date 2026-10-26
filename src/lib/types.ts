@@ -25,6 +25,28 @@ export type ToolId =
   | "image_generate"
   | "tts_speak";
 
+/** r575: the closed builtin set, as data — plugin manifests validate their
+ *  base-tool references against THIS list (TASK-103 slice 1: a pack declares
+ *  preset tools over builtin executors; it never ships its own executor). */
+export const BUILTIN_TOOL_IDS = [
+  "web_search",
+  "read_url",
+  "deep_scrape",
+  "cortex_memory",
+  "sandbox_exec",
+  "run_code",
+  "current_time",
+  "arxiv_search",
+  "wikipedia_search",
+  "hacker_news_search",
+  "github_repo_read",
+  "package_info",
+  "market_rates",
+  "uuid_hash",
+  "image_generate",
+  "tts_speak",
+] as const satisfies readonly ToolId[];
+
 export type AgentColor = "violet" | "emerald" | "amber" | "rose" | "cyan" | "fuchsia";
 
 export type ProviderMode = "auto" | "custom";
