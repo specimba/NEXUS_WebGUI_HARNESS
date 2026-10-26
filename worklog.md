@@ -1100,3 +1100,27 @@ Round ID: r607 -> next patrol (job 473388)
 Next recommended action: r607 — batched opening; run `bun run qa:golden` (1 round) instead of manual legs; increment = P1 relay network-error rotation hunt (reproduce: the parked run's lane classification) OR SQLite WAL pragma (lib/db.ts, small + verifiable via pragma query); keep <=12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:golden="4/4 PASS first live run"
+
+---
+Task ID: r607
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270407 + Owner meta-review follow-up)
+Task: Patrol round per meta-review-1 handoff — qa:golden QA face, P1 relay network-error rotation hunt, gates, witness, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = 9ddf31d85 (meta-review-1 — the Owner's review request was ALREADY answered by a parallel session: cron performance audit r601-r606, hard-failure extraction from the Owner's UI dump, deep web search, and the first recursive-upgrade mechanism scripts/qa-golden.ts). Followed ITS handoff: this dispatch = r607. Push state clean (meta-review-1 already on origin+fork).
+- QA face in ONE round: bun run qa:golden -> 4/4 PASS (leg1 relay badges "snapshot · 12:00 AM" + "live · 06:39 PM"; leg2 frontier 942x300 sh=6181; leg3 long-paste 212 + queued toast; console 0->0). The meta-review-1 mechanism works as designed.
+- P1 HUNT (relay network-error rotation): taxonomy already classes network errors HARD; r330 already made resume rotate; r505 already rotates on SILENCE (60s hangs). The remaining gap: the fetch-phase catch's 3-attempt same-lane retry fired for PRE-RESPONSE endpoint-unreachable failures — fetch() rejected before headers (DNS/refused/generic failed-to-fetch), re-dialed the same corpse x3, and attempt-loop retries never feed the health memory (the NEXT step dials the corpse again). Smoking gun from the Owner's own dump: the parked run's web-search tools succeeded (network UP) while Vyce fetched "network error" x3 with ⇄0 relay — lane-specific endpoint death, not a network blip.
+- ONE edit (agent-engine.ts, 2 hunks): new exported predicate isEndpointUnreachableError (fetch failed/ENOTFOUND/ECONNREFUSED/EAI_AGAIN/failed to fetch/load failed/network error) + the r607 arm in the fetch-phase catch BEFORE the same-lane retry: send honest status ("Endpoint unreachable (...) — rotating to the next lane instead of re-dialing…") then throw -> hop loop rotates immediately and the [hop:] marker feeds health memory + r504 breaker. Flap-class (ECONNRESET/socket hang up/terminated) and 5xx keep the cheap same-lane retry; r505 silence arm untouched; mid-stream SSE catch untouched. Existing probe-r348 + qa-search-ladder assertions verified unaffected (isTransientNetworkError not mutated).
+- Witness: persisted probe scripts/probe-r607-endpoint-unreachable.ts — 20/20 assertions PASS (7 unreachable faces rotate; flap class preserved via both predicates; 429/auth/abort/5xx never match; rotation arm present, ordered before the retry, r505 intact). Honest note: the probe pins the classification contract + code order deterministically; a live lane-outage E2E is not manufacturable against healthy endpoints (no theatre) — the next real Vyce-class outage is the live witness.
+- Gates: tsc rc=0; lint 0 errors/33 warnings (exact baseline); qa:syntax PASS; qa:tsc rc0; qa:golden 4/4 PASS post-edit.
+
+Stage Summary:
+- The meta-review P1 "Vyce x3 + 0 hops must never recur" is now mechanism-level: endpoint-unreachable dials rotate on FIRST failure, feed the health memory, and only a fully-dead chain parks (2.4s sooner, same honest card + r330 resume rotation).
+- Remaining meta-review fix queue for r608+: (P1) SQLite WAL + busy_timeout pragma (lib/db.ts — archiver 500s + WF-row reverts are contention-shaped); (P2) archiver-500 repro + stack capture; (P2) vault seeding path (needs an Owner key — never invented); (P3) backlog drain-rate rebalance; (P3) enricher fail-open timeout retune.
+- Doctrines: qa:golden = the QA face (1 round); probe scripts in scripts/ are the witness form for engine-layer changes; "network error" in a fetch-phase catch is endpoint-unreachable, in an SSE-phase catch it is a mid-stream drop (different doctrine arms).
+
+Round Handoff:
+Round ID: r608 -> next patrol (job 473388)
+Next recommended action: r608 — batched opening (expect HEAD = r607 commit; else follow ITS handoff); qa:golden (1 round); increment = SQLite WAL pragma in lib/db.ts (small, verifiable via pragma query probe) OR archiver-500 repro; gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4-PASS probe="probe-r607 20/20 PASS (classification contract + code order)" witness="deterministic probe; live outage E2E deferred to next real Vyce-class event (no theatre)" restart="0/1 consumed"

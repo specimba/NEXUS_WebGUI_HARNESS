@@ -263,6 +263,24 @@ export function isTransientNetworkError(err: unknown): boolean {
   );
 }
 
+/**
+ * r607 ENDPOINT-UNREACHABLE class (pre-response only): the fetch itself
+ * rejected and the message names the ENDPOINT as unreachable — DNS says no
+ * such host (ENOTFOUND/EAI_AGAIN), the port is closed (ECONNREFUSED), or the
+ * runtime's generic failed-to-fetch face. Re-dialing the SAME endpoint after
+ * 1.2s is a corpse dial (witnessed: the parked recursive run's web-search
+ * tools succeeded — network up — while Vyce fetched "network error" x3 with
+ * zero relay hops). These rotate NOW; flap-class resets (ECONNRESET, socket
+ * hang up, terminated) keep their cheap same-lane retries.
+ */
+export function isEndpointUnreachableError(err: unknown): boolean {
+  if (isAbort(err)) return false;
+  const message = err instanceof Error ? err.message : String(err);
+  return /fetch failed|enotfound|econnrefused|eai_again|failed to fetch|load failed|network error/i.test(
+    message
+  );
+}
+
 /** Collapse an error to a short status-line fragment for retry notices. */
 export function shortError(err: unknown): string {
   const m = err instanceof Error ? err.message : String(err);
@@ -873,6 +891,21 @@ export async function runCustomEngine(
         // is a fresh lane, and the hop loop's [hop:] marker still feeds the
         // health memory + r504 breaker so the family sinks on future dials.
         if (deadlineReason) throw surfaced;
+        // r607 ENDPOINT-UNREACHABLE DOCTRINE (mirror of the r505 silence
+        // doctrine, fast lane): a fetch that rejected BEFORE any response
+        // with a DNS/refused/generic face means THIS endpoint is unreachable
+        // — re-dialing the same corpse 2 more times burns the step before
+        // the ladder ever rotates, and attempt-loop retries never feed the
+        // health memory (the NEXT step dials the corpse again). Throw now:
+        // the hop loop rotates to a fresh lane immediately and its [hop:]
+        // marker feeds the health memory + r504 breaker. If the chain has no
+        // further hop, the step parks a couple of seconds sooner with the
+        // same honest recovery card — the resume rotation (r330) still
+        // applies. Flap-class resets keep the 3-attempt same-lane retry.
+        if (isEndpointUnreachableError(surfaced)) {
+          send({ type: "status", message: `Endpoint unreachable (${shortError(surfaced)}) — rotating to the next lane instead of re-dialing…` });
+          throw surfaced;
+        }
         if (attempt < MAX_UPSTREAM_ATTEMPTS && !streamedAny && isTransientNetworkError(surfaced)) {
           send({ type: "status", message: `Upstream hiccup (${shortError(surfaced)}) — retrying (${attempt + 1}/${MAX_UPSTREAM_ATTEMPTS})…` });
           await sleepAbortable(1200 * attempt, signal);
