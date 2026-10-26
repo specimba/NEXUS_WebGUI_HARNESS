@@ -1400,8 +1400,12 @@ export function ServerAutopilot() {
                     {autonomy.logs.map((log) => {
                       const expanded = openLog === log.id;
                       const stats = parseLogStats(log.statsJson);
+                      // r612: suppression becomes scanable — the r611
+                      // count-honest summary marker gets an amber chip + a
+                      // dimmed row (house degraded-state vocabulary).
+                      const suppressed = log.summary.includes("suppressed guard");
                       return (
-                        <li key={log.id} className="text-[11px]">
+                        <li key={log.id} className={cn("text-[11px]", suppressed && "opacity-75")}>
                           <button
                             type="button"
                             onClick={() => setOpenLog(expanded ? null : log.id)}
@@ -1420,11 +1424,19 @@ export function ServerAutopilot() {
                             >
                               {log.kind}
                             </Badge>
+                            {suppressed ? (
+                              <span
+                                className="shrink-0 rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px text-[9.5px] font-medium text-amber-300"
+                                title="The proposal guard held this cycle back — the executor still drained FIFO. Reason + live count sit in the summary."
+                              >
+                                suppressed
+                              </span>
+                            ) : null}
                             <span className="font-mono text-[10px] text-muted-foreground">{log.id}</span>
                             <span className="min-w-0 flex-1 truncate" title={log.summary}>
                               {log.summary}
                             </span>
-                            <span className="text-[10px] text-muted-foreground">{fmtAgo(log.createdAt)}</span>
+                            <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{fmtAgo(log.createdAt)}</span>
                           </button>
                           {expanded ? (
                             <div className="mx-1.5 mt-1 rounded-md border bg-background/60 p-2">
@@ -1449,7 +1461,7 @@ export function ServerAutopilot() {
                 the unauthenticated GitHub API (User-Agent set, README ≤200KB) and the queue row IS the cache —
                 researched rows are never re-fetched. import-seed and radar-followup are honest no-ops; workflows are
                 never mutated; LLM dials: none (the optional top-move rationale enricher rides the built-in no-key lane,
-                6s timeout, fails open to the deterministic text).
+                4s timeout since r612, fails open to the deterministic text).
               </p>
               </>
             ) : (

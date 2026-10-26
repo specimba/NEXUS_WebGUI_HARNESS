@@ -1215,3 +1215,24 @@ Round ID: r612 -> next patrol (job 473388)
 Next recommended action: r612 — batched opening (expect HEAD = r611 commit; else follow ITS handoff); qa:golden (1 round); increment = enricher fail-open timeout retune (P3: ENRICH_TIMEOUT_MS 6000->4000, r611 latency evidence) OR AIE cycle-feed styling polish; gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS(441) qa:tsc=rc0 qa:golden=4/4 witness="readonly probe: 8/12 live cycles suppressed at steady state; limit 3->5 + count-honest suppressed readout in cycle feed" restart="0/1 consumed"
+
+---
+Task ID: r612
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270637)
+Task: Patrol per r611 handoff — qa:golden QA face, P3 enricher fail-open timeout retune + AIE cycle-feed styling polish, gates, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = 62066dcba (r611, expected), server UP. qa:golden 4/4 PASS (console 0->0) — no QA bugs.
+- INCREMENT 1 — enricher retune (autonomy.ts): ENRICH_TIMEOUT_MS 6000 -> 4000, with the r611 evidence inline (proposed cycles 4.4-6.6s vs suppressed 0.6-1.4s — the old 6s ceiling WAS the latency delta; a max_tokens=90 one-liner rarely needs 4s, slower fails open honestly). Banner comment + call-site comment + the UI doctrine paragraph in server-autopilot.tsx all synced to 4s (no stale numbers anywhere).
+- INCREMENT 2 — AIE cycle-feed styling polish (server-autopilot.tsx): suppression is now SCANABLE — rows whose summary carries the r611 count-honest "suppressed guard" marker render an amber "suppressed" chip (house degraded-state vocabulary, same chip language as report rows) + a dimmed (opacity-75) row + tabular-nums on the ago stamp. Historical pre-r611 summaries (plain "(suppressed guard)") get the chip too.
+- INCIDENT (restart 1/1 consumed): mid-round gate chain caught qa:golden at 1/4 — all content legs ABSENT, console clean — the r608 wedge signature. Liveness: root HTTP 000 (connection refused), server down, NOT the diff (tsc/lint/syntax/qa:tsc all green on the same tree). ONE scripts/dev-restart.sh brought it back (root 200, /api/autonomy 200); golden re-run on the fresh boot: 4/4, console 0->0.
+
+Stage Summary:
+- Enricher P3 CLOSED (retune with measured justification); the last queued P3 is gone — remaining meta-review queue r613+: (P2) vault seeding path (needs Owner key — never invented); (P2) Supabase backup bucket (Owner action); AIE panel could later render per-cycle ms trend, left intentionally untouched this round.
+- Failure class doctrine reinforced: golden content-legs-ABSENT + console-0 = check liveness FIRST (curl root), restart 1/1, re-golden — the diff was innocent and the same-tree static gates prove it.
+
+Round Handoff:
+Round ID: r613 -> next patrol (job 473388)
+Next recommended action: r613 — batched opening (expect HEAD = r612 commit; else follow ITS handoff); qa:golden (1 round); increment = pick from docs/strategy/TASKS.md P2 lanes (plugin-manifest slice 2: agent-picker ToolId integration) OR an honest small UI increment on the AIE panel (per-cycle ms trend is queued); gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS(441) qa:tsc=rc0 qa:golden=4/4 witness="retune: 6s->4s with r611 latency evidence; feed: amber suppressed chip + dimmed rows, synced doctrine text; incident: server HTTP 000 mid-round, 1 restart, same-tree gates green pre/post" restart="1/1 consumed"

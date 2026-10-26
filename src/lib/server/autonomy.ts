@@ -27,7 +27,7 @@ import {
 //                 failure rate, vault slot count, existing fresh proposals.
 //   2. PROPOSE  — 1-5 ranked NextMove rows (deterministic ranking; ONE
 //                 optional no-key free-lane LLM call may enrich the top
-//                 move's rationale — 6s timeout, fail-open to deterministic).
+//                 move's rationale — 4s timeout (r612 retune), fail-open).
 //   3. EXECUTE  — top 1-2 SAFE moves only, never more than 2 repos/cycle
 //                 (GitHub unauthenticated budget 60 req/h; "researched"
 //                 rows are the cache and are never re-fetched).
@@ -42,7 +42,11 @@ import {
 
 export const AUTONOMY_INTERVAL_MS = 10 * 60_000;
 const FIRST_PASS_DELAY_MS = 15_000;
-const ENRICH_TIMEOUT_MS = 6_000;
+/** r612 retune: 6s -> 4s. The r611 probe caught proposed cycles at 4.4-6.6s —
+ * the 6s ceiling was the whole delta vs suppressed cycles (0.6-1.4s). A
+ * max_tokens=90 single-sentence rewrite rarely needs 4s; anything slower
+ * fails open to the deterministic rationale, which is fine. */
+const ENRICH_TIMEOUT_MS = 4_000;
 const GITHUB_TIMEOUT_MS = 8_000;
 /** GitHub unauthenticated budget is 60 req/h — hard cap per cycle. */
 const MAX_REPOS_PER_CYCLE = 2;
@@ -479,7 +483,9 @@ export async function generateNextMoves(
 
   const ranked = drafts.slice(0, 5).map((d) => ({ ...d, rank: d.rank }));
 
-  // ONE optional enricher dial for the top move — 6s timeout, fail-open.
+  // ONE optional enricher dial for the top move — 4s timeout (r612 retune:
+  // the r611 probe measured the old 6s ceiling as the whole proposed-cycle
+  // latency delta, 4.4-6.6s vs 0.6-1.4s suppressed), fail-open.
   let laneUsed = "deterministic";
   if (ranked.length > 0) {
     const enriched = await enrichRationale(ranked[0].title, ranked[0].rationale);
