@@ -915,3 +915,28 @@ Open risks: (1) vault [] + seed file absent — unchanged; (2) the r600-armed sa
 Next recommended action: r601 — ONE batched opening (expect HEAD = r600 commit; if a parallel session closed r601, follow ITS handoff). Then: golden legs; increment outside closed lanes (armed-chip interval honesty is the natural next face); ONE edit + ONE gates + ONE witness; ship.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa:syntax=rc0 qa:tsc=rc0 witness="LIVE arm flow (switch -> Close -> chips 5/1, teal armed chip)" legs="1+2+3 GREEN" restart="1/1 consumed (UP 5s)"
+---
+Task ID: r601
+Agent: main agent (NEXUS WebGUI patrol, job 473388, trace 202610270107)
+Task: patrol round — golden legs, one increment (armed-chip interval honesty), gates, dual push.
+
+Work Log:
+- Opening (1 round): HEAD=a754aafbe (r600, as expected); server UP 200; vault [] + seed absent (known); db mtime fresh; RUNS=0; AutomationWorkflow=5 — rows are the five real pipelines (Deep Research Dossier, Continuous Research, test run, Recursive self-improvement, Novelty Lab), updatedAt ~now: the registration contract materializing server rows = designed, NOT a sandbox anomaly. Note: 6 UI cards (unreg=5/armed=1) vs 5 server rows — one client-only card.
+- leg1 census+intel (settings): census section + intel ladder render; console 0 errors; stale=false. TTL doctrine respected (no forced refresh; badge honest).
+- leg3 Frontier: board 4543/349/4194 — 5th consecutive exact match after ~7s settle + tab click.
+- Increment: workflows-view.tsx armed chip (server-lane-armed-chip) — was a bare "server lane: armed" (r600) with the interval only implied; now renders "server lane: armed · 15m" inline via fmtIntervalShort (same formatter the schedule rows use at :2635/:2648) and the title leads with "fires every 15m". r601 comment documents the honesty rationale.
+- Gates: tsc rc=0; lint 0 errors/33 warnings (exact baseline); qa:syntax 0 failures; qa:tsc rc=0.
+- leg2 drama: first paste+Run attempt (enabled button, title=null, paste len 371) left Run history at 0 — then the dialog, buttons and armed chip all vanished between rounds. Cause: the DEV SERVER DIED mid-round (ERR_CONNECTION_REFUSED on next open) — a crash mimics every silent-no-op symptom. Consumed the ONE allowed restart (scripts/dev-restart.sh, detached daemon, UP on first poll).
+- Clean retry after restart: armed state had persisted (localStorage survived; unreg=5/armed=1); WITNESS LIVE: label "server lane: armed · 15m" + title "This pipeline is schedule-armed (fires every 15m) — ...". leg2 on the sample card: task textarea empty pre-paste, paste len 249, Run disabled=false title=null (r599 gate honest), click -> Run history 0->1, hasEndOK=true, rows show r598 order-fact copy ("Queued to open...") on step 1 + predecessor copy on steps 2-4. Console 0 errors across all legs.
+
+Stage Summary:
+- The armed chip now names the ACTUAL cadence (inline + title): a 1h arm no longer reads identically to a 15m arm. Increment lane from the r600 handoff closed.
+- Server-crash forensics: a mid-round crash = dialog/buttons/chips vanish; check server liveness BEFORE theorizing about UI gates — infrastructure failure masquerades as a silent UI no-op (generalizes the r598 lesson).
+- First leg2 miss attributed to the pre-crash window; no code involved (the r601 edit touches only chip title/label).
+
+Round Handoff:
+Round ID: r602 -> next patrol (job 473388)
+Open risks: (1) vault [] + seed file absent — unchanged; (2) dev server freshly restarted in r601 (its 1/1 restart consumed; r602 opens with its own fresh budget) — check server first, and remember a crash mimics silent no-ops; (3) 6 UI cards vs 5 server AutomationWorkflow rows (one client-only card) — do not misread as reversion; the armed sample card persists via localStorage when the browser profile survives; (4) increment lanes closed: age/in-flight, Evolution eligibility, relay mount-TTL, keyless silence, queue-toast copy, cascade copy, archive empty-state copy, enqueue durability, TASK-101 durable-step, run-now unregistered error copy, registration card chip (both sides), panel first-step pending copy, empty-task Run title, queued-run no-toast (designed), armed-chip interval honesty (r601) — candidates: census-chip seed flow, QA-found bugs, or a new honest-copy face; (5) doctrines: census TTL=30min + empty-cache boot fetch; hash-nav open=no-op (reload refetches); Frontier ~7s settle; card Run opens panel / in-dialog Run queues (disabled until task brief, title explains); panel-lane queue is client-side (Run history counter) while server rows materialize via the 60s bridge heartbeat.
+Next recommended action: r602 — ONE batched opening (expect HEAD = r601 commit; if a parallel session closed r602, follow ITS handoff). Then: golden legs; ONE increment outside closed lanes; ONE edit + ONE gates + ONE witness; ship. Keep it tight: r601 spent 11 rounds including the crash + restart.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa:syntax=0-failures qa:tsc=rc0 witness="LIVE armed chip label 'server lane: armed · 15m' + title 'fires every 15m'; leg2 queue 0->1 with r598 order-fact copy" legs="1+2+3 GREEN (leg2 clean retry after crash)" restart="1/1 consumed (server died mid-round)"
