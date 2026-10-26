@@ -1186,6 +1186,19 @@ function EvolutionInbox() {
                         <X className="h-3 w-3 shrink-0 text-muted-foreground/60" aria-hidden />
                       )}
                       <span className="min-w-0 flex-1 truncate text-xs">{p.goal}</span>
+                      {(p.planLines?.length ?? 0) > 0 ? (
+                        <span
+                          data-testid="proposal-plan-size"
+                          className={cn(
+                            "shrink-0 rounded-md border px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums",
+                            (p.planLines?.length ?? 0) > 8
+                              ? "border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400"
+                              : "border-violet-500/30 bg-violet-500/5 text-violet-600 dark:text-violet-400"
+                          )}
+                        >
+                          {p.planLines?.length} lines
+                        </span>
+                      ) : null}
                       <span className="shrink-0 text-[10px] text-muted-foreground">
                         from {p.sourceWorkflowName} · {proposalAge(p.createdAt)}
                       </span>
@@ -1310,7 +1323,22 @@ function EvolutionInbox() {
             className="flex items-start gap-3 rounded-lg border bg-background/60 p-2.5"
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{p.goal}</p>
+              <div className="flex items-center gap-2">
+                <p className="min-w-0 flex-1 truncate text-sm font-medium">{p.goal}</p>
+                {(p.planLines?.length ?? 0) > 0 ? (
+                  <span
+                    data-testid="proposal-plan-size"
+                    className={cn(
+                      "shrink-0 rounded-md border px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums",
+                      (p.planLines?.length ?? 0) > 8
+                        ? "border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400"
+                        : "border-violet-500/30 bg-violet-500/5 text-violet-600 dark:text-violet-400"
+                    )}
+                  >
+                    {p.planLines?.length} lines
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                 {p.reason} · from{" "}
                 <span className="font-medium text-foreground/80">
@@ -1318,7 +1346,7 @@ function EvolutionInbox() {
                 </span>{" "}
                 ·{" "}
                 <span
-                  className="ml-0.5 inline-flex items-center rounded-full border border-violet-500/25 bg-violet-500/10 px-1.5 py-px text-[10px] font-medium text-violet-600 dark:text-violet-400"
+                  className="ml-0.5 inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-violet-600 dark:text-violet-400"
                   title={new Date(p.createdAt).toLocaleString()}
                 >
                   {proposalAge(p.createdAt)}

@@ -136,3 +136,26 @@ Open risks: (1) TASK-102 live-wire keyed proofs — Owner-blocked (sources all n
 Next recommended action: r572 — key check first (trigger unchanged: a source flipping non-null). Else candidates: (a) proposal-row status chips (rounded-full px-2 py-0.5 text-[10px]) are the next census-grammar outliers on the Evolution card — small diff, same family move as this round's header chip; (b) the run panel's done/total step counter (~line 533 "N/M steps done") could wear the census chip grammar — verify rendering context before touching; (c) shared census Chip component extraction (six seams now; watch, don't do unless the Owner asks); (d) builtin box extraction still parked.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=36/36
+---
+Task ID: r572
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r571 handoff — key check first (vault [], sources null → Owner-blocked stands; exa "live" = registry semantics). Candidate (a) proposal-row chips; run-panel counter as companion.
+
+Work Log:
+- CANDIDATE (a) DISSOLVED on inspection: the rounded-full pills on the Evolution card are interactive BUTTONS (filter pills, Clear history) — buttons legitimately stay pills; no chip outliers there.
+- INCREMENT (user-facing): Evolution proposals now surface their plan size at a glance — census-grammar chip (data-testid=proposal-plan-size, "N lines", tabular-nums 10.5px) on BOTH the open inbox cards (the accept-decision point: goal row becomes a flex with the chip) AND the history rows; chip turns AMBER past 8 lines (the r569/571 cap threshold), violet otherwise, hidden when planLines is absent (legacy rows stay clean).
+- STYLING POLISH: the open card's age chip joins the census grammar (rounded-md border-violet-500/30 bg-violet-500/5 px-1.5 py-0.5 text-[10.5px] tabular-nums — was rounded-full /10 10px); third census-grammar conversion on this card in two rounds.
+- QA GUARD: qa-executor-resume +1 = 37/37 — pins proposal-plan-size + the contiguous "(p.planLines?.length ?? 0) > 8" amber conditional (contiguous-truths lesson held).
+- GOLDEN WALK: settings relay+census true; radar Frontier tab+scroll true; console 0 errors/warnings throughout. Workflows page hit the known blank-flake twice on cold reloads (2 buttons, no inbox, len ~0 — r570 doctrine); a warm reload rendered the full view and the Suggest-variation flow was exercised (proposal created, console stayed clean).
+- GATES: tsc 0; lint 0 + exactly 33 warnings; qa-acquisition-vault 32/32; qa-executor-resume 37/37.
+- BUDGET: 12/12 — the blank-flake cost two witness retries; ship landed as one conditional chain.
+
+Stage Summary:
+- Proposal size is now visible exactly where the Owner decides to spawn, amber past the cap — the r569/571 overflow story is readable at a glance per proposal.
+
+Round Handoff:
+Round ID: r572 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null); (2) pool tier dormant until Webshare token; (3) the >8-line spawn toast.warning is contract-pinned but still not live-witnessed — needs a proposal with >8 planLines (engine appends "Adopt:" lines; fabricating is its own round); (4) workflows-page cold-reload blank flake seen again — if it repeats on a WARM load next round, treat as a render bug, not a flake.
+Next recommended action: r573 — key check first (trigger: a source flipping non-null). Else candidates: (a) live-witness the amber chip by seeding a proposal with >8 planLines through the engine path (spawn-proposal-engine withFrontierSeed appends lines — check whether the Suggest-variation flow on a maxed workflow yields >8); (b) run-panel "N/M steps done" inline text → census chip (verify context first — it lives in the failure banner sentence); (c) shared census Chip extraction (seven seams; watch-only); (d) builtin box extraction parked.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=37/37

@@ -409,6 +409,12 @@ try {
       planSrc.includes("${capNote}"),
     "contract: the Evolution spawn accept reads parsed.overflow — a proposal past the 8-step cap warns in the toast (8-step cap dropped …) and carries the capNote in the card description instead of losing its tail silently",
   );
+  // r572: the history rows surface the plan size at a glance, amber past the cap.
+  ok(
+    planSrc.includes('data-testid="proposal-plan-size"') &&
+      planSrc.includes("(p.planLines?.length ?? 0) > 8"),
+    "contract: Evolution history rows render a census-grammar plan-size chip (proposal-plan-size) that turns amber when the proposal's planLines exceed the 8-step cap",
+  );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);
