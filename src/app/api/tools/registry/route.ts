@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { BUILTIN_TOOL_IDS } from "@/lib/types";
+import { buildToolDefs } from "@/lib/tools-defs";
 import { loadPluginPacks } from "@/lib/server/plugin-loader";
 
 // r575 — TASK-103 slice 1: the tools-registry readout. Builtins stay the
@@ -7,6 +8,22 @@ import { loadPluginPacks } from "@/lib/server/plugin-loader";
 // them up from plugins/<dir>/manifest.json. Invalid packs are listed WITH
 // their validation errors (honest registry — a broken pack is visible, not
 // silently dropped and never boot-crashing).
+//
+// r576 — per-base schema arg names: the r575-correction advisory made
+// visible. A pack preset must use the executor's argument vocabulary (the
+// sample pack once pinned "algo" where the executor reads args.op); the
+// readout now surfaces each base's schema-declared arg names so that drift
+// is diagnosable from the UI, without reading engine code.
+
+// Schema arg vocabulary per builtin — the isomorphic tool defs are the same
+// source of truth the browser-direct engine shares with this executor, so
+// these names ARE the executor contract (advisory, not enforcement).
+const schemaArgs: Record<string, string[]> = {};
+for (const def of buildToolDefs([...BUILTIN_TOOL_IDS])) {
+  const props = (def.function.parameters as { properties?: Record<string, unknown> })
+    .properties;
+  schemaArgs[def.function.name] = Object.keys(props ?? {});
+}
 
 export async function GET() {
   const { packs, invalid } = loadPluginPacks();
@@ -24,6 +41,7 @@ export async function GET() {
         base: t.base,
         description: t.description,
         preset: t.preset ?? null,
+        args: schemaArgs[t.base] ?? [],
       })),
     })),
     invalid,

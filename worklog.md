@@ -272,3 +272,27 @@ Stage Summary:
 Round Handoff:
 Round ID: r576 (handoff unchanged: key check first; +1 plugin guard pin; slice 2 only if the Owner asks; registry-readout arg-name surfacing remains a slice-2 nicety)
 Blockers: none.
+
+---
+Task ID: r576
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r576 per r575-correction-2 handoff — key check; +1 plugin-lane guard in resume QA; registry arg-name advisory (the correction's "only if trivial" nicety) as the user-facing increment; golden QA; gates; ship.
+
+Work Log:
+- OPENING: HEAD a123536c4 (own r575-correction-2) — no parallel session. Key check: all acquisition sources null → TASK-102 keyed proofs stay Owner-blocked (trigger unchanged). Chose handoff action (a) + the correction-2 nicety: the registry-readout arg-name advisory was graded "only if trivial" — it WAS trivial, because the arg vocabulary already exists as isomorphic JSON-schema in tools-defs.ts (no new data table needed).
+- GUARD (+1 → 40): qa-executor-resume pins the plugin lane end-to-end via contiguous truths: execute route imports getPluginPreset, engine stamps the '[plugin:' provenance tag (src/lib/server/tools.ts), registry route loads packs via loadPluginPacks AND surfaces the args: advisory. Source loads use the established readFileSync(new URL(...)) pattern.
+- ADJUSTMENT (tsc-arbitrated): BUILTIN_TOOL_IDS is an as-const readonly tuple; the defensive Parameters-cast failed tsc (readonly → mutable). Final form: buildToolDefs([...BUILTIN_TOOL_IDS]) — the spread yields the literal-union array, no cast needed. Registry route computes schemaArgs once at module level (pure isomorphic data).
+- USER-FACING: per-tool chips in the Agents-page Plugin packs strip now carry "Schema args: …" + "Pinned preset: …" in their tooltip, and chips that pin preset args get the stronger cyan tint (border-cyan-500/35 bg-cyan-500/[0.09]) plus a "·pin" marker — styling polish and the vocabulary aid in the UI in one.
+- WITNESSED LIVE: registry — pack_stamp → uuid_hash | args op,value,secret,length | preset {"op":"sha256"} (the vocabulary aid in action); pack_now → current_time | args (none) | preset {"timezone":"UTC"} — the advisory already exposes the OTHER drift direction in the UI (schema declares no args while a pack pins timezone), exactly the drift class the correction called out. Browser: panel-ok chips=2 pin=true; tooltips read "Schema args: op, value, secret, length".
+- GOLDEN WALK (fresh, post console --clear): settings Model Relay panel + toggle checked + live census; radar Frontier tab present (window-scrollY probe stayed 0 — the scroll lives in the inner container per the r575 0→5881 doctrine; tab and content render, no errors); workflows warm reload fine (15 workflow mentions), Run clicked, 240-char paste took; agents panel witnessed. Console 0 errors across the whole walk.
+- GATES: tsc=0; lint=0 errors (33 warnings, exact baseline); qa-acquisition-vault=32 passed 0 failed; qa-executor-resume=40/40 (re-run post-spread-fix).
+
+Stage Summary:
+- The plugin lane now has its permanent regression pin (40 checks), and the pack-author vocabulary aid is live in the registry readout + UI tooltips — the r575 correction's lesson is now both an enforceable contract and a visible UI affordance. Slice 2 remains parked (Owner hasn't asked).
+
+Round Handoff:
+Round ID: r577 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) pack_now pins {"timezone":"UTC"} while current_time's schema declares no args — if the executor truly reads args.timezone, the schema def is the side missing the property; the advisory now makes this visible — one tiny schema-property fix in r577, only if trivial; (4) radar window-scroll probe reads 0 (inner-container scroll) — future walks should target the scrollable container for scroll evidence.
+Next recommended action: r577 — key check first (trigger unchanged). Then: (a) the timezone schema-drift one-liner if trivial (add timezone to current_time's def properties so the advisory shows it); (b) slice 2 only if the Owner asks; (c) census-chip extraction stays parked (watch-only).
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=40/40

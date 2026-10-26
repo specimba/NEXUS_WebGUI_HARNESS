@@ -430,6 +430,28 @@ try {
     "contract: the Evolution Inbox true-zero state (open=0 AND handled=0) returns the empty-state card — 'Evolution Inbox' header + '0 proposals' census chip + evo-inbox-empty dashed line — instead of return null",
   );
 
+  // r576: TASK-103 slice-1 plugin lane pinned end-to-end — contiguous truths
+  // across the three files that make a preset tool real.
+  const executeRouteSrc = readFileSync(
+    new URL("../src/app/api/tools/execute/route.ts", import.meta.url),
+    "utf8",
+  );
+  const toolsEngineSrc = readFileSync(
+    new URL("../src/lib/server/tools.ts", import.meta.url),
+    "utf8",
+  );
+  const registryRouteSrc = readFileSync(
+    new URL("../src/app/api/tools/registry/route.ts", import.meta.url),
+    "utf8",
+  );
+  ok(
+    executeRouteSrc.includes("getPluginPreset") &&
+      toolsEngineSrc.includes("[plugin:") &&
+      registryRouteSrc.includes("loadPluginPacks") &&
+      registryRouteSrc.includes("args:"),
+    "contract: the plugin lane is pinned end-to-end — execute route imports getPluginPreset, engine stamps the '[plugin:' provenance tag, registry route loads packs via loadPluginPacks and surfaces the per-base schema args: advisory (the r575-correction vocabulary aid)",
+  );
+
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);
 } catch (err) {

@@ -115,6 +115,9 @@ export interface AgentUsage {
 // shows its validation errors instead of vanishing (honest registry doctrine:
 // a broken pack is visible, never boot-crashing). No packs → renders nothing
 // (honest zero state, no noise).
+// r576: per-tool chips now carry the base's schema arg names + pinned preset
+// keys in their tooltip, and chips that pin preset args get the stronger cyan
+// tint — the pack-author vocabulary aid from the r575 correction, in the UI.
 function PluginPacksPanel() {
   const [data, setData] = React.useState<{
     packs: {
@@ -122,7 +125,13 @@ function PluginPacksPanel() {
       name: string;
       version: string;
       dir: string;
-      tools: { name: string; base: string; description: string }[];
+      tools: {
+        name: string;
+        base: string;
+        description: string;
+        args: string[];
+        preset: Record<string, unknown> | null;
+      }[];
     }[];
     invalid: { dir: string; errors: string[] }[];
   } | null>(null);
@@ -165,15 +174,26 @@ function PluginPacksPanel() {
             <span className="rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400">
               v{p.version}
             </span>
-            {p.tools.map((t) => (
-              <span
-                key={t.name}
-                title={`${t.description}\n\nDispatches through builtin "${t.base}" with the pack's pinned preset args.`}
-                className="rounded-md border border-cyan-500/20 bg-background/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground"
-              >
-                {t.name} <span aria-hidden className="text-cyan-500/70">→</span> {t.base}
-              </span>
-            ))}
+            {p.tools.map((t) => {
+              const pinned = t.preset ? Object.keys(t.preset) : [];
+              const known = t.args ?? [];
+              return (
+                <span
+                  key={t.name}
+                  title={`${t.description}\n\nDispatches through builtin "${t.base}".\nSchema args: ${known.length ? known.join(", ") : "none"}${pinned.length ? `\nPinned preset: ${pinned.join(", ")}` : ""}`}
+                  className={
+                    pinned.length > 0
+                      ? "rounded-md border border-cyan-500/35 bg-cyan-500/[0.09] px-1.5 py-0.5 text-[10.5px] text-foreground/80"
+                      : "rounded-md border border-cyan-500/20 bg-background/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground"
+                  }
+                >
+                  {t.name} <span aria-hidden className="text-cyan-500/70">→</span> {t.base}
+                  {pinned.length > 0 && (
+                    <span className="ml-1 text-cyan-600/80 dark:text-cyan-400/80">·pin</span>
+                  )}
+                </span>
+              );
+            })}
           </div>
         ))}
         {data.invalid.map((inv) => (
