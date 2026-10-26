@@ -39,7 +39,7 @@ export function StaleBuildGuard() {
       toast("App updated — this tab runs old code", {
         icon: "🔄",
         id: "stale-build",
-        duration: Infinity,
+        duration: 10_000, // r595: bounded — the persistence arms are the pill (lives while stale) + foreground re-assert; an immortal toast <li> parked over bottom-right controls and blocked board clicks (agent-browser "covered by", r592 x2).
         description:
           "The server picked up new changes (scheduler, relay ladder, fixes) after this tab loaded. Schedules keep firing the OLD logic until you refresh — click the pill to reload now.",
       });
