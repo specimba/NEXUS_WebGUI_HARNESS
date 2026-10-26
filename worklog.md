@@ -113,3 +113,26 @@ Open risks: (1) TASK-102 live-wire keyed proofs — Owner-blocked (all sources n
 Next recommended action: r571 — key check first (trigger unchanged: a source flipping non-null). Else candidates: (a) run-panel rotation preview could reuse the r569 overflow honesty when a run's plan exceeds the cap (verify whether the run panel even caps before touching); (b) import path (parsePlan re-used at workflows-view ~line 1217) now benefits from goal hygiene too — spot-check an import witness if touching workflows anyway; (c) shared census Chip component extraction (four seams, cosmetics-only; watch, don't do unless the Owner asks); (d) builtin box extraction still parked.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=35/35
+---
+Task ID: r571
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r570 handoff — key check first (vault [], sources all null → keyed proofs stay Owner-blocked; exa "live" is registry semantics). Candidate (a): run-panel rotation preview overflow honesty — verify whether the run panel even caps before touching.
+
+Work Log:
+- CANDIDATE (a) VERDICT: the run panel does NOT cap — run.steps execute as stored (workflow-run-panel.tsx has no slice/cap on steps), which is correct: the 8-step cap is a create/import-time guard, not a runtime limit. Nothing to fix there.
+- REAL FIND in the same bug family: the Evolution spawn accept() re-uses parsePlan and DISCARDED parsed.overflow — a spawn proposal with >8 plan lines silently lost its tail (r569's silent-cap bug, second habitat; the r569 fix only covered the paste dialog).
+- INCREMENT (user-facing): spawn accept now reads the overflow — toast.warning "Spawned … with N steps — the 8-step cap dropped M more proposal line(s)" replaces the success toast when a proposal exceeds the cap, and the workflow description carries the persistent note " · 8-step cap — M more proposal lines will not run". Success path untouched.
+- STYLING POLISH: the Evolution Inbox header count chip joins the census grammar — rounded-md border-violet-500/30 bg-violet-500/5 px-1.5 py-0.5 text-[10.5px] tabular-nums (was rounded-full bg-500/10 text-[10px]; the last 10px outlier on this card).
+- QA GUARD: qa-executor-resume +1 = 36/36. One gate catch, no theatre: my first pin required the literal "more proposal lines will not run" — but the source interpolates ${overflow === 1 ? "" : "s"} mid-phrase, so the string never appears contiguously and the guard FAILED 35/36. Lesson recorded: pins must be contiguous source truths — now "8-step cap dropped" + "const overflow = parsed.overflow;" + "${capNote}".
+- GOLDEN WALK (console 0 errors, 0 warnings): settings relay + census (len 88,514); radar Frontier role-tab clicked + scrolled; workflows Run panel opened via "Run" → 2 textareas, 1673-char long paste accepted cleanly, no crash — the panel has no char/step echo badge (that vocabulary lives in the plan dialog, expected).
+- BUDGET: 12/12 — the guard-pin rewrite cost one edit+re-gate cycle.
+
+Stage Summary:
+- The spawn path is the second silent-cap habitat closed: a proposal past the 8-step limit now says so twice (toast + persistent description), the Evolution Inbox chip speaks the census grammar, and the run panel is confirmed cap-free by design.
+
+Round Handoff:
+Round ID: r571 -> next patrol (job 473388)
+Open risks: (1) TASK-102 live-wire keyed proofs — Owner-blocked (sources all null this round); (2) pool tier dormant until a Webshare token; (3) 3 WATCH-6 radar rows honest archive; (4) spawn overflow path is contract-pinned but not live-witnessed (needs a real >8-line SpawnProposal in the inbox — fabricating one is its own round).
+Next recommended action: r572 — key check first (trigger unchanged: a source flipping non-null). Else candidates: (a) proposal-row status chips (rounded-full px-2 py-0.5 text-[10px]) are the next census-grammar outliers on the Evolution card — small diff, same family move as this round's header chip; (b) the run panel's done/total step counter (~line 533 "N/M steps done") could wear the census chip grammar — verify rendering context before touching; (c) shared census Chip component extraction (six seams now; watch, don't do unless the Owner asks); (d) builtin box extraction still parked.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=36/36

@@ -1234,6 +1234,14 @@ function EvolutionInbox() {
       return;
     }
     const parsed = parsePlan([p.goal, ...(p.planLines ?? [])].join("\n"));
+    // r571: the spawn path had the same silent 8-step cap the paste dialog
+    // outgrew in r569 — a proposal with more than 8 plan lines lost its tail
+    // without a word. The spawn now reads the overflow and says so.
+    const overflow = parsed.overflow;
+    const capNote =
+      overflow > 0
+        ? ` · 8-step cap — ${overflow} more proposal line${overflow === 1 ? "" : "s"} will not run`
+        : "";
     const stepLines = parsed.steps.length
       ? parsed.steps
       : ["Research the goal and gather context", "Draft the deliverable"];
@@ -1256,7 +1264,7 @@ function EvolutionInbox() {
     addWf({
       id: spawnedId,
       name: truncateAtWord(parsed.goal, 80),
-      description: `Evolution spawn · from "${p.sourceWorkflowName}" · ${p.reason}`,
+      description: `Evolution spawn · from "${p.sourceWorkflowName}" · ${p.reason}${capNote}`,
       steps,
       depth: "standard",
       runs: [],
@@ -1272,9 +1280,15 @@ function EvolutionInbox() {
       },
     });
     setProposalStatus(p.id, "accepted", spawnedId);
-    toast.success(
-      `Spawned "${parsed.goal.slice(0, 80)}" with ${steps.length} steps — review gate included`
-    );
+    if (overflow > 0) {
+      toast.warning(
+        `Spawned "${parsed.goal.slice(0, 80)}" with ${steps.length} steps — the 8-step cap dropped ${overflow} more proposal line${overflow === 1 ? "" : "s"}`
+      );
+    } else {
+      toast.success(
+        `Spawned "${parsed.goal.slice(0, 80)}" with ${steps.length} steps — review gate included`
+      );
+    }
   };
 
   return (
@@ -1282,7 +1296,7 @@ function EvolutionInbox() {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Lightbulb className="h-4 w-4 shrink-0 text-violet-500" />
         <span className="text-sm font-medium">Evolution Inbox</span>
-        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
+        <span className="rounded-md border border-violet-500/30 bg-violet-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-violet-600 dark:text-violet-400">
           {open.length} proposal{open.length === 1 ? "" : "s"}
         </span>
         <span className="text-xs text-muted-foreground">

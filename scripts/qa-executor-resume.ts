@@ -401,6 +401,14 @@ try {
       planSrc.includes("r570: the goal gets the same prefix hygiene"),
     "contract: pasted GOAL lines get the step-prefix strip and the dialog previews the cleaned workflow name (plan-goal-preview)",
   );
+  // r571: the Evolution spawn path reads the overflow too — no silent tail
+  // loss outside the paste dialog.
+  ok(
+    planSrc.includes("8-step cap dropped") &&
+      planSrc.includes("const overflow = parsed.overflow;") &&
+      planSrc.includes("${capNote}"),
+    "contract: the Evolution spawn accept reads parsed.overflow — a proposal past the 8-step cap warns in the toast (8-step cap dropped …) and carries the capNote in the card description instead of losing its tail silently",
+  );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);
