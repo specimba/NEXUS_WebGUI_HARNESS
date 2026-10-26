@@ -12,7 +12,7 @@
 // browser-side only — BYOK judges, nothing leaves the machine but the fetches.
 
 import * as React from "react";
-import { ArrowUpRight, Copy, Loader2, Pin, Telescope, X } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Loader2, Pin, Telescope, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -319,6 +319,12 @@ export function FrontierScoutTab() {
 
   const boundary = React.useMemo(() => boundaryTable(Object.values(judgments)), [judgments]);
 
+  // r584: the ledger itself is the source of truth for "already pinned" — a
+  // pinned card flips its action to an honest state chip instead of offering
+  // a redundant second pin (promoteSeed dedupes by id, but the button kept
+  // promising a fresh pin that isn't one). seed.id === item.id by contract.
+  const pinnedIds = React.useMemo(() => new Set(seeds.map((s) => s.id)), [seeds]);
+
   // ── Actions ──
   const copySeed = React.useCallback(
     async (item: FrontierItem) => {
@@ -351,7 +357,10 @@ export function FrontierScoutTab() {
     const next = seeds.map((s) => (s.id === id ? withReproduction(s) : s));
     saveFrontierSeeds(next);
     setSeeds(next);
-    toast("Seed re-verified — reproduction evidence refreshed");
+    // r584: the toast names the fresh verdict — "evidence refreshed" alone
+    // made the owner re-open the tooltip to learn what the re-check decided.
+    const verdict = next.find((s) => s.id === id)?.reproduction?.verdict ?? "unverified";
+    toast(`Seed re-verified — AWorld: ${verdict}`);
   };
 
   const dismiss = React.useCallback((id: string) => {
@@ -670,16 +679,27 @@ export function FrontierScoutTab() {
                     Copy seed
                   </Button>
                   {verdict !== "skip" ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 gap-1 px-2 text-[11px]"
-                      onClick={() => pinSeed(item)}
-                      aria-label={`Pin ${item.title} to the Evolution seed ledger`}
-                    >
-                      <Pin className="h-3 w-3" aria-hidden />
-                      Pin to seeds
-                    </Button>
+                    pinnedIds.has(item.id) ? (
+                      <span
+                        data-testid="seed-in-ledger"
+                        title="Already in the Evolution seed ledger — Evolution's stalled-pipeline proposals pull from it"
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/[0.06] px-2 text-[11px] font-medium tabular-nums text-emerald-600 dark:text-emerald-400"
+                      >
+                        <Check className="h-3 w-3" aria-hidden />
+                        in seed ledger
+                      </span>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-[11px]"
+                        onClick={() => pinSeed(item)}
+                        aria-label={`Pin ${item.title} to the Evolution seed ledger`}
+                      >
+                        <Pin className="h-3 w-3" aria-hidden />
+                        Pin to seeds
+                      </Button>
+                    )
                   ) : null}
                   <Button
                     variant="ghost"
