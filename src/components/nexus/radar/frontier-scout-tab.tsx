@@ -457,12 +457,16 @@ export function FrontierScoutTab() {
         </div>
       </div>
 
+      {/* r593: the cascade copy promised the 4B gate + fast judge unconditionally,
+          but the judge queue stays rubric-only until the Owner keys a lane (r589
+          handoff risk 4) — copy must state the condition, not just the happy arm. */}
       <p className="text-[11px] leading-snug text-muted-foreground">
         Weekly trend sweep — HF daily papers, newly-minted agent/RL repos, the arXiv
         harness/RL feed — judged by a cascade: rubric → Decision-4B gate → fast judge
-        for the uncertain band. High scorers become Evolution seeds, each carrying an
-        AWorld reproduction verdict (provenance · claim · directive · band) before
-        Evolution improves on it.
+        for the uncertain band. The 4B and fast-judge stages dial only with a keyed
+        lane, so scoring runs rubric-only until one is stored. High scorers become
+        Evolution seeds, each carrying an AWorld reproduction verdict (provenance ·
+        claim · directive · band) before Evolution improves on it.
       </p>
 
       {/* Seed ledger strip */}
