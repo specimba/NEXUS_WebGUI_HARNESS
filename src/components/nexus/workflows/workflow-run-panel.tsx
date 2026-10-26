@@ -1870,7 +1870,15 @@ export function WorkflowRunPanel({
                         </div>
                       ) : step.status === "pending" ? (
                         <p className="py-1.5 text-xs italic text-zinc-500">
-                          Waiting for the previous step to finish…
+                          {/* r598 QA probe (live): the old pending copy rendered for EVERY
+                              pending step, including the FIRST one — which has no previous
+                              step at all. Witnessed live: a keyless panel run (vault=[])
+                              drives step 1 through the built-in relay lane (Vyce/auto, the
+                              r330 resume note), so the vault-key contract is archive-lane
+                              copy (r594), NOT this lane. State only the order fact. */}
+                          {i === 0
+                            ? "Queued to open the run — this is the opening step; its dial hasn't gone out yet…"
+                            : "Waiting for the previous step to finish…"}
                         </p>
                       ) : null}
                     </div>
