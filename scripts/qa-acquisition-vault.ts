@@ -186,6 +186,21 @@ async function main() {
       !cardSrc.includes("dials first"),
   );
 
+  // r568: the r567 DELETE footgun fix stays pinned — the route's DELETE
+  // handler must require the provider search param (missing → loud 400) with
+  // NO silent "builtin" fallback, while POST keeps exactly one body default.
+  const vaultRouteSrc = readFileSync(
+    new URL("../src/app/api/vault/route.ts", import.meta.url),
+    "utf8",
+  );
+  const deleteHandler = vaultRouteSrc.split("export async function DELETE")[1] || "";
+  check(
+    "vault DELETE contract: the handler requires ?provider= (no silent builtin default) and POST keeps exactly one body default",
+    deleteHandler.includes('searchParams.get("provider")?.trim()') &&
+      !deleteHandler.includes('?? "builtin"') &&
+      (vaultRouteSrc.match(/\?\? "builtin"/g) || []).length === 1,
+  );
+
   console.log(`\n${pass} passed, ${failures.length} failed`);
   if (failures.length > 0) {
     console.error(failures.map((f) => `  - ${f}`).join("\n"));

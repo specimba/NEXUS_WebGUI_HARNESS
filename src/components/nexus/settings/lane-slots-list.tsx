@@ -60,7 +60,26 @@ export function LaneSlotsList({
   onMirror: (providerId: string) => void;
   onRemove: (providerId: string) => void;
 }) {
-  if (slots.length === 0) return null;
+  if (slots.length === 0) {
+    // r568: an empty vault used to render as silence (return null) — the
+    // section just vanished and the Owner couldn't tell "empty" from
+    // "missing". The census family now explains itself: 0 stored, and what
+    // the closed-tab lane does until a key lands here.
+    return (
+      <div
+        data-testid="lane-census-empty"
+        className="flex items-center justify-between gap-2 rounded-md border border-dashed border-cyan-500/30 bg-cyan-500/5 px-2.5 py-2"
+      >
+        <p className="text-[10.5px] text-muted-foreground">
+          Server-stored lanes — the closed-tab executor stays queued until a key
+          lands here (save a provider key above, or mirror a browser-saved one).
+        </p>
+        <span className="shrink-0 rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400">
+          0 stored
+        </span>
+      </div>
+    );
+  }
   const dialName = dialProvider
     ? providerById(dialProvider)?.name ?? null
     : null;

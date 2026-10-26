@@ -729,7 +729,7 @@ export function AutomationVaultCard() {
             busy={mirroringProvider}
             onMirror={mirrorProvider}
           />
-          {laneSlots.length > 0 ? (
+          {(loadFailed && laneSlots.length === 0) ? null : (
             <LaneSlotsList
               slots={laneSlots}
               dialProvider={dialSlot?.provider ?? null}
@@ -746,14 +746,7 @@ export function AutomationVaultCard() {
               onMirror={mirrorProvider}
               onRemove={removeSlot}
             />
-          ) : !loadFailed ? (
-            <p className="text-[10px] leading-relaxed text-muted-foreground/70">
-              No registry-provider key stored — with the tab closed, the executor stands
-              down and due schedules stay queued (honest no-op). The executor dials the
-              OLDEST slot that pairs with a registry provider; builtin or unresolvable
-              slots are skipped, so storing a new key promotes it without deleting old ones.
-            </p>
-          ) : null}
+          )}
           {!loading && !loadFailed && slots.length === 0 ? (
             <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground/70">
               Re-populate from the seed backup without a restart:{" "}
