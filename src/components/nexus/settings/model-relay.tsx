@@ -596,6 +596,13 @@ export function ModelRelayCard() {
                   silently shows aging data). Same honest chip language the
                   plugin-packs strip got in r583: live/cached · HH:MM naming
                   the vintage, tooltip carrying the refresh doctrine. */}
+              {/* r602: seed-flow honesty — with an EMPTY device cache the
+                  badge said "loading…" permanently (even after the boot fetch
+                  FAILED nothing was loading) and its tooltip claimed
+                  "unreachable" — knowledge it does not have. A null census now
+                  splits by freellmLoading: "seeding…" (first fetch in flight)
+                  vs "no census yet" (fetch not landed — Refresh seeds it).
+                  Nothing is invented in any state. */}
               {(() => {
                 const age = freellm
                   ? new Date(freellm.asOf).toLocaleTimeString([], {
@@ -615,7 +622,11 @@ export function ModelRelayCard() {
                     title={
                       freellm?.origin === "live"
                         ? `Census parsed from freellm.sh as of ${age} — auto-refreshes on mount past its freshness window; Refresh forces a live fetch.`
-                        : "freellm.sh unreachable — no invented reach data, ever"
+                        : freellm
+                          ? "freellm.sh unreachable — no invented reach data, ever"
+                          : freellmLoading
+                            ? "No census cached on this device yet — the first fetch is in flight; nothing is invented while it runs."
+                            : "The first fetch has not landed (no census cached on this device) — hit Refresh to seed it; nothing is invented in the meantime."
                     }
                     data-testid="freellm-census-badge"
                     role="status"
@@ -625,7 +636,9 @@ export function ModelRelayCard() {
                       ? freellm.origin === "live"
                         ? `${freellmStale(freellm) ? "cached" : "live"} · ${age}`
                         : "unavailable"
-                      : "loading…"}
+                      : freellmLoading
+                        ? "seeding…"
+                        : "no census yet"}
                   </Badge>
                 );
               })()}

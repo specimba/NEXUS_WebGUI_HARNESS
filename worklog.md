@@ -940,3 +940,29 @@ Open risks: (1) vault [] + seed file absent — unchanged; (2) dev server freshl
 Next recommended action: r602 — ONE batched opening (expect HEAD = r601 commit; if a parallel session closed r602, follow ITS handoff). Then: golden legs; ONE increment outside closed lanes; ONE edit + ONE gates + ONE witness; ship. Keep it tight: r601 spent 11 rounds including the crash + restart.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa:syntax=0-failures qa:tsc=rc0 witness="LIVE armed chip label 'server lane: armed · 15m' + title 'fires every 15m'; leg2 queue 0->1 with r598 order-fact copy" legs="1+2+3 GREEN (leg2 clean retry after crash)" restart="1/1 consumed (server died mid-round)"
+---
+Task ID: r602
+Agent: main agent (NEXUS WebGUI patrol, job 473388, trace 202610270137)
+Task: patrol round — golden legs, one increment (census seed-flow honesty), gates, dual push.
+
+Work Log:
+- Opening: HEAD=af5e731b5 (r601, as expected); server UP 200 (r601 restart held); vault [] + seed absent; WF=5 RUNS=0 (consistent, no reversion).
+- leg1 census+intel: settings render, stale=false, census section + intel ladder present.
+- leg3 Frontier: board 4543/349/4194 — 6th consecutive exact match.
+- leg2: sample-card panel, paste 279 chars, Run disabled=false title=null (r599 gate honest), queue 1->2 (profile persisted from r601), r598 order-fact copy live, console 0 errors. Golden triple green.
+- Increment (census seed-flow honesty, model-relay.tsx freellm-census-badge): with an EMPTY device cache the badge said "loading…" PERMANENTLY (even after a failed boot fetch nothing was loading) and its tooltip claimed "unreachable" — knowledge it does not have. Null census now splits by freellmLoading: "seeding…" (first fetch in flight; title: "No census cached on this device yet — the first fetch is in flight; nothing is invented while it runs.") vs "no census yet" (fetch not landed — Refresh seeds it). freellm-present states untouched; no QA script asserted the old string (checked).
+- Witness discipline: first poll (+700ms after reload) MISSED the seeding window (server-cached /api/freellm answers in ms) and caught only the seeded live state — recorded honestly, then retried deterministically: persisted a 2.5s /api/freellm fetch delay + a 60ms badge poller IN the live document, cleared the cache key (nexus-freellm-index), hash-nav radar->settings to remount the section. Captured the full sequence: live·04:38PM (pre-nav doc) -> "seeding…" @1530ms WITH the new null title -> "live · 04:38 PM" @4018ms (seed refilled from the server-cached payload, asOf preserved). The "no census yet" arm (boot fetch FAILED) is code-reviewed only — reachable solely on fetch failure; not theatre-forced.
+- Gates: tsc rc=0; lint 0 errors/33 warnings (exact baseline); qa:syntax 0 failures; qa:tsc rc0. Console 0 errors across all legs.
+- Stale-build stamp ("New build — refresh this tab") seen at round start, cleared by the witness reload — r602 code confirmed live.
+
+Stage Summary:
+- The census badge no longer lies during the seed flow: in-flight is "seeding…", not a perpetual "loading…"; the tooltip no longer claims "unreachable" without knowing.
+- New doctrine: fast server-cached endpoints make honest null states UNWITNESSABLE by post-hoc polls — persist the poller + a fetch delay in the live document BEFORE the remount (hash-nav swap remounts the section but PRESERVES document JS), and the state sequence captures itself.
+- Doctrine correction: lib comment says freellmStale TTL is 6h (not the 30min recorded in r599 notes) — census-chip window doctrine now reads 6h.
+
+Round Handoff:
+Round ID: r603 -> next patrol (job 473388)
+Open risks: (1) vault [] + seed file absent — unchanged; (2) the patrol browser document carries an r602 witness artifact: a 2.5s /api/freellm fetch delay + a badge poller on window — any fresh reload clears both; do not diagnose slowness without checking this; (3) 6 UI cards vs 5 server AutomationWorkflow rows (one client-only card) — designed; the armed sample card persists via localStorage; (4) increment lanes closed: age/in-flight, Evolution eligibility, relay mount-TTL, keyless silence, queue-toast copy, cascade copy, archive empty-state copy, enqueue durability, TASK-101 durable-step, run-now unregistered error copy, registration card chip (both sides), panel first-step pending copy, empty-task Run title, queued-run no-toast (designed), armed-chip interval honesty (r601), census seed-flow honesty (r602) — candidates: propagate the 6h TTL correction into any 30min-era copy, QA-found bugs, or a new honest-copy face; (5) doctrines: census TTL=6h (r599 30min note corrected); hash-nav open=no-op same-URL (reload refetches) BUT hash-nav swap remounts the section and preserves document JS (witness technique); Frontier ~7s settle; card Run opens panel / in-dialog Run queues (disabled until task brief, title explains); panel-lane queue is client-side (Run history counter).
+Next recommended action: r603 — ONE batched opening (expect HEAD = r602 commit; if a parallel session closed r603, follow ITS handoff). Then: golden legs; ONE increment outside closed lanes; ONE edit + ONE gates + ONE witness; ship. r602 spent 8 rounds — keep the same discipline.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa:syntax=0-failures qa:tsc=rc0 witness="LIVE seed-flow sequence: live -> seeding… (null title 'first fetch in flight') -> live @4018ms; 'no census yet' arm code-reviewed only" legs="1+2+3 GREEN" restart="0/1 consumed"
