@@ -534,7 +534,13 @@ export function ServerAutopilot() {
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (json.ok) {
         toast.success("Queued on the local server", {
-          description: `${name} — the autopilot picks it up within 30s.`,
+          // r592: the old copy promised an unconditional 30s pickup, but the
+          // claim-and-dial contract is conditional — the autopilot claims due
+          // work within 30s, yet server-lane runs dial only with a vault key
+          // (keyless runs wait in the queue; witnessed live r592: no run row
+          // minutes after queueing on an empty vault). State the rule, not
+          // just the happy arm.
+          description: `${name} — queued. The autopilot claims due work within 30s, and server-lane runs dial only with a vault key: without one, the run waits in the queue (nothing implicit).`,
         });
         void poll();
       } else {
