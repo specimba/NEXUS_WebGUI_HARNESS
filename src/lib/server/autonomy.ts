@@ -56,8 +56,12 @@ const QUEUE_CAP = 500;
 const NOTES_MAX = 2_000;
 const RESULT_MAX = 2_000;
 const SUMMARY_MAX = 500;
-/** Don't pile up proposals: ≥3 fresh (<2h) proposed moves suppresses a new batch. */
-const FRESH_PROPOSAL_LIMIT = 3;
+/** r611 drain rebalance: suppress only when a FULL batch sits unconsumed.
+ * The executor eats take:2/cycle, so a fresh 5-draft batch always leaves 3 —
+ * the old limit (3) fired on steady state, not on a stall (r611 evidence:
+ * 8 of 12 live cycles suppressed while the queue drained healthily).
+ * 5 = one unconsumed batch = an actual executor stall. */
+const FRESH_PROPOSAL_LIMIT = 5;
 const FRESH_PROPOSAL_WINDOW_MS = 2 * 3_600_000;
 const SEED_MOVE_COOLDOWN_MS = 6 * 3_600_000;
 const FOLLOWUP_MOVE_COOLDOWN_MS = 24 * 3_600_000;
@@ -294,16 +298,16 @@ interface MoveDraft {
 }
 
 /** Deterministic proposal pass. Returns the created NextMove rows (0-5).
- * Suppressed entirely when ≥3 fresh (<2h) proposals already sit unexecuted —
+ * Suppressed entirely when FRESH_PROPOSAL_LIMIT (r611: 5) fresh (<2h) proposals sit unconsumed —
  * the engine must not bury its own backlog under new paper. */
 export async function generateNextMoves(
   cycleId: string,
-): Promise<{ moves: { id: string; title: string; kind: string; status: string }[]; suppressed: boolean; laneUsed: string }> {
+): Promise<{ moves: { id: string; title: string; kind: string; status: string }[]; suppressed: boolean; laneUsed: string; freshProposed: number }> {
   const freshProposed = await db.nextMove.count({
     where: { status: "proposed", createdAt: { gte: new Date(Date.now() - FRESH_PROPOSAL_WINDOW_MS) } },
   });
   if (freshProposed >= FRESH_PROPOSAL_LIMIT) {
-    return { moves: [], suppressed: true, laneUsed: "deterministic" };
+    return { moves: [], suppressed: true, laneUsed: "deterministic", freshProposed };
   }
 
   const [queuedRows, repoRows, urlRows, vaultSlots, digest, run24] = await Promise.all([
@@ -487,7 +491,7 @@ export async function generateNextMoves(
     }
   }
 
-  if (ranked.length === 0) return { moves: [], suppressed: true, laneUsed };
+  if (ranked.length === 0) return { moves: [], suppressed: true, laneUsed, freshProposed };
 
   await db.nextMove.createMany({
     data: ranked.map((d) => ({
@@ -506,7 +510,7 @@ export async function generateNextMoves(
     orderBy: { rank: "asc" },
     select: { id: true, title: true, kind: true, status: true },
   });
-  return { moves: created, suppressed: false, laneUsed };
+  return { moves: created, suppressed: false, laneUsed, freshProposed };
 }
 
 // ─── Move execution (SAFE moves only, vault-free) ────────────────────────────
@@ -1113,7 +1117,7 @@ export async function runAutonomyCycle(): Promise<CycleResult> {
   ]);
   const ms = Date.now() - t0;
   const summary = trunc(
-    `${cycleId}: ${gen.moves.length} proposed${gen.suppressed ? " (suppressed guard)" : ""} · ${executed} executed / ${failed} failed · queue ${queued}q/${researched}r/${failedRows}f · lane ${gen.laneUsed} · ${ms}ms`,
+    `${cycleId}: ${gen.moves.length} proposed${gen.suppressed ? ` (suppressed guard: ${gen.freshProposed} fresh <2h)` : ""} · ${executed} executed / ${failed} failed · queue ${queued}q/${researched}r/${failedRows}f · lane ${gen.laneUsed} · ${ms}ms`,
     SUMMARY_MAX,
   );
   const stats = {

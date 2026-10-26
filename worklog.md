@@ -1192,3 +1192,26 @@ Round ID: r611 -> next patrol (job 473388)
 Next recommended action: r611 — batched opening (expect HEAD = r610 commit; else follow ITS handoff); qa:golden (1 round); increment = backlog drain-rate rebalance (P3) OR enricher fail-open timeout retune (P3); gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="audit: 12 catch sites triaged, 1 silent user-facing failure fixed (run-kanban copy), void-fetch sweep clean" restart="0/1 consumed"
+
+---
+Task ID: r611
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270607)
+Task: Patrol per r610 handoff — qa:golden QA face, P3 backlog drain-rate rebalance (evidence-probed first), gates, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = bb9a897ba — a parallel session had already closed the r610 dispatch (fetch-catch sweep + run-kanban toast fix, 12/12); followed the r610 handoff forward as r611. Server UP.
+- qa:golden 4/4 PASS (console 0->0) — no QA bugs.
+- EVIDENCE FIRST (new readonly probe scripts/probe-r611-drain-evidence.ts): queue 23q/31r/0f (18 repo + 5 url), oldest queued 3.4h; last 12 cycles: 8/12 SUPPRESSED, exec flat 2/cycle, proposed cycles 4.4-6.6s vs suppressed 0.6-1.4s; ledger 36 research-repo + 8 advance-strategy executed.
+- DIAGNOSIS: proposer drafts 5/cycle, executor eats take:2, leaving exactly 3 fresh proposed — FRESH_PROPOSAL_LIMIT=3 fired on STEADY STATE, not on a stall. The anti-paper guard throttled the normal drain (8/12 suppression while the queue drained healthily).
+- ONE mechanism fix (autonomy.ts): FRESH_PROPOSAL_LIMIT 3->5 (= one unconsumed batch = a real executor stall); generateNextMoves now returns freshProposed; the cycle feed renders the honest reason with the live count: "(suppressed guard: N fresh <2h)" — user-facing numeric honesty in the AIE panel, vocabulary-consistent with the existing queue q/r/f census in the same line. Copy/number consistency = this round's styling-polish slice; deeper UI polish queued r612.
+- Companion evidence for the queued enricher P3: proposed-cycle worst 6.6s ~= ENRICH_TIMEOUT_MS=6s ceiling — retune stays queued with this citation.
+
+Stage Summary:
+- The anti-burial guard now fires only when the executor genuinely stalls; the suppression reason is count-honest in the panel feed. Motivating evidence + probe persisted (scripts/probe-r611-drain-evidence.ts).
+- Remaining meta-review queue r612+: (P2) vault seeding path (needs Owner key — never invented); (P3) enricher fail-open timeout retune (6s ceiling, 6.6s worst cycle evidenced); AIE cycle-feed styling polish.
+
+Round Handoff:
+Round ID: r612 -> next patrol (job 473388)
+Next recommended action: r612 — batched opening (expect HEAD = r611 commit; else follow ITS handoff); qa:golden (1 round); increment = enricher fail-open timeout retune (P3: ENRICH_TIMEOUT_MS 6000->4000, r611 latency evidence) OR AIE cycle-feed styling polish; gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS(441) qa:tsc=rc0 qa:golden=4/4 witness="readonly probe: 8/12 live cycles suppressed at steady state; limit 3->5 + count-honest suppressed readout in cycle feed" restart="0/1 consumed"
