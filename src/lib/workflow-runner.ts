@@ -983,7 +983,13 @@ export async function executeWorkflowRun(
                 .filter((p) => p.status === "open" && p.frontierRef)
                 .map((p) => p.frontierRef!.title)
             );
+            // r590: AWorld eligibility — mirror of the manual propose picker
+            // (workflows-view): only seeds whose 4-check verdict is
+            // "reproduced" may seed an automatic Evolution proposal; the
+            // ledger's census promises exactly this, score alone must not
+            // smuggle a not-reproduced seed into Evolution.
             const seed = readFrontierSeeds()
+              .filter((s) => s.reproduction?.verdict === "reproduced")
               .filter((s) => !usedTitles.has(s.title))
               .sort((a, b) => b.total - a.total)[0];
             if (seed) {

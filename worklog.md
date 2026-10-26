@@ -622,3 +622,26 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r590 — ONE batched opening. Then: (a) golden legs all three fresh; (b) then Owner-asked work or genuine polish OUTSIDE the age-honesty lane (backlog fully paid — do NOT invent surface); (c) keep the increment to ONE edit + ONE gates call + ONE witness.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (pure-adjacent suites; vault/resume/peer/harness/rrf green r583-r589, UI-only diff since)
+
+---
+Task ID: r590
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r590 per r589 handoff — HEAD d8a82f035 = own r589, no parallel session → ran AS r590. ONE batched opening; golden legs all three fresh; increment OUTSIDE the age-honesty lane (per handoff), evidence-first; gates + data-level witness; ship.
+
+Work Log:
+- OPENING (single bash): key check all sources null → TASK-102 stays Owner-blocked; runs same 5 error, error text confirmed "step 1/5 … dial 401" (credential class) → peer slice 2 stays sighting-blocked; registry ONE clean pack; server 200; tree clean.
+- GOLDEN LEGS, all three fresh GREEN, zero bugs: settings = relay content in DOM (5 badge/heading matches), console 0/0; workflows = Run trigger → long-paste 1066 chars, chip re-witnessed ("1,066 chars"), console 0/0; radar = trusted Radix click → strip persisted (emerald "reproduced ·4" + census "1/1 reproduced"), inner scroll 755, PAGEERR 0 (an "Evolution" tab probe failed with a clean element list — probe artifact: Evolution is NOT a radar tab, the radar group is Models/GitHub Stars/HF Trending/Paper Radar/Frontier).
+- INCREMENT (different class — ELIGIBILITY semantics, a REAL doctrine violation found by reading the consumer): r582's acceptance says "Evolution embeds only reproducible seeds" and the strip's census chips promise it — but BOTH Evolution seed pickers ranked by score alone: workflows-view.tsx (manual propose) and workflow-runner.ts (automatic spawn) took `readFrontierSeeds().filter(notUsed).sort(by total)[0]` with ZERO reproduction-verdict check, so a top-scoring NOT-reproduced seed could be handed to Evolution, contradicting the census the UI advertises. Fixed both callsites with the exact census predicate `.filter((s) => s.reproduction?.verdict === "reproduced")` ahead of the used/rank filters (plain proposal degrades otherwise — the existing no-seed path). Found by tracing FrontierSeed consumers, not by invention: the filter had NO consumer outside the scout tab until now.
+- WITNESS (honest, data-level): gates green, then the SAME predicate evaluated over the REAL persisted ledger in the patrol browser (nexus-frontier-seeds): ledger 1, eligible 1, dropped 0, top "Gen-Verse/RSI-Anything" — the real reproduced seed survives the new eligibility gate (regression clean). The dropped>0 arm is unforced per the r586/r589 doctrine (needs a failing seed; the predicate is byte-identical to the census chip's witnessed expression). UI regression: the manual propose toast path is type-checked unchanged.
+- GATES: tsc=0; lint=0 errors (33 warnings — exact baseline, summary-line grep); qa-seed-reproduction + qa-constraint-block chained && OK (the touched runner/view lines sit adjacent to the pure suites' area; vault/resume/peer/harness/rrf green r583-r589, no lib shape change — the lib itself is untouched, only two callsites gained a filter).
+- BUDGET: 12/12 exactly — opening (1), three legs (3), evolution/eligibility recon (rg×4 + read×1), dual edit (1, two files batched), gates+witness (1), ship (1).
+
+Stage Summary:
+- The AWorld doctrine now holds at the consumer, not just the chip: Evolution — manual AND automatic — can only pull seeds whose 4-check verdict says "reproduced". The census chip's promise and the engine's behavior finally agree. This was a real correctness gap, not styling theatre.
+
+Round Handoff:
+Round ID: r591 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) peer slice 2 still sighting-blocked (all 5 runs dial-401 credential class); (4) frontier judge queue stays rubric-only until the Owner keys a lane; (5) intel boards were on curated-snapshot fallback at r588 — reachability, not regression; (6) the eligibility dropped>0 arm remains unforced (needs a real not-reproduced seed — natural occurrence, do NOT synthesize); (7) probe doctrines: Evolution is NOT a radar tab; census test-id anchor + closest tabpanel for panel text; scrollBehavior='auto' before asserting scrollTop; trusted clicks for Radix triggers; grep the lint SUMMARY line.
+Next recommended action: r591 — ONE batched opening. Then: (a) golden legs all three fresh; (b) Owner-asked work or genuine polish — the age/in-flight lane is exhausted AND the eligibility lane just closed; look for correctness gaps by READING consumers of chipped promises (the r590 pattern worked), or QA-found bugs; (c) keep the increment to ONE edit + ONE gates call + ONE witness.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-seed-reproduction=PASS qa-constraint-block=PASS (vault/resume/peer/harness/rrf green r583-r590; lib untouched, two callsites gained the census predicate)

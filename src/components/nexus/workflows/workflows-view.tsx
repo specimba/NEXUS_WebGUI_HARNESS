@@ -506,7 +506,14 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
                             .filter((p) => p.status === "open" && p.frontierRef)
                             .map((p) => p.frontierRef!.title)
                         );
+                        // r590: AWorld eligibility — the ledger's verdict chips
+                        // and census promise "Evolution embeds only reproducible
+                        // seeds" (r582 doctrine), but this picker ranked by
+                        // score alone and could hand Evolution a NOT-reproduced
+                        // seed. Only a seed whose 4-check verdict is "reproduced"
+                        // is eligible now; a plain proposal degrades otherwise.
                         const seed = readFrontierSeeds()
+                          .filter((s) => s.reproduction?.verdict === "reproduced")
                           .filter((s) => !usedTitles.has(s.title))
                           .sort((a, b) => b.total - a.total)[0];
                         if (seed) {
