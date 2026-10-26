@@ -468,6 +468,15 @@ export function ModelRelayCard() {
                   language the freellm census got in r587 and the plugin-packs
                   strip in r583: live/cached · HH:MM naming the vintage,
                   tooltip carrying the refresh doctrine. */}
+              {/* r603: seed-flow honesty (r602's twin) — with an EMPTY device
+                  cache this badge said "loading…" permanently (even after the
+                  boot fetch FAILED nothing was loading) and its tooltip
+                  claimed "Boards unreachable — curated snapshot in effect" —
+                  knowledge it does not have (null means not-yet-loaded, and
+                  with null there is no snapshot either). A null index now
+                  splits by intelLoading: "seeding…" (first fetch in flight)
+                  vs "no boards yet" (fetch not landed — Refresh seeds it).
+                  Nothing is invented in any state. */}
               {(() => {
                 const age = intel
                   ? new Date(intel.asOf).toLocaleTimeString([], {
@@ -487,7 +496,11 @@ export function ModelRelayCard() {
                     title={
                       intel?.origin === "live"
                         ? `At least one leaderboard board was parsed live for this index, as of ${age} — auto-refreshes on mount past its freshness window; Refresh forces a live fetch.`
-                        : "Boards unreachable — curated snapshot in effect (honest fallback, never invented)"
+                        : intel
+                          ? "Boards unreachable — curated snapshot in effect (honest fallback, never invented)"
+                          : intelLoading
+                            ? "No boards cached on this device yet — the first fetch is in flight; nothing is invented while it runs."
+                            : "The first fetch has not landed (no boards cached on this device) — hit Refresh to seed it; nothing is invented in the meantime."
                     }
                     data-testid="intel-vintage-badge"
                     role="status"
@@ -497,7 +510,9 @@ export function ModelRelayCard() {
                       ? intel.origin === "live"
                         ? `${intelligenceStale(intel) ? "cached" : "live"} boards · ${age}`
                         : "snapshot"
-                      : "loading…"}
+                      : intelLoading
+                        ? "seeding…"
+                        : "no boards yet"}
                   </Badge>
                 );
               })()}
