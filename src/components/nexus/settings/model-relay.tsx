@@ -489,6 +489,9 @@ export function ModelRelayCard() {
                         ? `At least one leaderboard board was parsed live for this index, as of ${age} — auto-refreshes on mount past its freshness window; Refresh forces a live fetch.`
                         : "Boards unreachable — curated snapshot in effect (honest fallback, never invented)"
                     }
+                    data-testid="intel-vintage-badge"
+                    role="status"
+                    aria-live="polite"
                   >
                     {intel
                       ? intel.origin === "live"
@@ -614,6 +617,9 @@ export function ModelRelayCard() {
                         ? `Census parsed from freellm.sh as of ${age} — auto-refreshes on mount past its freshness window; Refresh forces a live fetch.`
                         : "freellm.sh unreachable — no invented reach data, ever"
                     }
+                    data-testid="freellm-census-badge"
+                    role="status"
+                    aria-live="polite"
                   >
                     {freellm
                       ? freellm.origin === "live"
