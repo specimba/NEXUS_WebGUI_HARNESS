@@ -2755,6 +2755,16 @@ export function WorkflowsView() {
                           stopped · click to resume
                         </button>
                       )}
+{(wf.schedule?.enabled === true && wf.steps.length > 0) && (
+                        <span
+                          data-testid="server-lane-armed-chip"
+                          title="This pipeline is schedule-armed — the bridge registers it on the server lane every heartbeat (60s), so run-now and the headless scheduler both reach it."
+                          className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] text-teal-600 dark:text-teal-400"
+                        >
+                          {/* r600: the registration contract now reads BOTH ways — r597's chip marks the unregistered side (muted); this marks the armed side (teal) so the contract is visible on the card without consulting either error path. Passive chip: no fake affordance. */}
+                          server lane: armed
+                        </span>
+                      )}
 {!(wf.schedule?.enabled === true && wf.steps.length > 0) && (
                         <span
                           data-testid="server-lane-unregistered-chip"

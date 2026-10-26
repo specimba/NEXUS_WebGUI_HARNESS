@@ -888,3 +888,30 @@ Open risks: (1) vault [] + seed file absent — unchanged; (2) sandbox DB revers
 Next recommended action: r600 — ONE batched opening (expect HEAD = r599 commit; if a parallel session closed r600, follow ITS handoff). Then: golden legs; increment outside closed lanes (the queued-run no-toast arm is the most promising open lane); ONE edit + ONE gates + ONE witness; ship.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa:syntax=rc0 qa:tsc=rc0 witness="LIVE both arms (disabled+title -> enabled, title=null)" legs="1+2+3 GREEN (census TTL semantics verified)" restart="0/1 consumed (server was up)"
+---
+Task ID: r600
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r600 per r599 handoff — HEAD 93df077b9 = own r599, no parallel session. Golden legs; judge the queued-run no-toast arm; increment outside closed lanes; one edit + gates + witness; ship.
+
+Work Log:
+- OPENING: HEAD own (93df077b9). Server DOWN -> ONE restart (1/1, UP 5s). WF=0 RUNS=0. Fresh browser daemon (empty localStorage) — relevant below.
+- GOLDEN LEG 1 GREEN: fresh-profile mount -> census fetched on mount (empty cache = stale) -> "live · 04:38 PM" = now; stale=false. Errors 0.
+- GOLDEN LEG 3 GREEN: Radar -> Frontier (7s settle) -> guarded finder sh 4543 / ch 349 / clamp 4194 — fourth consecutive exact match. Errors 0.
+- GOLDEN LEG 2 GREEN + NO-TOAST ARM JUDGED (lane closed, honest): paste endOK -> Run enabled -> queued (hist 4->5 in the fresh profile) -> 2s window toasts=[] THIRD consistent observation (r598 R10, r599 R9, r600 R4). Judgment: the queue feedback is adequate IN CONTEXT — the panel flips to the queued run view (rows + history bump visible at the point of click); a toast would be noise, not honesty. NOT owed; lane closes as designed. No fake toast shipped.
+- INCREMENT (one edit, workflows-view.tsx:2758): symmetric armed chip — r597's contract chip marks only the UNREGISTERED side (muted, "server lane: not registered"); the new twin chip marks the ARMED side (teal, data-testid=server-lane-armed-chip, "server lane: armed") with a title naming the 60s bridge heartbeat and both reachable paths (run-now + headless scheduler). The registration contract now reads BOTH ways on the card, no error-path consultation needed. Passive chip, no fake affordance — same doctrine as r597.
+- WITNESS (LIVE, end to end): armed a sample card through the real UI — panel Schedule -> "Enable recurring schedule" switch (default 15m preset) -> Close -> card chips flipped to unreg=5 / armed=1, the teal chip rendering with its title. No regression on the other side (6/6 unregistered before, 5/6 after — exactly the armed card moved). Errors 0.
+- GATES: tsc=0; lint rc=0 "✖ 33 problems (0 errors, 33 warnings)" EXACT baseline; qa:syntax rc=0; qa:tsc rc=0.
+- BUDGET: 8 rounds (opening 1, restart+leg1 1, leg3 1, leg2+probe 1, edit 1, gates+witness-recon 1, arm-witness 1, ship 1) — WELL under the cap; clean round.
+- ENVIRONMENT NOTE for r601: the sample card armed via the panel now persists in THIS browser profile (localStorage); after a bridge heartbeat the server may show WF=1 (the registration contract working as designed) and the chip distribution will read unreg=5 / armed=1 — do NOT mistake either for a sandbox anomaly.
+
+Stage Summary:
+- The registration contract is now symmetric and live-verified: both sides of the schedule-armed predicate have an honest on-card chip.
+- The queued-run no-toast lane is closed by judgment (in-context feedback sufficient; three consistent observations recorded) — no theatre toast.
+- Golden triple green with zero restart waste beyond the required one.
+
+Round Handoff:
+Round ID: r601 -> next patrol (job 473388)
+Open risks: (1) vault [] + seed file absent — unchanged; (2) the r600-armed sample card: expect WF=1 after a bridge heartbeat and chips unreg=5/armed=1 in the patrol browser profile (working as designed, not a sandbox anomaly); (3) sandbox DB reversion risk stands (mtime vs restart times first); (4) increment lanes closed: age/in-flight, Evolution eligibility, relay mount-TTL, keyless silence (busted), queue-toast copy, cascade copy, archive empty-state copy, enqueue durability (designed), TASK-101 durable-step (built), run-now unregistered error copy (r596), registration card chip unregistered side (r597), panel first-step pending copy (r598), empty-task Run title (r599), queued-run no-toast (judged designed, r600), armed-side chip (r600) — candidates: census-chip seed flow, schedule-interval honesty on the armed chip (the 15m default is real — does the chip name the ACTUAL interval?), or QA-found bugs; (5) doctrines: census TTL=30min + empty-cache boot fetch; hash-nav open=no-op; Frontier ~7s settle; card Run opens panel / in-dialog Run queues (disabled until task brief, title explains).
+Next recommended action: r601 — ONE batched opening (expect HEAD = r600 commit; if a parallel session closed r601, follow ITS handoff). Then: golden legs; increment outside closed lanes (armed-chip interval honesty is the natural next face); ONE edit + ONE gates + ONE witness; ship.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa:syntax=rc0 qa:tsc=rc0 witness="LIVE arm flow (switch -> Close -> chips 5/1, teal armed chip)" legs="1+2+3 GREEN" restart="1/1 consumed (UP 5s)"
