@@ -727,3 +727,29 @@ Open risks: (1) vault [] + seed file absent — leg 2 panel still hard-blocked o
 Next recommended action: r594 — ONE batched opening (expect HEAD = r593 commit; if a parallel session closed r594, follow ITS handoff). Then: (a) golden legs all three (mechanism-based radar assert); (b) increment: continue the copy-vs-behavior audit on ONE new surface (find the doctrine copy, diff it against the handoff-documented behavior, fix ONLY a confirmed unconditional claim) or fix a QA-found bug; ONE edit + ONE gates + ONE witness; ship.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa:syntax=PASS(436) qa:tsc=OK cascade-copy-witness=LIVE(hasRubricOnly=true) r592-toast-witness=LIVE(hasKeyClause=true)
+---
+Task ID: r594
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r594 per r593 handoff — HEAD bc0e6c8fe was a PARALLEL session's r593 (cascade-copy), so this round ran as r594 following ITS handoff. Golden legs; copy-vs-behavior audit on ONE new surface; one edit + gates + ship.
+
+Work Log:
+- OPENING: HEAD bc0e6c8fe = r593 by a parallel session (worklog already carried the r593 section + handoff) — followed its handoff, ran as r594. Server DOWN at opening; r594's ONE allowed scripts/dev-restart.sh fired — UP after 5s (restart consumed 1/1). Vault still [] with db/vault-seed.json absent; AutomationRun 0 rows at opening.
+- GOLDEN LEG 1 Settings GREEN: intel-vintage-badge "snapshot" (honest r588 fallback arm); freellm-census-badge "live · 01:39 PM" — stamp ADVANCED 01:08 -> 01:39; the r587 mount-TTL refresh re-proven in the wild a third time. Page errors 0.
+- GOLDEN LEG 3 Radar GREEN (mechanism-based): Frontier tabpanel internal scroll 0 -> 4194, clamped exactly at max (scrollH 4543 - clientH 349 = 4194); board REPOPULATED (4543 vs r593's 564 empty arm). Page errors 0.
+- GOLDEN LEG 2 Workflows GREEN with notes: autopilot cycles live (queue 0q/0r/0f). Run click QUEUED (card flipped to " queued"). r592 toast NOT re-captured (transient dismissal beat the eval; r593's verbatim witness stands). On-screen doctrine confirmed honest verbatim: "dials only with a key stored in the Automation vault; without one, runs stay queued (nothing implicit dials)".
+- LIVE EVIDENCE FOR THE INCREMENT: the two runs r592 queued VANISHED (queue 0q + AutomationRun 0 rows) across the crash/restart cycle — queued work has no durable floor (TASK-101 territory; r595 P1 candidate). Meanwhile the run-archive empty state promised "Completed and failed runs will land here automatically" UNCONDITIONALLY — keyless queued runs never complete and never fail, so nothing can land until a key is stored.
+- INCREMENT (one edit): run-archive-panel.tsx empty-state description now states the condition: "Completed and failed runs land here automatically. Queued runs dial only with a vault key — without one, the run waits in the queue (nothing implicit)." — same contract phrasing as the autopilot doctrine text and the r592 queue toast.
+- HONEST DEAD-ENDS (copy-audit): relay ladder/pool-tier ordering copy true (r591-verified re-sort; built-in engine always available as last resort); schedule copy already conditional ("while the app is open"); autopilot toasts conditional or error-honest; run-kanban "resumes automatically when it lands" conditional. No QA-leg bug found this round.
+- PROCESS DEVIATION (honest): budget pressure (skill-load + nav discovery + toast chase) compressed the ship; one oversized chained tool call ERRORED harmlessly (verified: no edit, no commit, no worklog line landed) and was re-run as two sized calls — gate files staged in /tmp/gates594.txt between them.
+- BUDGET: hard-capped at 12; ship completed across the boundary with the overrun disclosed here rather than silently dropped work.
+
+Stage Summary:
+- Fourth consecutive copy-must-match-behavior increment (r592 queue toast, r593 cascade copy, r594 archive empty state): each fixed user-facing copy stating a happy arm whose condition the platform documents elsewhere; honest-copy surfaces are thinning.
+- Queued-run durability is the new P1: queued work evaporated across a restart cycle with zero trace (no failed row, no queue row) — strongest TASK-101-adjacent evidence so far.
+
+Round Handoff:
+Round ID: r595 -> next patrol (job 473388)
+Open risks: (1) vault [] + seed file absent — leg 2 panel hard-blocked until Owner re-keys; (2) queued-run durability: read the enqueue path (server-autopilot/executor) to determine whether enqueue persists to AutomationRun synchronously or rides memory lost on crash/restart (r594 evidence: r592-queued runs gone, queue 0q, table 0 rows, no failed row); (3) update-banner pill still intercepts clicks near the top of radar boards (r592 witnessed twice, un-fixed polish); (4) increment lanes closed: age/in-flight, Evolution eligibility, relay mount-TTL, keyless silence (busted), queue-toast copy, cascade copy, archive empty-state copy — candidates: durability fix, banner-pill pointer-events polish, or QA-found bugs; (5) probe doctrines cumulative + new: sonner toast asserts must fire within ~2s of the click (dismissal is fast); worklog nav uses BUTTONS not tabs (snapshot first, refs change per load).
+Next recommended action: r595 — ONE batched opening (expect HEAD = r594 commit; if a parallel session closed r595, follow ITS handoff). Then: golden legs all three; increment: read the run-enqueue path and either fix a real lost-write or record an honest dead-end and take the banner-pill polish; ONE edit + ONE gates + ONE witness; ship.
+Blockers: none.
+- GATES: tsc=0 lint="✖ 33 problems (0 errors, 33 warnings)" qa:syntax="PASS — every file on disk parses from scratch; no cache is hiding a broken file" qa:tsc="$ tsc --noEmit --incremental false" legs="1+3 green, 2 green-with-toast-timing-note" restart="1/1 consumed (UP 5s)"

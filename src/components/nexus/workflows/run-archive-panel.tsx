@@ -247,7 +247,7 @@ export function RunArchivePanel() {
         <EmptyState
           emoji="🗄️"
           title="Nothing archived yet"
-          description="Completed and failed runs will land here automatically."
+          description="Completed and failed runs land here automatically. Queued runs dial only with a vault key — without one, the run waits in the queue (nothing implicit)."
         />
       ) : filtered.length === 0 ? (
         <p className="rounded-lg border bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
