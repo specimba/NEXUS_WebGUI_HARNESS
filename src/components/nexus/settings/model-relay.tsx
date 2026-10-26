@@ -476,7 +476,13 @@ export function ModelRelayCard() {
                   with null there is no snapshot either). A null index now
                   splits by intelLoading: "seeding…" (first fetch in flight)
                   vs "no boards yet" (fetch not landed — Refresh seeds it).
-                  Nothing is invented in any state. */}
+                  Nothing is invented in any state.
+                  r606: the snapshot label now names its vintage too
+                  ("snapshot · HH:MM") — the fallback state is exactly where
+                  age matters most (r605 put it in the title, the label now
+                  carries it at a glance); the badge also grows a dashed
+                  border while in the snapshot state — dashed = provisional
+                  fallback, solid = live parse. */}
               {(() => {
                 const age = intel
                   ? new Date(intel.asOf).toLocaleTimeString([], {
@@ -491,7 +497,7 @@ export function ModelRelayCard() {
                       "text-[10px] font-normal tabular-nums",
                       intel?.origin === "live"
                         ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                        : "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                        : "border-dashed border-amber-500/40 bg-amber-500/10 text-amber-300"
                     )}
                     title={
                       intel?.origin === "live"
@@ -509,7 +515,7 @@ export function ModelRelayCard() {
                     {intel
                       ? intel.origin === "live"
                         ? `${intelligenceStale(intel) ? "cached" : "live"} boards · ${age}`
-                        : "snapshot"
+                        : `snapshot · ${age}`
                       : intelLoading
                         ? "seeding…"
                         : "no boards yet"}

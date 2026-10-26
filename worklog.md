@@ -1049,3 +1049,31 @@ Open risks: (1) vault [] + seed absent; (2) sandbox WF=0 heartbeat artifact; (3)
 Next recommended action: r606 — ONE batched opening (expect HEAD = r605 commit; else follow ITS handoff). Golden legs; increment: intel snapshot LABEL vintage (seen-anchored, ready) OR census a11y role=status asymmetry (verify first); ONE gates + ONE witness; ship. Keep under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0-exact-baseline qa:syntax=PASS qa:tsc=rc0 witness="LIVE: intel snapshot title now 'snapshot assembled 12:00 AM' (true asOf), label unchanged this round" legs="1+2+3 GREEN (snapshot honest + census live · 06:39 PM; frontier 942x300 sh=6181; paste 304 queued toast)" restart="0/1 consumed"
+
+---
+Task ID: r606
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270337)
+Task: Patrol round — worklog handoff follow, golden QA legs, one increment, gates, worklog, dual push.
+
+Work Log:
+- Opening batched: HEAD = 19229f5bd (r605) — no parallel session; executed as r606 per handoff. Server UP (HTTP 200), restart 0/1. Budget discipline held: legs merged, pre-verified candidate taken.
+- Golden leg 1: GREEN — intel badge + census chip "live · 06:39 PM", console 0.
+- Golden leg 2: GREEN — Frontier scroll-guard 942x300 sh=6181, console 0.
+- Golden leg 3: GREEN — paste 304, in-dialog Run enabled -> clicked -> toast "Running step 1/2 · queued just now", console 0.
+- Handoff candidate 2 VERIFIED CLEAN before editing: the census a11y asymmetry was a r605 probe artifact — the census badge ALREADY carries data-testid=freellm-census-badge + role=status + aria-live=polite; the r605 [role=status] probe missed it because the LABEL is "live · 06:39 PM" (no "census" word — that lives in the title). Lane closed to re-hunting.
+- Increment (ONE edit, 3 hunks, model-relay.tsx, all seen-anchored): r606 comment-ledger line; intel snapshot-fallback label "snapshot" -> "snapshot · ${age}" (r605 put the vintage in the title; the label now carries it at a glance); snapshot-state badge grows a dashed border (dashed = provisional fallback, solid = live parse — visual semantics matching the info).
+- Gates: tsc rc=0; lint ✖ 33 problems (0 errors, 33 warnings) — exact baseline from the summary line; qa:syntax PASS; qa:tsc rc0.
+- Witness LIVE (reload -> #settings -> relay click): label=[snapshot · 12:00 AM] dashed=true title-has-age=true (r605's title age intact) — the badge now answers "how old is this snapshot?" in label, title AND border; console 0 errors.
+
+Stage Summary:
+- Vintage honesty face COMPLETE on the intel badge: r605 (title) + r606 (label + dashed border) — in the snapshot state the Owner can no longer mistake a stale curated parse for a current one, at a glance, in a tooltip, and via border language.
+- Census a11y lane CLOSED CLEAN (was already accessible; r605 probe artifact documented).
+- Open for r607: no staged candidate — hunt QA bugs first; else new honest-copy faces or TASK-102. Do NOT re-hunt: refresh-surface failures (5 lanes, r605), census a11y (r606), intel vintage (r605+r606), plugin-packs (r604).
+- Doctrines: role=status probes must match on LABEL text, not expected keywords (r605's false "census ABSENT" cost a round); "snapshot assembled 12:00 AM" is the cached parse's true asOf (midnight is legitimate — do not fix as a bug).
+
+Round Handoff:
+Round ID: r607 -> next patrol (job 473388)
+Open risks: (1) vault [] + seed absent; (2) sandbox WF=0 heartbeat artifact; (3) fresh reload clears document residue; (4) closed lanes: [r601-r606 full list] — pre-verified increments are exhausted; r607 needs a fresh hunt (QA bugs first, then honest-copy faces, then TASKS.md); (5) 12-round budget is comfortable when legs are merged and the candidate is pre-verified — keep that shape.
+Next recommended action: r607 — ONE batched opening (expect HEAD = r606 commit; else follow ITS handoff). Golden legs merged (leg1+leg2 can share a browser round if you chain hash-navs); increment: fresh hunt (bug-led); ONE gates + ONE witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 witness="LIVE: intel label 'snapshot · 12:00 AM' + dashed border + title age intact" legs="1+2+3 GREEN" restart="0/1 consumed"
