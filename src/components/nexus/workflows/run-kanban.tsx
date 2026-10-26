@@ -26,6 +26,7 @@ import type { Workflow, WorkflowRun } from "@/lib/types";
 import { cn } from "@/lib/utils";
 // r486-a (Run Archive epic): the board's own poll lands server-lane rows in
 // client state — they archive here too (shared dedupe lives in run-archive).
+import { toast } from "sonner";
 import { archiveServerLaneRun } from "@/lib/run-archive";
 
 /** v24: one server-lane AutomationRun row (from /api/automation/sync GET). */
@@ -518,7 +519,15 @@ function ServerRunDrawer({
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1600);
       })
-      .catch(() => {});
+      .catch(() => {
+        // r610 audit: the last fully-muted catch on a user-facing wire —
+        // clipboard failure (blocked context / denied permission) now says
+        // so, same honest fallback as the run panel's copy buttons.
+        toast.error("Clipboard blocked", {
+          description:
+            "The browser refused clipboard access — open the run and copy from the report body instead.",
+        });
+      });
   }, [row, steps]);
 
   return (

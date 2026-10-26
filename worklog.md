@@ -1171,3 +1171,24 @@ Round ID: r610 -> next patrol (job 473388)
 Next recommended action: r610 — batched opening (expect HEAD = r609 commit; else follow ITS handoff; ignore sidecar-only cron commits, they are now gitignored); qa:golden (1 round); increment = fetch-catch audit sweep (find remaining .catch(() => {}) / missing res.ok pairs on user-facing wires — same class as r609, small verifiable hunks) OR backlog drain rebalance (P3); gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="LIVE repro: 500 + honest body + '[run-archive] write failed' stack in dev.log; client arm code-verified (res.ok + body surface)" restart="0/1 consumed"
+
+---
+Task ID: r610
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270537)
+Task: Patrol per r609 handoff — qa:golden QA face, fetch-catch audit sweep (the r609 silent-failure class), gates, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = 9a750c7b0 (r609, expected), server UP. qa:golden 4/4 PASS (console 0->0) — no QA bugs.
+- AUDIT SWEEP (the r609 class: fully-muted catches on user-facing wires): 12 `.catch(() => {` sites in src. Triage: 4 legitimate cleanup (tools.ts body.cancel x3, agent-engine deadlineAborted); 6 designed degradation with visible state (workflows-view vault probe -> null state, shell fleet probe -> null, freellm-index cached/unavailable fallback with honest note, run-panel clipboard x2 already toast-error fallbacks, scheduler catch documented as runner-surfaced); ONE true silent user-facing failure — run-kanban.tsx server-run report copy: `.catch(() => {})` meant a blocked/denied clipboard gave ZERO feedback (no toast, no copied state). Companion sweep: `void fetch(` across src finds exactly ONE site — the r609-fixed archive call; audit otherwise clean.
+- ONE hunk: run-kanban.tsx report-copy catch now toast.error("Clipboard blocked", …) with the same honest-copy pattern as the run panel's copy buttons (+ sonner import). Styling/copy consistency: identical fallback vocabulary the Owner already knows from the run panel.
+
+Stage Summary:
+- The r609 silent-failure class is now audited repo-wide: every muted catch either has a designed visible degradation, is cleanup-only, or is fixed (run-kanban was the last silent one). Future doctrine: a new .catch(() => {}) on a user-facing wire should require a comment naming the visible degradation it pairs with.
+- Remaining meta-review queue r611+: (P2) vault seeding path (needs an Owner key — never invented); (P3) backlog drain-rate rebalance; (P3) enricher fail-open timeout retune.
+- Round shape that worked: audit greps batched with golden; 7 candidate reads in ONE batched round; single MultiEdit; small bash gates. 12/12 comfortable.
+
+Round Handoff:
+Round ID: r611 -> next patrol (job 473388)
+Next recommended action: r611 — batched opening (expect HEAD = r610 commit; else follow ITS handoff); qa:golden (1 round); increment = backlog drain-rate rebalance (P3) OR enricher fail-open timeout retune (P3); gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="audit: 12 catch sites triaged, 1 silent user-facing failure fixed (run-kanban copy), void-fetch sweep clean" restart="0/1 consumed"
