@@ -88,6 +88,113 @@ export interface FrontierSeed {
   total: number;
   seed: string;
   judgedAt: number;
+  /** r582 AWorld loop: the scout's deterministic reproduction verdict —
+   *  every seed carries one (seedFromItem attaches it; older ledger rows
+   *  gain theirs on first verify). */
+  reproduction?: SeedReproduction;
+}
+
+// ─── AWorld explore→reproduce→improve (r582) ─────────────────────────────
+// AWorld's loop (TASKS.md P3 "frontier-scout v2"): a claim is only worth
+// improving on if it can be REPRODUCED first. With no keyed lanes (dial-free
+// doctrine) reproduction here is deterministic structural verification of the
+// seed's own record — provenance, core claim, directive, promotion band —
+// each check producing an honest evidence line. Never a network call.
+
+export type SeedReproductionVerdict = "reproduced" | "not-reproduced" | "unverifiable";
+
+export interface SeedReproduction {
+  verdict: SeedReproductionVerdict;
+  /** One line per check — "ok — <what held>" / "fail — <what broke>". */
+  evidence: string[];
+  checkedAt: number;
+}
+
+const ARXIV_ABS_RE = /arxiv\.org\/abs\/(\d{4}\.\d{4,5})(v\d+)?$/;
+const HF_PAPERS_RE = /hf\.co\/papers\/(\d{4}\.\d{4,5})(v\d+)?$/;
+const GITHUB_REPO_RE = /github\.com\/([\w.-]+)\/([\w.-]+)/;
+
+/** Minimum chars of extracted core claim for the claim check to hold. */
+const CLAIM_MIN_CHARS = 30;
+
+/**
+ * Deterministic AWorld-lite reproduction check over the seed's own record.
+ * Pure: no dials, no storage, same input → same verdict. "reproduced" means
+ * the record is structurally what it claims to be (resolvable provenance,
+ * an extracted core claim, a known directive, a promotion-consistent band);
+ * "not-reproduced" names the failing check in evidence; "unverifiable" means
+ * the record is too empty to even attempt.
+ */
+export function reproduceSeed(seed: FrontierSeed): SeedReproduction {
+  const evidence: string[] = [];
+  const text = (seed.seed ?? "").trim();
+  const url = (seed.url ?? "").trim();
+  if (!text || !url) {
+    return {
+      verdict: "unverifiable",
+      evidence: [`fail — record too empty to attempt: ${!url ? "no url" : "no seed text"}`],
+      checkedAt: Date.now(),
+    };
+  }
+
+  // ① provenance — the url resolves to the kind of record it claims.
+  if (seed.kind === "repo") {
+    const gh = GITHUB_REPO_RE.exec(url);
+    evidence.push(
+      gh
+        ? `ok — provenance: github ${gh[1]}/${gh[2]}`
+        : "fail — provenance: repo url does not resolve to github owner/repo"
+    );
+  } else {
+    const ax = ARXIV_ABS_RE.exec(url) ?? HF_PAPERS_RE.exec(url);
+    evidence.push(
+      ax
+        ? `ok — provenance: arXiv record ${ax[1]}`
+        : "fail — provenance: paper url does not resolve to an arXiv/HF record id"
+    );
+  }
+
+  // ② core claim — the distilled seed carries an extractable claim.
+  const afterClaim = text.split("Core claim: ")[1] ?? "";
+  const claimLen = afterClaim.includes("…") ? afterClaim.indexOf("…") : afterClaim.length;
+  evidence.push(
+    claimLen >= CLAIM_MIN_CHARS
+      ? `ok — claim: ${claimLen} chars of core claim on record`
+      : `fail — claim: core claim missing or too thin (${claimLen} chars, need ≥${CLAIM_MIN_CHARS})`
+  );
+
+  // ③ directive — the seed ends in a known area directive (not freeform).
+  // Built lazily at call time: AREA_DIRECTIVES/FALLBACK live further down the
+  // file and a module-load-time Set would be a TDZ ReferenceError.
+  const directiveTexts: ReadonlySet<string> = new Set([
+    ...AREA_DIRECTIVES.map((a) => a.directive),
+    FALLBACK_DIRECTIVE,
+  ]);
+  const directiveKnown = [...directiveTexts].some((d) => text.includes(d));
+  evidence.push(
+    directiveKnown
+      ? "ok — directive: matched a known area directive"
+      : "fail — directive: no known area directive in the seed text"
+  );
+
+  // ④ promotion band — a seed below the watch band contradicts its promotion.
+  evidence.push(
+    seed.total >= FRONTIER_WATCH_AT
+      ? `ok — band: total ${seed.total}/100 ≥ watch threshold ${FRONTIER_WATCH_AT}`
+      : `fail — band: total ${seed.total}/100 below watch threshold ${FRONTIER_WATCH_AT} — promotion inconsistent`
+  );
+
+  const failed = evidence.filter((e) => e.startsWith("fail")).length;
+  return {
+    verdict: failed === 0 ? "reproduced" : "not-reproduced",
+    evidence,
+    checkedAt: Date.now(),
+  };
+}
+
+/** Stamp a seed with a fresh reproduction verdict (pure — never mutates). */
+export function withReproduction(seed: FrontierSeed): FrontierSeed {
+  return { ...seed, reproduction: reproduceSeed(seed) };
 }
 
 // ─── Thresholds (rubric: adopt ≥70 · watch 50–69 · skip <50) ─────────────────
@@ -407,7 +514,7 @@ export function seedFromItem(item: FrontierItem, j: FrontierJudgment): FrontierS
   const haystack = `${item.title} ${item.summary} ${(item.topics ?? []).join(" ")}`;
   const area = AREA_DIRECTIVES.find((a) => a.re.test(haystack));
   const oneLine = item.summary.replace(/\s+/g, " ").trim().slice(0, 180);
-  return {
+  const seed: FrontierSeed = {
     id: item.id,
     kind: item.kind,
     title: item.title,
@@ -419,6 +526,9 @@ export function seedFromItem(item: FrontierItem, j: FrontierJudgment): FrontierS
       `Core claim: ${oneLine}… ` +
       (area?.directive ?? FALLBACK_DIRECTIVE),
   };
+  // r582 AWorld: the explore→reproduce→improve loop closes at creation —
+  // every seed leaves the distiller already reproduction-marked.
+  return withReproduction(seed);
 }
 
 /** Promote an adopt/watch item into the seed ledger (dedup by id, newest wins). */

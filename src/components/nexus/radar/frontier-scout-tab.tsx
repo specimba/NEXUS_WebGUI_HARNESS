@@ -33,6 +33,8 @@ import {
   recordJudgment,
   ruleScores,
   seedFromItem,
+  saveFrontierSeeds,
+  withReproduction,
   verdictOf,
 } from "@/lib/frontier-scout";
 import type {
@@ -330,12 +332,27 @@ export function FrontierScoutTab() {
 
   const pinSeed = React.useCallback(
     (item: FrontierItem) => {
-      const next = promoteSeed(seedFromItem(item, effectiveJudgment(item)));
+      const seed = seedFromItem(item, effectiveJudgment(item));
+      const next = promoteSeed(seed);
       setSeeds(next);
-      toast.success("Pinned to Evolution seed ledger");
+      // r582 AWorld: the pin toast names the reproduction verdict — the seed
+      // left the distiller already marked (explore → reproduce → improve).
+      toast.success(
+        `Pinned to Evolution seed ledger — AWorld: ${seed.reproduction?.verdict ?? "unverified"}`
+      );
     },
     [effectiveJudgment]
   );
+
+  // r582 AWorld: re-run the deterministic reproduction check (older ledger
+  // rows carry no verdict) and persist the stamp. Pure function — same seed,
+  // same evidence, so re-verify is idempotent.
+  const verifySeed = (id: string) => {
+    const next = seeds.map((s) => (s.id === id ? withReproduction(s) : s));
+    saveFrontierSeeds(next);
+    setSeeds(next);
+    toast("Seed re-verified — reproduction evidence refreshed");
+  };
 
   const dismiss = React.useCallback((id: string) => {
     markSeen([id]);
@@ -365,6 +382,37 @@ export function FrontierScoutTab() {
         >
           {seed.title}
         </a>
+        {/* r582 AWorld: the reproduction verdict rides the row — emerald when
+            the record reproduced (evidence count), amber when a check broke
+            (evidence in the tooltip), stone when unverifiable. Pre-r582 rows
+            get an honest one-click verify instead of a silent blank. */}
+        {seed.reproduction ? (
+          <span
+            data-testid="seed-reproduction"
+            className={cn(
+              "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+              seed.reproduction.verdict === "reproduced"
+                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
+                : seed.reproduction.verdict === "not-reproduced"
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : "border-stone-400/40 bg-stone-500/5 text-stone-600 dark:text-stone-400"
+            )}
+            title={`AWorld reproduction — ${seed.reproduction.verdict}\n${seed.reproduction.evidence.join("\n")}`}
+          >
+            {seed.reproduction.verdict === "reproduced"
+              ? `reproduced ·${seed.reproduction.evidence.length}`
+              : seed.reproduction.verdict}
+          </span>
+        ) : (
+          <button
+            className="shrink-0 rounded-md border border-muted-foreground/30 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/60"
+            aria-label={`Verify seed ${seed.title}`}
+            title="AWorld reproduction check — provenance · claim · directive · band"
+            onClick={() => verifySeed(seed.id)}
+          >
+            verify
+          </button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -403,7 +451,9 @@ export function FrontierScoutTab() {
       <p className="text-[11px] leading-snug text-muted-foreground">
         Weekly trend sweep — HF daily papers, newly-minted agent/RL repos, the arXiv
         harness/RL feed — judged by a cascade: rubric → Decision-4B gate → fast judge
-        for the uncertain band. High scorers become Evolution seeds.
+        for the uncertain band. High scorers become Evolution seeds, each carrying an
+        AWorld reproduction verdict (provenance · claim · directive · band) before
+        Evolution improves on it.
       </p>
 
       {/* Seed ledger strip */}
@@ -419,10 +469,14 @@ export function FrontierScoutTab() {
           </p>
         ) : (
           <div className="flex flex-col gap-1">
-            <div className="mb-1">
+            <div className="mb-1 flex flex-wrap items-center gap-1.5">
               <Chip>
                 {seeds.length} seed{seeds.length === 1 ? "" : "s"} → Evolution pulls from
                 this ledger
+              </Chip>
+              <Chip>
+                {seeds.filter((s) => s.reproduction?.verdict === "reproduced").length}/{seeds.length}{" "}
+                reproduced
               </Chip>
             </div>
             {seeds.slice(0, 3).map((seed, i) => seedRow(seed, i))}
