@@ -421,6 +421,14 @@ try {
       planSrc.includes("No open proposals"),
     "contract: the Evolution Inbox renders a dashed census-family empty line (evo-inbox-empty) when no proposals are open, pointing at Suggest variation and history",
   );
+  // r574: the TRUE-ZERO state (no proposals ever — fresh install) renders the
+  // empty-state card instead of vanishing; the dead main-path conditional is gone.
+  ok(
+    planSrc.includes("r574: the true-zero state used to VANISH") &&
+      planSrc.includes("0 proposals") &&
+      planSrc.includes('data-testid="evo-inbox-empty"'),
+    "contract: the Evolution Inbox true-zero state (open=0 AND handled=0) returns the empty-state card — 'Evolution Inbox' header + '0 proposals' census chip + evo-inbox-empty dashed line — instead of return null",
+  );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);

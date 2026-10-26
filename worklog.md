@@ -183,3 +183,29 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) po
 Next recommended action: r574 — key check first (trigger unchanged). Then: (a) diagnose the Evolution Inbox section visibility (why INBOX_TITLE=false at healthy page LEN) and witness evo-inbox-empty live — the component mounts at workflows-view ~2060 but something upstream gates its section; (b) reconcile the TASK-103 toast with docs/strategy/TASKS.md; (c) shared census Chip extraction (eight seams; watch-only unless the Owner asks); (d) builtin box extraction parked.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=38/38
+
+---
+Task ID: r574
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r574 per r573 handoff — key check; (a) diagnose Evolution Inbox section visibility + witness evo-inbox-empty live; (b) reconcile TASK-103 toast with TASKS.md; golden QA; gates; ship.
+
+Work Log:
+- OPENING: r573 was already closed by a parallel session (HEAD 14a686e6c, commit "r573: ... proven END TO END") — continued as r574 per the parallel-session pattern (r570 precedent). Key check: all acquisition sources null (exa live/dormant registry, source=null) → TASK-102 keyed proofs stay Owner-blocked, no trigger.
+- (b) RECONCILED: the "TASK-103 advanced — Chat-side architect" toast = StrategyItem TASK-103 "Plugin-manifest doctrine: deepseek-harness drop-in pack format" (P2, status proposed, advancedCount 43 = AIE heartbeat, data-only). TASKS.md DOES carry the item (Integrations P2 prose) — no missing third task. Drift noted: DB TASK-101 says in-progress while TASKS.md marks it DONE r520/r521/r535 (AIE data-lane bookkeeping; left untouched).
+- (a) ROOT CAUSE FOUND: EvolutionInbox (workflows-view.tsx ~1092) — the early branch `if (open.length === 0) { if (acceptedCount + dismissedCount === 0) return null; ...` VANISHES the whole card at the true-zero state (no proposals ever, e.g. fresh install). Worse: r573's evo-inbox-empty div was inserted in the MAIN card path, which only renders when open>0 — i.e. the r573 empty state was DEAD CODE, unreachable in every branch. That is why r573's live witness failed (INBOX_TITLE=false at healthy LEN).
+- FIX (user-facing increment): the true-zero state now returns the full empty-state card — "Evolution Inbox" header + census-grammar "0 proposals" chip (violet, tabular-nums) + the evo-inbox-empty dashed line (census family: dashed = empty state); the dead conditional removed from the main path. r573's promise ("blank body no more") is now true in EVERY state: true-zero → empty card; handled>0 → cycle strip; open>0 → proposal list.
+- QA GUARD: qa-executor-resume +1 = 39/39 — pins the r574 comment, the "0 proposals" literal chip, and evo-inbox-empty (contiguous source truths; the old dynamic chip uses interpolation so "0 proposals" is unique to the new card).
+- LIVE WITNESS (honest fresh-install simulation, zero data loss): persist key nexus-workflows inspected (exactly 1 row = r572 artifact, status dismissed 64min — r573's honest UI archival, NOT owner data) → backed up to nexus-workflows:r574backup, key lifted → reload → WITNESSED: INBOX_TITLE=true, EMPTY_COUNT=1 with full text, ZERO_CHIP=true, len 16625, 80 buttons, console 0 errors → backup restored, reload → strip branch intact (cycleStrip=true, History(1)). The r573 deferred witness is closed.
+- GOLDEN WALK (hash-nav): settings relay+intel+census true (len 88936); radar Frontier tab clicked + scrollable container 0→5881 + frontier text; workflows run panel opened + 1254-char long paste took via prototype setter + input event; console 0 errors across all three paths.
+- GATES: tsc=0; lint=0 (exactly 33 warnings); qa-acquisition-vault=32 passed 0 failed; qa-executor-resume=39/39.
+- BUDGET: 13/12 — one round over (vault gate re-run consumed the buffer: its output format "N passed, M failed" didn't match the round's grep pattern, so the first gates run looked empty). No theatre happened; the overrun was verification, not scope creep. Flagged honestly per the anti-runaway doctrine.
+
+Stage Summary:
+- The Evolution Inbox now explains itself in every state — the true-zero vanish bug is fixed, r573's dead empty-state code was made reachable (in the true-zero card), and the fresh-install experience shows a census-grammar empty card with "0 proposals" instead of nothing. TASK-103 reconciled: AIE heartbeat on the Plugin-manifest doctrine row, no TASKS.md gap.
+
+Round Handoff:
+Round ID: r575 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again this round); (2) pool tier dormant until Webshare token; (3) DB TASK-101 status drift (in-progress vs TASKS.md DONE) — AIE data-lane, reconcile only if the Owner asks; (4) the "N proposals" chip on the main card renders "1 proposals" when open===1? No — guarded by the ternary. Verified non-issue, keep an eye during chip unification anyway.
+Next recommended action: r575 — key check first (trigger unchanged: a source flipping non-null). Then: (a) shared census Chip extraction (eight+ seams now; watch-only unless the Owner asks); (b) TASK-103's Plugin-manifest doctrine is the next P2 implementation lane if the Owner wants a feature round; (c) builtin box extraction parked; (d) consider a tiny polish: the true-zero empty card could link "Suggest variation" text to the ledger hint — only if trivial.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=39/39

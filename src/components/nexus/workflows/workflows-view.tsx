@@ -1089,7 +1089,33 @@ function EvolutionInbox() {
   // Inbox clear? Keep a muted cycle summary instead of vanishing — the strip
   // teaches the loop and expands into an archive of handled proposals.
   if (open.length === 0) {
-    if (acceptedCount + dismissedCount === 0) return null;
+    if (acceptedCount + dismissedCount === 0)
+      // r574: the true-zero state used to VANISH the card entirely — a fresh
+      // install saw nothing where the inbox lives. The empty state now always
+      // explains itself (census family: dashed = empty state).
+      return (
+        <div className="rounded-xl border border-violet-500/15 bg-violet-500/[0.03] p-3">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Lightbulb className="h-4 w-4 shrink-0 text-violet-500" />
+            <span className="text-sm font-medium">Evolution Inbox</span>
+            <span className="rounded-md border border-violet-500/30 bg-violet-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-violet-600 dark:text-violet-400">
+              0 proposals
+            </span>
+            <span className="text-xs text-muted-foreground">
+              pipelines suggested by your workflows — spawn or dismiss
+            </span>
+          </div>
+          <div
+            data-testid="evo-inbox-empty"
+            className="rounded-md border border-dashed border-violet-500/30 bg-violet-500/5 px-2.5 py-2"
+          >
+            <p className="text-[10.5px] text-muted-foreground">
+              No open proposals — Suggest variation on any workflow card seeds
+              one; decided spawns live in Evolution history.
+            </p>
+          </div>
+        </div>
+      );
     const handled = proposals
       .filter((p) => p.status !== "open")
       .sort((a, b) => b.createdAt - a.createdAt);
@@ -1395,19 +1421,6 @@ function EvolutionInbox() {
             </div>
           </div>
         ))}
-        {/* r573: the empty inbox explains itself — where proposals come from
-            and where decided ones go (census family: dashed = empty state). */}
-        {open.length === 0 ? (
-          <div
-            data-testid="evo-inbox-empty"
-            className="rounded-md border border-dashed border-violet-500/30 bg-violet-500/5 px-2.5 py-2"
-          >
-            <p className="text-[10.5px] text-muted-foreground">
-              No open proposals — Suggest variation on any workflow card seeds
-              one; decided spawns live in Evolution history.
-            </p>
-          </div>
-        ) : null}
       </div>
     </div>
   );
