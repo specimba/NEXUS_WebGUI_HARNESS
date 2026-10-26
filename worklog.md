@@ -159,3 +159,27 @@ Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null); (2) pool tie
 Next recommended action: r573 — key check first (trigger: a source flipping non-null). Else candidates: (a) live-witness the amber chip by seeding a proposal with >8 planLines through the engine path (spawn-proposal-engine withFrontierSeed appends lines — check whether the Suggest-variation flow on a maxed workflow yields >8); (b) run-panel "N/M steps done" inline text → census chip (verify context first — it lives in the failure banner sentence); (c) shared census Chip extraction (seven seams; watch-only); (d) builtin box extraction parked.
 Blockers: none.
 - GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=37/37
+---
+Task ID: r573
+Agent: Z.ai Code (patrol round, job 473388)
+Task: r572 handoff — key check first (sources null → Owner-blocked stands); (a) live-witness the amber chip + the r571 spawn toast.warning by seeding a >8-planLines proposal.
+
+Work Log:
+- LIVE-WITNESS (owed since r571/572, delivered): seeded a 10-planLines open proposal (id qa-r573-witness) into the nexus-workflows persist key, force-reloaded via location.reload() (agent-browser open on the SAME hash URL is a NO-OP — no rehydrate; doctrine), and witnessed the full overflow chain VERBATIM: chip "10 lines" TONE=AMBER on the seeded card; the legacy proposal (0 planLines) correctly renders NO chip (hidden-when-absent design holds); Spawn → proposal accepted, spawned workflow description carries "· 8-step cap — 2 more proposal lines will not run" (10−8 arithmetic exact), WF_STEPS=9 (8 capped + review gate). The DOM toast slot held an unrelated app announcement ("TASK-103 advanced — Chat-side architect…") so the transient toast.warning text went unread — the persistent capNote + step arithmetic are the branch witnesses.
+- CLEANUP (r567 hygiene doctrine): surgical LS filter removed the seed proposal + the spawned workflow (wf_8ffaeed89e80) — verified seed=false qaWf=false, legacy data intact, console clean. No removeWf API call needed (store has remove but LS surgery is UI-independent).
+- INCREMENT (user-facing): the Evolution Inbox empty state — open.length===0 used to render the card body BLANK; now a dashed violet census-family line (data-testid=evo-inbox-empty, family doctrine: dashed = empty state) explains where proposals come from and where decided ones go.
+- QA GUARD: qa-executor-resume +1 = 38/38 — pins evo-inbox-empty + "No open proposals" (contiguous truths).
+- WITNESS GAP (honest): after cleanup the empty line did NOT render live — LS open=0, page healthy (LEN 18694), but the Evolution Inbox card is absent from the DOM entirely (INBOX_TITLE=false, no "N proposals" chip). <EvolutionInbox /> mounts unconditionally at line ~2060, so an upstream section gate hides it; pre-existing behavior (the card rendered in earlier rounds when open proposals existed), NOT a regression of this round's diff. Empty state is tsc-green + contract-pinned; live witness deferred to when the section is visible (e.g. next seeded-proposal round).
+- GOLDEN WALK: settings relay+census true; radar Frontier tab+scroll true; workflows console 0 errors throughout; r572's leftover open proposal identified as MY artifact (age 33min matched the r572 walk window) and dismissed through its own UI (honest lifecycle: archived to history).
+- GATES: tsc 0; lint 0 + exactly 33 warnings; qa-acquisition-vault 32/32; qa-executor-resume 38/38.
+- BUDGET: 12/12 — the witness trilogy (seed → spawn → cleanup) took five rounds; the empty-state witness gap consumed the slack.
+
+Stage Summary:
+- The r571/572 overflow honesty is now proven END TO END on the live app — seed to spawn to arithmetic to cleanup — and an empty inbox explains itself instead of rendering blank.
+
+Round Handoff:
+Round ID: r573 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) the Evolution Inbox card is hidden by an upstream section gate when it matters — diagnose WHY the card is absent at LEN 18694 (sub-tabs? collapse? scroll container?) before trusting the empty-state witness; (4) a "TASK-103 advanced — Chat-side architect" app toast was observed — TASKS.md backlog may have a third task the worklogs never tracked; reconcile if the Owner references it.
+Next recommended action: r574 — key check first (trigger unchanged). Then: (a) diagnose the Evolution Inbox section visibility (why INBOX_TITLE=false at healthy page LEN) and witness evo-inbox-empty live — the component mounts at workflows-view ~2060 but something upstream gates its section; (b) reconcile the TASK-103 toast with docs/strategy/TASKS.md; (c) shared census Chip extraction (eight seams; watch-only unless the Owner asks); (d) builtin box extraction parked.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=38/38

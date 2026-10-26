@@ -415,6 +415,12 @@ try {
       planSrc.includes("(p.planLines?.length ?? 0) > 8"),
     "contract: Evolution history rows render a census-grammar plan-size chip (proposal-plan-size) that turns amber when the proposal's planLines exceed the 8-step cap",
   );
+  // r573: the empty inbox explains itself instead of rendering blank space.
+  ok(
+    planSrc.includes('data-testid="evo-inbox-empty"') &&
+      planSrc.includes("No open proposals"),
+    "contract: the Evolution Inbox renders a dashed census-family empty line (evo-inbox-empty) when no proposals are open, pointing at Suggest variation and history",
+  );
 
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);
