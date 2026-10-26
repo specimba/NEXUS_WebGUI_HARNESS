@@ -544,7 +544,16 @@ export function ServerAutopilot() {
         });
         void poll();
       } else {
-        toast.error("Run-now failed", { description: json.error ?? "unknown error" });
+        toast.error("Run-now failed", {
+          // r596: QA code-audit — buildPayload syncs SCHEDULE-ARMED workflows only
+          // (automation-bridge.tsx line 36 filter), so schedule-less cards are
+          // never registered and their run-now POST 404s; the raw server error
+          // gave the user no path. State the mechanism + the way out.
+          description:
+            json.error === "workflow not registered"
+              ? `${name} is not registered on the server lane — registration rides the schedule heartbeat (the bridge syncs schedule-armed pipelines only). Arm a schedule on this pipeline in Workflow Studio to make server runs reachable.`
+              : json.error ?? "unknown error",
+        });
       }
     } finally {
       setBusy(null);
