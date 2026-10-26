@@ -567,6 +567,8 @@ export interface Settings {
    * (the gate never blocks). Default ON; false = outputs accepted as before.
    */
   decisionGates?: boolean;
+  /** r578: second, deliberately blind peer scorer on the free decision quota. */
+  peerBlindScore?: boolean;
   /**
    * r506: utility fast-lane routing — the AI utility buttons (plan generation,
    * auto-assign, memory consolidation) dial a FAST above-moderate lane

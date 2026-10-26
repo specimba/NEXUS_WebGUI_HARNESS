@@ -338,3 +338,27 @@ Round Handoff:
 Round ID: r578 (handoff unchanged: key check first; slice 2 only if the Owner asks; census-chip extraction stays parked). One addition: r578's registry readout should show exactly ONE pack (sample-research-pack, 2 tools, both clean) — if a probe-drift-pack ever appears there, the witness script leaked again (it cannot — cleanup is now unconditional).
 Blockers: none.
 - GATES: tsc=0 (script-only change; lint/vault/resume unchanged from the r577 ship)
+
+---
+Task ID: r578
+Agent: NEXUS WebGUI Harness patrol (job 473388, session a34f44b2)
+Task: Patrol round r578 per r577-correction handoff — key check; P1 backlog exhausted → picked the P2 Experiments lane (peer blind-scoring, slice 1); golden QA; gates; ship.
+
+Work Log:
+- OPENING: HEAD 651889263 (own r577-correction) — no parallel session; registry shows exactly ONE pack (sample-research-pack, 2 tools, clean — the r577-correction check). Key check: all sources null → TASK-102 keyed proofs stay Owner-blocked. P1 backlog verified exhausted (TASK-101 DONE, TASK-102 blocked, other P1 rows checked) → per the handoff's "pick from TASKS.md", took the P2 Experiments lane: "Peer blind-scoring quality gate on crew steps" (budget explicitly 1-2 rounds).
+- RECON FIRST (root-cause before building): no distinct crew step kind exists — crew steps are generate steps whose agent matches role keywords (crewRoleIdForAgent defaults "scout"), and the r516 decision gate ALREADY judges every gate-worthy generate step against its assignment. The experiment's real delta is therefore the SECOND, INDEPENDENT BLIND scorer: output only (no task/assignment context), universal quality criteria, SakanaAI/mass multi-scorer shape on the Intern-tier free ladder.
+- SHIPPED slice 1: (1) pure isomorphic module src/lib/peer-blind-score.ts — buildBlindReviewInput (output only, 5000-char cap, no assignment vocabulary by construction), BLIND_REVIEW_QUESTION (noul, id peer-blind), peerBlindShouldRevise (confident no at SYSTEMONE_GATE_CONFIDENCE), peerBlindNote (three countable verdicts: PASS / FAIL / UNCERTAIN "Peer blind score …" — the pattern the crew panel can later count); (2) runner wiring in workflow-runner.ts after the r516 gate block — same gate-worthy economics (≥200 chars, non-degraded), settings.peerBlindScore !== false, decide() over the blind state, verdict → pushCall witness line, confident FAIL → ONE bounded blind-revise streamStep (max two rework dials per step across both gates; peer never blocks — errors fall through); (3) Model Relay amber card "Peer blind score (crew quality)" with toggle (default on, aria-label "Toggle peer blind scoring") beside the emerald decision-gates card; (4) types.ts peerBlindScore?: boolean; (5) TASKS.md mirror updated with the slice + remaining boundary.
+- GUARD: resume QA +1 → 41 checks (runner import + peerBlindScore !== false gate + relay toggle + types declaration).
+- WITNESSED: scripts/qa-peer-blind-score.ts dial-free 8/8 (blind input shape, threshold semantics, three note patterns, question shape); browser: peer card renders with toggle default ON (peer-card-ok toggle=true default=true). First REAL crew-run verdicts in the call log remain for the next actual run — no real model dialed in patrol QA (honest boundary, recorded in TASKS.md).
+- GOLDEN WALK (fresh, post console --clear): settings peer card + relay+census; radar Frontier + inner-container scroll 755; workflows warm load + Run clicked + 230-char paste took; agents panel 2 chips. Console 0 errors.
+- GATES: tsc=0 (after two tsc-arbitrated fixes this round: the module initially referenced SYSTEMONE_GATE_CONFIDENCE without importing it — caught by tsc AND by the QA runtime before ship); lint=0 (33 warnings); vault=32/32; resume=41/41; peer QA=8/8.
+
+Stage Summary:
+- The P2 experiment lane is open and its slice 1 is live: every gate-worthy workflow step now gets TWO independent cheap-lane quality verdicts — the assignment-aware r516 gate and the blind r578 peer — with countable call-log vocabulary and one bounded revise each. Budget 12/12 exactly.
+
+Round Handoff:
+Round ID: r579 -> next patrol (job 473388)
+Open risks: (1) TASK-102 keyed proofs Owner-blocked (sources null again); (2) pool tier dormant until Webshare token; (3) the peer's verdict patterns are unexercised on a real crew run — r579+ should grep a real run's callLog for "Peer blind score" before building the crew-panel alignment math on it; (4) PluginPacksPanel per-mount fetch — still watch-only.
+Next recommended action: r579 — key check first (trigger unchanged). Then: (a) if a real crew/workflow run happened since, count its "Peer blind score" verdicts (the acceptance needs one live sighting); (b) slice 2 of the peer experiment only after (a): crew-panel alignment math counting the peer pattern; (c) slice 2 of plugin-manifest only if the Owner asks.
+Blockers: none.
+- GATES: tsc=0 lint=0 (33 warnings) qa-acquisition-vault=32/32 qa-executor-resume=41/41 qa-peer-blind-score=8/8

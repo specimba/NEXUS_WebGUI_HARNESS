@@ -37,7 +37,7 @@ architect's dev-round lane (see [AGENT.md](./AGENT.md) §2).
 
 ## Experiments (P2/P3 — budget 1-2 rounds each)
 
-- [ ] **P2** Peer blind-scoring quality gate on crew steps (SakanaAI/mass × Intern tier): second cheap-lane pass blind-scores each crew step; below-threshold triggers one revise pass. *Acceptance: crew run log shows scorer verdicts.*
+- [ ] **P2** Peer blind-scoring quality gate on crew steps (SakanaAI/mass × Intern tier): second cheap-lane pass blind-scores each crew step; below-threshold triggers one revise pass. *Acceptance: crew run log shows scorer verdicts.* r578 slice 1 SHIPPED: pure module (`src/lib/peer-blind-score.ts` — blind input (output only, 5000-char cap), noul question, gate-confidence threshold semantics, countable "Peer blind score …" call-log note vocabulary; `scripts/qa-peer-blind-score.ts` dial-free) + runner wiring (a second `decide()` pass after the r516 gate on gate-worthy outputs; confident blind FAIL → ONE bounded revise; max two rework dials per step across both gates; never blocks) + Model Relay toggle (`peerBlindScore`, amber card, default on). Remaining: first real crew-run verdicts in the call log + crew-panel alignment math counting the peer pattern.
 - [ ] **P3** hermes-zvec-memory RRF hybrid retrieval shim (BM25 + vector) over existing notes/research stores. *Acceptance: script comparing BM25-only vs RRF on real research rows.*
 - [ ] **P3** AWorld explore→reproduce→improve loop for frontier-scout v2. *Acceptance: scout marks each seed reproduced/not-reproduced with evidence.*
 - [ ] **P3** nexent constraint-bound agent auto-generation → spawn-proposal fuel. *Acceptance: spawn proposals carry a constraint block the editor validates.*

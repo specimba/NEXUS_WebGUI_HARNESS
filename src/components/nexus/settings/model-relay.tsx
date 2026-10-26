@@ -816,6 +816,33 @@ export function ModelRelayCard() {
           </p>
         </div>
 
+        {/* ── r578: Peer blind score — a SECOND, deliberately blind cheap-lane
+            reviewer (output only, no assignment) on the same free decision
+            quota. Amber row: the dissenting second opinion by design. */}
+        <div
+          className="rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-3"
+          data-testid="peer-blind-score"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm font-medium leading-tight">
+              <CircleCheck className="h-3.5 w-3.5 text-amber-400" aria-hidden />
+              Peer blind score (crew quality)
+            </p>
+            <Switch
+              aria-label="Toggle peer blind scoring"
+              checked={settings.peerBlindScore !== false}
+              onCheckedChange={(v) => update({ peerBlindScore: v })}
+            />
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            A second independent reviewer sees ONLY the output — never the task
+            or step assignment — and rates substance, coherence and completeness
+            on the same free decision quota. Confident FAIL: one bounded
+            blind-revise pass. Uncertain or no judge: accepted unchanged — like
+            the decision gate, it never blocks a run.
+          </p>
+        </div>
+
         {/* Primary — always first, not reorderable */}
         <div className="flex items-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/5 px-2.5 py-2">
           <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-violet-400" aria-hidden />

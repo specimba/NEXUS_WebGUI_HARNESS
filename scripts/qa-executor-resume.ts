@@ -453,6 +453,30 @@ try {
     "contract: the plugin lane is pinned end-to-end — execute route imports getPluginPreset, engine stamps the '[plugin:' provenance tag, registry route loads packs via loadPluginPacks, surfaces the per-base schema args: advisory AND flags unknownPresetKeys (preset keys outside the base schema — the r575-correction drift class, caught at registry time)",
   );
 
+  // r578: the peer blind-scoring pass (P2 experiment slice 1) is wired and
+  // toggleable — runner imports the pure module, the callLog note vocabulary
+  // is countable, and the settings toggle exists.
+  const runnerSrc = readFileSync(
+    new URL("../src/lib/workflow-runner.ts", import.meta.url),
+    "utf8",
+  );
+  const relayUiSrc = readFileSync(
+    new URL("../src/components/nexus/settings/model-relay.tsx", import.meta.url),
+    "utf8",
+  );
+  const typesSrc = readFileSync(
+    new URL("../src/lib/types.ts", import.meta.url),
+    "utf8",
+  );
+  ok(
+    runnerSrc.includes('from "@/lib/peer-blind-score"') &&
+      runnerSrc.includes("peerBlindShouldRevise") &&
+      runnerSrc.includes("peerBlindScore !== false") &&
+      relayUiSrc.includes("peerBlindScore") &&
+      typesSrc.includes("peerBlindScore?:"),
+    "contract: the peer blind-scoring lane is wired — runner imports the pure peer-blind-score module and gates on peerBlindScore !== false, the Model Relay card carries the toggle, and the settings type declares peerBlindScore (P2 experiment slice 1)",
+  );
+
   console.log(`\n${pass}/${pass + fail} checks passed`);
   if (fail > 0) process.exit(1);
 } catch (err) {

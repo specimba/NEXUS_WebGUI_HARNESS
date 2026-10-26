@@ -44,6 +44,12 @@ import {
 } from "@/lib/lane-rotation";
 import { resolveExplicitLlm, resolveLlm, type ResolvedLlm } from "@/lib/llm-config";
 import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
+import {
+  BLIND_REVIEW_QUESTION,
+  buildBlindReviewInput,
+  peerBlindNote,
+  peerBlindShouldRevise,
+} from "@/lib/peer-blind-score";
 import { buildRelayWire, parseRelayStatusLine, recordRelayStatusLine, stripRelayMarkers, type RelayTaskFit, type RelayWireHop } from "@/lib/relay";
 // r512 pinned-lane auto-retire: pins materialize against the adopted-lane
 // registry's retirement state + the tracker removal mirror; a lane the
@@ -2319,6 +2325,64 @@ export async function executeWorkflowRun(
             // Uncertain (0.5–0.75) or no judge → accept unchanged, silently.
           } catch {
             /* the gate NEVER blocks a run — judge errors fall through */
+          }
+        }
+        // ─── r578 PEER BLIND SCORE (P2 experiment slice 1): a SECOND,
+        // deliberately blind cheap-lane reviewer for gate-worthy steps — it
+        // sees ONLY the output (no task/assignment) and rates universal
+        // quality (substance, coherence, completeness). Confident FAIL → ONE
+        // bounded blind-revise pass (max two rework dials per step across
+        // both gates). Same economics as the r516 gate: ≥200 chars,
+        // non-degraded, toggleable, never blocks a run.
+        if (
+          gateEnabled &&
+          settings.settings.peerBlindScore !== false &&
+          finalOutput.trim().length >= 200 &&
+          !/^_The model ended/.test(finalOutput)
+        ) {
+          try {
+            const peer = await decide({
+              settings: settings.settings,
+              signal,
+              state: buildBlindReviewInput(finalOutput),
+              question: BLIND_REVIEW_QUESTION,
+            });
+            if (peer) {
+              pushCall({
+                stepId: step.stepId,
+                stepLabel: step.label,
+                agentName: agentRow.name,
+                engine: peer.judge,
+                model: peer.via,
+                ms: peer.ms,
+                ok: true,
+                attempt: 1,
+                note: peerBlindNote(peer),
+              });
+              if (peerBlindShouldRevise(peer)) {
+                patchRunStep(step.stepId, { status: "running", reworked: true });
+                const revise = await streamStep(
+                  step,
+                  step.agentId,
+                  `${baseSystem}\n\nINDEPENDENT REVIEW REQUIRED — a blind second reviewer (no task context) found this output thin or incomplete. Deliver a stronger, complete result.`,
+                  context
+                );
+                finalOutput = revise.content;
+                pushCall({
+                  stepId: step.stepId,
+                  stepLabel: step.label,
+                  agentName: agentRow.name,
+                  engine: peer.judge,
+                  model: peer.via,
+                  ms: revise.ms,
+                  ok: true,
+                  attempt: 2,
+                  note: `Blind-revise pass delivered after Peer blind score FAIL (${peer.via}) — output replaced`,
+                });
+              }
+            }
+          } catch {
+            /* the peer NEVER blocks a run — judge errors fall through */
           }
         }
         prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(finalOutput) || undefined, output: finalOutput });
