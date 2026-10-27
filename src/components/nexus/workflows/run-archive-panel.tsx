@@ -10,6 +10,8 @@
 // r623: the chosen status chip persists across visits (localStorage, guarded
 // against invalid values) and the chips/clear affordances gained a
 // focus-visible ring so keyboard navigation stays legible.
+// r624: the search query persists too (same storage contract — capped,
+// best-effort) so a returned visit keeps the working filter set.
 
 import * as React from "react";
 import { toast } from "sonner";
@@ -108,6 +110,20 @@ function readStoredStatusFilter(): StatusGroupKey {
   return "all";
 }
 
+/** r624: the archive search text survives visits too — capped so a bloated
+ *  or tampered value can never wedge the panel. */
+const SEARCH_STORAGE_KEY = "nexus:run-archive-search";
+
+function readStoredSearch(): string {
+  try {
+    const v = window.localStorage.getItem(SEARCH_STORAGE_KEY);
+    if (typeof v === "string") return v.slice(0, 200);
+  } catch {
+    /* storage unavailable — default silently */
+  }
+  return "";
+}
+
 function fmtDuration(ms?: number): string {
   if (ms == null || !Number.isFinite(ms)) return "—";
   if (ms < 1000) return `${ms}ms`;
@@ -139,6 +155,7 @@ export function RunArchivePanel() {
     // r623: restore the last-used status chip once on mount, after hydration
     // (the server render always ships the `all` default — no mismatch).
     setStatusFilter(readStoredStatusFilter());
+    setQuery(readStoredSearch());
   }, []);
 
   React.useEffect(() => {
@@ -191,6 +208,16 @@ export function RunArchivePanel() {
     setStatusFilter(key);
     try {
       window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, key);
+    } catch {
+      /* persistence is best-effort; the in-session state still applies */
+    }
+  };
+
+  /** r624: search edits persist so the working filter set survives visits. */
+  const changeQuery = (v: string) => {
+    setQuery(v);
+    try {
+      window.localStorage.setItem(SEARCH_STORAGE_KEY, v);
     } catch {
       /* persistence is best-effort; the in-session state still applies */
     }
@@ -307,7 +334,7 @@ export function RunArchivePanel() {
           />
           <Input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => changeQuery(e.target.value)}
             placeholder="Search runs by workflow name or step text…"
             aria-label="Search the run archive"
             className="h-8 pl-8 pr-8 text-xs"
@@ -315,7 +342,7 @@ export function RunArchivePanel() {
           {query ? (
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => changeQuery("")}
               aria-label="Clear the archive search"
               title="Clear the search"
               className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40"

@@ -1566,3 +1566,26 @@ Round ID: r624 -> next patrol (job 473388)
 Next recommended action: r624 — batched opening (expect HEAD = r623 commit; server up; qa:golden 1 round, expect 5/5). Increment candidates: (a) Agents page roster rows hover affordances polished to the r619/r623 chip vocabulary (styling arc on a fresh surface); (b) persist run-archive search query too (small sibling of r623 chip persistence); (c) fix-before-work if QA surfaces breakage. Keep increments small; never invent Owner-key-dependent work; MultiEdit doctrine above.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=5/5 witness="structured console counter 34→34 delta 0; tsc gate leg built unmaskable; chip persistence + focus rings shipped" restart="0/1 consumed"
+
+---
+Task ID: r624
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271307)
+Task: Patrol r624 — per r623 handoff: Agents roster hover affordances to the r619/r623 chip vocabulary + run-archive search persistence (sibling increment).
+
+Work Log:
+- OPENING: HEAD = d925276bf (r623), server up (200, restart untouched), tree clean. qa:golden 5/5 pre-edit — no breakage, straight to increments.
+- INCREMENT 1 (styling arc, user-visible): AgentCard (agents-view.tsx) — hover ring aligned to the violet chip vocabulary (hover:ring-violet-500/40; focus ring now violet with offset, replacing primary/30 + bare focus ring) and a hover/focus-revealed "Test" chip (group + group-hover/group-focus-visible opacity transition, aria-hidden decorative, FlaskConical + violet chip classes). Rationale: the whole card opens the test playground but nothing hinted at it — discoverability gap, now honest affordance. In-browser probe: 5 cards, 5 group-cards, 5 test-chips.
+- INCREMENT 2 (r623 sibling, user-visible): run-archive search query persisted via localStorage (nexus:run-archive-search, capped at 200 chars on restore, best-effort try/catch); changeQuery() wires input onChange + clear button; hydration effect restores chip + search together post-mount (no SSR mismatch).
+- PROBE CORRECTION (evidence-driven): first archive probe matched /run archive/i against textContent — missed because the tab's visible text is "Archive" (icon + hidden sm:inline span); the tab is a radio with aria-label="Run archive". Re-probe via aria-label: tab-ok; write→"r624-probe" in localStorage; clear→"" — persistence round-trip verified in-browser. (Golden's leg2 learned the same label lesson back in the day; probes must target aria-label, not visible text.)
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0. Post-reload qa:golden 5/5, console 34→34 delta 0 (structured counter).
+- Budget: landed exactly on 12 rounds — 2 MultiEdit batches (verified by diff snippets, per r623 doctrine), probes folded into shared rounds, no restart, no cron changes.
+
+Stage Summary:
+- Roster cards now advertise their primary action on hover/focus and share the violet focus vocabulary with the archive chips; the archive filter set (chip + search) survives visits.
+- Both increments verified in-browser, not just type-checked.
+
+Round Handoff:
+Round ID: r625 -> next patrol (job 473388)
+Next recommended action: r625 — batched opening (expect HEAD = r624 commit; server up; qa:golden 1 round, expect 5/5). Increment candidates: (a) styling arc continues — workflow cards (workflows-view grid) hover affordances to the same violet vocabulary (the roster is done; the board/card surfaces remain); (b) TestAgentDialog: surface the model used for a test reply (small honest telemetry) — inspect first, only if trivially clean; (c) fix-before-work wins if QA surfaces anything. Probes: target aria-labels. Keep increments small; never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0 qa:golden=5/5 witness="roster hover affordance + violet ring vocabulary on AgentCard (5/5 probe); archive search persisted (round-trip probe); console delta 0" restart="0/1 consumed"

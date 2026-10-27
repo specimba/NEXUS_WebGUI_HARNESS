@@ -686,7 +686,7 @@ function AgentCard({
       role="button"
       tabIndex={0}
       aria-label={`Open test playground for ${agent.name}`}
-      className="card-lift flex cursor-pointer flex-col gap-4 p-4 outline-none hover:ring-1 hover:ring-primary/30 focus-visible:ring-2 focus-visible:ring-primary/60"
+      className="card-lift group flex cursor-pointer flex-col gap-4 p-4 outline-none hover:ring-1 hover:ring-violet-500/40 focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
       onClick={onTest}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -761,12 +761,25 @@ function AgentCard({
             ) : null}
           </div>
         </div>
-        <p
-          className="text-[11px] text-muted-foreground"
-          title={`Last updated ${new Date(agent.updatedAt).toLocaleString()}`}
-        >
-          Updated {fmtRel(agent.updatedAt)}
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p
+            className="text-[11px] text-muted-foreground"
+            title={`Last updated ${new Date(agent.updatedAt).toLocaleString()}`}
+          >
+            Updated {fmtRel(agent.updatedAt)}
+          </p>
+          {/* r624: hover/focus affordance — the card opens the test playground,
+              but nothing hinted at it. This chip is decorative (aria-hidden;
+              the card's aria-label carries the semantics) and follows the
+              r619/r623 violet chip vocabulary. */}
+          <span
+            aria-hidden
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:text-violet-400"
+          >
+            <FlaskConical className="h-3 w-3" />
+            Test
+          </span>
+        </div>
         {usage && (usage.replies > 0 || usage.steps > 0) && (
           <div
             className="flex items-center gap-1.5 rounded-lg border border-violet-500/20 bg-violet-500/5 px-2 py-1 text-[11px] text-foreground/85"
