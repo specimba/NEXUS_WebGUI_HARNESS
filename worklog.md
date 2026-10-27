@@ -2449,3 +2449,26 @@ Round ID: r658 -> next patrol (job 473388)
 Next recommended action: (1) looped-path FAIL-branch live-witness (staged since r645 — run a Looped-armed workflow on the free ladder, watch the FAIL branch fire one bounded rework; the only remaining runtime witness on the TraceTrial/Looped frontier); (2) visual re-witness of the ⛓ chips when the radar next emits a registry finding (or force a synthetic digest check); (3) witness a REAL degraded-deep run when congestion hits a deep schedule; (4) Owner-witness of the vault restore happy path (real file chooser).
 Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed, radar digest fresh).
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:radar-chain=16/16 qa:trace-trial=66/66 qa:golden=console-0-on-all-3 witness="chain-typed radar evidence (validated/candidate/unchained pinned); F7 admission gates on 3 experiment entries; FixNote r657; call-log family re-witness third-strike deferred (locator fragility, console 0)" restart="0/1"
+
+---
+Task ID: r658
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280507)
+Task: r658 patrol — looped-depth OUTCOME honesty chip (r656 doctrine lineage), golden QA first, gates, receipts.
+
+Work Log:
+- OPENING: worklog tail read (r657 slice-3 round); server 200; TASKS.md re-scan — TASK-101 durable-step already DONE (r520/521/535), remaining P1s Owner-blocked (PAT rotation, Webshare paste). Handoff item 1 (looped FAIL-branch live-witness) scouted honestly: manual runs execute CLIENT-SIDE (workflow-scheduler imports the runner; workflows live in browser localStorage — no run-trigger API exists), so the witness needs multi-round headless UI driving + first-pass judge luck; with the round budget the witness is re-deferred (staged since r645) and the adjacent REAL gap ships instead.
+- GAP FOUND: run-row "↻ looped k/r" chip painted EVERY exit reason the same amber (workflow-run-panel.tsx) — a CONVERGED loop (pass-verdict accepted) wore warning amber exactly like a judge refusal (the r656 false-alarm pattern repeated for the loop family), judge-unavailable (infra stop) indistinguishable from a quality refusal, and the outcome was tooltip-only.
+- INCREMENT (user-facing + styling): NEW src/lib/looped-outcome.ts — loopedOutcomeChip shared adapter (single mapping: pass-verdict → emerald "pass"; rework-exhausted → amber "best kept"; cap-reached → amber "unsure at cap"; judge-unavailable → muted "judge down"; unknown → honest muted "exit unknown"; never-throw). Run-panel chip: outcome-toned classes + visible "· label" suffix (was tooltip-only) + tooltip carries the full honest sentence. types.ts r644 field doc truth-up.
+- QA: NEW scripts/qa-looped-outcome.ts 15/15 (pure mapping 9: four reasons, unknown-muted, null/undefined/number/empty never-throw; source pins 6: all four runner reason literals, shared-adapter import, visible suffix). FixNote r658 appended (chronological; RANGE_LABEL auto-derives).
+- WITNESS (honest): golden QA re-run post-edit as the live gate — settings/radar/workflows console 0/0/0; the chip's new branches have no looped-step run in headless reach this round (live-witness still staged) — delta pinned by QA at logic+source level. Console 0 throughout.
+- GATES: tsc rc=0 (file-redirect), lint rc=0 EXACTLY 33-warning baseline (0 in touched files; the 34th grep hit was the summary line itself), qa-looped-outcome 15/15, golden console 0/0/0.
+
+Stage Summary:
+- The loop family joins the r656 honesty doctrine: the chip's color now says how the loop ENDED — converged reads calm (emerald), quality refusals read amber, judge-down reads neutral, and the visible label carries the outcome a user previously had to hunt for in a tooltip.
+- When the staged FAIL-branch live-witness eventually runs, its outcome will be legible at a glance on the run row instead of uniform amber.
+
+Round Handoff:
+Round ID: r659 -> next patrol (job 473388)
+Next recommended action: (1) looped-path FAIL-branch live-witness (staged since r645 — arm Looped x2 on a generate step via the editor, run an adversarial-but-verifiable task on the free ladder, watch Decision gate FAIL -> one bounded tied rework -> Looped exit; the new outcome chip makes the verdict legible); (2) visual re-witness of the ⛓ chips when the radar next emits a registry finding; (3) witness a REAL degraded-deep run when congestion hits a deep schedule; (4) Owner-witness of the vault restore happy path (real file chooser).
+Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed, radar digest fresh).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:looped-outcome=15/15 qa:golden=console-0-on-all-3 witness="outcome-toned looped chip (pass=emerald/refusals=amber/judge-down=muted) + visible outcome label; FixNote r658; FAIL-branch live-witness re-deferred (client-side runner, no trigger API)" restart="0/1"

@@ -314,7 +314,9 @@ export interface WorkflowRunStep {
   /**
    * r644 looped-depth runtime outcome: set when the step ran with
    * loopedPasses >= 2 — { k } tied passes delivered of { r } planned,
-   * exit { reason }; drives the amber "↻ looped k/r" chip on the run row.
+   * exit { reason }; drives the "↻ looped k/r · label" chip on the run row —
+   * r658: outcome-TONED via src/lib/looped-outcome.ts (pass-verdict emerald
+   * converged, quality refusals amber, judge-down muted; unknown honest).
    */
   looped?: { k: number; r: number; reason: string };
   /** r644: the looped-depth opt-in materialized from WorkflowStep (absent = legacy). */

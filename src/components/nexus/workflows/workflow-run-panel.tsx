@@ -31,6 +31,8 @@ import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
 // r503: lane witness chip on run steps — short name + shared provider glyph.
 import { laneShortName } from "@/lib/lane-catalog";
 import { laneOfEntry } from "@/lib/call-log-lane";
+// r658: looped-depth OUTCOME tone — a converged loop no longer wears warning amber.
+import { loopedOutcomeChip } from "@/lib/looped-outcome";
 import { providerMeta } from "@/lib/tracker-types";
 import { harnessChipForRun } from "@/lib/trace-trial";
 import { truncate } from "@/lib/helpers";
@@ -1908,12 +1910,28 @@ export function WorkflowRunPanel({
                         </span>
                       ) : null}
                       {step.looped ? (
-                        <span
-                          title={`Looped-depth semantics: ${step.looped.k} tied pass(es) of ${step.looped.r} ran, exit ${step.looped.reason} — re-judged after every pass (arXiv 2610.31421 adaptation)`}
-                          className="inline-flex shrink-0 items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400"
-                        >
-                          ↻ looped {step.looped.k}/{step.looped.r}
-                        </span>
+                        (() => {
+                          // r658: outcome-toned via the shared adapter — pass-verdict
+                          // emerald (the loop CONVERGED — was warning amber, the same
+                          // false-alarm pattern r656 fixed for healthy direct dials),
+                          // quality refusals amber, judge-down muted, unknown honest.
+                          const oc = loopedOutcomeChip(step.looped.reason);
+                          return (
+                            <span
+                              title={`Looped-depth semantics: ${step.looped.k} tied pass(es) of ${step.looped.r} ran, exit ${step.looped.reason} — ${oc.says} (arXiv 2610.31421 adaptation)`}
+                              className={cn(
+                                "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                                oc.tone === "pass" &&
+                                  "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                                oc.tone === "warn" &&
+                                  "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                                oc.tone === "muted" && "border-border bg-muted/40 text-muted-foreground"
+                              )}
+                            >
+                              ↻ looped {step.looped.k}/{step.looped.r} · {oc.label}
+                            </span>
+                          );
+                        })()
                       ) : null}
                       <StatusIndicator
                         status={step.status}

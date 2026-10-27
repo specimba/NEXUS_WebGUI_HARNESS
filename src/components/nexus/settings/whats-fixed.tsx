@@ -616,6 +616,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Server autopilot radar digest: a registry-collapse or shrink finding carries a ⛓ chain line naming the mechanism and its status; TASKS.md experiment entries end with checked trigger/expected/boundary/verdict boxes",
   },
+  {
+    round: "r658",
+    title: "The looped chip says how the loop ended — a converged loop stopped wearing warning amber",
+    detail:
+      "The run row's '↻ looped k/r' chip painted EVERY exit reason the same amber: a loop that CONVERGED (the re-judge accepted the rework — pass-verdict) rendered exactly like a judge refusal, and a judge-errored stop (infrastructure, not quality) was indistinguishable from either. The chip now reads its tone and label from the shared adapter (src/lib/looped-outcome.ts — single mapping, never-throw, unknown reasons honestly 'exit unknown'): pass-verdict goes emerald '· pass', rework-exhausted and unsure-at-cap stay amber ('· best kept' / '· unsure at cap'), judge-unavailable goes neutral ('· judge down'). The visible label now carries the outcome (was tooltip-only) and the tooltip says the full honest sentence.",
+    lookFor:
+      "Workflow run panel: after a Looped-armed step's FAIL branch, the chip reads '↻ looped k/r · pass' in emerald when the rework was accepted; refusals stay amber '· best kept'; a judge error shows neutral '· judge down' instead of warning amber",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
