@@ -5,22 +5,26 @@
 // scheduled and server-lane) lands here automatically; this panel lists them,
 // exports batch Markdown/JSON packs, and manages the store. Live-refreshes via
 // the "nexus:run-archive-updated" event + cross-tab "storage" events.
+// r619: one-click status filter chips (done / failed / amber) + clipboard copy
+// (batch Markdown pack and per-run Markdown) + search clear affordance.
 
 import * as React from "react";
 import { toast } from "sonner";
 import {
   ChevronDown,
+  ClipboardCopy,
   Download,
   FileJson,
   FileText,
   Search,
   Trash2,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/nexus/atoms";
-import { fmtRel } from "@/lib/helpers";
+import { copyText, fmtRel } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
 import { useWorkflowsStore } from "@/lib/stores";
 import {
@@ -52,6 +56,39 @@ function statusChipClass(status: RunArchiveStatus): string {
   }
 }
 
+/** r619 status filter groups — `amber` bundles the stopped+partial states. */
+const STATUS_GROUPS = [
+  {
+    key: "all",
+    label: "All",
+    match: [] as RunArchiveStatus[],
+    activeClass:
+      "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    title: "Show every archived run",
+  },
+  {
+    key: "done",
+    label: "Done",
+    match: ["done"] as RunArchiveStatus[],
+    activeClass: statusChipClass("done"),
+    title: "Only completed runs",
+  },
+  {
+    key: "failed",
+    label: "Failed",
+    match: ["failed"] as RunArchiveStatus[],
+    activeClass: statusChipClass("failed"),
+    title: "Only failed runs",
+  },
+  {
+    key: "amber",
+    label: "Amber",
+    match: ["stopped", "partial"] as RunArchiveStatus[],
+    activeClass: statusChipClass("stopped"),
+    title: "Only stopped or partial runs",
+  },
+] as const;
+
 function fmtDuration(ms?: number): string {
   if (ms == null || !Number.isFinite(ms)) return "—";
   if (ms < 1000) return `${ms}ms`;
@@ -67,6 +104,9 @@ function fmtDateTime(iso: string): string {
 export function RunArchivePanel() {
   const [entries, setEntries] = React.useState<RunArchiveEntry[]>([]);
   const [query, setQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<
+    (typeof STATUS_GROUPS)[number]["key"]
+  >("all");
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
   // The one-time backfill from the persisted run store — idempotent inside
   // (flag key + getRun dedupe); the ref just avoids re-invoking per remount.
@@ -109,10 +149,30 @@ export function RunArchivePanel() {
     };
   }, [reload]);
 
+  const statusCounts = React.useMemo(() => {
+    const c: Record<"done" | "failed" | "amber", number> = {
+      done: 0,
+      failed: 0,
+      amber: 0,
+    };
+    for (const r of entries) {
+      if (r.status === "done") c.done += 1;
+      else if (r.status === "failed") c.failed += 1;
+      else c.amber += 1;
+    }
+    return c;
+  }, [entries]);
+
   const filtered = React.useMemo(() => {
+    // r619: status chip first (cheap), then the text query.
+    const group = STATUS_GROUPS.find((g) => g.key === statusFilter);
+    let rows = entries;
+    if (group && group.match.length > 0) {
+      rows = rows.filter((r) => group.match.includes(r.status));
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return entries;
-    return entries.filter(
+    if (!q) return rows;
+    return rows.filter(
       (r) =>
         r.workflowName.toLowerCase().includes(q) ||
         r.status.toLowerCase().includes(q) ||
@@ -124,7 +184,30 @@ export function RunArchivePanel() {
             (s.output ?? "").toLowerCase().includes(q)
         )
     );
-  }, [entries, query]);
+  }, [entries, query, statusFilter]);
+
+  const copyMdPack = async () => {
+    if (filtered.length === 0) return;
+    const ok = await copyText(buildMarkdownPack(filtered));
+    if (ok) {
+      toast.success("Markdown pack copied", {
+        description: `${filtered.length} run${filtered.length === 1 ? "" : "s"} on the clipboard.`,
+      });
+    } else {
+      toast.error("Clipboard refused the pack — use the download instead.");
+    }
+  };
+
+  const copyOneMd = async (entry: RunArchiveEntry) => {
+    const ok = await copyText(runToMarkdown(entry));
+    if (ok) {
+      toast.success("Run copied as Markdown", {
+        description: `${entry.workflowName} (${entry.id})`,
+      });
+    } else {
+      toast.error("Clipboard refused — use the .md download instead.");
+    }
+  };
 
   const downloadMdPack = () => {
     if (filtered.length === 0) return;
@@ -194,12 +277,50 @@ export function RunArchivePanel() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search runs by workflow name or step text…"
             aria-label="Search the run archive"
-            className="h-8 pl-8 pr-3 text-xs"
+            className="h-8 pl-8 pr-8 text-xs"
           />
+          {query ? (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Clear the archive search"
+              title="Clear the search"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            >
+              <X className="h-3 w-3" aria-hidden />
+            </button>
+          ) : null}
         </div>
         <Badge variant="outline" className="shrink-0 tabular-nums" title="Runs currently in the local archive">
           {entries.length} archived
         </Badge>
+        <div
+          className="flex shrink-0 items-center gap-1"
+          role="group"
+          aria-label="Filter runs by status"
+        >
+          {STATUS_GROUPS.map((g) => {
+            const active = statusFilter === g.key;
+            const count = g.key === "all" ? entries.length : statusCounts[g.key];
+            return (
+              <button
+                key={g.key}
+                type="button"
+                onClick={() => setStatusFilter(g.key)}
+                aria-pressed={active}
+                title={g.title}
+                className={cn(
+                  "h-7 rounded-full border px-2.5 text-[11px] font-medium tabular-nums transition-colors",
+                  active
+                    ? g.activeClass
+                    : "border-border bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                )}
+              >
+                {g.label} <span className="opacity-70">{count}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">
           <Button
             size="sm"
@@ -226,6 +347,19 @@ export function RunArchivePanel() {
             <FileJson className="h-3.5 w-3.5" aria-hidden />
             <span className="hidden sm:inline">Download pack (.json)</span>
             <span className="sm:hidden">.json</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5"
+            disabled={filtered.length === 0}
+            onClick={() => void copyMdPack()}
+            aria-label="Copy the shown archived runs as Markdown to the clipboard"
+            title="Copy every shown run as one Markdown pack to the clipboard"
+          >
+            <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">Copy pack</span>
+            <span className="sm:hidden">Copy</span>
           </Button>
           <Button
             size="sm"
@@ -321,6 +455,17 @@ export function RunArchivePanel() {
                     >
                       <Download className="h-3.5 w-3.5" aria-hidden />
                       .json
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 gap-1.5 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => void copyOneMd(entry)}
+                      aria-label={`Copy run ${entry.id} as Markdown to the clipboard`}
+                      title="Copy this run as Markdown to the clipboard"
+                    >
+                      <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
+                      Copy
                     </Button>
                     <Button
                       size="sm"

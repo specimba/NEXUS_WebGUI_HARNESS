@@ -1403,3 +1403,24 @@ Round ID: r619 -> next patrol (job 473388)
 Next recommended action: unchanged from r618 handoff — TASK-101 durable-step semantics design probe (P1 backlog arc), unless the Owner picks Supabase path (b), in which case the server-side mirror route (service_role in server env, Owner-gated) becomes the top pick.
 Blockers: Supabase path (b) needs the Owner's service_role key decision; path (a) is runnable by the Owner NOW via the safe-now SQL subset.
 - GATES: tsc=0 lint=0(33-exact) witness="audit-1027: 4/5 hard-failures verified fixed (r607 rotation, WAL, r611 drain, r612/613 enricher); cron 473388 active 103 runs; supabase transport conflict documented in code (r618a)" restart="0/1 consumed"
+
+---
+Task ID: r619
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271037)
+Task: Patrol r619 — follow worklog handoff, golden QA, one real increment, gates, dual push.
+
+Work Log:
+- Handoff follow-up: r618/audit-1027 pointed at "TASK-101 durable-step semantics" — VERIFIED STALE: docs/strategy/TASKS.md line 29 marks it DONE r520/r521/r535 (per-step retry + waitForEvent park/resume + memoized resume-after-failure). Remaining P1s are all Owner-gated (PAT rotation bb6120b31, Webshare token paste, NEXUS_BOT live-wire keyed proofs) — never invented.
+- qa:golden 4/4 (relay badges intel+census, frontier scroll guard 942x300 sh=6181, long-paste PASTED-AND-RUN len=212, console 0→0). Server was already up; restart 0/1 consumed.
+- INCREMENT r619 (Workflows → Run Archive panel — surface golden QA does not deep-cover): (1) status filter chips All/Done/Failed/Amber with live counts, aria-pressed toggle, reusing the exact statusChipClass color vocabulary (Amber bundles stopped+partial); (2) clipboard copy path — batch "Copy pack" (buildMarkdownPack over the filtered set) + per-run "Copy" action, both via the existing helpers.copyText with an honest toast fail-path pointing back at download; (3) search clear affordance (X button + pr-8 input). Zero engine touch, zero new deps.
+- Witness: lucide ClipboardCopy/X named exports verified present in the installed dist typings; bunx tsc --noEmit rc0; bun run lint 0 errors / 33 warnings (exact known baseline).
+
+Stage Summary:
+- Run Archive went from download-only to copy+download, from search-only to chip+search filtering — a genuine daily-driver usability lift for the most-trafficked history surface.
+- Backlog truthing for future handoffs: the P1 queue is effectively Owner-gated-only right now; TASK-101 references in older handoffs are stale (shipped r520-535).
+
+Round Handoff:
+Round ID: r620 -> next patrol (job 473388)
+Next recommended action: r620 — batched opening (expect HEAD = r619 commit; else follow ITS handoff); qa:golden (1 round); increment: P1 is Owner-gated-only, so pick the smallest honest user-facing gap — candidates: persist the run-archive status chip across visits (localStorage, mirrors the panel's existing storage discipline), or the P2 line-40 crew-panel alignment math counting the peer blind-score pattern from the existing call-log vocabulary; mandatory styling polish + feature; gates + witness; ship under 12. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:golden=4/4 witness="run-archive: status chips + clipboard copy + search clear, icons verified, 0 engine touch" restart="0/1 consumed"
