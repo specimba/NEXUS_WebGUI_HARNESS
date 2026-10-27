@@ -1727,3 +1727,26 @@ Round ID: r631 -> next patrol (job 473388)
 Next recommended action: r631 — batched opening (expect HEAD = r630 commit; server up; qa:golden 1 round, 6/6; console baseline expected 0→0). The focus-suppression census is CLOSED — do not re-run it. New candidates: (a) different polish class: prefers-reduced-motion audit (animate-ping/pulse/spin instances — the ping dots are decorative aria-hidden, honest skips; check for any motion-carrying INTERACTIVE control without motion-reduce guards); (b) hover-affordance gaps on aria-label'd icon buttons (grep className-less or hover-less icon buttons — needs reads, cap at 2); (c) fix-before-work wins. Plugin slice 2 stays deferred unless the Owner expands the round budget. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="edit-textarea + kanban emit row violet focus closure (census classes complete: buttons r629 + text fields r630); console 0->0" restart="0/1 consumed"
+
+---
+Task ID: r631
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271637)
+Task: Patrol r631 — per r630 handoff: prefers-reduced-motion audit (candidate a); fix-before-work wins take precedence when found.
+
+Work Log:
+- OPENING (1 batched round: HEAD+server / golden / motion census + reduced-motion grep): HEAD = c0633eacc (r630), server 200, tree clean, qa:golden 6/6 pre-edit, console 0→0.
+- CANDIDATE-A VERDICT (already shipped — honest skip): globals.css:523 ships a thoughtful prefers-reduced-motion block (WCAG 2.3.3) killing ticker/typing-dots/ripples/EQ/shimmer/card-lift app-wide, deliberately keeping one-shot informational fades (msg-flash, soft-pulse); documented in whats-fixed.tsx. Re-doing it would be theatre.
+- SELF-CAUGHT REGRESSION (fix-before-work, the round's real increment): cross-checking my own arc against r624's AgentCard exposed a ring-offset inconsistency — earlier rounds (r623 archive chips, r624 card, r626 kanban cards) correctly used theme-aware `focus-visible:ring-offset-background`, but my r627-r630 additions (gateway-pulse chip, 3 schedule chips, 9 message-item controls, kanban Emit button = 14 spots) used bare `ring-offset-1`, whose Tailwind default offset color is WHITE — a glaring halo on this app's dark themes on every keyboard focus.
+- FIX: appended focus-visible:ring-offset-background to all 14 spots via quote-anchored replace_all per file (message-item got two patterns: quote-ended lines + the two cn group-hover strings; run-kanban pattern proven safe against its already-covered card variants by the quote anchor). Static probe: bare quote-ended offsets = 0; ring-offset-background totals rose 19→26 in nexus.
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0 (34 grep hits = 33 + summary baseline). Post-edit qa:golden 6/6, console 0→0 delta 0.
+- Budget: 7 rounds (opening+census 1, grep+css-read 1, edits 1, gates 1, golden 1, worklog 1, push 1).
+
+Stage Summary:
+- Every violet focus ring added by the r623-r631 arc is now theme-aware — the white-offset halo class is closed by construction; future ring additions should copy the full vocab string including ring-offset-background (the covered run-kanban:242 line is the canonical template).
+- Reduced-motion needs nothing: already shipped and correctly scoped.
+
+Round Handoff:
+Round ID: r632 -> next patrol (job 473388)
+Next recommended action: r632 — batched opening (expect HEAD = r631 commit; server up; qa:golden 1 round, 6/6). The focus arc AND reduced-motion are closed. Candidates: (a) hover-affordance gaps on aria-label'd icon buttons (r630 handoff carry-over; needs reads, cap 2 — composer.tsx has 4 raw buttons with 1 fv, a plausible first read); (b) copy/consistency sweep of the ring template (grep for any future-drift guard — a tiny CSS comment in globals.css near the reduced-motion block documenting the canonical ring string is cheap and durable); (c) fix-before-work wins. Plugin slice 2 stays deferred. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="14-spot ring-offset-background closure (self-caught white-halo regression from r627-r630; bare=0 probe); reduced-motion verified already-shipped; console 0->0" restart="0/1 consumed"

@@ -2690,7 +2690,7 @@ export function WorkflowsView() {
                           }}
                           title={`Rate-limit backoff: the schedule parked itself after consecutive 429s and will re-arm automatically ${fmtIn(wf.schedule.autoResumeAt)}. Click to resume now instead.`}
                           data-testid="backoff-schedule-chip"
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                         >
                           <span className="relative flex h-1.5 w-1.5">
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-60" />
@@ -2728,7 +2728,7 @@ export function WorkflowsView() {
                           }}
                           title="Auto-paused after consecutive failed runs. Click to re-enable the schedule and reset the failure counter — it fires on the next 10s tick while the tab is open."
                           data-testid="autopause-schedule-chip"
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 transition-colors hover:bg-red-500/20 dark:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 transition-colors hover:bg-red-500/20 dark:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                         >
                           <RotateCcw className="h-3 w-3" />
                           auto-paused · click to resume
@@ -2751,7 +2751,7 @@ export function WorkflowsView() {
                           }}
                           title="Stopped — this schedule is disabled and nothing fires until you resume it. Click to resume: it re-enables and fires on the next 10s tick while the tab is open."
                           data-testid="stopped-schedule-chip"
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-500/40 bg-zinc-500/10 px-2 py-0.5 text-[10px] font-medium text-zinc-600 transition-colors hover:bg-zinc-500/20 dark:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-500/40 bg-zinc-500/10 px-2 py-0.5 text-[10px] font-medium text-zinc-600 transition-colors hover:bg-zinc-500/20 dark:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                         >
                           <PauseCircle className="h-3 w-3" />
                           stopped · click to resume
