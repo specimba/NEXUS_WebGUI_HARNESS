@@ -592,6 +592,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "an errored run resumes from its last durable step; the vault card shows acquisition lanes with key-source readouts",
   },
+  {
+    round: "r655",
+    title: "The vault backup API got its buttons — Backup and Restore, 275 rounds after the route shipped",
+    detail:
+      "r380's GET/POST /api/vault/backup round trip existed with zero UI: the vault card's only recovery path was a CLI hint, so a wiped disk meant re-seeding from a terminal. Now the card header carries Backup (confirm-gated — the dialog and the success toast both say the exported file holds every key UNENCRYPTED, the route's own trust model) and Restore (a file picker takes the same document back, refuses non-JSON and foreign files with the reason instead of silence, upserts slot-by-slot, reloads the card, and counts malformed skips honestly). The empty-vault state leads with a Restore-a-backup button before the CLI fallback, and the storage meter's fossil nexus-automation-vault label now reads legacy — the vault has lived in server SQLite (AES-256-GCM) since r526.",
+    lookFor:
+      "Settings → Automation vault: Backup/Restore buttons top-right of the card; Backup confirm warns about plaintext keys; Restore rejects a non-backup file with a toast instead of silence",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

@@ -2376,3 +2376,27 @@ Round ID: r655 -> next patrol (job 473388)
 Next recommended action: (1) r654-patrol's staged vault Backup/Restore buttons (F2/F3 in VAULT-RSI-REVIEW.md) — vault card is now free of WIP; (2) call-log lineage schema-hardening (every tool-call note carries result status + step id); (3) witness a REAL degraded-deep run when the next congestion window hits a deep schedule (the chip + note are QA-pinned, live telemetry pending); (4) slice 3 radar chain-typed evidence + admission-gate checkboxes.
 Blockers: none. Owner queue: vault/RSI review delivered (this session + VAULT-RSI-REVIEW.md); deep-pass loop saver + drift auto-heal + error-honesty shipped and witnessed.
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa-new=26/26+28/28+20/20 qa-regressions=15-suites-green witness="Vyce drift AUTO-HEALED live (label 'auto re-mirrored — drift heal', strip 'dials Vyce AI first' clean); RSI deep-pass non-fatality QA-pinned; console 0->0" restart="0/1"
+
+---
+Task ID: r655
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280337)
+Task: r655 patrol — vault Backup/Restore buttons (r654/OWN-c handoff item 1; F2/F3/F4 in VAULT-RSI-REVIEW.md), golden QA first, gates, receipts.
+
+Work Log:
+- OPENING: worklog tail read (r654 patrol + OWN-c vault session); vault card free of WIP -> handoff item 1 GO. Server 200; /api/vault/backup GET healthy (ok:true, version 1, 20 slots).
+- GOLDEN QA (scripts/qa-golden-r655.sh): settings console 0 (Automation vault + free-reach census render); radar frontier-clicked -> scroller top=4576, moved=true; workflows surface renders; console-errors 0/0/0. Relay-ladder leg inherits r654's green (surface untouched since); run-panel paste leg deferred again (witnessed r653 byte-intact; run-panel frontend untouched by r654/OWN-c — their changes were runner/engine-side, QA-pinned by qa-deep-resilience 28/28).
+- INCREMENT (user-facing): Backup/Restore in automation-vault-card.tsx — header action cluster (ml-auto outline h-7 text-xs, Download/Upload icons, Loader2 busy, cross-disabled); Backup = window.confirm plaintext warning -> GET /api/vault/backup (no-store) -> honest empty-vault info toast -> blob download nexus-vault-backup-<stamp>.json -> success toast "Backed up N slots — the file holds plaintext keys, store it safely."; Restore = shared hidden file input (accept json, value-reset so re-pick re-fires) -> strict-but-kind parse (export doc or bare slots array; garbage refused with the reason BEFORE any fetch) -> POST {slots} -> honest imported/skipped toast -> card load(). Empty-vault state (F4) now leads with a "Restore a backup" button + acquisition-lanes pointer; CLI hint demoted to secondary. No API changes — both buttons drive the r380 localGuard'd round trip.
+- F5: storage-usage.tsx fossil label "nexus-automation-vault" -> "Automation vault (legacy pre-SQLite)" + comment (nothing writes the key since r526; honest for old-profile fossils, no longer claims the live vault lives in localStorage).
+- NEW DOCTRINE honored: r655 FixNote appended to whats-fixed.tsx (FIXES stays chronological-append; RANGE_LABEL auto-derives; receipts stall stays dead).
+- WITNESS: live settings page — Backup/Restore header buttons render titled + shared hidden input present; Backup clicked (confirm stubbed accept) -> toast VERBATIM "Backed up 20 slots — the file holds plaintext keys, store it safely." (count = readiness strip's 20 lanes); malformed-file restore dispatch -> client refusal path executed with ZERO vault mutation (/api/vault readback unchanged; refusal precedes fetch by construction; input-clear side-effect witnessed = change handler ran); refusal-toast render itself not captured by the innerText poll (regex hit page copy) — end-to-end file-pick restore stays Owner-witnessable in one real click. Console 0->0 through every leg.
+- GATES: tsc rc=0 (file-redirect unmask), lint rc=0 with EXACTLY the 33-warning baseline (0 warnings in touched files), qa-golden script green.
+
+Stage Summary:
+- The vault's last honest UI gap (F2/F3/F4) is closed: backup/restore is now a two-click deliberate round trip with the plaintext warning said in dialog AND toast; a wiped disk no longer requires a terminal to recover.
+- Receipts fed (r655 FixNote); storage-meter fossil label honest; VAULT-RSI-REVIEW.md F-findings F2-F5 now all shipped.
+
+Round Handoff:
+Round ID: r656 -> next patrol (job 473388)
+Next recommended action: (1) call-log lineage schema-hardening — every tool-call note carries result status + step id (carried twice, still open); (2) Owner-witness the restore happy path (pick the r655 backup file via the real file chooser — headless cannot drive the chooser; the POST half is route-pinned); (3) looped-path FAIL-branch live-witness (Looped x2 + harsh gate on a healthy ladder); (4) slice 3 radar chain-typed evidence + admission-gate checkboxes.
+Blockers: none. Owner queue: none pending (vault 20 slots stored, acquisition 3/3 keyed, schedules armed).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:golden=console-0-on-all-3 witness="Backup LIVE: confirm-gate -> download -> toast 'Backed up 20 slots — the file holds plaintext keys, store it safely.'; Restore refusal path zero-mutation; FixNote r655; fossil label legacy" restart="0/1"

@@ -73,7 +73,10 @@ const KNOWN_KEYS: Record<string, string> = {
   "nexus-radar-paper-query": "Radar paper query",
   "nexus-radar-tab": "Radar active tab",
   "nexus-provider-vault": "Provider vault (keys)",
-  "nexus-automation-vault": "Automation vault",
+  // r655: the automation vault moved to server SQLite (r526, AES-256-GCM) —
+  // nothing writes this localStorage key anymore. The label stays honest for
+  // old-profile fossils instead of claiming the live vault lives here.
+  "nexus-automation-vault": "Automation vault (legacy pre-SQLite)",
   "nexus-relay-health": "Relay health log",
   "nexus-schedule-skips": "Schedule skip ledger",
   "nexus-local-model": "Local model pick",

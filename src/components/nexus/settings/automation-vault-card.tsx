@@ -12,6 +12,7 @@
 
 import * as React from "react";
 import {
+  Download,
   Eye,
   EyeOff,
   FlaskConical,
@@ -19,6 +20,7 @@ import {
   Loader2,
   ShieldCheck,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +103,14 @@ export function AutomationVaultCard() {
   >([]);
   const [revealingProvider, setRevealingProvider] = React.useState<string | null>(null);
   const [confirmRemoveProvider, setConfirmRemoveProvider] = React.useState<string | null>(null);
+  // r655: Backup/Restore — the r380 GET/POST /api/vault/backup round trip
+  // finally gets UI (F2/F3, VAULT-RSI-REVIEW §3). Backup is a two-click
+  // deliberate download of a PLAINTEXT key document (the route's trust model
+  // says so; the confirm dialog and toast repeat it); Restore reads that same
+  // document back, POSTs it, and reloads the card. Errors surface verbatim.
+  const [backingUp, setBackingUp] = React.useState(false);
+  const [restoring, setRestoring] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const revealTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   // r218: the settings tab panels are CSS-hidden, NOT unmounted — this card
   // mounts when the settings view mounts (which persisted-view restores can
@@ -170,6 +180,124 @@ export function AutomationVaultCard() {
     io.observe(el);
     return () => io.disconnect();
   }, [load]);
+
+  // ─── r655: vault Backup / Restore (VAULT-RSI-REVIEW §3 F2/F3) ───────────
+  // No new API — both buttons drive the existing localGuard'd round trip.
+  // Backup: confirm-gate (the exported FILE is plaintext JSON holding every
+  // key — the route header's trust model, repeated in the dialog and toast),
+  // then a deliberate two-click download. An empty vault exports nothing and
+  // says so. Restore: strict-but-kind parse (export document or bare slots
+  // array, anything else refused with the reason), POST, honest imported/
+  // skipped toast, card reload. Every failure surfaces; nothing is swallowed
+  // (r411 class — a silent restore is a vault that looks restored but isn't).
+  const backupVault = React.useCallback(async () => {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "Export the automation vault as a JSON backup?\n\nThe file will contain every stored key UNENCRYPTED — keep it somewhere safe and delete it when you're done.",
+      )
+    ) {
+      return;
+    }
+    setBackingUp(true);
+    try {
+      const res = await fetch("/api/vault/backup", {
+        cache: "no-store",
+        headers: { "x-nexus-csrf": "1" },
+      });
+      const json = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        slots?: unknown[];
+        error?: string;
+      } | null;
+      if (!res.ok || !json?.ok || !Array.isArray(json.slots)) {
+        toast.error(json?.error ?? "Vault export failed — the server didn't answer.");
+        return;
+      }
+      if (json.slots.length === 0) {
+        toast.info("The vault is empty — nothing to back up yet.");
+        return;
+      }
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nexus-vault-backup-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(
+        `Backed up ${json.slots.length} slot${json.slots.length === 1 ? "" : "s"} — the file holds plaintext keys, store it safely.`,
+      );
+    } catch {
+      toast.error("Vault export failed — the server didn't answer.");
+    } finally {
+      setBackingUp(false);
+    }
+  }, []);
+
+  const restoreVaultFile = React.useCallback(
+    async (file: File) => {
+      setRestoring(true);
+      try {
+        const text = await file.text();
+        let parsed: unknown = null;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          toast.error("That file isn't valid JSON — pick a backup made by the Backup button.");
+          return;
+        }
+        const slots =
+          parsed && typeof parsed === "object" && Array.isArray((parsed as { slots?: unknown }).slots)
+            ? (parsed as { slots: unknown[] }).slots
+            : Array.isArray(parsed)
+              ? parsed
+              : null;
+        if (!slots) {
+          toast.error("No slots array in that file — pick a backup made by the Backup button.");
+          return;
+        }
+        const res = await fetch("/api/vault/backup", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+          body: JSON.stringify({ slots }),
+        });
+        const json = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          imported?: number;
+          skipped?: number;
+          error?: string;
+        } | null;
+        if (!res.ok || !json?.ok) {
+          toast.error(json?.error ?? "Vault import failed — the server didn't answer.");
+          return;
+        }
+        toast.success(
+          `Restored ${json.imported ?? 0} slot${json.imported === 1 ? "" : "s"}${
+            json.skipped ? `, ${json.skipped} malformed skipped` : ""
+          }.`,
+        );
+        void load();
+      } catch {
+        toast.error("Vault import failed — the file couldn't be read.");
+      } finally {
+        setRestoring(false);
+      }
+    },
+    [load],
+  );
+
+  const onRestoreFile = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] ?? null;
+      e.target.value = ""; // re-picking the same file must re-fire change
+      if (file) void restoreVaultFile(file);
+    },
+    [restoreVaultFile],
+  );
 
   const maskNow = React.useCallback(() => {
     if (revealTimer.current) {
@@ -678,7 +806,7 @@ export function AutomationVaultCard() {
     <div ref={rootRef}>
     <Card className="gap-4">
       <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ShieldCheck className="h-4 w-4 shrink-0 text-cyan-500" aria-hidden />
           <CardTitle>Automation vault</CardTitle>
           <Badge variant="outline" className="border-cyan-500/40 text-cyan-600 dark:text-cyan-400">
@@ -692,6 +820,38 @@ export function AutomationVaultCard() {
             AES-256-GCM at rest
           </Badge>
           <DeepLinkShare anchor="vault" label="the Automation vault" />
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 px-2.5 text-xs"
+              onClick={() => void backupVault()}
+              disabled={backingUp || restoring}
+              title="Download every stored slot as a versioned JSON backup. The file is plaintext by design — the confirm dialog says so before anything is written."
+            >
+              {backingUp ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Download className="h-3.5 w-3.5" aria-hidden />
+              )}
+              Backup
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 px-2.5 text-xs"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={backingUp || restoring}
+              title="Restore slots from a backup JSON (the same document Backup downloads). Import upserts each slot with normal save semantics."
+            >
+              {restoring ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Upload className="h-3.5 w-3.5" aria-hidden />
+              )}
+              Restore
+            </Button>
+          </div>
         </div>
         {/* OWN-b: loop-readiness strip — one honest row built from the same
             state the card renders below; hidden entirely while the read is
@@ -738,6 +898,17 @@ export function AutomationVaultCard() {
           SQLite, encrypted at rest (AES-256-GCM), never telemetered, displayed masked.
         </CardDescription>
       </CardHeader>
+      {/* r655: hidden file picker for Restore — lives outside the buttons so
+          both header and empty-state affordances drive the same input. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={onRestoreFile}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
       <CardContent className="space-y-4">
         {loadFailed && !loading ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-red-500/30 bg-red-500/5 px-2.5 py-2 text-xs text-red-600 dark:text-red-400">
@@ -845,17 +1016,38 @@ export function AutomationVaultCard() {
             />
           )}
           {!loading && !loadFailed && slots.length === 0 ? (
-            <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground/70">
-              Re-populate from the seed backup without a restart:{" "}
-              <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[9.5px]">
-                bun scripts/seedwrite.ts --import
-              </code>{" "}
-              (writes through the AES-256-GCM vault;{" "}
-              <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[9.5px]">
-                bun scripts/seedwrite.ts
-              </code>{" "}
-              exports the plaintext backup).
-            </p>
+            <div className="mt-1.5 space-y-1.5">
+              <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+                Empty vault — restore a backup file made by the Backup button, or key a lane
+                from the acquisition lanes below. The executor dials only with a key stored
+                here: an empty vault is an honest no-op, never an implicit fallback.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 px-2.5 text-xs"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={restoring}
+              >
+                {restoring ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <Upload className="h-3.5 w-3.5" aria-hidden />
+                )}
+                Restore a backup
+              </Button>
+              <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+                Prefer the CLI?{" "}
+                <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[9.5px]">
+                  bun scripts/seedwrite.ts --import
+                </code>{" "}
+                re-populates without a restart (writes through the AES-256-GCM vault;{" "}
+                <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[9.5px]">
+                  bun scripts/seedwrite.ts
+                </code>{" "}
+                exports the plaintext backup).
+              </p>
+            </div>
           ) : null}
         </div>
 
