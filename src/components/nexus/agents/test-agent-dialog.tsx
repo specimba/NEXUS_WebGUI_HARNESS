@@ -104,6 +104,10 @@ export function TestAgentDialog({
   const [input, setInput] = React.useState("");
   const [running, setRunning] = React.useState(false);
   const [statusText, setStatusText] = React.useState("");
+  // r625: honest per-turn telemetry — which resolved lane label actually
+  // served each assistant reply (the header badge shows the agent's
+  // CONFIGURED model; the resolver may degrade to a fallback lane).
+  const [viaMap, setViaMap] = React.useState<Record<string, string>>({});
 
   // r463 (extended r464): honest pre-flight for the composer footer. The
   // resolver NEVER hands back a keyed-provider-without-key lane — it degrades
@@ -136,6 +140,7 @@ export function TestAgentDialog({
     setInput("");
     setStatusText("");
     setRunning(false);
+    setViaMap({});
   }, [open, agent]);
 
   // Auto-grow composer.
@@ -175,6 +180,8 @@ export function TestAgentDialog({
     try {
       const settings = useSettingsStore.getState().settings;
       const llm = resolveLlm(settings, agent.model);
+      // r625: stamp this turn's resolved lane so the reply can cite it.
+      setViaMap((prev) => ({ ...prev, [assistantId]: llm.label }));
       const result = await runAgentChat(
         {
           provider: llm.provider,
@@ -381,6 +388,14 @@ export function TestAgentDialog({
                         )}
                       >
                         (stopped)
+                      </p>
+                    ) : null}
+                    {viaMap[m.id] ? (
+                      <p
+                        className="mt-1.5 text-[10px] text-muted-foreground"
+                        title="Model lane that served this reply, resolved at send time — may differ from the header badge when the resolver degrades"
+                      >
+                        via {viaMap[m.id]}
                       </p>
                     ) : null}
                     {m.status === "error" && m.error ? (

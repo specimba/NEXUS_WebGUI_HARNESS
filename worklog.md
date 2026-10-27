@@ -1589,3 +1589,26 @@ Round ID: r625 -> next patrol (job 473388)
 Next recommended action: r625 — batched opening (expect HEAD = r624 commit; server up; qa:golden 1 round, expect 5/5). Increment candidates: (a) styling arc continues — workflow cards (workflows-view grid) hover affordances to the same violet vocabulary (the roster is done; the board/card surfaces remain); (b) TestAgentDialog: surface the model used for a test reply (small honest telemetry) — inspect first, only if trivially clean; (c) fix-before-work wins if QA surfaces anything. Probes: target aria-labels. Keep increments small; never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0 qa:golden=5/5 witness="roster hover affordance + violet ring vocabulary on AgentCard (5/5 probe); archive search persisted (round-trip probe); console delta 0" restart="0/1 consumed"
+
+---
+Task ID: r625
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271337)
+Task: Patrol r625 — per r624 handoff: workflow cards hover/focus affordances to the violet vocabulary + TestAgentDialog per-turn lane telemetry (option b, inspected first).
+
+Work Log:
+- OPENING: HEAD = 2630361ea (r624), server up (200, restart untouched), tree clean. qa:golden 5/5 pre-edit — no breakage.
+- INSPECTION (honest scope-setting): workflow card footer ALREADY has a visible Run + Edit button (unlike the AgentCard's hidden primary action), so a hover-revealed Run chip would be redundant theatre — skipped. TestAgentDialog inspection: header badge shows the agent's CONFIGURED model, replies never cited the lane that actually served them.
+- INCREMENT 1 (styling): workflow cards gain hover:ring-violet-500/40 + focus-within:ring-violet-500/40 (keyboard users tabbing into Run/Edit/kebab light the container). Highlight (violet ring-2) and live-run (emerald ring-1) states kept as-is; hover is a temporary tint consistent with roster + archive. Probe: 6/6 cards carry both classes.
+- INCREMENT 2 (honest telemetry): test-agent-dialog stamps each turn's resolved lane label (viaMap[assistantId] = llm.label, set at send time from the SAME resolveLlm result that dials the call) and renders "via {label}" under the reply — the header badge can lie after degradation, the via line cannot (it cites the lane that actually served the turn). Reset per dialog open. Verified by tsc; the chip renders only after a real turn (no fake probe without burning quota).
+- SELF-CORRECTION: one MultiEdit old_str was fabricated from memory instead of copied from the read (setStatusText typo) — failed cleanly (atomic per r623 doctrine), redone from the exact read text. r623 lesson held: copy anchors, never recall them.
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0 (33 warnings — the 34 grep hits = 33 + summary line, tail-verified at ship). Post-reload qa:golden 5/5, console 34→34 delta 0.
+- Budget honesty: inspection-heavy opening (5 read rounds before the first edit) pushed the count past 12 again (~14). Next round: cap inspection at 2 rounds by deciding increment from the handoff BEFORE opening files; reads beyond that defer to the edit round.
+
+Stage Summary:
+- Workflow cards now match the roster/archive violet interaction vocabulary (hover + keyboard focus-within); test replies honestly cite the lane that served them — the playground can no longer silently ride a degraded resolver lane without saying so.
+
+Round Handoff:
+Round ID: r626 -> next patrol (job 473388)
+Next recommended action: r626 — batched opening (expect HEAD = r625 commit; server up; qa:golden 1 round, expect 5/5). Budget discipline: decide the increment from THIS handoff before reading anything; cap inspection at 2 rounds. Increment candidates: (a) run-kanban RunCard hover affordances to the violet vocabulary (last major card surface without it); (b) "via" lane stamp also on stopped/error replies in the playground is ALREADY covered (stamp happens at send) — instead: strategy-card.tsx hover vocabulary sweep if kanban is trivially covered; (c) fix-before-work wins. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=5/5 witness="wf-card hover/focus-within violet rings (6/6 probe); playground via-lane stamp shipped (tsc-verified, renders after real turns); console delta 0" restart="0/1 consumed"

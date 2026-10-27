@@ -2261,7 +2261,7 @@ export function WorkflowsView() {
                   key={wf.id}
                   data-wf-card={wf.id}
                   className={cn(
-                    "card-lift gap-3 p-4",
+                    "card-lift gap-3 p-4 hover:ring-1 hover:ring-violet-500/40 focus-within:ring-1 focus-within:ring-violet-500/40",
                     highlightId === wf.id &&
                       "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-background",
                     liveRun && "ring-1 ring-emerald-500/40"
