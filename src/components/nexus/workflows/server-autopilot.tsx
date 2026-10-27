@@ -746,7 +746,16 @@ export function ServerAutopilot() {
             className="w-full rounded-lg border border-violet-500/15 bg-background/40 px-2 py-1.5 text-left transition-colors hover:bg-violet-500/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-500/50"
           >
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Capability radar</p>
-            <p className="mt-0.5 text-xs font-semibold tabular-nums text-violet-300">
+            <p
+              title="Tint mirrors the latest digest's highest finding severity (red critical, amber warning, violet clear)."
+              className={`mt-0.5 text-xs font-semibold tabular-nums ${
+                radar?.latest?.findings.some((f) => f.severity === "critical")
+                  ? "text-red-300"
+                  : radar?.latest?.findings.some((f) => f.severity === "warning")
+                    ? "text-amber-300"
+                    : "text-violet-300"
+              }`}
+            >
               {radar?.latest
                 ? `${radar.latest.findings.length} finding${radar.latest.findings.length === 1 ? "" : "s"} · ${fmtAgo(radar.latest.generatedAt)}`
                 : "arming…"}
