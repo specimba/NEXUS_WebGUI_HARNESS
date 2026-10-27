@@ -57,16 +57,19 @@ for (const kind of ["auth", "model", "region-block", "unknown", "abuse"]) {
 }
 
 // ── 5. Delay curves ──────────────────────────────────────────────────────────
-const MIN = 0.8, MAX = 1.2; // jitteredBackoff ±20%
+const MIN = 0.9, MAX = 1.1; // jitteredBackoff envelope is ±10% (0.9 + rand×0.2) — r654 truth-up: the QA assumed ±20%
 const net = [0, 1, 2].map((i) => parkDelayMs("network", i));
 check("network curve escalates (2m→4m→8m nominal, ±20%)",
   net.every((ms, i) => ms >= 2 * 60_000 * 2 ** i * MIN && ms <= 2 * 60_000 * 2 ** i * MAX),
   net.map((ms) => `${Math.round(ms / 1000)}s`).join(","));
-check("network curve caps at 8m nominal (park 3+ never grows)",
-  (() => { const ms = parkDelayMs("network", 5); return ms >= 8 * 60_000 * MIN && ms <= 8 * 60_000 * MAX; })());
+check("network curve caps at 10m nominal (park 3+ never grows) — r654 truth-up: cap raised 8m→10m",
+  (() => { const ms = parkDelayMs("network", 5); return ms >= 10 * 60_000 * MIN && ms <= 10 * 60_000 * MAX; })());
 const rl = [0, 1, 2, 3].map((i) => parkDelayMs("rate-limit", i));
-check("rate-limit curve unchanged (5m→10m→20m→30m nominal, ±20%)",
-  rl.every((ms, i) => ms >= 5 * 60_000 * 2 ** i * MIN && ms <= 5 * 60_000 * 2 ** i * MAX),
+check("rate-limit curve unchanged (5m→10m→20m→30m nominal, ±10% jitter) — r654 truth-up: expected window applies the 30m cap",
+  rl.every((ms, i) => {
+    const nominal = Math.min(5 * 60_000 * 2 ** i, 30 * 60_000);
+    return ms >= nominal * MIN && ms <= nominal * MAX;
+  }),
   rl.map((ms) => `${Math.round(ms / 1000)}s`).join(","));
 check("rate-limit curve caps at 30m nominal",
   (() => { const ms = parkDelayMs("rate-limit", 9); return ms >= 30 * 60_000 * MIN && ms <= 30 * 60_000 * MAX; })());

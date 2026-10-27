@@ -13,8 +13,8 @@ const ROOT = "/home/z/my-project";
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 const transcribe = read("src/app/api/transcribe/route.ts");
 const tts = read("src/app/api/tts/route.ts");
-const composer = read("src/components/praison/chat/composer.tsx");
-const chatView = read("src/components/praison/chat/chat-view.tsx");
+const composer = read("src/components/nexus/chat/composer.tsx");
+const chatView = read("src/components/nexus/chat/chat-view.tsx");
 
 let pass = 0, fail = 0;
 const results = [];

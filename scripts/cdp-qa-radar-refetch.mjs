@@ -24,7 +24,7 @@ import path from "node:path";
 const BASE = process.argv[2] ?? "http://localhost:3000";
 const OUT_DIR = path.resolve("ops/qa");
 fs.mkdirSync(OUT_DIR, { recursive: true });
-const COMP = path.resolve("src/components/praison/tracker/model-radar-tab.tsx");
+const COMP = path.resolve("src/components/nexus/tracker/model-radar-tab.tsx");
 
 let msgId = 0;
 const pending = new Map();

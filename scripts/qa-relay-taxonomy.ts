@@ -152,7 +152,7 @@ ok(stripRelayMarkers("Model relay: a failed (x) [hop:p::m] [hopdead]") === "Mode
 console.log("K8 — r188 source wiring: one parser, no parallel truth");
 const engineSrc = fs.readFileSync("src/lib/agent-engine.ts", "utf8");
 const runnerSrc = fs.readFileSync("src/lib/workflow-runner.ts", "utf8");
-const chatSrc = fs.readFileSync("src/components/praison/chat/chat-view.tsx", "utf8");
+const chatSrc = fs.readFileSync("src/components/nexus/chat/chat-view.tsx", "utf8");
 ok(/" \[hopauth\]" : dead \? " \[hopdead\]" : soft \? " \[hopsoft\]"/.test(engineSrc), "agent-engine emits all three verdict markers");
 ok(
   /isAuthRelayFailure,\s*isDeadlyRelayFailure,\s*isSoftRelayFailure\s*\} from "\.\/relay-core"/.test(engineSrc),

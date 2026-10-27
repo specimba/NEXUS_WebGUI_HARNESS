@@ -6,7 +6,7 @@
 // must expose aria-expanded. House style: the hint block carries no /quota/i.
 import { readFileSync } from "node:fs";
 
-const FILE = "src/components/praison/workflows/workflow-run-panel.tsx";
+const FILE = "src/components/nexus/workflows/workflow-run-panel.tsx";
 const src = readFileSync(FILE, "utf8");
 
 let pass = 0;

@@ -91,9 +91,9 @@ check("explicit roleId beats label prefix even when the prefix agrees too",
 // ── 5. r182 integration: editor writes it, surfaces prefer it, runs carry it ─
 const root = process.cwd();
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
-const editorSrc = read("src/components/praison/workflows/workflow-editor-dialog.tsx");
-const panelSrc = read("src/components/praison/workflows/workflow-run-panel.tsx");
-const viewSrc2 = read("src/components/praison/workflows/workflows-view.tsx");
+const editorSrc = read("src/components/nexus/workflows/workflow-editor-dialog.tsx");
+const panelSrc = read("src/components/nexus/workflows/workflow-run-panel.tsx");
+const viewSrc2 = read("src/components/nexus/workflows/workflows-view.tsx");
 const runnerSrc = read("src/lib/workflow-runner.ts");
 const typesSrc = read("src/lib/types.ts");
 

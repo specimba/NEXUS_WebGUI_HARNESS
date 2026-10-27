@@ -13,7 +13,7 @@ function ok(cond, label) {
 }
 
 const chip = readFileSync(
-  `${ROOT}src/components/praison/workflows/gateway-pulse-chip.tsx`,
+  `${ROOT}src/components/nexus/workflows/gateway-pulse-chip.tsx`,
   "utf8"
 );
 

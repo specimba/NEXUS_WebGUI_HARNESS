@@ -70,7 +70,7 @@ ok(/const rateLimited = errorInfo\?\.kind === "rate-limit";/.test(runner),
   "park-and-resume gate unchanged (billing kind skips the park ladder naturally)");
 ok(/\(\(err as \{ kind\?: RunErrorKind \}\)\.kind \?\? classifyRunError\(message\)\.kind\)/.test(runner),
   "SSE structured-kind ingestion unchanged (server lane now carries billing natively)");
-const panel = read("src/components/praison/workflows/workflow-run-panel.tsx");
+const panel = read("src/components/nexus/workflows/workflow-run-panel.tsx");
 ok(/"out-of-credits": "border-amber-500\/40/.test(panel),
   "recovery-card badge map covers out-of-credits (amber = waitable, not broken)");
 

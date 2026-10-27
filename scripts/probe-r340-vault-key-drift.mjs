@@ -8,7 +8,7 @@
 // (mirrorProvider = idempotent upsert by provider id).
 import { readFileSync } from "node:fs";
 
-const SRC = "src/components/praison/settings/automation-vault-card.tsx";
+const SRC = "src/components/nexus/settings/automation-vault-card.tsx";
 const src = readFileSync(SRC, "utf8");
 
 let pass = 0;

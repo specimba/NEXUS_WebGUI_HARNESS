@@ -67,7 +67,7 @@ if (fail > 0) process.exit(1);
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 const view = readFileSync(
-  join(process.cwd(), "src/components/praison/workflows/workflows-view.tsx"),
+  join(process.cwd(), "src/components/nexus/workflows/workflows-view.tsx"),
   "utf8"
 );
 let wpass = 0, wfail = 0;

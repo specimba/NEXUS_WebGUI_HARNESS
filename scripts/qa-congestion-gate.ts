@@ -114,7 +114,7 @@ console.log("\n── K-series: integration (both fire lanes actually gated) ─
 
 const root = process.cwd();
 const schedSrc = fs.readFileSync(
-  path.join(root, "src/components/praison/workflows/workflow-scheduler.tsx"),
+  path.join(root, "src/components/nexus/workflows/workflow-scheduler.tsx"),
   "utf8"
 );
 const svcSrc = fs.readFileSync(
@@ -122,7 +122,7 @@ const svcSrc = fs.readFileSync(
   "utf8"
 );
 const viewSrc = fs.readFileSync(
-  path.join(root, "src/components/praison/workflows/workflows-view.tsx"),
+  path.join(root, "src/components/nexus/workflows/workflows-view.tsx"),
   "utf8"
 );
 const skipsSrc = fs.readFileSync(path.join(root, "src/lib/schedule-skips.ts"), "utf8");

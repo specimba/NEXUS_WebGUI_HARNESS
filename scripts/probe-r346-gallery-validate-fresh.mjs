@@ -19,7 +19,7 @@ const ok = (cond, name) => {
   if (cond) { pass++; } else { fail++; }
 };
 
-const src = read("src/components/praison/settings/provider-gallery.tsx");
+const src = read("src/components/nexus/settings/provider-gallery.tsx");
 
 // ── extract the validate() function body ──
 const vStart = src.indexOf("async function validate(p: FreeProvider)");

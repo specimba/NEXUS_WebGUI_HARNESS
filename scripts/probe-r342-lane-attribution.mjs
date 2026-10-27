@@ -7,7 +7,7 @@
 // text), before the generic hint. Single-lane failures unchanged.
 import { readFileSync } from "node:fs";
 
-const src = readFileSync("src/components/praison/workflows/workflow-run-panel.tsx", "utf8");
+const src = readFileSync("src/components/nexus/workflows/workflow-run-panel.tsx", "utf8");
 
 let pass = 0;
 const total = 7;

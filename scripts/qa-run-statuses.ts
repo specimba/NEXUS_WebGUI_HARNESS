@@ -54,14 +54,14 @@ ok(/st\.status === "pending" \|\| st\.status === "running"\s*\?\s*\{ \.\.\.st, s
 ok(/the app closed before reaching this step/.test(stores), "hydration skip note is honest about the cause");
 
 console.log("K5 — kanban: board placement + icons");
-const kanban = src("src/components/praison/workflows/run-kanban.tsx");
+const kanban = src("src/components/nexus/workflows/run-kanban.tsx");
 ok(/run\.status === "partial" \|\|\s*\n?\s*run\.status === "blocked"/.test(kanban), "partial + blocked land in the attention column");
 ok(/\(run\.status === "stopped" \|\| run\.status === "partial" \|\| run\.status === "blocked"\)/.test(kanban), "amber border shared by stopped/partial/blocked");
 ok(/run\.status === "partial" \? \(\s*\n\s*<Minus/.test(kanban), "partial card icon = Minus (amber)");
 ok(/run\.status === "blocked" \? \(\s*\n\s*<Clock/.test(kanban), "blocked card icon = Clock (parked, waiting)");
 
 console.log("K6 — run panel: recovery card + history + dots");
-const panel = src("src/components/praison/workflows/workflow-run-panel.tsx");
+const panel = src("src/components/nexus/workflows/workflow-run-panel.tsx");
 ok(/skipped: "border-l-zinc-500"/.test(panel), "STEP_BORDER covers skipped (Record exhaustiveness)");
 ok(/Run parked — auto-resume scheduled/.test(panel), "recovery card title for blocked runs");
 ok(/r\.status === "partial" \? \(\s*\n\s*<Minus/.test(panel), "history row: partial icon");
@@ -73,7 +73,7 @@ console.log("K7 — export + compare surfaces");
 const helpers = src("src/lib/helpers.ts");
 ok(/partial: "🟡 Partial — ended early, completed steps preserved"/.test(helpers), "Markdown report: honest PARTIAL label");
 ok(/blocked: "⏸ Blocked — parked, auto-resumes"/.test(helpers), "Markdown report: honest BLOCKED label");
-const compare = src("src/components/praison/workflows/workflow-compare-dialog.tsx");
+const compare = src("src/components/nexus/workflows/workflow-compare-dialog.tsx");
 ok(/skipped: <span className="h-2 w-2 shrink-0 rounded-full bg-zinc-500" aria-label="Skipped — never ran" \/>/.test(compare), "compare dialog: skipped icon (filled dot vs pending hollow)");
 
 console.log("K8 — doctrine: resume path unaffected");

@@ -437,6 +437,14 @@ export interface WorkflowRun {
    * plausibly need both. 2m → 4m → 8m waits (see src/lib/park-policy.ts).
    */
   netParkCount?: number;
+  /**
+   * r654: honest run-level degradation — N SYNTHETIC deep passes were skipped
+   * after transient-class failures (rate-limit / network / timeout) and the
+   * run CONTINUED without them instead of dying. Structured, not prose: chips
+   * and QA count it without parsing. Absent when every materialized deep pass
+   * ran (or none exist) — no phantom field, visible zero not attributed.
+   */
+  degradedDeep?: { skipped: number; kinds: string[] };
   /** Chronological log of LLM calls made during this run (capped, oldest-dropped). */
   callLog?: RunCallLogEntry[];
   /** Evolution Layer (r68): novelty % vs this workflow's recent done runs (0-100; <35 = stall). */

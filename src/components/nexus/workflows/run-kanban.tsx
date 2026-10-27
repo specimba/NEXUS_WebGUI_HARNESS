@@ -433,6 +433,14 @@ function RunCard({
             {degraded} auto-digest
           </span>
         ) : null}
+        {run.degradedDeep && run.degradedDeep.skipped > 0 ? (
+          <span
+            title={`${run.degradedDeep.skipped} of the materialized deep-research passes was skipped after a transient ${run.degradedDeep.kinds.join("/")} error — the run continued without it; the final output is not deep-verified.`}
+            className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-px font-semibold text-amber-600 dark:text-amber-400 tabular-nums"
+          >
+            ↯ deep skipped ({run.degradedDeep.skipped})
+          </span>
+        ) : null}
         {harnessChip ? (
           <span
             title={harnessChip.tooltip}

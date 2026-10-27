@@ -14,6 +14,7 @@
 
 import { CUSTOM_FALLBACK_MODEL, MAX_ITERATIONS_DEFAULT } from "./constants";
 import { redactDialBody } from "./redaction";
+import { safeErrorMessage } from "./error-message";
 import type { CortexConfig } from "./cortex-edge";
 import { isAuthRelayFailure, isDeadlyRelayFailure, isSoftRelayFailure } from "./relay-core";
 import {
@@ -257,7 +258,8 @@ export function composeAbortSignals(
 /** Transient upstream failures worth an automatic retry (not user aborts). */
 export function isTransientNetworkError(err: unknown): boolean {
   if (isAbort(err)) return false;
-  const message = err instanceof Error ? err.message : String(err);
+  // r654: safeErrorMessage — a non-Error rejection must not collapse to "[object Object]"
+  const message = safeErrorMessage(err);
   return /network error|fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|EAI_AGAIN|ETIMEDOUT|socket hang up|undici.*socket|terminated|timeout|\bupstream\b|deadline|stalled|bad gateway|service unavailable|gateway.*(dropped|unavailable)|http 5\d\d|load failed|failed to fetch/i.test(
     message
   );
@@ -275,7 +277,8 @@ export function isTransientNetworkError(err: unknown): boolean {
  */
 export function isEndpointUnreachableError(err: unknown): boolean {
   if (isAbort(err)) return false;
-  const message = err instanceof Error ? err.message : String(err);
+  // r654: safeErrorMessage — same telemetry-defect family
+  const message = safeErrorMessage(err);
   return /fetch failed|enotfound|econnrefused|eai_again|failed to fetch|load failed|network error/i.test(
     message
   );
@@ -283,12 +286,14 @@ export function isEndpointUnreachableError(err: unknown): boolean {
 
 /** Collapse an error to a short status-line fragment for retry notices. */
 export function shortError(err: unknown): string {
-  const m = err instanceof Error ? err.message : String(err);
+  // r654: safeErrorMessage — same telemetry-defect family
+  const m = safeErrorMessage(err);
   return m.length > 90 ? `${m.slice(0, 90)}…` : m;
 }
 
 export function humanizeError(err: unknown): string {
-  const message = err instanceof Error ? err.message : String(err);
+  // r654: safeErrorMessage — same telemetry-defect family
+  const message = safeErrorMessage(err);
   if (/fetch failed|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|Failed to fetch|load failed/i.test(message))
     return "Could not reach the LLM provider. Check the API Base URL in Settings — or the provider blocks this network (the relay will try another lane).";
   if (/upstream deadline|upstream stalled|no first token|no data for/i.test(message))
@@ -416,7 +421,8 @@ export type UpstreamErrorKind =
   | "unknown";
 
 export function classifyUpstreamError(err: unknown): UpstreamErrorKind {
-  const msg = err instanceof Error ? err.message : String(err ?? "");
+  // r654: safeErrorMessage — same telemetry-defect family
+  const msg = safeErrorMessage(err);
   if (
     err instanceof UpstreamDeadlineError ||
     /upstream deadline|upstream stalled|no first token|no data for|timed? ?out/i.test(msg)
@@ -593,7 +599,8 @@ export async function runRelayedCustom(
       // and misfile a corpse as "hard" (re-dialed every turn). auth ⇒ the
       // whole provider family is stamped dead; dead ⇒ hop-scoped; soft ⇒
       // capacity noise, never demotes.
-      const fullErr = err instanceof Error ? err.message : String(err);
+      // r654: safeErrorMessage — same telemetry-defect family
+      const fullErr = safeErrorMessage(err);
       const dead = isDeadlyRelayFailure(fullErr);
       const soft = !dead && isSoftRelayFailure(fullErr);
       const auth = dead && isAuthRelayFailure(fullErr);

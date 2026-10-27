@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { runAgentChat } from "@/lib/chat-client";
 import { resetProvider429 } from "@/lib/provider-rotation";
+import { remirrorIfDrifted } from "@/lib/vault-mirror";
 import { PRESEED_PROVIDER_KEYS } from "@/lib/constants";
 import {
   FREELLM_SH_URL,
@@ -180,6 +181,11 @@ export function ProviderGallery() {
     // for this lane now. (A tab reload wipes the in-memory map anyway; this
     // closes the no-reload variant.)
     resetProvider429(p.id);
+    // r654: the closed-tab lane keeps dialing the OLD server-side slot when the
+    // browser key rotates — heal the drift the moment intent is expressed
+    // (best-effort, never blocks the save; opt-in doctrine intact: a provider
+    // with no server slot is never auto-created).
+    void remirrorIfDrifted(p.id, key);
     toast.success(`${p.name} key saved`, {
       description: "Stored only in this browser's localStorage — never sent anywhere but the provider.",
     });
@@ -258,6 +264,10 @@ export function ProviderGallery() {
           [p.id]: { ...entry, key, validatedAt: Date.now() },
         },
       });
+      // r654: a successful validation is the strongest "this is my current key"
+      // signal — heal any server-slot drift here too (the Owner's Vyce slot sat
+      // on "key drifted" while its browser key had just been re-validated).
+      void remirrorIfDrifted(p.id, key);
       toast.success(`${p.name} connected ✓`, { description: `Round-trip ${ms}ms · model ${model ?? "default"}` });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";

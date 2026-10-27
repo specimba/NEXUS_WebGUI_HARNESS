@@ -69,8 +69,8 @@ const tolerant = summarizeRoleTagMismatches([
 ok(!tolerant.universal, "substring identity ('Scout' ⊂ 'Research Scout') agrees");
 
 console.log("T7 — source wiring: both surfaces gate the noise behind the summary");
-const panelSrc = fs.readFileSync("src/components/praison/workflows/workflow-run-panel.tsx", "utf8");
-const viewSrc = fs.readFileSync("src/components/praison/workflows/workflows-view.tsx", "utf8");
+const panelSrc = fs.readFileSync("src/components/nexus/workflows/workflow-run-panel.tsx", "utf8");
+const viewSrc = fs.readFileSync("src/components/nexus/workflows/workflows-view.tsx", "utf8");
 const helpersSrc = fs.readFileSync("src/lib/helpers.ts", "utf8");
 ok(/roleMismatch && !roleUniversal/.test(panelSrc), "run panel suppresses per-step chips on universal mismatch");
 ok(/summary\.universal/.test(panelSrc) && /source plan/.test(panelSrc), "run panel renders the single summary note");

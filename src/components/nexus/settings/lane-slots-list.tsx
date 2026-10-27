@@ -85,26 +85,44 @@ export function LaneSlotsList({
     : null;
   return (
     <>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[10.5px] text-muted-foreground">
-          Server-stored lanes — closed-tab runs dial the oldest resolvable one
-          first (delete a slot to promote the next):
-        </p>
-        <span
-          data-testid="lane-census"
-          className="shrink-0 rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400"
-        >
-          {slots.length} stored{dialName ? ` · dials ${dialName} first` : ""}
-        </span>
-      </div>
-      <ul className="space-y-1.5">
+      {/* OWN-b: the 20-row wall gets the house bounded-scroll treatment
+          (max-h-[28rem] overflow-y-auto pr-1 scrollbar-thin — the
+          run-archive-panel/local-models pattern, cyan = this card's lane
+          identity) with the census heading STICKY inside the scroll box, so
+          "which lane dials first" stays readable at every scroll depth. */}
+      <div className="max-h-[28rem] space-y-1.5 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-cyan-500/30">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-background/80 py-1 backdrop-blur">
+          <p className="text-[10.5px] text-muted-foreground">
+            Server-stored lanes — closed-tab runs dial the oldest resolvable one
+            first (delete a slot to promote the next):
+          </p>
+          <span
+            data-testid="lane-census"
+            className="shrink-0 rounded-md border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-cyan-600 dark:text-cyan-400"
+          >
+            {slots.length} stored{dialName ? ` · dials ${dialName} first` : ""}
+          </span>
+        </div>
+        <ul className="space-y-1.5">
         {slots.map((s) => {
           const resolvable = !!providerById(s.provider);
           const isDialSlot = dialProvider === s.provider;
+          // OWN-b: the EXACT condition the drift chip renders — row tint and
+          // chip can never disagree.
+          const isDrifted = resolvable && drifted(s);
           const slotName = providerById(s.provider)?.name ?? s.provider;
           const isRevealed = revealed?.provider === s.provider;
           return (
-          <li key={s.provider} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <li
+            key={s.provider}
+            className={cn(
+              // OWN-b: consistent row padding keeps the wall scannable; the
+              // transparent left border reserves the drift accent's 2px on
+              // EVERY row so columns stay aligned (only tinted rows differ).
+              "flex flex-wrap items-center gap-x-2 gap-y-2 rounded-md border-l-2 border-l-transparent px-3 py-2 text-xs",
+              isDrifted && "border-amber-500/40 bg-amber-500/5",
+            )}
+          >
             <KeyRound className={cn("h-3 w-3 shrink-0", isDialSlot ? "text-cyan-400" : "text-cyan-500/60")} aria-hidden />
             <span className="font-medium">{slotName}</span>
             {providerById(s.provider)?.dialect === "anthropic" ? (
@@ -160,8 +178,11 @@ export function LaneSlotsList({
             >
               {s.createdAt ? `stored ${fmtSlotAge(s.createdAt)}` : `updated ${new Date(s.updatedAt).toLocaleString()}`}
             </span>
-            {/* r218: the executor-facing slots get the same per-slot
-                verify + reveal affordances the builtin box always had. */}
+            {/* OWN-b: the per-row affordances ride as ONE cluster — subtle
+                gap between the tiny buttons (touch spacing on mobile) and
+                the group wraps as a unit instead of scattering; text sizes
+                unchanged. */}
+            <div className="ml-auto flex items-center gap-1">
             <button
               type="button"
               onClick={() => onReveal(s.provider)}
@@ -172,7 +193,7 @@ export function LaneSlotsList({
                   : `Reveal stored ${slotName} key (auto-hides after 8 seconds)`
               }
               title="Deliberate reveal: shows this stored key for 8 seconds, then re-masks itself. Uses the same localhost-only handoff the headless scheduler uses — it changes who can see the key on screen, not who can already get it."
-              className="ml-auto rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
             >
               {revealingProvider === s.provider ? (
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
@@ -240,10 +261,12 @@ export function LaneSlotsList({
               <Trash2 className="h-3 w-3" aria-hidden />
               {confirmRemoveProvider === s.provider ? "Confirm remove" : "Remove"}
             </Button>
+            </div>
           </li>
           );
         })}
       </ul>
+      </div>
     </>
   );
 }

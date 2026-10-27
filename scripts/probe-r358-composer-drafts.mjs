@@ -8,8 +8,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = "/home/z/my-project";
-const composer = readFileSync(join(ROOT, "src/components/praison/chat/composer.tsx"), "utf8");
-const chatView = readFileSync(join(ROOT, "src/components/praison/chat/chat-view.tsx"), "utf8");
+const composer = readFileSync(join(ROOT, "src/components/nexus/chat/composer.tsx"), "utf8");
+const chatView = readFileSync(join(ROOT, "src/components/nexus/chat/chat-view.tsx"), "utf8");
 
 let pass = 0, fail = 0;
 const results = [];

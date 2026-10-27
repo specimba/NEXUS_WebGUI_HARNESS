@@ -61,7 +61,7 @@ if (stripUiChipArtifacts) {
 } else fail++;
 
 // ── parsePlan + import-site source contracts ──
-const view = read("src/components/praison/workflows/workflows-view.tsx");
+const view = read("src/components/nexus/workflows/workflows-view.tsx");
 ok(/\.map\(\(l\) => stripUiChipArtifacts\(l\.trim\(\)\)\)/.test(view), "parsePlan: every line chip-stripped before parsing");
 ok(/truncateAtWord\(lines\[0\]\.replace\(\/\^\#\+\\s\*\/, ""\), 200\)/.test(view), "parsePlan: goal word-truncated at 200 (no bare .slice(0, 200))");
 ok(!/label:\s*label\.slice\(0, 120\)/.test(view), "pasted-plan create: bare label .slice(0,120) gone");

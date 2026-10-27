@@ -109,7 +109,7 @@ ok(/import \{ buildEvidenceLedger, formatCiters \} from "\.\/evidence-ledger";/.
 const evidenceMod = src("src/lib/evidence-ledger.ts");
 ok(!evidenceMod.includes("from \"./helpers\"") && !evidenceMod.includes("from \"@/lib/helpers\""), "no import cycle (evidence-ledger does not import helpers)");
 ok(/import type \{ WorkflowRunStep \} from "\.\/types";/.test(evidenceMod), "module is type-only coupled to types");
-const panel = src("src/components/praison/workflows/workflow-run-panel.tsx");
+const panel = src("src/components/nexus/workflows/workflow-run-panel.tsx");
 ok(/import \{ buildEvidenceLedger, formatCiters \} from "@\/lib\/evidence-ledger";/.test(panel), "run panel imports the ledger (build + format)");
 ok(/evidenceOpenRunId, setEvidenceOpenRunId/.test(panel), "panel has the per-row toggle state");
 ok(/toggle evidence ledger/.test(panel), "evidence button present with an aria label");

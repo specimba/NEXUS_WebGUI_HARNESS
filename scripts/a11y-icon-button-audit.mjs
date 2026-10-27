@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const ROOT = "src/components/praison";
+const ROOT = "src/components/nexus";
 const files = [];
 (function walk(d) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {

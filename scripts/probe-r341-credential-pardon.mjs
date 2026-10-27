@@ -16,8 +16,8 @@ function check(name, ok) {
   if (ok) pass += 1;
 }
 
-const gallery = readFileSync("src/components/praison/settings/provider-gallery.tsx", "utf8");
-const vault = readFileSync("src/components/praison/settings/automation-vault-card.tsx", "utf8");
+const gallery = readFileSync("src/components/nexus/settings/provider-gallery.tsx", "utf8");
+const vault = readFileSync("src/components/nexus/settings/automation-vault-card.tsx", "utf8");
 const chatClient = readFileSync("src/lib/chat-client.ts", "utf8");
 
 // 1. saveProvider pardons the lane on credential replacement.

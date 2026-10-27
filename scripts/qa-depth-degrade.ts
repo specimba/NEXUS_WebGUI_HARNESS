@@ -37,7 +37,7 @@ console.log("K2 — restore path");
 ok(/failStreak: 0, autoResumeTrips: 0, autoResumeAt: undefined/.test(src("src/lib/workflow-runner.ts")), "done run resets failStreak (existing r171 reset = deep restores itself)");
 
 console.log("K3 — scheduler wiring");
-const sched = src("src/components/praison/workflows/workflow-scheduler.tsx");
+const sched = src("src/components/nexus/workflows/workflow-scheduler.tsx");
 ok(/wf\.schedule\?\.failStreak \?\? 0\) >= 2 && \(wf\.depth \?\? "standard"\) === "deep"/.test(sched), "degrade condition present (streak ≥ 2 AND deep)");
 ok(/depthOverride: degraded \? "standard" : undefined/.test(sched), "scheduled fire passes depthOverride");
 ok(/standard depth \(deep passes paused — lane unstable\)/.test(sched), "fire toast discloses the degradation");
@@ -57,7 +57,7 @@ console.log("K5 — scope discipline");
 ok(/resume \(above\) is untouched/i.test(runner) || !/resume[\s\S]{0,200}depthOverride/i.test(runner.slice(runner.indexOf("options.resume"), runner.indexOf("options.resume") + 400)), "resume path does not re-materialize with the override (old runs stay byte-identical)");
 const skips = src("src/lib/schedule-skips.ts");
 ok(/"depth-degraded"/.test(skips) && /"active-run" \| "gateway-saturated" \| "depth-degraded"/.test(skips), "skip reason type covers depth-degraded");
-const view = src("src/components/praison/workflows/workflows-view.tsx");
+const view = src("src/components/nexus/workflows/workflows-view.tsx");
 ok(/fired at standard depth/.test(view) && /a completed run restores deep/.test(view), "card audit line explains the degradation + restore path");
 
 console.log(`\n${pass}/${pass + fail} assertions passed`);

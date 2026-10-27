@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = "/home/z/my-project";
-const f = readFileSync(join(ROOT, "src/components/praison/global-search-dialog.tsx"), "utf8");
+const f = readFileSync(join(ROOT, "src/components/nexus/global-search-dialog.tsx"), "utf8");
 
 let pass = 0, fail = 0;
 const results = [];

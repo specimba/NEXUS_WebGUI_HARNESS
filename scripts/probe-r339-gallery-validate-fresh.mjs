@@ -8,7 +8,7 @@
 // zero external spend policy for this round).
 import { readFileSync } from "node:fs";
 
-const SRC = "src/components/praison/settings/provider-gallery.tsx";
+const SRC = "src/components/nexus/settings/provider-gallery.tsx";
 const src = readFileSync(SRC, "utf8");
 
 // Extract the validate() function body (from its signature to checkCredits).

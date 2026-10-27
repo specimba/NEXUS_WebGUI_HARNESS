@@ -26,6 +26,14 @@ import { readFrontierSeeds } from "@/lib/frontier-scout";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
 import { archiveRun, engineStatusToArchiveStatus, listArchiveFull } from "@/lib/run-archive";
 import { maxParks, parkDelayMs, resolvePark, type ParkKind } from "@/lib/park-policy";
+import { safeErrorMessage } from "@/lib/error-message";
+import {
+  DEEP_PASSES,
+  DEEP_RESEARCH_INSTRUCTION,
+  deepPassSkipNote,
+  isSyntheticDeepStep,
+  isTransientErrorKind,
+} from "@/lib/deep-pass";
 // r306 reconciliation: the runner wires BOTH rotation halves — lane-rotation
 // owns family-window demotion (wire ORDER + same-family retry pacing),
 // provider-rotation owns registry-wide lane switching (LEAVING the family).
@@ -519,11 +527,9 @@ export function runErrorKindLabel(kind: RunErrorKind): string {
 }
 
 // ─── Pipeline depth (r26): synthetic passes injected at materialization ──────
-
-const DEEP_RESEARCH_INSTRUCTION =
-  "This is a DEEP-RESEARCH pass. Search for information that previous passes did not cover: " +
-  "different sources, missing numbers, contradicting viewpoints, primary sources. Verify the " +
-  "key claims you see in the conversation context and correct them.";
+// r654: DEEP_RESEARCH_INSTRUCTION + DEEP_PASSES moved verbatim to the pure
+// module src/lib/deep-pass.ts (QA-importable; the runner re-imports them) —
+// the non-fatality predicates and the pass definitions can never drift apart.
 
 const VERIFICATION_INSTRUCTION =
   "VERIFICATION PASS (final pipeline step — your reply IS the deliverable): silently check the " +
@@ -533,11 +539,6 @@ const VERIFICATION_INSTRUCTION =
   "announcement of what you are about to do, never a summary of changes alone. If you called " +
   "tools, continue after their results and still deliver the complete final output in this same " +
   "reply. End with a one-line 'Verification:' note listing what you checked.";
-
-const DEEP_PASSES: { n: 2 | 3; label: string }[] = [
-  { n: 2, label: "Deep research pass 2 — verify & broaden" },
-  { n: 3, label: "Deep research pass 3 — cross-check sources" },
-];
 
 /**
  * Fresh-run step materialization with depth control (r26).
@@ -1075,6 +1076,13 @@ export async function executeWorkflowRun(
       finishedAt: Date.now(),
       ...(novelty !== undefined ? { novelty } : {}),
       ...(errorInfo ? { error: errorInfo } : status === "done" ? { error: undefined } : {}),
+      // r654: honest run-level degradation — N synthetic deep passes were
+      // skipped after transient failures and the run continued without them.
+      // Stamped ONLY on done runs (an errored run's `error` already tells the
+      // story); absent when every deep pass ran — no phantom field.
+      ...(status === "done" && deepSkips.count > 0
+        ? { degradedDeep: { skipped: deepSkips.count, kinds: [...deepSkips.kinds] } }
+        : {}),
     });
     // r455 (user ask: reports "need to be archived, available for agents to
     // maintain"): every settled LOCAL-lane run archives its full steps to the
@@ -1135,10 +1143,8 @@ export async function executeWorkflowRun(
           })
           .catch((e: unknown) => {
             // best-effort — never affect the run, but never mute the reason
-            console.warn(
-              "[run-archive] DB tier unreachable —",
-              e instanceof Error ? e.message : e
-            );
+            // (r654: safeErrorMessage — an object rejection must not read "[object Object]")
+            console.warn("[run-archive] DB tier unreachable —", safeErrorMessage(e));
           });
       }
     } catch {
@@ -1290,7 +1296,10 @@ export async function executeWorkflowRun(
   ) => {
     // v23: a rejection reason that is not an Error (undefined, a string) used
     // to leak a literal `undefined` into the error row and the dev overlay.
-    const safeMessage = err instanceof Error ? err.message : String(err ?? "unknown error");
+    // r654: String({}) leaked "[object Object]" into PERSISTED run rows (the
+    // Owner's export carried them) — safeErrorMessage renders the object
+    // honestly instead (message/error envelope → JSON → capped).
+    const safeMessage = safeErrorMessage(err);
     const meta = err as Error & { stepId?: string; toolCallsOk?: number; autoRetried?: boolean };
     const found = steps.findIndex((s) => s.stepId === meta.stepId);
     const failedIndex = found === -1 ? fallbackIndex : found;
@@ -1377,6 +1386,11 @@ export async function executeWorkflowRun(
   // sick for the WHOLE RUN (5m window). Later steps start demoted — they skip
   // re-dialing the dead provider first instead of replaying the same failure
   // once per step (the user's 11-step pipeline re-learned one outage 11×).
+  // ─── r654: deep-pass non-fatality bookkeeping (function scope — finish()
+  // stamps the honest run-level marker when a transient-class death hit a
+  // SYNTHETIC deep pass and the run continued without it).
+  const deepSkips = { count: 0, kinds: [] as string[] };
+
   let primarySickUntil = 0;
   // r305: the rotation lane this run currently rides. Set when a 429 marks
   // the current lane exhausted; persists across steps so a long pipeline
@@ -2588,6 +2602,49 @@ export async function executeWorkflowRun(
           finish("stopped", "Pipeline stopped");
           return runId;
         }
+        // ─── r654: deep-pass NON-FATALITY (the loop saver). A SYNTHETIC deep
+        // pass is an optional enhancement, not the pipeline: one congestion
+        // death on "Deep research pass 2/3" used to stopRemaining every
+        // downstream AUTHORED step — the Owner's 6h RSI cycle never reached
+        // its own final "schedule next cycle" step (forensics: 7 done / 3
+        // blocked / 2 partial, every non-done run dead at a deep pass).
+        // Transient-class deaths (rate-limit / network / timeout — the exact
+        // family resolvePark parks and SELF_HEAL_KINDS heals) now skip the
+        // pass honestly and CONTINUE; aborts were handled above; auth/model/
+        // billing/region/unknown stay fatal (real breakage deserves a human).
+        // The failed pass contributes nothing to prev[] by construction (it
+        // is pushed on success only), so later steps simply build context
+        // without it — no context surgery, no phantom evidence.
+        {
+          const deepMsg = safeErrorMessage(err);
+          const deepKind = classifyRunError(deepMsg).kind;
+          if (
+            isSyntheticDeepStep(step.stepId, step.instruction) &&
+            isTransientErrorKind(deepKind)
+          ) {
+            deepSkips.count += 1;
+            if (!deepSkips.kinds.includes(deepKind)) deepSkips.kinds.push(deepKind);
+            patchRunStep(step.stepId, {
+              status: "skipped",
+              output: `(deep pass skipped — transient ${deepKind}: ${deepMsg.slice(0, 200)})`,
+            });
+            pushCall({
+              stepId: step.stepId,
+              stepLabel: step.label,
+              agentName: agentRow.name,
+              engine: resolveLlm(settings.settings).label,
+              ms: 0,
+              ok: false,
+              error: deepMsg.slice(0, 200),
+              note: deepPassSkipNote(deepKind, deepMsg),
+            });
+            toast.warning("Deep pass skipped — cycle continues", {
+              icon: "↯",
+              description: `${step.label} · ${ERROR_KIND_META[deepKind].label.toLowerCase()} — remaining steps keep running; the run finishes with a "deep skipped" mark.`,
+            });
+            continue;
+          }
+        }
         failRun(i, err as Error);
         return runId;
       }
@@ -2603,7 +2660,7 @@ export async function executeWorkflowRun(
     // mark the run error, keep partial output, log the escaped cause.
     console.error("[workflow-runner] escaped run error", err);
     try {
-      failRun(startIndex, err instanceof Error ? err : new Error(String(err ?? "unknown run error")));
+      failRun(startIndex, err instanceof Error ? err : new Error(safeErrorMessage(err)));
     } catch (finalizerErr) {
       console.error("[workflow-runner] finalizer itself failed", finalizerErr);
     }

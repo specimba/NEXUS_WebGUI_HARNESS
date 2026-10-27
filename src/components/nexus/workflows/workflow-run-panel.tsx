@@ -715,6 +715,18 @@ function RunRecoveryCard({
         ) : null}
       </div>
 
+      {run.degradedDeep && run.degradedDeep.skipped > 0 ? (
+        <p className="text-[11px] text-muted-foreground">
+          <span
+            title={`${run.degradedDeep.skipped} of the materialized deep-research passes was skipped after a transient ${run.degradedDeep.kinds.join("/")} error — the run continued without it; the final output is not deep-verified.`}
+            className="mr-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-px font-semibold text-amber-600 dark:text-amber-400 tabular-nums"
+          >
+            ↯ deep skipped ({run.degradedDeep.skipped})
+          </span>
+          deep-research pass{run.degradedDeep.skipped === 1 ? "" : "es"} skipped on a transient{" "}
+          {run.degradedDeep.kinds.join("/")} error — every authored step still ran; the final output is not deep-verified.
+        </p>
+      ) : null}
       {run.resumeCount || (err && err.attempts > 1) ? (
         <p className="text-[11px] text-muted-foreground">
           Resumed ×{run.resumeCount ?? 0}

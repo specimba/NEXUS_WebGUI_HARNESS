@@ -42,6 +42,7 @@ import {
 } from "@/lib/provider-rotation";
 import { egressRelayDial } from "@/lib/server/egress";
 import { redactDialBody } from "@/lib/redaction";
+import { safeErrorMessage } from "@/lib/error-message";
 import { hasMemoizedTrail } from "@/lib/automation-lane";
 import {
   isAnthropicStyleEndpoint,
@@ -481,7 +482,8 @@ async function dialStepWithRetry(
   try {
     return { text: await dialStep(dial, prompt), firstFailure: null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // r654: safeErrorMessage — "[object Object]" must never reach lane evidence
+    const message = safeErrorMessage(err);
     if (BILLING_FAILURE_RE.test(message)) throw err;
     await new Promise((resolve) => setTimeout(resolve, STEP_RETRY_BACKOFF_MS));
     // One honest re-throw if the lane is truly dead — the run still fails
@@ -791,7 +793,9 @@ export async function executeWorkflow(
         }
         outputs.push({ label: step.label, output, ms: Date.now() - t0, ok: true });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        // r654: safeErrorMessage — the step-failure trail persists to the archive;
+        // an object rejection must not read "[object Object]" there (Owner export evidence)
+        const message = safeErrorMessage(err);
         outputs.push({
           label: step.label,
           output: `step failed: ${message}`,
@@ -827,7 +831,9 @@ export async function executeWorkflow(
     });
     return { runId, status: "done" };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // r654: safeErrorMessage — this lands in the PERSISTED automationRun.error
+    // column; an object rejection used to read the literal "[object Object]"
+    const message = safeErrorMessage(err);
     await db.automationRun.update({
       where: { id: runId },
       data: { status: "error", error: message, finishedAt: new Date() },
@@ -1031,7 +1037,7 @@ export function startAutomationExecutor(): void {
   if (g.__automationExecutor) return;
   g.__automationExecutor = setInterval(() => {
     void tickOnce().catch((err) => {
-      console.error("[automation-executor] tick failed:", err instanceof Error ? err.message : err);
+      console.error("[automation-executor] tick failed:", safeErrorMessage(err));
     });
   }, CLAIM_INTERVAL_MS);
   console.info("[automation-executor] claim loop started (15s tick, stands down while the tab heartbeat is fresh)");

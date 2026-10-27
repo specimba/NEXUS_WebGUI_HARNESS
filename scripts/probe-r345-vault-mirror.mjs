@@ -20,7 +20,7 @@ const ok = (cond, name) => {
   if (cond) { pass++; } else { fail++; }
 };
 
-const card = read("src/components/praison/settings/automation-vault-card.tsx");
+const card = read("src/components/nexus/settings/automation-vault-card.tsx");
 const route = read("src/app/api/vault/route.ts");
 
 // ── wiring ──

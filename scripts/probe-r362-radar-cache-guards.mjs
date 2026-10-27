@@ -1,5 +1,5 @@
 // probe-r362-radar-cache-guards.mjs — r362 Trend Radar cache hardening.
-// Asserts the CONTRACT in src/components/praison/radar/radar-view.tsx:
+// Asserts the CONTRACT in src/components/nexus/radar/radar-view.tsx:
 // every radar cache read passes a render-contract guard, poison is dropped
 // from storage + render, guards check only render-dereferenced fields
 // (forward-compatible), and the papers fetch treats non-JSON / non-array
@@ -8,7 +8,7 @@
 
 import { readFileSync } from "node:fs";
 
-const SRC = "src/components/praison/radar/radar-view.tsx";
+const SRC = "src/components/nexus/radar/radar-view.tsx";
 const src = readFileSync(SRC, "utf8");
 
 let pass = 0;

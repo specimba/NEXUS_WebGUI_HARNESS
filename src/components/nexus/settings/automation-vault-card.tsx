@@ -43,6 +43,7 @@ import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
 import { clearProviderLaneHealth } from "@/lib/relay";
 import { resetProviderBreaker } from "@/lib/provider-breaker";
+import { remirrorIfDrifted, slotIsDrifted } from "@/lib/vault-mirror";
 
 interface VaultSlot {
   provider: string;
@@ -232,6 +233,65 @@ export function AutomationVaultCard() {
     const browserKey = settings.providerKeys?.[s.provider]?.key?.trim();
     return !!browserKey && maskOf(browserKey) !== s.maskedKey;
   };
+
+  // OWN-b: loop-readiness summary — derived EXCLUSIVELY from state this card
+  // already renders (no new fetches, no new claims). The drift census reuses
+  // the EXACT row-chip condition (resolvable && drifted) so the strip can
+  // never disagree with the list; the acquisition census reuses the r562
+  // formula (source !== null over the full registry denominator).
+  const driftCount = laneSlots.filter(
+    (s) => !!providerById(s.provider) && slotDrifted(s),
+  ).length;
+  const dialSlotName = dialSlot
+    ? (providerById(dialSlot.provider)?.name ?? null)
+    : null;
+  const acqKeyed = acqLanes.filter((a) => a.source !== null).length;
+
+  // ─── r654: DRIFT AUTO-HEAL — the vault card heals its own drift on sight.
+  // The Owner's Vyce slot (the server lane's FIRST dial) sat on "key drifted —
+  // re-mirror" while the browser key had already been re-validated: closed-tab
+  // schedules kept dialing the OLD key from SQLite. When this card becomes
+  // visible and a resolvable chat slot's mask disagrees with the browser key,
+  // re-upsert the FRESH key (opt-in doctrine intact: a provider with no slot
+  // is NEVER auto-created; a deleted browser key never nags). Healed slots
+  // re-load and the amber chip vanishes because the drift is GONE — visible
+  // zero, not attributed. Failures leave the manual chip as the fallback.
+  const healInFlightRef = React.useRef(false);
+  React.useEffect(() => {
+    if (loading || loadFailed) return;
+    if (healInFlightRef.current) return;
+    const drifted = slots.filter((s) => {
+      if (!providerById(s.provider)) return false;
+      const browserKey = useSettingsStore.getState().settings.providerKeys?.[s.provider]?.key;
+      return slotIsDrifted(browserKey, s.maskedKey);
+    });
+    if (drifted.length === 0) {
+      healInFlightRef.current = false;
+      return;
+    }
+    healInFlightRef.current = true;
+    void (async () => {
+      let healed = 0;
+      for (const s of drifted) {
+        const browserKey = useSettingsStore.getState().settings.providerKeys?.[s.provider]?.key;
+        const r = await remirrorIfDrifted(s.provider, browserKey);
+        if (r === "healed") healed += 1;
+      }
+      if (healed > 0) {
+        toast.success(
+          healed === 1
+            ? "Drifted key auto re-mirrored — the closed-tab lane dials the fresh key now"
+            : `${healed} drifted slots auto re-mirrored — the closed-tab lane dials the fresh keys now`,
+          { description: "Healed from your saved provider keys (drift heal). Local SQLite only, nothing leaves this machine." },
+        );
+        void load();
+      } else {
+        // server down / races — the manual amber chip stays; retry on the
+        // card's next visibility episode (the r218 observer refetches).
+        healInFlightRef.current = false;
+      }
+    })();
+  }, [slots, loading, loadFailed, load]);
 
   async function save() {
     if (!key.trim()) {
@@ -633,6 +693,43 @@ export function AutomationVaultCard() {
           </Badge>
           <DeepLinkShare anchor="vault" label="the Automation vault" />
         </div>
+        {/* OWN-b: loop-readiness strip — one honest row built from the same
+            state the card renders below; hidden entirely while the read is
+            in flight or failed (no counts over a dead read, r413 class). */}
+        {!loading && !loadFailed ? (
+          <div
+            className="flex flex-wrap items-center gap-1.5"
+            data-testid="vault-readiness-strip"
+            aria-label={`Vault loop readiness: ${laneSlots.length} lanes stored${dialSlotName ? `, dials ${dialSlotName} first` : ""}${driftCount > 0 ? `, ${driftCount} drifted` : ""}${acqLanes.length > 0 ? `, acquisition ${acqKeyed}/${ACQUISITION_PROVIDERS.length} keyed` : ""}`}
+          >
+            <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-px text-[10px] font-medium tabular-nums text-sky-600 dark:text-sky-400">
+              <span aria-hidden="true">⟐ </span>
+              {laneSlots.length} lanes stored
+            </span>
+            {dialSlotName ? (
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-px text-[10px] font-medium tabular-nums",
+                  driftCount > 0
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                )}
+              >
+                dials {dialSlotName} first
+              </span>
+            ) : null}
+            {driftCount > 0 ? (
+              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-px text-[10px] font-medium tabular-nums text-amber-600 dark:text-amber-400">
+                {driftCount} drifted
+              </span>
+            ) : null}
+            {acqLanes.length > 0 ? (
+              <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-px text-[10px] font-medium tabular-nums text-muted-foreground">
+                acquisition {acqKeyed}/{ACQUISITION_PROVIDERS.length} keyed
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         <CardDescription>
           While a tab is open, schedules run in-browser with your own keys — they never
           leave the browser. When the tab is closed, the local server claims due schedules

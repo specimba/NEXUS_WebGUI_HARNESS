@@ -24,7 +24,7 @@ const ok = (c: boolean, m: string) => {
 };
 const src = fs.readFileSync("src/lib/spawn-proposal-engine.ts", "utf8");
 const runnerSrc = fs.readFileSync("src/lib/workflow-runner.ts", "utf8");
-const viewSrc = fs.readFileSync("src/components/praison/workflows/workflows-view.tsx", "utf8");
+const viewSrc = fs.readFileSync("src/components/nexus/workflows/workflows-view.tsx", "utf8");
 
 const TASK = "recursive self improvement for agentic automation systems";
 
