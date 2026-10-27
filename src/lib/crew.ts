@@ -216,6 +216,11 @@ export interface CrewAlignment {
   gatedSteps: number;
   gatePass: number;
   gateFail: number;
+  /** r620: peer blind-score verdicts (r578 lane) counted from the same callLog. */
+  peerReviews: number;
+  peerConcur: number;
+  peerRevise: number;
+  peerUncertain: number;
 }
 
 export function crewAlignment(agents: Agent[], workflows: Array<Pick<Workflow, "steps" | "runs">>): CrewAlignment {
@@ -245,6 +250,17 @@ export function crewAlignment(agents: Agent[], workflows: Array<Pick<Workflow, "
   let callLogGateEntries = 0;
   let verdictPass = 0;
   let verdictRework = 0;
+  // r620: the r578 peer blind-score lane records its own notes —
+  // `Peer blind score PASS <n>% (<via>) — independent reviewer concurs`,
+  // `… FAIL … — one blind-revise pass runs`, `… UNCERTAIN … — output accepted
+  // unchanged` (src/lib/peer-blind-score.ts peerBlindNote). This is the
+  // "crew-panel alignment math counting the peer pattern" the P2 line promised;
+  // counted alongside the System-One gates, never folded into them (a peer
+  // review is a SECOND opinion on a gate-worthy output, not a gate verdict).
+  let peerReviews = 0;
+  let peerConcur = 0;
+  let peerRevise = 0;
+  let peerUncertain = 0;
   for (const wf of workflows) {
     for (const run of wf.runs ?? []) {
       for (const entry of run.callLog ?? []) {
@@ -256,6 +272,15 @@ export function crewAlignment(agents: Agent[], workflows: Array<Pick<Workflow, "
         } else if (/system-one gate (?:fail|rework)/i.test(note)) {
           callLogGateEntries += 1;
           gateFail += 1;
+        } else if (/^peer blind score pass/i.test(note)) {
+          peerReviews += 1;
+          peerConcur += 1;
+        } else if (/^peer blind score fail/i.test(note)) {
+          peerReviews += 1;
+          peerRevise += 1;
+        } else if (/^peer blind score uncertain/i.test(note)) {
+          peerReviews += 1;
+          peerUncertain += 1;
         }
       }
       for (const st of run.steps ?? []) {
@@ -278,6 +303,10 @@ export function crewAlignment(agents: Agent[], workflows: Array<Pick<Workflow, "
     gatedSteps,
     gatePass,
     gateFail,
+    peerReviews,
+    peerConcur,
+    peerRevise,
+    peerUncertain,
   };
 }
 

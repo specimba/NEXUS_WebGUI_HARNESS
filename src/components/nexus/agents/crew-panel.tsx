@@ -47,6 +47,10 @@ const SEED_COLOR_BY_ROLE: Record<CrewRoleId, AgentColor> = {
 /** Per-click cap — seeding six workers at once is a surprise, three is a choice. */
 const MAX_SEEDS_PER_CLICK = 3;
 
+/** Tooltip for the peer blind-score badge — cites the lane's actual semantics (r578). */
+const PEER_TITLE =
+  "Peer blind-score verdicts across recorded runs: an independent blind reviewer re-scores each gate-worthy output — FAIL triggers one bounded revise pass, UNCERTAIN accepts unchanged, never blocks.";
+
 export function CrewPanel() {
   const agents = useAgentsStore((s) => s.agents);
   const addAgent = useAgentsStore((s) => s.add);
@@ -76,6 +80,15 @@ export function CrewPanel() {
 
   const gatesRan = alignment.gatePass + alignment.gateFail > 0;
   const passRate = gatesRan ? alignment.gatePass / (alignment.gatePass + alignment.gateFail) : null;
+
+  // r620: peer blind-score alignment — the r578 lane's verdicts counted from
+  // the same recorded runs (concurrence + how many triggered a revise pass).
+  const peerRan = alignment.peerReviews > 0;
+  const peerLabel = peerRan
+    ? `peer ${alignment.peerConcur}/${alignment.peerReviews} concur` +
+      (alignment.peerRevise > 0 ? ` · ${alignment.peerRevise} revised` : "") +
+      (alignment.peerUncertain > 0 ? ` · ${alignment.peerUncertain} unsure` : "")
+    : null;
 
   const seedCrew = () => {
     if (seedDefs.length === 0) return;
@@ -153,7 +166,7 @@ export function CrewPanel() {
         <MiniMeter label="agents with goals" value={alignment.withGoal} max={alignment.agents} />
         <MiniMeter label="workflow steps assigned" value={alignment.assignedSteps} max={alignment.steps} />
         <MiniStat label="judge-gated steps" value={alignment.gatedSteps} />
-        <div className="shrink-0 sm:pb-0.5">
+        <div className="flex shrink-0 flex-col gap-1.5 sm:items-end sm:pb-0.5">
           {passRate === null ? (
             <Badge variant="outline" className="font-normal border-stone-500/40 text-stone-400">
               no gates yet
@@ -165,6 +178,22 @@ export function CrewPanel() {
           ) : (
             <Badge variant="outline" className="font-normal border-amber-500/40 bg-amber-500/10 text-amber-500">
               gates {alignment.gatePass}/{alignment.gatePass + alignment.gateFail} pass
+            </Badge>
+          )}
+          {/* r620: the peer lane's own verdict line — emerald when the blind
+              reviewer concurred with every gate-worthy output, amber the moment
+              a revise pass was triggered, honest stone when it never ran. */}
+          {peerLabel === null ? (
+            <Badge variant="outline" className="font-normal border-stone-500/40 text-stone-400" title={PEER_TITLE}>
+              no peer reviews yet
+            </Badge>
+          ) : alignment.peerRevise > 0 ? (
+            <Badge variant="outline" className="font-normal border-amber-500/40 bg-amber-500/10 text-amber-500" title={PEER_TITLE}>
+              {peerLabel}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="font-normal border-emerald-500/40 bg-emerald-500/10 text-emerald-500" title={PEER_TITLE}>
+              {peerLabel}
             </Badge>
           )}
         </div>
@@ -264,7 +293,8 @@ export function CrewPanel() {
       <p className="text-[11px] leading-relaxed text-muted-foreground/80">
         Borrowed vocabulary, zero framework imports — roles/goals/expected outputs are plain data
         the workflow runner already consumes. Judge gates dial the free SystemOne ladder
-        (Decision-4B first).
+        (Decision-4B first); the peer blind-score lane (r578) re-scores gate-worthy outputs so
+        quality drift shows up here, counted live from the recorded runs.
       </p>
     </Card>
   );

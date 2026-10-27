@@ -1424,3 +1424,24 @@ Round ID: r620 -> next patrol (job 473388)
 Next recommended action: r620 — batched opening (expect HEAD = r619 commit; else follow ITS handoff); qa:golden (1 round); increment: P1 is Owner-gated-only, so pick the smallest honest user-facing gap — candidates: persist the run-archive status chip across visits (localStorage, mirrors the panel's existing storage discipline), or the P2 line-40 crew-panel alignment math counting the peer blind-score pattern from the existing call-log vocabulary; mandatory styling polish + feature; gates + witness; ship under 12. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:golden=4/4 witness="run-archive: status chips + clipboard copy + search clear, icons verified, 0 engine touch" restart="0/1 consumed"
+
+---
+Task ID: r620
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271107)
+Task: Patrol r620 — follow r619 handoff, golden QA, one real increment, gates, dual push.
+
+Work Log:
+- r619 handoff followed: HEAD = 52ab50ced matched. qa:golden 4/4 (intel+census badges, frontier guard 942x300 sh=6181, long-paste PASTED-AND-RUN len=212, console 0→0). Server up, restart 0/1.
+- Increment = the r619 handoff's second candidate, P2 line-40 remainder ("crew-panel alignment math counting the peer pattern"): the r578 peer blind-score lane emitted callLog notes (`Peer blind score PASS|FAIL|UNCERTAIN <pct>% (<via>) — …` via peerBlindNote) that NOTHING counted — workflow-runner.ts r512 even says "the crew panel's gate pass-rate counts these notes".
+- src/lib/crew.ts: CrewAlignment extended with peerReviews/peerConcur/peerRevise/peerUncertain, counted in the same callLog walk as the System-One gates (anchored ^peer blind score … regexes on peerBlindNote's exact vocabulary), deliberately NOT folded into gate pass-rate (a peer review is a second opinion, not a verdict).
+- crew-panel.tsx: the alignment row's badge column now stacks a peer verdict line under the gates chip — emerald "peer N/N concur", amber when ≥1 revise pass was triggered (+ "unsure" count for UNCERTAIN), honest stone "no peer reviews yet"; PEER_TITLE tooltip cites the lane's real semantics (never blocks); footer caption updated.
+- Witness: bunx tsc rc0; lint 0/33 exact baseline; scripts/qa-peer-blind-score.ts 8/8 (vocabulary module untouched, confirms the counted notes match what it produces).
+
+Stage Summary:
+- P2 line-40 now has ONE remaining item: first real crew-run verdicts appearing in a live call log (Owner-run; the counting side is done and will light up the moment the first peer-reviewed crew run settles). Counting side shipped dial-free, zero deps, zero engine touch.
+
+Round Handoff:
+Round ID: r621 -> next patrol (job 473388)
+Next recommended action: r621 — batched opening (expect HEAD = r620 commit; else follow ITS handoff); qa:golden (1 round); increment candidates: (a) persist run-archive status chip across visits via localStorage (r619 handoff leftover, small); (b) styling polish arc on a fresh surface (e.g. Agents page roster rows — hover affordances consistent with r619 chip vocabulary); mandatory styling polish + feature; gates + witness; ship under 12. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:golden=4/4 qa-peer-blind-score=8/8 witness="crew alignment counts the r578 peer pattern (PASS/FAIL/UNCERTAIN) + panel badge stack; vocabulary anchored to peerBlindNote" restart="0/1 consumed"
