@@ -49,11 +49,11 @@ print(f"[1] backup: {bk} (+wal/shm)")
 
 # 2. salvage via sqlite-utils (pip install sqlite-utils if missing)
 rec = os.path.join(BKDIR, f"recovered-{TS}.db")
-rc = sh(f"python3 -m sqlite_utils recover {bk} {rec}")
+rc = sh(f"sqlite_utils recover {bk} {rec}")
 if rc != 0:
     print("[2] sqlite_utils missing or failed; trying: pip install sqlite-utils && retry")
     sh("pip install --quiet sqlite-utils")
-    rc = sh(f"python3 -m sqlite_utils recover {bk} {rec}")
+    rc = sh(f"sqlite_utils recover {bk} {rec}")
 if rc != 0:
     sys.exit("SALVAGE FAILED — data safe in backup; escalate to Owner instead of improvising.")
 print(f"[2] salvaged -> {rec}")

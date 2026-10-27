@@ -110,6 +110,9 @@ db/custom.db-wal
 # r622: DB-forensics evidence from the rollback incident — never commit
 db/custom.db.*
 db/custom.db-*
+# r640: dot-directory DB backups are binary state too — r639's add -A accidentally
+# committed db/.corrupt-backup-r639/ because db/*.db does not cross directories.
+db/.corrupt-backup*/
 .zscripts/dbtest/
 .zscripts/*.log
 

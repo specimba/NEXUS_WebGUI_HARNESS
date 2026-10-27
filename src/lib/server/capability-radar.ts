@@ -165,25 +165,41 @@ export async function runCapabilityCheck(): Promise<RadarDigest> {
   const catalogStart = new Date(Date.now() - 48 * 3_600_000);
 
   // ── 1. Durable run archive (the local lane's full-fidelity history) ──────
-  const [reports, enabledRows, allRows, vaultCount, heartbeat, newModels, removedEvents] =
-    await Promise.all([
-      db.runReport.findMany({
-        where: { startedAt: { gte: windowStart } },
-        orderBy: { startedAt: "desc" },
-        select: { workflowName: true, status: true, stepsJson: true, toolCalls: true, error: true, startedAt: true },
-      }),
-      db.automationWorkflow.findMany({ where: { enabled: true }, select: { name: true, nextRunAt: true } }),
-      db.automationWorkflow.findMany({ select: { name: true, enabled: true, failStreak: true } }),
-      db.automationVault.count(),
-      db.automationState.findUnique({ where: { id: "singleton" } }),
-      db.trackedModel.findMany({
-        where: { isNew: true, firstSeenAt: { gte: catalogStart } },
-        orderBy: { firstSeenAt: "desc" },
-        take: 6,
-        select: { displayName: true, providerId: true, modelId: true },
-      }),
-      db.trackerEvent.count({ where: { type: "removed", createdAt: { gte: catalogStart } } }),
-    ]);
+  // r640: the archive read is isolated — one corrupt/unreadable table must not
+  // 500 the whole digest (witnessed r639: SQLITE_CORRUPT killed the panel and
+  // the Owner saw a bare "Capability check failed" toast). Degradation now
+  // surfaces as an honest critical finding inside an otherwise live digest.
+  let reports: {
+    workflowName: string;
+    status: string;
+    stepsJson: string;
+    toolCalls: number | null;
+    error: string | null;
+    startedAt: Date;
+  }[] = [];
+  let archiveError: string | null = null;
+  try {
+    reports = await db.runReport.findMany({
+      where: { startedAt: { gte: windowStart } },
+      orderBy: { startedAt: "desc" },
+      select: { workflowName: true, status: true, stepsJson: true, toolCalls: true, error: true, startedAt: true },
+    });
+  } catch (e) {
+    archiveError = trunc(e instanceof Error ? e.message : String(e), 200);
+  }
+  const [enabledRows, allRows, vaultCount, heartbeat, newModels, removedEvents] = await Promise.all([
+    db.automationWorkflow.findMany({ where: { enabled: true }, select: { name: true, nextRunAt: true } }),
+    db.automationWorkflow.findMany({ select: { name: true, enabled: true, failStreak: true } }),
+    db.automationVault.count(),
+    db.automationState.findUnique({ where: { id: "singleton" } }),
+    db.trackedModel.findMany({
+      where: { isNew: true, firstSeenAt: { gte: catalogStart } },
+      orderBy: { firstSeenAt: "desc" },
+      take: 6,
+      select: { displayName: true, providerId: true, modelId: true },
+    }),
+    db.trackerEvent.count({ where: { type: "removed", createdAt: { gte: catalogStart } } }),
+  ]);
 
   const stepText = (stepsJson: string): string => {
     try {
@@ -260,7 +276,17 @@ export async function runCapabilityCheck(): Promise<RadarDigest> {
     },
     gateway: { pulse1h: pulse.count1h, pulse24h: pulse.count24h, probe },
     experiments: [],
-    findings: [],
+    findings: archiveError
+      ? [
+          {
+            severity: "critical" as const,
+            area: "runs" as const,
+            title: "Run archive unreadable — digest degraded",
+            evidence: trunc(archiveError, 200),
+            tryable: "Inspect db/ integrity (SQLite CORRUPT); scripts/db-recover-r640.py holds the staged cure.",
+          },
+        ]
+      : [],
     seeds: [],
   };
 
