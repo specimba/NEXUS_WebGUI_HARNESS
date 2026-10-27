@@ -640,6 +640,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflow run panel under a congested ladder: a muted 'Decision gate engaged but no judge answered …' line instead of silence; Runs board: a card whose step ran looped carries '↻ looped k/r' tinted by its exit reason",
   },
+  {
+    round: "r662",
+    title: "The no-judge gate line now says WHY — which judge rungs were tried and how they fell through",
+    detail:
+      "Seven live witness runs (r659-r661) hit the gate's no-judge path repeatedly — every one congestion, but the note could not prove it: 'no judge answered' named no lane. decide() now carries an optional onAttempt witness callback: each rung of the judge ladder (intern-systemone, the vault fast-judge with its top-2 relay hops, the paid jev rung) reports honestly when it is not armed or produced nothing, and the no-judge / judge-errored notes compose the trace as a 'tried: …' suffix — placed AFTER the stable family prefix, so the muted panel families and every pinned QA matcher survive byte-identical. The trace is bounded at 6 lines and the contract is otherwise unchanged: the gate still never blocks a run.",
+    lookFor:
+      "Workflow run panel on a congested ladder: 'Decision gate engaged but no judge answered (tried: intern-systemone — not armed (no intern-discovery key); fast-judge — relay chain exhausted (top 2 hops, no verdict); jev (paid rung) — not armed (no key)) — output accepted unchanged (verdict not possible, not a pass)' — the silence now carries its own evidence",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

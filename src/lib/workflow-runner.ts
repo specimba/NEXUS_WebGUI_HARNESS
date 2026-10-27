@@ -2387,10 +2387,19 @@ export async function executeWorkflowRun(
           !/^_The model ended/.test(content) &&
           kind === "generate";
         if (gateWorthy) {
+          // r662: declared OUTSIDE the try — the judge-errored catch below
+          // composes the same trace into its note.
+          const gateAttempts: string[] = [];
           try {
             const gate = await decide({
               settings: settings.settings,
               signal,
+              // r662: per-rung attempt trace — when no judge answers, the
+              // witness note can say WHY (which rungs were tried and how
+              // they fell through) instead of a bare "no judge answered".
+              onAttempt: (line) => {
+                if (gateAttempts.length < 6) gateAttempts.push(line);
+              },
               state: `TASK:\n${task}\n\nSTEP: ${step.label}\nSTEP ASSIGNMENT: ${instruction ?? "(the agent's standing instructions)"}\n\nOUTPUT UNDER REVIEW:\n${content.slice(0, 5000)}`,
               question: {
                 id: "step-gate",
@@ -2526,7 +2535,7 @@ export async function executeWorkflowRun(
                 attempt: 1,
                 note: gate
                   ? `Decision gate uncertain ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — no confident verdict; output accepted unchanged`
-                  : `Decision gate engaged but no judge answered — output accepted unchanged (verdict not possible, not a pass)`,
+                  : `Decision gate engaged but no judge answered${gateAttempts.length ? ` (tried: ${gateAttempts.join("; ")})` : ""} — output accepted unchanged (verdict not possible, not a pass)`,
               });
             }
           } catch {
@@ -2542,7 +2551,7 @@ export async function executeWorkflowRun(
               ms: 0,
               ok: true,
               attempt: 1,
-              note: `Decision gate judge errored — no verdict arrived; output accepted unchanged (infra stop, not quality)`,
+              note: `Decision gate judge errored — no verdict arrived; output accepted unchanged (infra stop, not quality)${gateAttempts.length ? ` (tried: ${gateAttempts.join("; ")})` : ""}`,
             });
           }
         }

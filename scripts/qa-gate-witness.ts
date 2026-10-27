@@ -18,6 +18,8 @@ function check(name: string, cond: boolean) {
 
 const runner = readFileSync("src/lib/workflow-runner.ts", "utf8");
 const panel = readFileSync("src/components/nexus/workflows/workflow-run-panel.tsx", "utf8");
+// r662: the judge-lane attempt trace — the no-judge note says WHY no judge answered.
+const sysone = readFileSync("src/lib/systemone.ts", "utf8");
 
 // ── runner witness lines (6) ────────────────────────────────────────────────
 check("uncertain verdict emits a callLog line", runner.includes("`Decision gate uncertain ${"));
@@ -33,6 +35,17 @@ check("uncertain gate line gets the muted neutral family", panel.includes('c.not
 check("no-judge gate line gets the muted neutral family too", panel.includes('c.note.startsWith("Decision gate engaged but no judge answered")'));
 check("judge-errored gate line gets the muted neutral family", panel.includes('c.note.startsWith("Decision gate judge errored")'));
 check("FAIL gate note keeps the honest amber default (rework incoming)", /: laneOfEntry\(c\) === "server-relay"\s*\?\s*"text-sky-300\/90"/.test(panel) && panel.includes('"text-amber-300/90"'));
+
+// ── r662: judge-lane attempt trace (9) ──────────────────────────────────────
+check("DecideOptions carries the optional onAttempt witness callback", sysone.includes("onAttempt?: (line: string) => void"));
+check("intern rung says when it is not armed", sysone.includes("intern-systemone — not armed (no intern-discovery key)"));
+check("intern rung says when it was armed but produced nothing", sysone.includes("intern-systemone — no answer (dial failed or empty)"));
+check("fastJudge names each dead hop (label + model)", sysone.includes("fast-judge ${hop.label} (${hop.model}) — no answer"));
+check("fastJudge distinguishes exhausted chain from empty chain", sysone.includes("fast-judge — relay chain exhausted (top 2 hops, no verdict)") && sysone.includes("fast-judge — no decision hop available (empty relay chain)"));
+check("jev rung says when it is not armed", sysone.includes("jev (paid rung) — not armed (no key)"));
+check("runner collects the trace at the step gate, bounded at 6", runner.includes("const gateAttempts: string[] = []") && runner.includes("if (gateAttempts.length < 6) gateAttempts.push(line)"));
+check("no-judge note composes the tried suffix AFTER its stable family prefix", runner.includes('`Decision gate engaged but no judge answered${gateAttempts.length ? ` (tried: ${gateAttempts.join("; ")})` : ""} — output accepted unchanged (verdict not possible, not a pass)`'));
+check("judge-errored note carries the tried suffix too", runner.includes('(infra stop, not quality)${gateAttempts.length ? ` (tried: ${gateAttempts.join("; ")})` : ""}`'));
 
 // ── regression pins (3) ─────────────────────────────────────────────────────
 check("looped FAIL branch still rides the confident-FAIL gate", runner.includes('note: `Decision gate FAIL ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — one free rework pass runs`'));

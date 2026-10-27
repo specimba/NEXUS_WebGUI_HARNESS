@@ -214,7 +214,8 @@ async function fastJudge(
   settings: Settings,
   state: string,
   question: SystemOneQuestion,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onAttempt?: (line: string) => void
 ): Promise<(SystemOneVerdict & { judge: string }) | null> {
   // r309: the vault chain is client-side (lib/relay is "use client") — on the
   // server lane skip ①'s relay hop entirely; the ladder falls through to ②
@@ -278,9 +279,16 @@ async function fastJudge(
       };
     } catch {
       // lane dead / timeout / CORS — try the next fast lane, then give up
+      // r662: the dead hop is honest too — the note can name it.
+      onAttempt?.(`fast-judge ${hop.label} (${hop.model}) — no answer`);
       continue;
     }
   }
+  onAttempt?.(
+    chain.length
+      ? "fast-judge — relay chain exhausted (top 2 hops, no verdict)"
+      : "fast-judge — no decision hop available (empty relay chain)"
+  );
   return null;
 }
 
@@ -306,6 +314,15 @@ export interface DecideOptions {
   state: string;
   question: SystemOneQuestion;
   signal?: AbortSignal;
+  /**
+   * r662 (witness-arc): optional per-rung attempt trace — decide() tries
+   * intern → fast-judge → jev and every fall-through used to be silent, so
+   * a null verdict could not say WHY no judge answered (0/8 live gate
+   * engagements during the r659-r661 witness runs were all congestion, but
+   * the note could not prove it). Each honest line names the rung and its
+   * shape; the caller composes them into the no-judge witness note.
+   */
+  onAttempt?: (line: string) => void;
 }
 
 /** The intern-discovery vault key, when the owner saved one. */
@@ -345,10 +362,14 @@ export async function decide(opts: DecideOptions): Promise<SystemOneVerdict | nu
     } catch {
       // offline / quota / wire drift → fall through to ②
     }
+    // r662: the rung was armed but produced nothing — say so.
+    opts.onAttempt?.("intern-systemone — no answer (dial failed or empty)");
+  } else {
+    opts.onAttempt?.("intern-systemone — not armed (no intern-discovery key)");
   }
 
   // ② Fast-model JSON judge over the vault.
-  const judged = await fastJudge(settings, state, question, signal);
+  const judged = await fastJudge(settings, state, question, signal, opts.onAttempt);
   if (judged) return { ...judged, ms: Date.now() - started };
 
   // ③ Jev (PAID) — legacy rung, only when explicitly opted in.
@@ -363,6 +384,9 @@ export async function decide(opts: DecideOptions): Promise<SystemOneVerdict | nu
     } catch {
       // CORS / timeout / quota → no opinion
     }
+    opts.onAttempt?.("jev — no answer (dial failed or empty)");
+  } else {
+    opts.onAttempt?.("jev (paid rung) — not armed (no key)");
   }
 
   // ④ No opinion.

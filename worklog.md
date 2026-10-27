@@ -2570,3 +2570,27 @@ Round ID: r662 -> next patrol (job 473388)
 Next recommended action: (1) the confident-verdict witness is purely judge-availability-gated — try one gate-worthy run when the ladder is calm; if the free ladder stays mute, consider a vault-keyed non-free lane for one deliberate judge dial (Owner keys, single cheap call); (2) witness the ⛓ radar chips on the next registry finding; (3) degraded-deep live telemetry in a congestion window; (4) Owner-witnessed vault restore happy path.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact) qa:golden=0/0/0 witness="r660 no-judge line FIRED LIVE x2 (authored + verification steps, 2164-char output, done/done); judge answered 0/6; fixture removed 6/6; console 0" restart="0/1"
+
+---
+Task ID: r662
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280707)
+Task: r662 patrol — judge-answers witness attempt #7 (handoff item 1), the cleanup-race lesson, and the increment the attempt pointed at: the no-judge note now says WHY no judge answered.
+
+Work Log:
+- OPENING: server 200; golden QA green first (console 0/0/0, frontier scroller moved).
+- WITNESS ATTEMPT #7 (r661 recipe, one-shot inject + REAL reload + aria-label drive): fixture "QA r662 Gate Witness" ran end to end — authored step done with a 3160-char gate-worthy output, gate ENGAGED, the r660 no-judge line fired again; the synthetic verification pass was still pending when the poll window closed. Judge answered 0/8 gate engagements across 7 live runs — availability-gated stays the verdict; the visible-line contract re-proven (3rd live firing).
+- CLEANUP RACE (honest, self-inflicted, instructive): removing the fixture from localStorage while the run was LIVE let the in-flight run's debounced persists (450ms) resurrect it post-reload — the zombie then rehydrated with a run frozen at "running|done,pending". Second cleanup after the reload stuck (6/6, qa_present=false). SCOUT: the product already handles the zombie shape honestly — ensureSeeded's r25/r183 sweep marks rehydrated "running" runs partial/stopped with never-ran steps "skipped"; no product bug, my cleanup timing was the defect. LESSON: never mutate nexus-workflows while a client-side run is executing; clean up only when the page is idle.
+- INCREMENT (user-facing, riding the arc the witness kept proving): 8 silent no-judge engagements is 8 too many to leave unexplained — the note said "no judge answered" but never WHICH rungs were tried or HOW they fell through. decide() now carries an optional onAttempt witness callback: intern-systemone (not-armed vs no-answer), fastJudge (per dead hop "label (model) — no answer", then exhausted-vs-empty-chain), jev (not-armed vs no-answer) — and the runner composes the trace as a " (tried: …)" suffix on BOTH the no-judge and judge-errored notes, placed AFTER the stable family prefix so the muted panel families and every pinned QA matcher survive byte-identical. Trace bounded at 6 lines; gate still never blocks; contract otherwise unchanged.
+- QA: qa-gate-witness extended 14 -> 23/23 (9 new: callback shape, all three rung lines, hop naming, exhausted/empty distinction, bounded collector, both note compositions). Gate self-catches pre-green: (1) my first check literals used double-quoted strings containing raw quotes — string-terminator parse errors ×8 (tsc + lint both caught; single-quoted outers fixed); (2) gateAttempts was declared INSIDE the try while the catch composes it too — moved above the try (tsc-proof, correct shape regardless).
+- FixNote r662 appended per doctrine (FIXES chronological append; RANGE_LABEL auto-derives).
+- GATES: tsc rc=0, lint rc=0 EXACTLY 33-warning baseline, qa-gate-witness 23/23, qa-looped-outcome 17/17, qa-error-message 26/26, golden console 0/0/0, post-edit workflows console 0, fixture cleanup verified 6/6.
+
+Stage Summary:
+- The judge ladder's silence is no longer mute: when no judge answers, the run panel now carries the whole attempted-ladder trace as evidence — after 0/8 live answers, the congestion verdict can finally be READ, not inferred.
+- The witness arc's remaining open item is unchanged and singular: one live run where a judge ANSWERS (confident PASS emerald / FAIL amber); every other path is live-proven.
+
+Round Handoff:
+Round ID: r663 -> next patrol (job 473388)
+Next recommended action: (1) confident-verdict witness — try during a visibly calm ladder window, or (deliberate Owner-key spend, single cheap call) temporarily arm the intern-discovery or a vault fast lane as judge; (2) witness the chain radar chips on the next registry finding; (3) degraded-deep live telemetry in a congestion window; (4) Owner-witnessed vault restore happy path.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact) qa=23/23+17/17+26/26 golden=0/0/0 witness="attempt #7: gate engaged, no-judge line re-proven, judge 0/8; cleanup-race lesson recorded; onAttempt trace shipped (no-judge note now names the tried rungs)" restart="0/1"
