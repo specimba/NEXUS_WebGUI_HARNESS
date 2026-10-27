@@ -2524,3 +2524,24 @@ Round ID: r661 -> next patrol (job 473388)
 Next recommended action: (1) judge-answers live confirmation: ONE run on the free ladder (>=200-char output) — the gate MUST leave a visible line now (uncertain muted / PASS emerald / FAIL amber + looped chip if armed); try early in the hour when the ladder is fresh; (2) witness the ⛓ radar chips when a registry finding next emits; (3) degraded-deep live telemetry when congestion hits; (4) Owner-witness of the vault restore happy path (real file chooser).
 Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed, radar digest fresh).
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:gate-witness=14/14 qa:looped-outcome=17/17 qa:golden=console-0-on-all-3 witness="4th live run exposed no-judge null silent path; else now covers gate-vs-null ('verdict not possible, not a pass'); looped outcome chip on Runs board (shared adapter 2nd call site); fixture removed; dev-server restart 1/1 after tsc-induced drop" restart="1/1"
+
+---
+Task ID: OWN-c-closeout
+Agent: NEXUS WebGUI orchestrator (Owner follow-up: "this looks not finished" — audit of the crashed OWN-c session's todo list)
+Task: Audit every item of the Owner-pasted OWN-c todo list against the repo, finish whatever is genuinely open, re-verify gates, and close the loop.
+
+Work Log:
+- TODO AUDIT (9 items, Owner-pasted list): items 1-8 verified DONE in the record — evidence ingest (worklog:2360), live vault inspection + Vyce drift/ERR:[object Object]/deep-pass-deaths evidence, OWN-a plan + OWN-b polish (2361), B safeErrorMessage (qa-error-message 26/26), A deep-pass non-fatality (qa-deep-resilience 28/28), C vault-mirror auto-heal (qa-vault-drift-heal 20/20, Vyce drift healed live 2365), gates (tsc 0 / lint 0 / 15 suites), worklog+commit+double-push (e82cee3f1; origin+fork both at r660 8be41dbf4). The ONLY open item was #9 — "Create 15-min webDevReview cron task" — the session crashed before it.
+- GATES RE-VERIFIED now (not trusted from the record): tsc rc=0 (log redirect unmasked, 0 lines), lint rc=0 with EXACTLY the 33-warning baseline (grep -c "  warning  "), 5 key suites green: qa-error-message 26/26, qa-deep-resilience 28/28, qa-vault-drift-heal 20/20, qa-gate-witness 14/14, qa-looped-outcome 17/17. Server HTTP 200.
+- BROWSER GOLDEN: /#/workflows renders (nav, cron fleet chip 1/1 armed, footer v1.0.0 · local-first · BYOK), console errors=0; /#/settings renders receipts; Vault card readiness strip VERBATIM "Vault loop readiness: 20 lanes stored, dials Vyce AI first, acquisition 3/3 keyed" — drift chip still gone (auto-heal state persisted), console 0 through all legs.
+- CRON CREATED (the missing todo #9): job 478769 "NEXUS webDevReview (15-min)" — kind=webDevReview, every 15 min at :03/:18/:33/:48 (phase-offset from patrol 473388's :07/:37 to avoid simultaneous rounds), tz Europe/Istanbul, mandatory Chinese review description + project background (worklog handoff discipline, double-push, no bun run build). This is the second autonomous lane; collisions are handled by the established worklog/whitelist-commit doctrine.
+
+Stage Summary:
+- The pasted todo list is now 9/9: the only genuinely unfinished item (the 15-min webDevReview cron) is created as job 478769, and every shipped deliverable was re-proven green at today's HEAD, not just trusted from the worklog.
+- Two autonomous lanes now patrol the project (30-min agentTurn 473388 + 15-min webDevReview 478769), both anchored on the same worklog handoff contract.
+
+Round Handoff:
+Round ID: r661 (either lane)
+Next recommended action: unchanged from r660 handoff — (1) judge-answers live gate confirmation (>=200-char output; morning ladder windows are freshest); (2) witness the chain radar chips on the next registry finding; (3) degraded-deep live telemetry during a congestion window; (4) Owner-witnessed vault restore happy path (real file chooser).
+Blockers: none. Owner queue: todo-list audit delivered 9/9; cron lane armed.
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact) qa=26/26+28/28+20/20+14/14+17/17 browser:golden=console-0-both-surfaces witness="vault strip '20 lanes stored, dials Vyce AI first, acquisition 3/3 keyed' drift-chip-gone; cron 478769 armed 15-min webDevReview" restart="0/1"
