@@ -2400,3 +2400,27 @@ Round ID: r656 -> next patrol (job 473388)
 Next recommended action: (1) call-log lineage schema-hardening — every tool-call note carries result status + step id (carried twice, still open); (2) Owner-witness the restore happy path (pick the r655 backup file via the real file chooser — headless cannot drive the chooser; the POST half is route-pinned); (3) looped-path FAIL-branch live-witness (Looped x2 + harsh gate on a healthy ladder); (4) slice 3 radar chain-typed evidence + admission-gate checkboxes.
 Blockers: none. Owner queue: none pending (vault 20 slots stored, acquisition 3/3 keyed, schedules armed).
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:golden=console-0-on-all-3 witness="Backup LIVE: confirm-gate -> download -> toast 'Backed up 20 slots — the file holds plaintext keys, store it safely.'; Restore refusal path zero-mutation; FixNote r655; fossil label legacy" restart="0/1"
+
+---
+Task ID: r656
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280407)
+Task: r656 patrol — call-log lineage schema-hardening (handoff item 1, carried since r653), golden QA first, gates, receipts.
+
+Work Log:
+- OPENING: worklog tail read (r655 vault UI round); server 200. Golden QA re-run (qa-golden-r655.sh): settings console 0, radar frontier scroller top=4576 moved=true, workflows surface renders; console-errors 0/0/0.
+- SCOUT: RunCallLogEntry already carries ok (required) + stepId/stepLabel (stamped at ALL 12 pushCall sites) — the genuinely prose-parsed field was the LANE: run-panel lane-health chips counted lanes by STRING-MATCHING note prefixes ("v13 ... pure UI, no store changes"), and r653's note-family coloring did the same. The writer already knew the truth structurally: res.transport.
+- INCREMENT (schema-hardening + styling honesty): (1) types.ts — RunCallLogEntry.lane?: "server-relay" | "browser-direct" (r656 doc: O1 evidence as data, absent = never guessed); (2) NEW src/lib/call-log-lane.ts — laneOfEntry shared reader (structured first, v11b prefix fallback for pre-r656 rows, honest null else, never-throw) — one adapter, writer/surface cannot drift; (3) workflow-runner main dial entry stamps lane from res.transport in both note branches; (4) run-panel lane chips read laneOfEntry (back-compat: history rows keep counting via fallback); (5) STYLING: healthy browser-direct dials get their own neutral text-foreground/60 + "⊙ " marker — were amber-300 "↻", indistinguishable from a warning; violet ◈ precedent + sky ⇄ relay families unchanged, now keyed on the structured reader.
+- QA: NEW scripts/qa-calllog-lane.ts — 15/15 (pure reader logic 9: structured-wins, both prefix fallbacks, unrelated-note null, null/undefined/junk never-throw; source pins 6: schema field, both writer stamps, both chip reads, shared import).
+- WITNESS (honest): workflows surface mounts console-0 post-edit; run-detail panel not reachable in headless this round (row-click locate friction, same class r654 hit) — family rendering for pre-r656 rows stands from r652/r653 (those exact fallback paths byte-unchanged); the r656 delta is pinned by qa-calllog-lane 15/15 at logic+source level. Console 0->0 through every leg.
+- FixNote doctrine: r656 entry appended to whats-fixed.tsx (chronological append; RANGE_LABEL auto-derives).
+- GATES: tsc rc=0 (file-redirect), lint rc=0 EXACTLY 33-warning baseline (0 in touched files), qa-calllog-lane 15/15, golden console 0/0/0.
+
+Stage Summary:
+- The last prose-parsed evidence field at the run surface is now data: lane lineage rides structured from the dial wire, the shared reader keeps writer and surface honest, and old logs keep counting via the pinned fallback — the O1 criterion's evidence is first-class end to end.
+- A healthy direct dial no longer wears a warning's amber; the marker families are now calm (⊙), lane-attributed (⇄), or story-tagged (◈) by structure, not string luck.
+
+Round Handoff:
+Round ID: r657 -> next patrol (job 473388)
+Next recommended action: (1) visual re-witness of the ⊙/⇄ families inside an expanded call log (open a run with server-relay history via the run-detail panel; headless locate friction twice — try clicking the run row then the "LLM calls" section header); (2) looped-path FAIL-branch live-witness (Looped x2 + harsh gate on a healthy ladder — staged since r645); (3) slice 3 radar chain-typed evidence + admission-gate checkboxes; (4) witness a REAL degraded-deep run when congestion next hits a deep schedule.
+Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed; autonomous engine cycles executing 2/2 with 0 failures per board telemetry).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:calllog-lane=15/15 qa:golden=console-0-on-all-3 witness="lane lineage structured end-to-end (writer stamp + shared reader + QA pins); browser-direct ⊙ neutral family; FixNote r656" restart="0/1"

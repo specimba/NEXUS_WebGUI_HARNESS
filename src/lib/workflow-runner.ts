@@ -1814,14 +1814,18 @@ export async function executeWorkflowRun(
           ms: Date.now() - stepStart,
           ok: true,
           attempt,
+          // r656 lineage hardening: the lane family rides as STRUCTURED data
+          // (lane, stamped from res.transport — the actual dial wire), so the
+          // run surface stops parsing prose prefixes; the note string stays
+          // for humans. Absent when the transport is neither — never guessed.
           ...(res.transport === "browser-direct"
-            ? { note: ["browser-direct — key stayed in your browser", ...relayNotes].join(" → ") }
+            ? { lane: "browser-direct" as const, note: ["browser-direct — key stayed in your browser", ...relayNotes].join(" → ") }
             : res.transport === "server"
               ? // v11b: lane attribution for EVERY relay-served call (incl. the
                 // v10 auto-fallback and v11 forced retries) — previously only
                 // browser-direct and hop-note runs were labelled, so a quiet
                 // relay win was indistinguishable from a direct win.
-                { note: [forceServer ? "server relay (forced retry — direct lane skipped)" : "server relay — routed through the app's vault chain", ...relayNotes].join(" → ") }
+                { lane: "server-relay" as const, note: [forceServer ? "server relay (forced retry — direct lane skipped)" : "server relay — routed through the app's vault chain", ...relayNotes].join(" → ") }
               : relayNotes.length > 0
                 ? { note: relayNotes.join(" → ") }
                 : {}),

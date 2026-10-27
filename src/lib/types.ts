@@ -391,6 +391,14 @@ export interface RunCallLogEntry {
   attempt?: number;
   /** Relay rotation trace, e.g. "Model relay: Vyce · x failed → rotating to y". */
   note?: string;
+  /**
+   * r656: structured lane family, writer-stamped from res.transport — the
+   * O1 evidence as data. The run surface (lane-health chips) reads this
+   * instead of parsing the note's prose prefix; the prefix remains only as
+   * laneOfEntry's back-compat fallback for pre-r656 rows. Absent when the
+   * transport is neither browser-direct nor server — never guessed.
+   */
+  lane?: "server-relay" | "browser-direct";
 }
 
 export interface WorkflowRun {

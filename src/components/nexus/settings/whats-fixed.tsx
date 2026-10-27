@@ -600,6 +600,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Settings → Automation vault: Backup/Restore buttons top-right of the card; Backup confirm warns about plaintext keys; Restore rejects a non-backup file with a toast instead of silence",
   },
+  {
+    round: "r656",
+    title: "Call-log lanes became data, not prose — and a healthy direct dial stopped reading as a warning",
+    detail:
+      "The run surface's lane-health chips and note styling STRING-MATCHED the call log's note prefixes ('server relay…', 'browser-direct…') — prose was load-bearing, so a reworded note would silently miscount lanes. The writer now stamps a structured lane on every LLM-call record (from the dial's actual transport), a shared reader (src/lib/call-log-lane.ts) is the single adapter between writer and surface with an honest prefix fallback for pre-r656 rows, and a healthy browser-direct dial got its own neutral ⊙ family — it rendered amber ↻ like a warning even when it succeeded. Step id and result status were already first-class on every record (ok is required by the schema, stepId stamped at all 12 writer sites) — this closed the last prose-parsed field.",
+    lookFor:
+      "Workflow run panel: '⇄N relay / ⊙N direct' chips still count history runs (prefix fallback); in an expanded call log, browser-direct notes show a calm ⊙ instead of the amber ↻ warning marker",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
 // r503: lane witness chip on run steps — short name + shared provider glyph.
 import { laneShortName } from "@/lib/lane-catalog";
+import { laneOfEntry } from "@/lib/call-log-lane";
 import { providerMeta } from "@/lib/tracker-types";
 import { harnessChipForRun } from "@/lib/trace-trial";
 import { truncate } from "@/lib/helpers";
@@ -222,20 +223,28 @@ function CallLogList({ log }: { log: RunCallLogEntry[] }) {
                         "mt-0.5 block font-mono text-[10px] " +
                         (c.note.startsWith("Precedent lane")
                           ? "text-violet-300/90"
-                          : c.note.startsWith("server relay")
+                          : laneOfEntry(c) === "server-relay"
                             ? "text-sky-300/90"
-                            : "text-amber-300/90")
+                            : laneOfEntry(c) === "browser-direct"
+                              ? "text-foreground/60"
+                              : "text-amber-300/90")
                       }
                     >
                       {/* r653: the precedent lane's O1 note gets the lane's
                       violet family (same accent as the editor preview) —
                       a composed lane+relay note reads as one story, not a
-                      warning. */}
+                      warning. r656: the family keys on the STRUCTURED lane
+                      (prose prefixes remain the back-compat fallback for
+                      pre-r656 rows), and a healthy browser-direct dial gets
+                      its own neutral ⊙ — it was amber ↻, indistinguishable
+                      from a warning. */}
                       {c.note.startsWith("Precedent lane")
                         ? "◈ "
-                        : c.note.startsWith("server relay")
+                        : laneOfEntry(c) === "server-relay"
                           ? "⇄ "
-                          : "↻ "}
+                          : laneOfEntry(c) === "browser-direct"
+                            ? "⊙ "
+                            : "↻ "}
                       {c.note}
                     </span>
                   ) : null}
@@ -419,10 +428,13 @@ function RunRecoveryCard({
   const doneCount = run.steps.filter((s) => s.status === "done").length;
   const failedIdx = run.steps.findIndex((s) => s.status === "error");
 
-  // v13 lane-health: direct/relay split over this run's recorded LLM calls,
-  // derived from the v11b note prefixes — pure UI, no store changes needed.
-  const laneRelay = (run.callLog ?? []).filter((c) => (c.note ?? "").startsWith("server relay")).length;
-  const laneDirect = (run.callLog ?? []).filter((c) => (c.note ?? "").startsWith("browser-direct")).length;
+  // v13 lane-health: direct/relay split over this run's recorded LLM calls.
+  // r656 lineage hardening: the split reads the STRUCTURED lane field first
+  // (writer-stamped from res.transport); pre-r656 rows fall back to the v11b
+  // note prefixes via laneOfEntry — old logs keep counting honestly, prose is
+  // no longer load-bearing for new ones.
+  const laneRelay = (run.callLog ?? []).filter((c) => laneOfEntry(c) === "server-relay").length;
+  const laneDirect = (run.callLog ?? []).filter((c) => laneOfEntry(c) === "browser-direct").length;
   const laneChip =
     laneRelay + laneDirect > 0
       ? ` · ⇄${laneRelay} relay / ⊙${laneDirect} direct`
