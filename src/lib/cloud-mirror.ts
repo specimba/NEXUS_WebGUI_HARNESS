@@ -38,6 +38,22 @@
 //  "unsupported Unicode escape sequence" — one bad character in one step
 //  output poisoned the ENTIRE sync. Fix: every payload is deep-sanitized to
 //  well-formed UTF-16 (lone surrogates → U+FFFD) before it leaves the browser.
+//
+// r618a (2026-10-27, Owner audit): Supabase's advisor flags this schema's two
+//  `for all ... using (true) with check (true)` policies as critical — with
+//  anon+authenticated covered, ANYONE holding the project's publishable key
+//  can read/write the two mirror tables. HONEST TRANSPORT FACT: those
+//  policies ARE this mirror's transport (browser BYOK anon key, no Supabase
+//  Auth session exists), so dropping them now = mirror goes dark. The
+//  exposure is bounded: two backup tables (run reports + workflow defs),
+//  no credentials, no other project tables touched. Decision paths:
+//   (a) KEEP browser mirror → run only the safe-now revokes (foreign tables
+//       notionstyle/slackmessages + rls_auto_enable() — NOT ours, pre-existing)
+//       and accept the two advisor warnings as a documented trade-off;
+//   (b) LOCKDOWN → FIRST ship a server-side mirror route holding the
+//       service_role key in server env ONLY (never browser), repoint
+//       mirrorRunsToCloud at it, THEN apply the revoke SQL. The service key
+//       is Owner-gated — never invented, never stored client-side.
 
 /** One-time schema setup. Idempotent (safe to re-run). Paste into
  * https://supabase.com/dashboard/project/<ref>/sql/new and press RUN. */

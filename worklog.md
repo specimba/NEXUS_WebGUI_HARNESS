@@ -1378,3 +1378,28 @@ Round ID: r619 -> next patrol (job 473388)
 Next recommended action: r619 — batched opening (expect HEAD = r618 commit; else follow ITS handoff); qa:golden (1 round); increment = open the P1 backlog arc: TASK-101 durable-step semantics (docs/strategy/TASKS.md) — start with a READ-ONLY design probe (rg the workflow-run persistence path, draft the smallest honest semantic slice: which step state must survive a reload and where it currently evaporates) and ship either that first slice or its written design note if budget is short; else a small honest UI/engine increment. Never invent Owner-key-dependent work. Gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="browser-direct pack defs live (session-cached registry decls, fail-open); isBuiltinToolId single source of truth across route+browser" restart="0/1 consumed"
+
+---
+Task ID: audit-1027
+Agent: NEXUS WebGUI Harness (direct Owner request, trace 1a17b2c89d7612b1)
+Task: Owner audit — "let's see if they are fixed or not properly": verify the r606 meta-review P1/P2 queue against the current tree, check cron schedules + in-app automations reach the implementation cycle, and assess the Supabase RLS advisor findings the Owner pasted.
+
+Work Log:
+- Verified each audited hard-failure against code + live signals (no fixes needed — all evidence gathered readonly):
+  * P1 relay-rotation-on-network-errors: FIXED (r607). isEndpointUnreachableError classifies pre-response corpse dials (ENOTFOUND/ECONNREFUSED/EAI_AGAIN/failed-to-fetch) -> rotate NOW to the next relay hop; flap-class (ECONNRESET/socket hang up/terminated) keeps cheap same-lane retries. Docstring cites the Owner's own Vyce x3 / 0-hop incident as the witness.
+  * P1 archiver 500 / WF-row reverts: FIXED. src/lib/db.ts runs the canonical set — PRAGMA journal_mode=WAL + busy_timeout=5000 + synchronous=NORMAL — at client init; dev.log (last 2000 lines) contains ZERO SQLITE_BUSY/busy hits since.
+  * Backlog +54 vs ~2/cycle: FIXED (r611). Guard limit = 5 (one full unconsumed batch = real stall); live /api/autonomy shows queue 0q/0r/0f — fully drained, engine at healthy deterministic steady state (latest cycle 16ms, honest suppressed-idle chip).
+  * Enricher failing open: BY DESIGN, hardened (r612+r613). 4s cap -> fail-open to deterministic rationale; latency min/avg/max on-panel; honest suppressed chips. Upgrades itself once vault keys exist.
+  * Vault empty: still Owner-gated (needs one real key pasted into the vault UI) — never invented, unchanged.
+  * Groq WAF 403 -> pool: IN CODE and Owner-armed (pool 30 proxies per Owner paste). strategy.ts probe nextAction + agent-engine 403 error text point at the pool; radar github route retries up to 3 pool proxies.
+- CRON: exactly ONE schedule (473388, every 30 min, active, run_count=103, last run 10:07 = r618, stage succeeded). The audit->implementation loop demonstrably closed: every finding in the r606 meta-review has a shipped, dual-pushed round (r607 rotation, r611 drain, r612/r613 enricher+latency, r614-r618 plugin slices from the deep-search intel).
+- SUPABASE (Owner decision required): the advisor-flagged `using (true)` policies ARE the app's mirror transport (browser BYOK anon key, no Auth session) — applying the backend-only lockdown NOW would take the mirror dark. Shipped r618a advisory block in cloud-mirror.ts documenting the two honest paths: (a) keep browser mirror + run only the safe-now revokes (foreign tables + rls_auto_enable() — pre-existing, NOT ours); (b) lockdown AFTER a server-side service_role mirror route exists (Owner key, server env only — never invented).
+
+Stage Summary:
+- 4 of 5 audited hard-failures are fixed with code+live evidence; the 5th (vault) is Owner-gated as always. Cron and in-app automations are both feeding the implementation cycle. Supabase is the one open decision, now documented in code with the sequencing constraint (server route FIRST, revoke SQL SECOND).
+
+Round Handoff:
+Round ID: r619 -> next patrol (job 473388)
+Next recommended action: unchanged from r618 handoff — TASK-101 durable-step semantics design probe (P1 backlog arc), unless the Owner picks Supabase path (b), in which case the server-side mirror route (service_role in server env, Owner-gated) becomes the top pick.
+Blockers: Supabase path (b) needs the Owner's service_role key decision; path (a) is runnable by the Owner NOW via the safe-now SQL subset.
+- GATES: tsc=0 lint=0(33-exact) witness="audit-1027: 4/5 hard-failures verified fixed (r607 rotation, WAL, r611 drain, r612/613 enricher); cron 473388 active 103 runs; supabase transport conflict documented in code (r618a)" restart="0/1 consumed"
