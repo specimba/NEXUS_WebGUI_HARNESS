@@ -19,16 +19,18 @@ function check(name: string, cond: boolean) {
 const runner = readFileSync("src/lib/workflow-runner.ts", "utf8");
 const panel = readFileSync("src/components/nexus/workflows/workflow-run-panel.tsx", "utf8");
 
-// ── runner witness lines (5) ────────────────────────────────────────────────
+// ── runner witness lines (6) ────────────────────────────────────────────────
 check("uncertain verdict emits a callLog line", runner.includes("`Decision gate uncertain ${"));
 check("uncertain line names the verdict gap honestly", runner.includes("no confident verdict; output accepted unchanged"));
 check("judge-error catch emits a callLog line", runner.includes("`Decision gate judge errored"));
 check("judge-error line is named an infra stop, not quality", runner.includes("infra stop, not quality"));
-check("uncertain branch guards on gate presence (never fabricates a verdict)", /else if \(gate\) \{\s*\n\s*pushCall/.test(runner));
+check("null verdict (no judge answered) emits a callLog line", runner.includes("Decision gate engaged but no judge answered"));
+check("no-judge line refuses to impersonate a pass", runner.includes("verdict not possible, not a pass"));
 
 // ── panel gate-note families (4) ────────────────────────────────────────────
 check("Decision gate PASS gets its own calm emerald family (was amber ↻)", panel.includes('c.note.startsWith("Decision gate PASS")') && panel.includes("text-emerald-300/90"));
 check("uncertain gate line gets the muted neutral family", panel.includes('c.note.startsWith("Decision gate uncertain")'));
+check("no-judge gate line gets the muted neutral family too", panel.includes('c.note.startsWith("Decision gate engaged but no judge answered")'));
 check("judge-errored gate line gets the muted neutral family", panel.includes('c.note.startsWith("Decision gate judge errored")'));
 check("FAIL gate note keeps the honest amber default (rework incoming)", /: laneOfEntry\(c\) === "server-relay"\s*\?\s*"text-sky-300\/90"/.test(panel) && panel.includes('"text-amber-300/90"'));
 

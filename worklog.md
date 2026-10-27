@@ -2498,3 +2498,29 @@ Round ID: r660 -> next patrol (job 473388)
 Next recommended action: (1) post-fix live confirmation: start ONE run on the free ladder with a gate-worthy output (>=200 chars) — the gate MUST now leave a visible line (uncertain muted / PASS emerald / FAIL amber); a confident-FAIL on a Looped-armed step completes the staged FAIL-branch witness end to end; (2) witness the ⛓ radar chips when a registry finding next emits; (3) degraded-deep live telemetry when congestion next hits; (4) Owner-witness of the vault restore happy path (real file chooser).
 Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed, radar digest fresh).
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:gate-witness=12/12 qa:looped-outcome=15/15 qa:golden=console-0-on-all-3 witness="3 live Looped runs -> FAIL branch never fired; UNCERTAIN-accept invisibility PROVEN x3 + 200-char gate floor found; silent branches now emit honest lines; gate PASS note de-ambered; throwaway workflow removed" restart="0/1"
+
+---
+Task ID: r660
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280607)
+Task: r660 patrol — post-fix live gate confirmation (4th witness run), the fourth silent gate path it exposed, looped outcome on the Runs board, golden QA first, gates, receipts.
+
+Work Log:
+- OPENING: worklog tail read (r659 gate-witness round); server 200, HEAD clean. Golden QA green first (console 0/0/0).
+- LIVE CONFIRMATION ATTEMPT: throwaway Looped ×2 fixture re-injected (declared test setup, "QA r660 Gate Witness"), 4th live run on the free ladder — 4KB gate-worthy output (≥200 chars, generate, gates on). STILL no gate line — which exposed the FOURTH silent path: `decide()` resolves NULL when no judge answers (free ladder saturated tonight), and the r659 `else if (gate)` let the null case vanish identically. (The read-back also rode the precedent store growth: 16 eligible precedents, top match rrf 0.0328 — the lane keeps compounding.)
+- BUG FIXED (4th silent path): the gate's fall-through is now a plain else covering gate-vs-null — "Decision gate engaged but no judge answered — output accepted unchanged (verdict not possible, not a pass)" (refuses to impersonate a pass; engine/model stamped gate/no-judge-available). All five gate outcomes now leave visible traces: PASS emerald / uncertain muted / judge-errored muted / no-judge muted / FAIL amber.
+- INCREMENT (user-facing + styling): the looped-depth outcome chip reached the Runs board — run-kanban card renders "↻ looped k/r" tinted by the SAME shared adapter (loopedOutcomeChip; second honest call site, r649 doctrine), tooltip names step/k/r/exit + the honest sentence. QA extended: qa-looped-outcome 17/17 (kanban pins).
+- QA SELF-CATCH pre-ship: qa-gate-witness caught its own 13/14 — the new no-judge note prefix had no panel family branch (would have rendered amber by default); the muted branch was added, 14/14.
+- WITNESS (honest): fixture REMOVED after the run (workflows 6, witness absent, store rehydrated clean); workflows console 0 post-edit. The judge-ANSWERS confirmation (confident PASS/FAIL line) remains open — needs a less congested window.
+- INCIDENT: dev server went down mid-round (connection refused after heavy tsc/lint cycles; the browser tab sat on chrome-error://chromewebdata — the localStorage "Access denied" was the error page's origin, not the app). ONE restart via scripts/dev-restart.sh (allowed budget), 200 on poll2; fixture cleanup completed post-restart.
+- RECEIPTS: TASKS.md Looped entry — r660 receipt + open narrowed to a judge-answers live run; FixNote r660 appended.
+- GATES: tsc rc=0 (file-redirect), lint rc=0 EXACTLY 33-warning baseline (0 in touched files), qa-gate-witness 14/14, qa-looped-outcome 17/17, golden console 0/0/0, post-edit console 0.
+
+Stage Summary:
+- The Decision gate is now honest in ALL FIVE outcomes — the r660 live run proved even the r659 fix had a silent hole (no-judge null), and the board now shows loop verdicts at kanban scale. Silent-accept is dead at this surface: engaged-but-unanswered no longer masquerades as a clean pass.
+- The staged FAIL-branch witness is down to ONE prerequisite: a ladder window where the judge actually answers.
+
+Round Handoff:
+Round ID: r661 -> next patrol (job 473388)
+Next recommended action: (1) judge-answers live confirmation: ONE run on the free ladder (>=200-char output) — the gate MUST leave a visible line now (uncertain muted / PASS emerald / FAIL amber + looped chip if armed); try early in the hour when the ladder is fresh; (2) witness the ⛓ radar chips when a registry finding next emits; (3) degraded-deep live telemetry when congestion hits; (4) Owner-witness of the vault restore happy path (real file chooser).
+Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed, radar digest fresh).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:gate-witness=14/14 qa:looped-outcome=17/17 qa:golden=console-0-on-all-3 witness="4th live run exposed no-judge null silent path; else now covers gate-vs-null ('verdict not possible, not a pass'); looped outcome chip on Runs board (shared adapter 2nd call site); fixture removed; dev-server restart 1/1 after tsc-induced drop" restart="1/1"

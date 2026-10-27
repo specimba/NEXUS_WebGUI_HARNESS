@@ -632,6 +632,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflow run panel call log: a run whose gate was unsure now shows a muted 'Decision gate uncertain …' line instead of nothing; a clean pass shows emerald 'Decision gate PASS …' instead of amber",
   },
+  {
+    round: "r660",
+    title: "The gate that ran without a judge now says so — and the loop's verdict reached the Runs board",
+    detail:
+      "The post-fix live confirmation (4th witness run: 4KB gate-worthy output on a congested ladder) still left NO gate line — exposing the fourth silent path: decide() resolves NULL when no judge answers, and the r659 guard (else if (gate)) let the null case vanish exactly like the ones it fixed. The else now covers gate-vs-null with an honest 'Decision gate engaged but no judge answered — output accepted unchanged (verdict not possible, not a pass)' — it refuses to impersonate a pass. Every gate outcome now leaves a visible trace: PASS emerald, uncertain muted, judge-errored muted, no-judge muted, FAIL amber. Companion: the looped-depth outcome chip reached the Runs board (run-kanban) — the same shared adapter the run panel reads (second honest call site, r649 doctrine), so a loop's verdict is legible at board scale.",
+    lookFor:
+      "Workflow run panel under a congested ladder: a muted 'Decision gate engaged but no judge answered …' line instead of silence; Runs board: a card whose step ran looped carries '↻ looped k/r' tinted by its exit reason",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

@@ -2509,22 +2509,24 @@ export async function executeWorkflowRun(
                 });
               }
             }
-            // r659: an UNCERTAIN verdict (below gate confidence either way) no
-            // longer vanishes — the gate ENGAGED and the user is entitled to
-            // see that it ran. Two live witness runs this round hit exactly
-            // this silent accept: gate enabled, output ≥200 chars, verdict
-            // unsure — and not one callLog line to show for it.
-            else if (gate) {
+            // r659 + r660: an UNCERTAIN verdict (below gate confidence either
+            // way) — or NO JUDGE AT ALL (decide() resolves null when the free
+            // ladder answers nothing; hit live in the r660 witness run under
+            // congestion) — no longer vanish. The gate ENGAGED and the user
+            // is entitled to see that it ran.
+            else {
               pushCall({
                 stepId: step.stepId,
                 stepLabel: step.label,
                 agentName: agentRow.name,
-                engine: gate.judge,
-                model: gate.via,
-                ms: gate.ms,
+                engine: gate ? gate.judge : "gate",
+                model: gate ? gate.via : "no-judge-available",
+                ms: gate ? gate.ms : 0,
                 ok: true,
                 attempt: 1,
-                note: `Decision gate uncertain ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — no confident verdict; output accepted unchanged`,
+                note: gate
+                  ? `Decision gate uncertain ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — no confident verdict; output accepted unchanged`
+                  : `Decision gate engaged but no judge answered — output accepted unchanged (verdict not possible, not a pass)`,
               });
             }
           } catch {

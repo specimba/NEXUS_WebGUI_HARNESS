@@ -228,7 +228,8 @@ function CallLogList({ log }: { log: RunCallLogEntry[] }) {
                           : c.note.startsWith("Decision gate PASS")
                             ? "text-emerald-300/90"
                             : c.note.startsWith("Decision gate uncertain") ||
-                                c.note.startsWith("Decision gate judge errored")
+                                c.note.startsWith("Decision gate judge errored") ||
+                                c.note.startsWith("Decision gate engaged but no judge answered")
                               ? "text-foreground/60"
                               : laneOfEntry(c) === "server-relay"
                                 ? "text-sky-300/90"

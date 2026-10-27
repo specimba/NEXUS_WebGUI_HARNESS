@@ -32,6 +32,9 @@ import { archiveServerLaneRun } from "@/lib/run-archive";
 // adapter the run panel uses — the board is a second honest call site, not a
 // reimplementation. No chip when every criterion is bypassed (no signal, no chip).
 import { harnessChipForRun } from "@/lib/trace-trial";
+// r660: the looped-depth outcome reaches the Runs board — same shared adapter
+// as the run panel (single mapping, second honest call site, r649 doctrine).
+import { loopedOutcomeChip } from "@/lib/looped-outcome";
 
 /** v24: one server-lane AutomationRun row (from /api/automation/sync GET). */
 interface ServerRunRow {
@@ -349,6 +352,9 @@ function RunCard({
   // task outcome on every board card — emerald "harness n/n" when every scored
   // criterion passes, amber with the failed criteria named in the tooltip.
   const harnessChip = harnessChipForRun(run.steps, run.status);
+  // r660: first looped step on the card — the board card mirrors the run
+  // panel's outcome-toned chip so a loop's verdict is legible at board scale.
+  const loopedStep = run.steps.find((s) => s.looped);
 
   return (
     <button
@@ -440,6 +446,26 @@ function RunCard({
           >
             ↯ deep skipped ({run.degradedDeep.skipped})
           </span>
+        ) : null}
+        {loopedStep?.looped ? (
+          (() => {
+            const oc = loopedOutcomeChip(loopedStep.looped.reason);
+            return (
+              <span
+                title={`Looped-depth: ${loopedStep.looped.k} tied pass(es) of ${loopedStep.looped.r} on "${loopedStep.label}", exit ${loopedStep.looped.reason} — ${oc.says} (arXiv 2610.31421 adaptation)`}
+                className={cn(
+                  "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                  oc.tone === "pass" &&
+                    "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                  oc.tone === "warn" &&
+                    "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                  oc.tone === "muted" && "border-border bg-muted/40 text-muted-foreground"
+                )}
+              >
+                ↻ looped {loopedStep.looped.k}/{loopedStep.looped.r}
+              </span>
+            );
+          })()
         ) : null}
         {harnessChip ? (
           <span

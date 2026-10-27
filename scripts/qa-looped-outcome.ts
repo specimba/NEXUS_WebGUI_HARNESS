@@ -44,6 +44,9 @@ check("runner writes cap-reached", runner.includes('"cap-reached"'));
 const panel = readFileSync("src/components/nexus/workflows/workflow-run-panel.tsx", "utf8");
 check("run-panel imports the shared adapter (no local re-map)", panel.includes('loopedOutcomeChip') && panel.includes("looped-outcome"));
 check("run-panel renders the visible suffix '· {oc.label}'", panel.includes("{oc.label}"));
+const kanban = readFileSync("src/components/nexus/workflows/run-kanban.tsx", "utf8");
+check("kanban board imports the SAME adapter (second honest call site)", kanban.includes('loopedOutcomeChip') && kanban.includes("looped-outcome"));
+check("kanban renders the looped chip with the shared tone classes", kanban.includes("loopedStep.looped.k") && kanban.includes('oc.tone === "pass"'));
 
 console.log(`qa-looped-outcome: ${pass}/${pass + fail}`);
 if (fail > 0) process.exit(1);
