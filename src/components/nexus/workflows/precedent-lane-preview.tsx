@@ -13,8 +13,13 @@
 
 import * as React from "react";
 import { listArchiveFull, type RunArchiveEntry } from "@/lib/run-archive";
-import { precedentRetrieval } from "@/lib/precedent-lane";
-import { harnessChipForArchiveRun } from "@/lib/trace-trial";
+// r652: the shared mapper (the preview and the runner now see the SAME
+// honesty verdict by construction) + the confidence gate made visible.
+import {
+  archiveRowsToPrecedents,
+  isConfidentTop,
+  precedentRetrieval,
+} from "@/lib/precedent-lane";
 import { cn } from "@/lib/utils";
 
 const QUERY_MIN = 12;
@@ -43,26 +48,16 @@ export function PrecedentLanePreview({
     if (entries == null || q.length < QUERY_MIN) return null;
     // The archive altitude: rows must pass the same honesty filter the
     // archive chip enforces — done + replayable output + known-good lineage.
-    return precedentRetrieval(
-      q,
-      entries.map((e) => ({
-        id: e.id,
-        workflowName: e.workflowName,
-        task: e.steps[0]?.name,
-        output: e.steps.map((s) => s.output).join(" "),
-        status: e.status,
-        lineageOk: (() => {
-          const chip = harnessChipForArchiveRun(e.steps, e.status);
-          return chip ? chip.tone !== "warn" : undefined;
-        })(),
-      })),
-      2,
-    );
+    return precedentRetrieval(q, archiveRowsToPrecedents(entries), 2);
   }, [entries, query]);
 
   if (lane == null) return null;
 
   const top = lane.exemplars[0];
+  // r652: the engine's confidence gate, visible at authoring time — the
+  // block rides fresh runs only when BOTH retrieval legs agree on the top
+  // match. The preview shows the same verdict the runner will apply.
+  const gate = isConfidentTop(lane);
   const detail = top
     ? `${lane.note} — two-occurrence block ${lane.promptBlock.length} chars assembled (anchor + generation-point target).`
     : `${lane.note} — the archive feeds this lane as past-successful runs settle.`;
@@ -91,6 +86,16 @@ export function PrecedentLanePreview({
           </span>
           <span className="text-muted-foreground">
             · {lane.eligible} eligible · block {lane.promptBlock.length} chars
+          </span>
+          <span
+            className={cn(
+              "rounded-full border px-1.5 py-px text-[10px] tabular-nums",
+              gate
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+            )}
+          >
+            {gate ? "gate ✓ both legs" : "gate · single-leg"}
           </span>
         </>
       ) : (

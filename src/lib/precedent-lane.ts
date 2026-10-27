@@ -29,6 +29,9 @@ import { twoOccurrencePrompt } from "./looped-icl";
 // The r579 RRF hybrid shim (BM25 + hashed-trigram cosine, RRF k=60) — the
 // embedder-agnostic retrieval layer the lane rides on.
 import { HybridRetriever } from "./rrf-retrieval";
+// The archive harness chip (r650) — the shared mapper reads its tone as the
+// row's lineage verdict so the lane and the chip can never disagree.
+import { harnessChipForArchiveRun } from "./trace-trial";
 
 /** The archive's no-output placeholder (run-archive writers) — refused. */
 const NO_OUTPUT_MARKER = "(no output recorded)";
@@ -171,5 +174,65 @@ export function precedentRetrieval(
     };
   } catch {
     return empty;
+  }
+}
+
+// ─── r652: one shared archive→row mapper (the single-adapter doctrine) ─────
+// The authoring preview AND the engine injection must see the same honesty
+// verdict — two ad-hoc mappers would drift, and a drifted mapper could quote
+// a row the archive chip refuses. Structural input (no import of the archive
+// store's types): anything with an id, an optional workflowName/status and a
+// steps array of {name?, output?, ms?}.
+export interface ArchiveEntryLike {
+  id: string;
+  workflowName?: string;
+  status?: string;
+  steps?: Array<{ name?: string; output?: string; ms?: number }>;
+}
+
+export function archiveRowsToPrecedents(
+  entries: ArchiveEntryLike[] | null | undefined,
+): PrecedentRow[] {
+  try {
+    const list = Array.isArray(entries) ? entries : [];
+    return list
+      .filter(
+        (e): e is ArchiveEntryLike =>
+          !!e && typeof e === "object" && typeof e.id === "string" && e.id.length > 0,
+      )
+      .map((e) => {
+        const steps = Array.isArray(e.steps) ? e.steps : [];
+        const chip = harnessChipForArchiveRun(steps, e.status);
+        return {
+          id: e.id,
+          workflowName: e.workflowName,
+          task: steps[0]?.name,
+          output: steps.map((s) => s?.output ?? "").join(" "),
+          status: e.status,
+          // The archive chip IS the lineage verdict: warn = blind row, not
+          // quotable (r650: you cannot quote what was never replayable);
+          // pass = lineage observable and clean; null chip = nothing
+          // observable at all = unknown = still eligible (unobservable is
+          // not fail).
+          lineageOk: chip ? chip.tone !== "warn" : undefined,
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
+// ─── r652: the confidence gate (dial-free, structural) ─────────────────────
+// The engine injects the two-occurrence block only when BOTH retrieval legs
+// (BM25 lexical + hashed-trigram cosine) independently rank the same
+// precedent top — two vocabularies agreeing is structural confidence; a
+// single-leg top match is honest noise a run should not pay tokens for.
+// The refusal is still observable: the runner reports the eligible count in
+// its call-log note, so even the negative case is O1-observable.
+export function isConfidentTop(result: PrecedentLaneResult | null | undefined): boolean {
+  try {
+    return !!result && result.exemplars.length > 0 && result.exemplars[0].legs === "both";
+  } catch {
+    return false;
   }
 }

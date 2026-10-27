@@ -5,7 +5,9 @@
  */
 
 import {
+  archiveRowsToPrecedents,
   eligiblePrecedents,
+  isConfidentTop,
   precedentRetrieval,
   type PrecedentRow,
 } from "../src/lib/precedent-lane";
@@ -107,6 +109,47 @@ check("edge: garbage input never throws => empty lane", garbage.exemplars.length
 const nonMatch = precedentRetrieval("quantum chromodynamics lattice gauge repair", ROWS, 2);
 check("edge: off-domain query stays structural (eligible told, <=2 exemplars, countable note)", nonMatch.eligible === 2 && nonMatch.exemplars.length <= 2 && nonMatch.note.startsWith("Precedent lane"));
 check("edge: deterministic end to end", JSON.stringify(precedentRetrieval(q, ROWS, 2)) === JSON.stringify(precedentRetrieval(q, ROWS, 2)));
+
+// ── r652: the shared archive→row mapper + the confidence gate ───────────
+// The mapper is the single-adapter doctrine: the r651 authoring preview and
+// the r652 engine injection MUST see the same honesty verdict by construc-
+// tion — a drifted second mapper could quote a row the archive chip refuses.
+const ARCHIVE_ENTRIES = [
+  {
+    id: "a1",
+    workflowName: "Novelty Lab",
+    status: "done",
+    steps: [
+      { name: "summarize the weekly research digest into novelty moves", output: "Executed 27 moves with zero failures.", ms: 1200 },
+      { name: "second", output: "Verdicts 0A/0W/0S clean.", ms: 300 },
+    ],
+  },
+  {
+    id: "a2",
+    workflowName: "Blind Run",
+    status: "done",
+    // Truly blind: NO output and NO duration — the chip's exact warn shape.
+    steps: [{ name: "opaque step", output: "(no output recorded)" }],
+  },
+  { id: "a3", workflowName: "No Steps", status: "done", steps: [] },
+] as never; // structural ArchiveEntryLike fixtures — the real store's rows are wider
+
+const mapped = archiveRowsToPrecedents(ARCHIVE_ENTRIES);
+check("r652 mapper: rows shaped (task = first step name, output = joined)", mapped.length === 3 && mapped[0].task === "summarize the weekly research digest into novelty moves" && (mapped[0].output ?? "").includes("27 moves") && (mapped[0].output ?? "").includes("0A/0W/0S"));
+check("r652 mapper: clean row lineageOk true (chip tone pass)", mapped[0].lineageOk === true);
+check("r652 mapper: blind row lineageOk false — chip and lane can never disagree", mapped[1].lineageOk === false);
+check("r652 mapper: nothing-observable row lineageOk unknown (undefined stays eligible)", mapped[2].lineageOk === undefined);
+check("r652 mapper: blind+empty rows EXCLUDED downstream (marker refused, empty refused)", precedentRetrieval("summarize the weekly research digest", mapped, 2).eligible === 1);
+check("r652 mapper: null input => [] (never throws)", archiveRowsToPrecedents(null).length === 0);
+check("r652 mapper: id-less entries dropped", archiveRowsToPrecedents([{ status: "done", steps: [] }, { id: "", status: "done", steps: [] }] as never).length === 0);
+check("r652 mapper: steps undefined tolerated => empty output", archiveRowsToPrecedents([{ id: "a9", status: "done" }] as never)[0].output === "");
+
+// Gate: the engine injects only on BOTH-legs agreement (dial-free, structural).
+const verbatim = precedentRetrieval("summarize the weekly research digest into novelty moves", ROWS, 2);
+check("r652 gate: verbatim task => both-legs top => confident", verbatim.exemplars.length > 0 && verbatim.exemplars[0].legs === "both" && isConfidentTop(verbatim));
+check("r652 gate: off-domain single-leg top => NOT confident", !isConfidentTop(nonMatch));
+check("r652 gate: empty lane => false", !isConfidentTop(garbage));
+check("r652 gate: null/undefined never throw => false", !isConfidentTop(null) && !isConfidentTop(undefined));
 
 // ── verdict ─────────────────────────────────────────────────────────────
 const total = pass + fails.length;

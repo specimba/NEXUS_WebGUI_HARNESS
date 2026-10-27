@@ -12,12 +12,19 @@ import {
 import { buildAngleHistory, latestScoredNovelty, maybeProposeSpawn, withFrontierSeed, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
 import { buildDefaultConstraints } from "@/lib/constraint-block";
 import { LOOP_PASSES_CAP } from "@/lib/looped-icl";
+// r652: precedent-exemplar lane — engine injection (slice 2). The same pure
+// layer the r651 authoring preview uses; no second mapper, no drift.
+import {
+  archiveRowsToPrecedents,
+  isConfidentTop,
+  precedentRetrieval,
+} from "@/lib/precedent-lane";
 import type { FrontierSeedRef } from "@/lib/spawn-proposal-engine";
 // r511 frontier seeding: the browser-side seed ledger the radar's Frontier tab
 // writes — stall proposals get enriched with the freshest unused seed.
 import { readFrontierSeeds } from "@/lib/frontier-scout";
 import { isAbortError, runAgentChat } from "@/lib/chat-client";
-import { archiveRun, engineStatusToArchiveStatus } from "@/lib/run-archive";
+import { archiveRun, engineStatusToArchiveStatus, listArchiveFull } from "@/lib/run-archive";
 import { maxParks, parkDelayMs, resolvePark, type ParkKind } from "@/lib/park-policy";
 // r306 reconciliation: the runner wires BOTH rotation halves — lane-rotation
 // owns family-window demotion (wire ORDER + same-family retry pacing),
@@ -741,6 +748,48 @@ async function loadPriorReportDigest(workflowId: string): Promise<PrevStepOutput
   }
 }
 
+// ─── r652: precedent-exemplar lane, engine injection (slice 2) ─────────────
+// The r651 authoring preview mirrored this contract; the engine now fulfils
+// it: the run archive is the precedent store — top-2 similar past-successful
+// outputs, two-occurrence layout, injected as a synthetic prior step so the
+// block sits closest to the generation point of every step context. Honesty
+// first: the SAME archiveRowsToPrecedents mapper the preview uses and the
+// SAME eligiblePrecedents filter; a dial-free confidence gate (both retrieval
+// legs agreeing on the top match) decides whether the block rides at all —
+// a single-leg top is honest noise, and the refusal still lands in the
+// call-log note so even the negative case is O1-observable. Best-effort:
+// any failure runs without it, same doctrine as the r457 digest.
+async function loadPrecedentInjection(
+  task: string
+): Promise<{ injection: PrevStepOutput | null; note: string }> {
+  try {
+    const entries = await listArchiveFull();
+    const rows = archiveRowsToPrecedents(entries);
+    const lane = precedentRetrieval(task, rows, 2);
+    if (!lane.promptBlock) {
+      // Nothing eligible (or no task text) — no signal, no note (no theatre).
+      return { injection: null, note: "" };
+    }
+    if (!isConfidentTop(lane)) {
+      const legs = lane.exemplars[0]?.legs ?? "none";
+      return {
+        injection: null,
+        note: `${lane.note} — top match ${legs}, below the both-legs confidence gate; block not injected`,
+      };
+    }
+    return {
+      injection: {
+        label: "Precedent lane (two-occurrence exemplars)",
+        agentName: "run archive",
+        output: lane.promptBlock,
+      },
+      note: `${lane.note} — block injected into this run's step contexts (closest to each generation point)`,
+    };
+  } catch {
+    return { injection: null, note: "" };
+  }
+}
+
 export async function executeWorkflowRun(
   options: ExecuteRunOptions
 ): Promise<string | null> {
@@ -1342,6 +1391,11 @@ export async function executeWorkflowRun(
    * with a clean slate so scheduled runs survive upstream hiccups instead of
    * dying at 7am. Every attempt is recorded in the run's call log.
    */
+  // ─── r652: precedent lane state (function scope — streamStep carries the
+  // note on the first executed step's dials). "" when the lane has nothing
+  // to say (fresh install, no eligible precedents, or below the gate).
+  let precedentNote = "";
+  let firstExecutedStepId = "";
   const streamStep = async (
     runStep: WorkflowRunStep,
     agentId: string,
@@ -1593,6 +1647,12 @@ export async function executeWorkflowRun(
         draft = "";
         localToolCalls = [];
         relayNotes = [];
+        // r652: the precedent lane's O1 note rides the FIRST executed step's
+        // dials — one countable "Precedent lane" line per run, attached to
+        // real telemetry (never a synthetic call row).
+        if (precedentNote && runStep.stepId === firstExecutedStepId) {
+          relayNotes.push(precedentNote);
+        }
         // r512: a retired lane pin leads the notes (the WHY), then whatever
         // rotation reason this attempt picked (rescue / healthy lane).
         if (pinRetiredNote) {
@@ -2024,9 +2084,24 @@ export async function executeWorkflowRun(
     // knowledge (user ask r455). Best-effort: any failure just runs without
     // it. Resume runs (startIndex > 0) skip this — their context is already
     // rebuilt from completed steps.
+    // The first EXECUTED step carries the lane's O1 note on its dials.
+    firstExecutedStepId = steps[startIndex]?.stepId ?? "";
     if (startIndex === 0 && wf.id) {
       const prior = await loadPriorReportDigest(wf.id);
       if (prior) prev.push(prior);
+      // ─── r652: precedent-exemplar lane, engine injection (slice 2) ──────
+      // The block rides LAST in prev — closest to every generation point
+      // (induction-head importance grows with token position, the paper's
+      // own finding — the two-occurrence rule wants the exemplar NEAR the
+      // generation ask). Best-effort: any failure runs without it, exactly
+      // like the r457 digest above.
+      try {
+        const lane = await loadPrecedentInjection(task);
+        if (lane.injection) prev.push(lane.injection);
+        precedentNote = lane.note;
+      } catch {
+        /* the lane never affects the run */
+      }
     }
 
     for (let i = startIndex; i < steps.length; i++) {
