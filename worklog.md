@@ -2109,3 +2109,26 @@ Round ID: r645 -> next patrol (job 473388)
 Next recommended action: unchanged from the r644 section above — (1) slice 2b editor toggle for loopedPasses; (2) live-witness the looped path if the free ladder is healthy; (3) TASKS.md truth-up + the r642-staged R7-symmetry recovery rule. Opening canary ONE-liner + chain audit as doctrine.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:golden=6/6 witness="looped-depth slice 2 shipped after gate self-catch (missing materialized loopedPasses on WorkflowRunStep — 1-line fix, no logic change); legacy path byte-identical (leg3 real run green); looped path dial-dependent, not live-witnessed (honest); vault canary slots=4 OWNER re-mirrored; console 0->0" restart="0/1"
+
+---
+Task ID: r645
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610272307)
+Task: r645 patrol — parallel-collision honest degrade (r643+r644 already shipped by a parallel session); ship handoff item 1: slice 2b editor toggle for the looped-depth experiment.
+
+Work Log:
+- OPENING: chain audit found HEAD=215779b1b = r644 already committed — a parallel session executed r643 (arXiv 2610.31421 deep-dive + slice 1 looped-icl.ts) and r644 (slice 2 engine wiring). r641 precedent applied: degrade honestly to r645, no duplicate work, merge-base respected. Tree clean on main.
+- Canary ONE-liner: /api/radar/hourly ok, digest fresh (15:02Z), findings=1 (warning, 0 critical), hourly history rolling; per r644 handoff vault.slots=4 (Owner re-mirrored — r640 incident functionally closed), registry armed.
+- Golden QA pre-edit: 6/6 legs green, console 0->0 — no fix-before-work needed.
+- INCREMENT (handoff item 1): slice 2b — workflow-editor-dialog.tsx: generate steps get a "Looped" Off/×2/×3 segmented radiogroup (amber active tint mirroring the run-row "↻ looped k/r" chip; per-option tooltips carry the paper citation + pass/re-judge semantics). Armed state swaps the muted generate hint for an amber "↻ tied rework ×N — every pass re-judged by the gate" line. Save normalization: only generate steps carry loopedPasses; r<2 collapses to absent because the runner engages only at rCap>=2 — the UI cannot lie in authored JSON (truth-in-save, mirrors the r503 lane-trim doctrine). Off = undefined = legacy byte-identical.
+- Styling polish (mandatory): amber armed hint + segmented control = this round's visible detail pass, house 11px chip language.
+- TASKS.md truth-up: P2 looped-depth entry now records r644 slice 2 SHIPPED (incl. the gate self-catch) and r645 slice 2b SHIPPED; remaining queue = live-witness on the free ladder, precedent-exemplar lane (r579 RRF shim), slice 3 radar post-growth recovery window + golden fixture rotation.
+
+Stage Summary:
+- The looped-depth experiment is now Owner-reachable end to end: author a generate step, click Looped ×2/×3, save — the verdict-gated tied-block loop arms on the next run. Paper SHAPES (not mechanism) stay the port discipline.
+- Honest scope: looped path remains dial-dependent, not live-witnessed (needs a real gate FAIL on the free ladder).
+
+Round Handoff:
+Round ID: r646 -> next patrol (job 473388)
+Next recommended action: (1) live-witness the looped path — author a 2-step workflow with Looped ×2 and a harsh gate prompt, run on the free ladder, confirm "Looped pass k/r" notes + amber chip on a real FAIL; (2) else handoff item 3: R7-symmetry recovery-witness rule in capability-radar.ts (prev<=1 -> now>=2 info finding, try/catch per the r640 doctrine); (3) precedent-exemplar lane via the r579 RRF shim (paper F6/F7: the run archive is our precedent lane).
+Blockers: none. Owner queue: none pending (vault slots=4, schedules armed).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:golden=6/6 witness="r645 slice 2b: loopedPasses editor toggle (Off/×2/×3 segmented, amber armed hint, truth-in-save normalization r<2->absent + review-strip); TASKS.md truth-up r644+r645; parallel-collision honest degrade (r643/r644 already shipped); console 0->0" restart="0/1"

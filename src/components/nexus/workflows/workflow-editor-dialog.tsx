@@ -392,6 +392,13 @@ export function WorkflowEditorDialog({
         // r503: same normalization for per-step lane pins — whitespace-only
         // collapses to absent so "pipeline default" stays the live signal.
         lane: s.lane?.trim() ? s.lane.trim() : undefined,
+        // r645: normalize the looped-depth opt-in — only generate steps carry
+        // it, and the runner engages the loop only at rCap >= 2, so r<2 (and
+        // review gates) collapse to absent instead of lying in authored JSON.
+        loopedPasses:
+          (s.kind ?? "generate") === "generate" && Math.floor(s.loopedPasses ?? 0) >= 2
+            ? Math.min(Math.floor(s.loopedPasses ?? 0), 3)
+            : undefined,
       }));
     if (validSteps.length === 0) {
       toast.error("Add at least one step with an agent");
@@ -798,9 +805,62 @@ export function WorkflowEditorDialog({
                         );
                       })}
                     </div>
+                    {/* r645 (paper adaptation slice 2b, arXiv 2610.31421):
+                        looped-depth opt-in for generate steps — on a gate
+                        FAIL the TIED rework prompt re-runs up to r passes,
+                        each re-judged. Off = legacy single rework (default,
+                        byte-identical); the runner engages only at r >= 2,
+                        hard cap 3 (RegBench plateau). Amber tint mirrors the
+                        run-row "↻ looped k/r" chip. */}
+                    {(step.kind ?? "generate") === "generate" ? (
+                      <div
+                        role="radiogroup"
+                        aria-label={`Looped depth for step ${i + 1}`}
+                        className="flex items-center gap-1.5"
+                      >
+                        <span className="text-[11px] text-muted-foreground">Looped</span>
+                        <div className="flex overflow-hidden rounded-lg border">
+                          {([null, 2, 3] as const).map((n) => {
+                            const active =
+                              n === null
+                                ? step.loopedPasses == null
+                                : step.loopedPasses === n;
+                            return (
+                              <button
+                                key={String(n)}
+                                type="button"
+                                role="radio"
+                                aria-checked={active}
+                                title={
+                                  n === null
+                                    ? "Legacy single-rework path (default)"
+                                    : `On a gate FAIL, the tied rework prompt re-runs up to ×${n}, each pass re-judged — arXiv 2610.31421 looped-depth adaptation`
+                                }
+                                onClick={() =>
+                                  patchStep(step.id, { loopedPasses: n ?? undefined })
+                                }
+                                className={cn(
+                                  "px-2 py-0.5 text-[11px] font-medium tabular-nums transition-colors",
+                                  active
+                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                    : "text-muted-foreground hover:bg-muted"
+                                )}
+                              >
+                                {n === null ? "Off" : `×${n}`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                     {(step.kind ?? "generate") === "review" ? (
                       <span className="text-[11px] text-amber-600/90 dark:text-amber-400/90">
                         ↻ Audits the previous step — can send it back for one rework pass
+                      </span>
+                    ) : (step.loopedPasses ?? 0) >= 2 ? (
+                      <span className="text-[11px] font-medium text-amber-600/90 dark:text-amber-400/90">
+                        ↻ tied rework ×{Math.min(Math.floor(step.loopedPasses ?? 0), 3)} —
+                        every pass re-judged by the gate
                       </span>
                     ) : (
                       <span className="text-[11px] text-muted-foreground">
