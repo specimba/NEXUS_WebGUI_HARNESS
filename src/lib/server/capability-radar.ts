@@ -378,6 +378,39 @@ export async function runCapabilityCheck(): Promise<RadarDigest> {
     });
   }
 
+  // R7 — registry collapse canary (r640 lesson: a silent DB swap took 4 armed
+  // schedules to 0 between two rounds and nothing flagged it for a full hour).
+  // Compares this pass against the most recent PREVIOUS digest row; the canary
+  // must never break the digest itself (same doctrine as the r640 archive split).
+  try {
+    const prevRow = await db.capabilityCheck.findFirst({
+      where: { id: { not: bucket } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, digestJson: true },
+    });
+    const prev = prevRow ? (JSON.parse(prevRow.digestJson) as RadarDigest) : null;
+    const prevEnabled = typeof prev?.registry?.enabled === "number" ? prev.registry.enabled : null;
+    if (prevEnabled !== null && prevEnabled >= 2 && enabledRows.length === 0) {
+      F.push({
+        severity: "critical",
+        area: "registry",
+        title: `Registry collapsed ${prevEnabled} → 0 armed schedules`,
+        evidence: `Previous digest ${prevRow!.id} showed ${prevEnabled} enabled; this pass sees an empty registry — the classic silent DB-swap signature (witnessed r640).`,
+        tryable: "Re-arm schedules from the Workflows cards and re-mirror the vault key (browser BYOK one-click). If rows exist but disabled, resume them individually.",
+      });
+    } else if (prevEnabled !== null && prevEnabled >= 3 && enabledRows.length <= prevEnabled - 2) {
+      F.push({
+        severity: "warning",
+        area: "registry",
+        title: `Registry shrank ${prevEnabled} → ${enabledRows.length} armed schedules`,
+        evidence: `Compared against previous digest ${prevRow!.id}. If the drop was intentional, ignore this pass.`,
+        tryable: "If unintentional, check for silent DB restores (r640 pattern) before re-arming.",
+      });
+    }
+  } catch {
+    // canary is best-effort: a failed comparison never blocks the digest
+  }
+
   // R5 — parked schedules (the 3-strike breaker).
   if (parked.length > 0) {
     F.push({

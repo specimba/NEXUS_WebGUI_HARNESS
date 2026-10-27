@@ -2020,3 +2020,26 @@ Round ID: r641 -> next patrol (job 473388)
 Next recommended action: r641 — opening batch + canaries (radar vault.slots; HEAD chain audit like this round's: expect HEAD = r641-parent chain containing 8d0a085db; if a parallel agent committed again, merge-base-check before ANY destructive op, respect their work, commit on top). If vault slots>0 -> Owner re-mirrored, brief thanks. If still 0 -> keep the one-click re-mirror briefing visible. Increment sourcing: normal (backlog thin; propose-to-Owner items or probe-led polish). If corruption recurs: scripts/db-recover-r640.py recipe + the parallel agent presumably re-runs their swap — coordinate via worklog, never race a live recovery.
 Blockers: none patrol-side; Owner one-click actions pending.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="post-push audit: parallel recovery agent found+respected (d038ec242 live swap + 2d2a0b678); merge-base verified; vault briefing corrected to one-click re-mirror (browser BYOK survives, seed files absent, slots=0 canary); db binaries untracked+ignored (Owner arbitration noted)" restart="0/1"
+
+---
+Task ID: r641
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610272137)
+Task: Patrol r641 — per r640 handoff: opening + canaries (vault.slots, HEAD chain audit); increment from thin backlog.
+
+Work Log:
+- OPENING (1 round): chain audit clean (HEAD=12ba994e7 = origin = fork; NO parallel commits since r640); server 200; canary vault.slots=0 (Owner one-click re-mirror still pending — briefing stays visible), registry.enabled=0; radar producing honest findings (429 congestion warning). Dirty tree = runtime gateway-pulse.json only (house pattern: swept into round commit). Worklog tail = r640-addendum, no foreign appends.
+- PROBE-LED OBSERVATION (2 capped reads): (1) the vault-empty rule R4 already exists (vaultCount===0 && enabledRows.length>0 -> "Closed-tab lane cannot dial") — no feature gap there; (2) findings <li> rows are non-interactive with consistent severity colors (red/amber/sky + glyphs) — no styling defect found in the concrete reads, so the styling clause is skipped honestly (no theatre; doctrine forbids speculative sweeps).
+- INCREMENT (1 edit): R7 registry-collapse canary in capability-radar.ts — encodes the r640 silent-swap lesson as a rule: reads the most recent PREVIOUS CapabilityCheck digest (id != current bucket, ordered desc, try/catch-wrapped per the r640 resilience doctrine), compares registry.enabled. Collapse (>=2 -> 0) emits a CRITICAL finding naming the previous digest bucket as evidence; shrink (>=3 -> -2) emits a warning. Best-effort by design: any comparison failure never blocks the digest.
+- WITNESS (1 round): live radar call after edit — R7 executed clean (prevEnabled=0 on the fresh generation -> correctly silent; the rule requires prev>=2 by design so the post-swap zero state does not false-positive). tsc rc=0; lint rc=0 EXACTLY 33 warnings; golden 6/6 (leg1 census badge now honestly reads "2h ago" — fmtRel doing its job; leg2 guard 942x300 stable; console 0->0).
+
+Stage Summary:
+- The radar now self-detects the exact failure class that cost the Owner their schedules on r640: future silent DB swaps collapse -> a CRITICAL "Registry collapsed N -> 0" finding lands in the digest + panel within the hour, with re-arm/re-mirror tryables.
+- vault.slots=0 persists — Owner briefing visible: one-click re-mirror in the vault panel + re-arm schedules.
+- Styling clause skipped honestly this round (no concrete defect in capped reads; r637/r638/r640 carry recent polish).
+- Chain integrity doctrine proved out again: the post-push audit pattern is cheap and would catch any in-container history mutation.
+
+Round Handoff:
+Round ID: r642 -> next patrol (job 473388)
+Next recommended action: r642 — opening batch + canaries as doctrine (HEAD chain audit; vault.slots — if >0, thank the Owner in worklog; if still 0 and enabled==0, the R7 canary stays correctly silent). Increment sourcing: (a) fix-before-work; (b) backlog thin — the R7 canary now covers registry collapse; remaining honest candidates: propose-to-Owner items (peer blind-score live witness run; harness-adapter HTTP route nod; plugin slice 3 undefined) or a probe-led polish (max 2 reads, prior observations only). (c) If a golden leg fails: curl-root-first (r638 lesson), then classify. Never invent Owner keys; never touch cron config.
+Blockers: none patrol-side; Owner one-click actions still pending.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="R7 registry-collapse canary shipped+live-witnessed (prev-digest comparison, best-effort try/catch; correctly silent at prevEnabled=0); vault canary slots=0 (Owner pending); styling clause skipped honestly (no concrete defect); console 0->0" restart="0/1"
