@@ -2545,3 +2545,28 @@ Round ID: r661 (either lane)
 Next recommended action: unchanged from r660 handoff — (1) judge-answers live gate confirmation (>=200-char output; morning ladder windows are freshest); (2) witness the chain radar chips on the next registry finding; (3) degraded-deep live telemetry during a congestion window; (4) Owner-witnessed vault restore happy path (real file chooser).
 Blockers: none. Owner queue: todo-list audit delivered 9/9; cron lane armed.
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact) qa=26/26+28/28+20/20+14/14+17/17 browser:golden=console-0-both-surfaces witness="vault strip '20 lanes stored, dials Vyce AI first, acquisition 3/3 keyed' drift-chip-gone; cron 478769 armed 15-min webDevReview" restart="0/1"
+
+---
+Task ID: r661
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280637)
+Task: r661 patrol — judge-answers live gate confirmation (handoff item 1, the morning ladder window r660 pointed at), golden QA first, cleanup, receipts.
+
+Work Log:
+- OPENING: worklog tail read (OWN-c-closeout: todo audit 9/9, webDevReview cron 478769 armed). Server 200; golden QA (qa-golden-r655.sh) green first — console 0/0/0, frontier scroller moved=true.
+- LIVE WITNESS (handoff item 1, 6th live run): throwaway fixture "QA r661 Gate Witness" injected per the r659 recipe (single generate step, a-researcher, loopedPasses=2, declared test setup); fulfillable task (index-explanation essay, plain prose) driven headlessly through the real dialog (Run -> Pipeline task textarea via aria-label fill -> Run). Output 2164 chars — the gate's 200-char floor CLEARED, gate ENGAGED.
+- THE R660 FIX PROVED LIVE: callLog carries the no-judge line ×2 — "Decision gate engaged but no judge answered — output accepted unchanged (verdict not possible, not a pass)" — once per gated step (authored step + standard-depth synthetic verification pass). Runs 1-5 fell through exactly this hole silently; the engaged-but-unanswered fall-through now SPEAKS at runtime. Run done/done; looped correctly never engaged (no FAIL verdict); callLogRows 4.
+- Judge answered in 0/6 live runs (r659 ×3, r660 ×1, r661 ×2 gate engagements) — ladder congestion persists even in the morning window; the confident-verdict line (PASS emerald / FAIL amber) is the sole remaining witness, now purely judge-availability-gated.
+- UI note (honest): the open run-dialog snapshot did not surface the note text (call-log section collapsed; headless locate friction 4th strike, r654/r656/r657 class) — the renderer is QA-pinned (qa-gate-witness 14/14 pins the muted no-judge panel family); data-level live witness + pinned renderer = honest coverage.
+- PROCESS LESSON: agent-browser open to the SAME URL does NOT reload — the in-memory store kept 6 workflows while localStorage carried the injected 7 (debouncedStorage masked the divergence; fixture rendered only after location.reload()). Cost several locate rounds and pushed this round past its tool budget; recipe updated for future witness rounds: always location.reload() after store injection.
+- CLEANUP: fixture removed pre-reload, store rehydrated 6/6, qa_present=false, console 0. Vault surfaces re-verified this session earlier (readiness strip "20 lanes stored, dials Vyce AI first, acquisition 3/3 keyed", drift-chip-gone persists).
+- RECEIPTS: TASKS.md Looped entry gains the r661 receipt (visible-line contract live-proven; open narrowed to judge-availability); scripts/r661-tasks-receipt.ts is the anchored one-shot editor. No FixNote (no user-visible code change this round — witness round).
+
+Stage Summary:
+- The r660 repair is no longer just QA-pinned: the no-judge gate line fired LIVE on a real run, twice, on both gated steps — silent-accept is dead at every observed path (uncertain, judge-errored, no-judge all speak; PASS emerald and FAIL amber remain pinned + their live firing is availability-gated).
+- The staged witness arc (r645 → r661) is closed at the contract level: every gate outcome now has either a live firing or a pinned renderer, and the one missing piece needs only a judge that answers.
+
+Round Handoff:
+Round ID: r662 -> next patrol (job 473388)
+Next recommended action: (1) the confident-verdict witness is purely judge-availability-gated — try one gate-worthy run when the ladder is calm; if the free ladder stays mute, consider a vault-keyed non-free lane for one deliberate judge dial (Owner keys, single cheap call); (2) witness the ⛓ radar chips on the next registry finding; (3) degraded-deep live telemetry in a congestion window; (4) Owner-witnessed vault restore happy path.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact) qa:golden=0/0/0 witness="r660 no-judge line FIRED LIVE x2 (authored + verification steps, 2164-char output, done/done); judge answered 0/6; fixture removed 6/6; console 0" restart="0/1"
