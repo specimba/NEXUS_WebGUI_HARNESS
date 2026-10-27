@@ -175,6 +175,8 @@ type RadarFindingView = {
   title: string;
   evidence: string;
   tryable: string | null;
+  /** r646: good-news finding (R7-symmetry recovery witness) — emerald tint. */
+  tone?: "positive";
 };
 type RadarDigestView = {
   generatedAt: string;
@@ -1075,11 +1077,19 @@ export function ServerAutopilot() {
                         ? "border-red-500/30 bg-red-500/[0.06] text-red-300"
                         : f.severity === "warning"
                           ? "border-amber-500/30 bg-amber-500/[0.06] text-amber-300"
-                          : "border-sky-500/25 bg-sky-500/[0.05] text-sky-200/90",
+                          : f.tone === "positive"
+                            ? "border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-300"
+                            : "border-sky-500/25 bg-sky-500/[0.05] text-sky-200/90",
                     )}
                   >
                     <p className="font-medium">
-                      {f.severity === "critical" ? "✗" : f.severity === "warning" ? "⚠" : "ⓘ"} {f.title}
+                      {f.severity === "critical"
+                        ? "✗"
+                        : f.severity === "warning"
+                          ? "⚠"
+                          : f.tone === "positive"
+                            ? "✓"
+                            : "ⓘ"} {f.title}
                     </p>
                     <p className="mt-0.5 text-muted-foreground">{f.evidence}</p>
                     {f.tryable ? (

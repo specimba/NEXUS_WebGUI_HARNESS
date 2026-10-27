@@ -72,6 +72,9 @@ export interface RadarFinding {
   evidence: string;
   /** A concrete adaptation the owner or an agent can act on. null = none. */
   tryable: string | null;
+  /** r646: "positive" = good-news finding (e.g. the R7-symmetry recovery
+   * witness) — the UI tints it emerald instead of the neutral sky info tone. */
+  tone?: "positive";
 }
 
 export interface RadarSeed {
@@ -405,6 +408,20 @@ export async function runCapabilityCheck(): Promise<RadarDigest> {
         title: `Registry shrank ${prevEnabled} → ${enabledRows.length} armed schedules`,
         evidence: `Compared against previous digest ${prevRow!.id}. If the drop was intentional, ignore this pass.`,
         tryable: "If unintentional, check for silent DB restores (r640 pattern) before re-arming.",
+      });
+    } else if (prevEnabled !== null && prevEnabled <= 1 && enabledRows.length >= 2) {
+      // r646 — R7-symmetry: the recovery direction. r642 witnessed 0 → 4
+      // armed schedules return between rounds with nothing flagging it; the
+      // guard protected the collapse, not the good news. An info finding
+      // makes the heal visible so the next digest reads as witnessed, not
+      // assumed. Same best-effort try/catch as the collapse legs above.
+      F.push({
+        severity: "info",
+        area: "registry",
+        tone: "positive",
+        title: `Registry recovered ${prevEnabled} → ${enabledRows.length} armed schedules`,
+        evidence: `Previous digest ${prevRow!.id} showed ${prevEnabled} enabled; this pass sees ${enabledRows.length} — schedules re-armed (Owner action or heartbeat re-registration) and the lane is whole again.`,
+        tryable: null,
       });
     }
   } catch {

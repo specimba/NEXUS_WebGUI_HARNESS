@@ -2132,3 +2132,23 @@ Round ID: r646 -> next patrol (job 473388)
 Next recommended action: (1) live-witness the looped path — author a 2-step workflow with Looped ×2 and a harsh gate prompt, run on the free ladder, confirm "Looped pass k/r" notes + amber chip on a real FAIL; (2) else handoff item 3: R7-symmetry recovery-witness rule in capability-radar.ts (prev<=1 -> now>=2 info finding, try/catch per the r640 doctrine); (3) precedent-exemplar lane via the r579 RRF shim (paper F6/F7: the run archive is our precedent lane).
 Blockers: none. Owner queue: none pending (vault slots=4, schedules armed).
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:golden=6/6 witness="r645 slice 2b: loopedPasses editor toggle (Off/×2/×3 segmented, amber armed hint, truth-in-save normalization r<2->absent + review-strip); TASKS.md truth-up r644+r645; parallel-collision honest degrade (r643/r644 already shipped); console 0->0" restart="0/1"
+
+---
+Task ID: r646
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610272337)
+Task: r646 patrol — R7-symmetry recovery-witness rule (handoff item 2; item 1 live-witness deferred on an honest ladder-health signal).
+
+Work Log:
+- OPENING: chain audit clean — HEAD=876ce9956 (r645), tree clean, no parallel appends (last section = r645, mine). Canary: digest 15:02Z bucket, findings=1 warning "Live gateway probe rate-limited (429)" — the ladder is throttled right now, so handoff item 1 (live-witness the looped path, which needs healthy free-ladder dials) is honestly DEFERRED; executed item 2.
+- INCREMENT: R7-symmetry recovery-witness rule in capability-radar.ts — the collapse guard (prev>=2 -> 0 critical; prev>=3 shrink>=2 warning) gains the recovery direction: prev<=1 -> now>=2 pushes an INFO finding "Registry recovered A -> B armed schedules" citing the previous digest id as evidence. r642 witnessed 0->4 return silently; the guard protected the collapse, not the good news. Same best-effort try/catch — the canary never breaks the digest.
+- STYLING POLISH (mandatory) + feature: findings carry a typed optional tone:"positive" (RadarFinding + the client RadarFindingView mirror); the radar findings list tints positive findings emerald with a "✓" marker instead of the neutral sky "ⓘ" — good news reads green at a glance. First carrier: the recovery witness.
+- Honest scope: the recovery branch is dormant until the next real <=1 -> >=2 transition (current state 4 -> 4 fires nothing, correctly); dial-free gates prove compile/lint/runtime cleanliness, not the transition itself.
+
+Stage Summary:
+- The registry canary is now symmetric: it guards the collapse AND witnesses the heal, closing the r642-staged rule. The positive tone gives the radar an honest vocabulary for good news (one emitter today, structurally open for more).
+
+Round Handoff:
+Round ID: r647 -> next patrol (job 473388)
+Next recommended action: (1) live-witness the looped path (staged twice now: author a 2-step workflow with Looped ×2 + a harsh gate prompt on a healthy free ladder — the 429 warning says wait for the throttle window); (2) else precedent-exemplar lane via the r579 RRF shim (paper F6/F7: the run archive is our precedent lane — top-2 similar past-successful outputs as exemplars in the two-occurrence layout); (3) else slice 3 radar post-growth recovery-window annotation (the recovery witness now provides the marker vocabulary).
+Blockers: none. Owner queue: none pending (vault slots=4, schedules armed).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:golden=6/6 witness="R7-symmetry recovery-witness rule (prev<=1 -> now>=2 info finding, best-effort try/catch) + typed tone:'positive' findings (emerald tint + ✓ marker, first carrier = recovery witness); live-witness deferred on honest 429 ladder signal; console 0->0" restart="0/1"
