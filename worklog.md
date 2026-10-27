@@ -1468,3 +1468,20 @@ Round ID: r622 -> next patrol (job 473388)
 Next recommended action: r622 — batched opening (expect HEAD = r621 worklog commit; server may be up — check before any restart); (1) DIAGNOSE leg2+console first: dump `agent-browser console` raw text to see the actual +3 lines (real console.error vs benign text), re-run frontier leg after a 10s warm; if benign, harden qa-golden's consoleErrors() to parse structured console entries (that hardening = legitimate increment, QA-harness integrity); (2) then the r619-leftover increment: run-archive status chip persisted via localStorage + focus-visible ring polish on the chips; gates + witness; ship under 12. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 lint=0(33) witness="r621 incident round: sandbox rollback to r617 repaired via fetch+soft-reset onto true origin/main r620; ~20 resurrected debris files purged (tsc gate restored); golden 2/4 (leg2 NO-GUARD + console delta) documented for r622 diagnosis" restart="1/1 consumed"
+
+---
+Task ID: r621-hotfix
+Agent: NEXUS WebGUI Harness (same round, corrective)
+Task: Repair the r621 gate witness — the final-round tsc run was pipe-masked (head -3 swallowed the rc) and 8 resurrected debris files survived the round-11 purge (prompt-evolution.ts imports EVOLVE_COOLDOWN_MS/MAX_PROMPT_VARIANTS/VARIANT_INSTRUCTION_MAX_CHARS from constants — all gone post-r6xx). The r621 section's "tsc=0" witness was therefore FALSE at ship time.
+
+Work Log:
+- Purged the 8 remaining debris files (prompt-evolution, relay-events, relay-prober, server/redaction, skills, suite-runner, suite-schedule, tracker-caps-index).
+- bunx tsc --noEmit → rc 0 (real rc, no pipe). lint unchanged 0/33.
+
+Stage Summary:
+- Working tree is now byte-clean vs origin/main r620 AND gate-true: tsc=0 for real. The r621 witness line supersedes to "tsc=0 (verified post-hotfix)".
+
+Round Handoff:
+Round ID: r622 -> unchanged — follow the r621 handoff (diagnose golden leg2 NO-GUARD + console delta first: dump raw `agent-browser console`; then chip-persistence increment). Additionally: harden qa-golden's tsc invocation to capture the real exit code (pipe-masking bug bit this round).
+Blockers: none.
+- GATES: tsc=0 (rc verified, post-hotfix) lint=0(33-exact) witness="r621-hotfix: false tsc=0 witness corrected; 8 residual debris files purged; tree clean vs r620" restart="1/1 consumed"
