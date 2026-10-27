@@ -239,6 +239,7 @@ function RunCard({
         data-wf-card={card.workflowId}
         className={cn(
           "group w-full rounded-xl border border-pink-500/25 bg-card/80 p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-pink-500/50 hover:shadow-md hover:shadow-pink-500/10",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           spotlighted &&
             "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-background"
         )}
@@ -249,7 +250,7 @@ function RunCard({
             {card.workflowName}
           </span>
           <ArrowRight
-            className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+            className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
             aria-hidden
           />
         </div>
@@ -280,6 +281,7 @@ function RunCard({
         className={cn(
           "group w-full rounded-xl border border-cyan-500/30 bg-card/80 p-3 text-left shadow-sm transition-all duration-200",
           "hover:-translate-y-0.5 hover:border-cyan-500/60 hover:shadow-md hover:shadow-cyan-500/10",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           spotlighted && "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-background"
         )}
       >
@@ -347,6 +349,7 @@ function RunCard({
       data-wf-card={card.workflowId}
       className={cn(
         "card-in group w-full rounded-xl border bg-card/80 p-3 text-left shadow-sm transition-all duration-200",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
         spotlighted &&
           "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-background",
         "hover:-translate-y-0.5 hover:shadow-md",

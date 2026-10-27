@@ -1612,3 +1612,25 @@ Round ID: r626 -> next patrol (job 473388)
 Next recommended action: r626 — batched opening (expect HEAD = r625 commit; server up; qa:golden 1 round, expect 5/5). Budget discipline: decide the increment from THIS handoff before reading anything; cap inspection at 2 rounds. Increment candidates: (a) run-kanban RunCard hover affordances to the violet vocabulary (last major card surface without it); (b) "via" lane stamp also on stopped/error replies in the playground is ALREADY covered (stamp happens at send) — instead: strategy-card.tsx hover vocabulary sweep if kanban is trivially covered; (c) fix-before-work wins. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=5/5 witness="wf-card hover/focus-within violet rings (6/6 probe); playground via-lane stamp shipped (tsc-verified, renders after real turns); console delta 0" restart="0/1 consumed"
+
+---
+Task ID: r626
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271407)
+Task: Patrol r626 — per r625 handoff: run-kanban RunCard affordances to the violet vocabulary; budget discipline (increment decided from handoff, inspection capped).
+
+Work Log:
+- OPENING: HEAD = 81e169cea (r625), server up (200, restart untouched), tree clean. qa:golden 5/5 pre-edit.
+- INSPECTION (2 rounds as capped): RunCard has 3 variants (scheduled/pink, server/cyan, run/status-tinted) — ALL already have per-lane hover accents (identity by design; not flattened into violet) but ZERO focus-visible styles repo-wide in the file. strategy-card.tsx: non-interactive display — honest skip, no fake affordances.
+- INCREMENT: focus-visible violet ring (outline-none + ring-2 violet-500/40 + offset-1) on all 3 RunCard variants + keyboard parity for the scheduled card's hover-revealed ArrowRight (group-focus-visible:opacity-100).
+- QA INCIDENT (probe-induced, root-caused, repaired in-round): the post-edit probe clicked "Runs board layout" (aria-label) and boardOpen turned out PERSISTED — the subsequent golden run failed 4/5 because leg3's ^run$ button does not exist in board mode. NOT a code regression: clicking "Card grid layout" restored state → golden 5/5 with canonical signatures. DOCTRINE: stateful UI probes must restore prior state before golden (or run golden BEFORE probes). r627 hardening candidate: qa-golden could reset the ui-persist key at startup (it already reloads for witness residue).
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0. Probe: board-ok, 12/12 board cards carry the focus ring. Post-restore golden 5/5, console 34→34 delta 0.
+- Budget: 9 rounds — the r625 discipline held (increment chosen from handoff, inspection capped at 2, probes/golden folded into shared rounds).
+
+Stage Summary:
+- The last major card surface (runs board) now has keyboard-visible focus affordances in the shared violet vocabulary while keeping its per-lane hover identities; the hover-only arrow affordance works for keyboard users too.
+
+Round Handoff:
+Round ID: r627 -> next patrol (job 473388)
+Next recommended action: r627 — batched opening (expect HEAD = r626 commit; server up; qa:golden 1 round, expect 5/5). Candidates: (a) qa-golden hardening: reset the persisted ui-state key (workflowBoardOpen etc.) at startup so probe pollution can never fail a leg again — harness integrity, small; (b) styling arc: gateway-pulse-chip / schedule chips focus-visible sweep if any interactive element lacks it; (c) fix-before-work wins. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0 qa:golden=5/5 witness="kanban RunCard focus-visible rings 12/12 probe; arrow keyboard parity; probe-pollution incident root-caused (persisted boardOpen) + repaired, golden canonical" restart="0/1 consumed"
