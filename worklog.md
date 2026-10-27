@@ -1503,3 +1503,25 @@ Round Handoff:
 Round ID: r622 -> follow r621 handoff: (1) diagnose golden leg2 NO-GUARD + console delta (raw `agent-browser console` dump); (2) harden qa-golden: unmasked tsc rc + structured console parsing; (3) then chip-persistence increment. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc=0 verified unmasked, post-hotfix2) lint=0(33-exact) witness="r621-hotfix2: rm-verified purge, unmasked rc, doctrine notes recorded" restart="1/1 consumed"
+
+---
+Task ID: r622
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271207)
+Task: Patrol r622 — per r621-hotfix2 handoff: diagnose golden leg2 NO-GUARD + console delta, harden qa-golden, then chip-persistence increment. Round became a DB-corruption root-cause + repair round.
+
+Work Log:
+- DIAGNOSIS (raw `agent-browser console` dump per handoff): `[automation-bridge] sync failed: 500` repeating, body = Prisma "Invalid `db.automationState.upsert()` invocation". dev.log: `SqliteError { extended_code: 11, "database disk image is malformed" }` on AutomationState findUnique/upsert. The golden console delta (+3/run) = those warning bodies each containing the substring "error" — REAL breakage, and incidentally exposes qa-golden's consoleErrors() as a substring counter (hardening still owed).
+- FORENSICS (all evidence preserved in db/): main-only file integrity OK but ancient (2 tables, Sep 14 vintage) vs 1.5MB Oct-26 WAL = mixed generations from the rollback kill. bun:sqlite live checkpoint → corrupt; VACUUM INTO → corrupt; WAL-replay-over-blank-matching-page-size-main (wal header parsed: page_size 4096, ckpt_seq=0, torn chain) → malformed. Oct-26 rows are NOT recoverable in-budget. Backups: custom.db.corrupt-backup-*, custom.db-wal/shm.corrupt-backup-*, custom.db.pre-reset-backup-*.
+- REPAIR: rm live db trio (backed up) → `bunx prisma db push --skip-generate` (schema re-laid, 13ms) → dev-restart (deliberate DB-swap restart; server was UP, so the down-state restart budget was never touched this round).
+- VERIFICATION: qa:golden **4/4 GREEN** — leg2 EXACT pre-rollback signature (guard 942x300 sh=6181), console delta 0 (43→43, baseline-aware; the 43 is accumulated browser-session history). ROOT CAUSE CONFIRMED: DB corruption, zero code defect.
+- DATA-LOSS DISCLOSURE (Owner): server DB reset schema-clean+empty. Vault was EMPTY (audit-1027 verified) — no keys lost. Owner-authored content lives in browser localStorage/IndexedDB stores and re-syncs on next visit; server-operational state (runs/queue/logs/strategy items) regenerates deterministically. Forensic backups kept locally, now gitignored.
+- Increment this round = the repair itself (user-facing: console clean, radar/workflows healthy again). qa-golden hardening + r619-leftover chip-persistence deferred intact to r623.
+
+Stage Summary:
+- The r621 incident is now FULLY closed: rollback → history restored (r621) → debris purged (r621-hotfix2) → DB root-caused, repaired, verified green (r622). Golden 4/4 with the canonical signatures.
+
+Round Handoff:
+Round ID: r623 -> next patrol (job 473388)
+Next recommended action: r623 — batched opening (expect HEAD = r622 commit; server up; qa:golden 1 round); increment: (1) harden qa-golden — unmasked tsc rc (redirect, never pipes) + structured console parsing (count real console.error entries, not "error" substrings); (2) r619-leftover: run-archive status chip persisted via localStorage + focus-visible ring polish; ship BOTH if budget allows, else (1) first. Never invent Owner-key-dependent work.
+Blockers: none (Owner-side: forensic backups in db/ await a keep/prune decision whenever convenient).
+- GATES: tsc=0 (rc unmasked via redirect) lint=0(33) qa:golden=4/4 witness="DB corruption root-caused (mixed-generation WAL vs snapshot main) + repaired via clean prisma re-lay; golden back to canonical signatures; evidence preserved + gitignored" restart="1 deliberate DB-swap (server was up)" 
