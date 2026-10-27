@@ -624,6 +624,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflow run panel: after a Looped-armed step's FAIL branch, the chip reads '↻ looped k/r · pass' in emerald when the rework was accepted; refusals stay amber '· best kept'; a judge error shows neutral '· judge down' instead of warning amber",
   },
+  {
+    round: "r659",
+    title: "The Decision gate's silent verdicts now speak — uncertain accepts and judge errors leave honest witness lines",
+    detail:
+      "Three live witness runs (Looped FAIL-branch attempt) proved the gap: the per-step Decision gate ENGAGED (enabled, output over the 200-char floor, generate kind) but an UNCERTAIN judge verdict accepted the output with ZERO callLog trace — the user could not see the gate ran at all; a judge ERROR vanished the same way. Both silent branches now emit honest lines: 'Decision gate uncertain N% (via) — no confident verdict; output accepted unchanged' and 'Decision gate judge errored — no verdict arrived (infra stop, not quality)'. Companion styling: the panel's gate-note families split — a confident PASS now renders calm emerald (it previously wore warning amber ↻ like a refusal — the r656 false-alarm pattern at note level), uncertain/errored render muted neutral, and FAIL keeps amber (a rework really is coming).",
+    lookFor:
+      "Workflow run panel call log: a run whose gate was unsure now shows a muted 'Decision gate uncertain …' line instead of nothing; a clean pass shows emerald 'Decision gate PASS …' instead of amber",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

@@ -225,11 +225,16 @@ function CallLogList({ log }: { log: RunCallLogEntry[] }) {
                         "mt-0.5 block font-mono text-[10px] " +
                         (c.note.startsWith("Precedent lane")
                           ? "text-violet-300/90"
-                          : laneOfEntry(c) === "server-relay"
-                            ? "text-sky-300/90"
-                            : laneOfEntry(c) === "browser-direct"
+                          : c.note.startsWith("Decision gate PASS")
+                            ? "text-emerald-300/90"
+                            : c.note.startsWith("Decision gate uncertain") ||
+                                c.note.startsWith("Decision gate judge errored")
                               ? "text-foreground/60"
-                              : "text-amber-300/90")
+                              : laneOfEntry(c) === "server-relay"
+                                ? "text-sky-300/90"
+                                : laneOfEntry(c) === "browser-direct"
+                                  ? "text-foreground/60"
+                                  : "text-amber-300/90")
                       }
                     >
                       {/* r653: the precedent lane's O1 note gets the lane's

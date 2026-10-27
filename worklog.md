@@ -2472,3 +2472,29 @@ Round ID: r659 -> next patrol (job 473388)
 Next recommended action: (1) looped-path FAIL-branch live-witness (staged since r645 — arm Looped x2 on a generate step via the editor, run an adversarial-but-verifiable task on the free ladder, watch Decision gate FAIL -> one bounded tied rework -> Looped exit; the new outcome chip makes the verdict legible); (2) visual re-witness of the ⛓ chips when the radar next emits a registry finding; (3) witness a REAL degraded-deep run when congestion hits a deep schedule; (4) Owner-witness of the vault restore happy path (real file chooser).
 Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed, radar digest fresh).
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:looped-outcome=15/15 qa:golden=console-0-on-all-3 witness="outcome-toned looped chip (pass=emerald/refusals=amber/judge-down=muted) + visible outcome label; FixNote r658; FAIL-branch live-witness re-deferred (client-side runner, no trigger API)" restart="0/1"
+
+---
+Task ID: r659
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280537)
+Task: r659 patrol — staged Looped FAIL-branch live-witness attempt (3 live runs), the honesty gap it proved, golden QA first, gates, receipts.
+
+Work Log:
+- OPENING: worklog tail read (r658 outcome-chip round); server 200, HEAD clean. Golden QA green first (settings/radar/workflows console 0/0/0).
+- WITNESS SETUP: workflows live in browser localStorage (nexus-workflows, zustand persist) and runs execute CLIENT-SIDE — no run-trigger API exists (scouted stores.ts + run-now route: the latter only fires REGISTERED scheduled workflows). Injected a throwaway single-generate-step workflow "QA r659 Looped Witness" (agentId a-researcher, loopedPasses=2 — declared test setup, the editor's own save product), run panel driven headlessly (Pipelines tab -> Run -> Pipeline task textarea -> Run), store read back for receipts, workflow REMOVED after (6 workflows restored).
+- 3 LIVE RUNS, 0 FAIL-branch fires — each an honest finding: run 1 (pigeonhole task: 10 unique items from 3 words) the model refused the impossibility outright and the judge went UNCERTAIN; run 2 (anti-refusal phrasing) the compliant ~70-char output fell BELOW the gate's own 200-char engagement floor — gate never engaged; run 3 (20-mountains under-count bait) produced a 3.1KB gate-worthy output that still left no gate line (ran on the pre-fix client bundle).
+- BUG PROVEN x3 BY LIVE QA: the Decision gate's UNCERTAIN verdict accepted silently — ZERO callLog trace; the gate engaged and no user-visible line exists; judge-ERRORS vanished identically (silent catch). On the panel side, the confident "Decision gate PASS" note rendered WARNING AMBER ↻ (the classifier's default family) — the r656 false-alarm pattern at note level.
+- INCREMENT (user-facing + styling): workflow-runner — uncertain verdicts now push "Decision gate uncertain N% (via) — no confident verdict; output accepted unchanged" (else-if (gate) branch, never fabricates) and the judge-error catch pushes "Decision gate judge errored — no verdict arrived (infra stop, not quality)"; the gate's never-blocks contract untouched. workflow-run-panel note families split: gate PASS -> calm emerald, uncertain/errored -> muted neutral, FAIL keeps amber (rework incoming), precedent violet + lane families unchanged.
+- QA: NEW scripts/qa-gate-witness.ts 12/12 (runner: both witness lines, honest naming, gate-presence guard, looped FAIL branch + looped patch + never-blocks regression pins; panel: emerald PASS family, muted uncertain/errored families, amber default intact). Regression qa-looped-outcome 15/15.
+- RECEIPTS: TASKS.md Looped entry — r659 witness attempt + the x3-proven gap + the 200-char floor discovery recorded, open item narrowed to a post-fix confident-FAIL live confirmation; FixNote r659 appended to whats-fixed.tsx.
+- WITNESS (honest): throwaway workflow removed and store rehydrated clean (6 workflows); workflows surface console 0 post-edit; the new witness lines have no live firing yet (needs the next gate-worthy run on the ladder — the natural r660 open).
+- GATES: tsc rc=0 (file-redirect), lint rc=0 EXACTLY 33-warning baseline (0 in touched files), qa-gate-witness 12/12, qa-looped-outcome 15/15, golden console 0/0/0, post-edit console 0.
+
+Stage Summary:
+- The Looped FAIL-branch live-witness fired ZERO times in 3 live runs, and that failure was the round's product: it proved the Decision gate's unsure accepts and judge errors are invisible to the user, and surfaced the gate's 200-char engagement floor the hard way.
+- Shipped: every gate outcome now leaves an honest trace — PASS emerald, uncertain muted, judge-down muted, FAIL amber — so the next FAIL-branch attempt (r660 open) will be legible end to end on the run surface.
+
+Round Handoff:
+Round ID: r660 -> next patrol (job 473388)
+Next recommended action: (1) post-fix live confirmation: start ONE run on the free ladder with a gate-worthy output (>=200 chars) — the gate MUST now leave a visible line (uncertain muted / PASS emerald / FAIL amber); a confident-FAIL on a Looped-armed step completes the staged FAIL-branch witness end to end; (2) witness the ⛓ radar chips when a registry finding next emits; (3) degraded-deep live telemetry when congestion next hits; (4) Owner-witness of the vault restore happy path (real file chooser).
+Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed, radar digest fresh).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:gate-witness=12/12 qa:looped-outcome=15/15 qa:golden=console-0-on-all-3 witness="3 live Looped runs -> FAIL branch never fired; UNCERTAIN-accept invisibility PROVEN x3 + 200-char gate floor found; silent branches now emit honest lines; gate PASS note de-ambered; throwaway workflow removed" restart="0/1"

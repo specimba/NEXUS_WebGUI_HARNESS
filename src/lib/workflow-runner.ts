@@ -2509,9 +2509,39 @@ export async function executeWorkflowRun(
                 });
               }
             }
-            // Uncertain (0.5–0.75) or no judge → accept unchanged, silently.
+            // r659: an UNCERTAIN verdict (below gate confidence either way) no
+            // longer vanishes — the gate ENGAGED and the user is entitled to
+            // see that it ran. Two live witness runs this round hit exactly
+            // this silent accept: gate enabled, output ≥200 chars, verdict
+            // unsure — and not one callLog line to show for it.
+            else if (gate) {
+              pushCall({
+                stepId: step.stepId,
+                stepLabel: step.label,
+                agentName: agentRow.name,
+                engine: gate.judge,
+                model: gate.via,
+                ms: gate.ms,
+                ok: true,
+                attempt: 1,
+                note: `Decision gate uncertain ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — no confident verdict; output accepted unchanged`,
+              });
+            }
           } catch {
             /* the gate NEVER blocks a run — judge errors fall through */
+            // r659: a judge ERROR is an honest witness too — the gate ran,
+            // no verdict arrived; an infra stop, not a quality verdict.
+            pushCall({
+              stepId: step.stepId,
+              stepLabel: step.label,
+              agentName: agentRow.name,
+              engine: "gate",
+              model: "judge-errored",
+              ms: 0,
+              ok: true,
+              attempt: 1,
+              note: `Decision gate judge errored — no verdict arrived; output accepted unchanged (infra stop, not quality)`,
+            });
           }
         }
         // ─── r578 PEER BLIND SCORE (P2 experiment slice 1): a SECOND,
