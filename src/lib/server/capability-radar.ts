@@ -1,6 +1,10 @@
 import { db } from "@/lib/db";
 import ZAI from "z-ai-web-dev-sdk";
 import { gatewayPulse } from "./gateway-pulse";
+// r657 slice 3 (paper F5): chain-typed evidence — the radar stamps findings
+// with declared mechanism chains; the validated identity is the trace-trial
+// module's single source of truth (one vocabulary, no copy drift).
+import { VALIDATED_R640_CHAIN, type ChainStatus } from "@/lib/trace-trial";
 
 // ─── r497: Capability Radar — the hourly platform self-check ─────────────────
 // Owner directive (r497): "cron automation for every 1-hour check … with that
@@ -75,6 +79,13 @@ export interface RadarFinding {
   /** r646: "positive" = good-news finding (e.g. the R7-symmetry recovery
    * witness) — the UI tints it emerald instead of the neutral sky info tone. */
   tone?: "positive";
+  /** r657 slice 3 (paper F5): chain-typed evidence — the finding activates a
+   * DECLARED mechanism chain. "validated" only when the finding's own
+   * evidence cites an evidence-reviewed house incident (the r640 chain);
+   * "candidate" = co-occurrence with a known pattern whose intent/propagation
+   * is NOT yet confirmed — never promoted by the stamping site itself. The
+   * r643 429-window near-miss stays unclaimed: absent = no chain claimed. */
+  chain?: { status: ChainStatus; mechanism: string; from: string };
 }
 
 export interface RadarSeed {
@@ -400,6 +411,9 @@ export async function runCapabilityCheck(): Promise<RadarDigest> {
         title: `Registry collapsed ${prevEnabled} → 0 armed schedules`,
         evidence: `Previous digest ${prevRow!.id} showed ${prevEnabled} enabled; this pass sees an empty registry — the classic silent DB-swap signature (witnessed r640).`,
         tryable: "Re-arm schedules from the Workflows cards and re-mirror the vault key (browser BYOK one-click). If rows exist but disabled, resume them individually.",
+        // r657 slice 3 (F5): this finding's own evidence cites the
+        // evidence-reviewed r640 incident — the chain rides VALIDATED.
+        chain: { status: "validated", mechanism: VALIDATED_R640_CHAIN, from: "governance" },
       });
     } else if (prevEnabled !== null && prevEnabled >= 3 && enabledRows.length <= prevEnabled - 2) {
       F.push({
@@ -408,6 +422,10 @@ export async function runCapabilityCheck(): Promise<RadarDigest> {
         title: `Registry shrank ${prevEnabled} → ${enabledRows.length} armed schedules`,
         evidence: `Compared against previous digest ${prevRow!.id}. If the drop was intentional, ignore this pass.`,
         tryable: "If unintentional, check for silent DB restores (r640 pattern) before re-arming.",
+        // r657 slice 3 (F5): the drop CO-OCCURS with the r640 pattern but the
+        // evidence itself says it may be intentional — CANDIDATE, never
+        // promoted here. Promotion belongs to evidence review, not the radar.
+        chain: { status: "candidate", mechanism: VALIDATED_R640_CHAIN, from: "governance" },
       });
     } else if (prevEnabled !== null && prevEnabled <= 1 && enabledRows.length >= 2) {
       // r646 — R7-symmetry: the recovery direction. r642 witnessed 0 → 4

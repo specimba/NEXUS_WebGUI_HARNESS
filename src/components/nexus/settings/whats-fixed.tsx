@@ -608,6 +608,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflow run panel: '⇄N relay / ⊙N direct' chips still count history runs (prefix fallback); in an expanded call log, browser-direct notes show a calm ⊙ instead of the amber ↻ warning marker",
   },
+  {
+    round: "r657",
+    title: "Radar findings carry chain-typed evidence — validated vs candidate, on the record",
+    detail:
+      "TraceTrial slice 3 (paper F5): capability-radar findings now name the DECLARED mechanism chain they activate. The R7 registry-collapse canary — whose own evidence cites the evidence-reviewed r640 silent-DB-swap incident — stamps the chain VALIDATED; the registry-shrink warning, whose evidence says it may be intentional, stamps the honest CANDIDATE ('co-occurrence, not yet propagation') and promotion stays with evidence review, never the radar; findings whose evidence names no mechanism (the archive-corrupt row) stay unchained — no chain is invented. The autopilot radar digest renders the ⛓ chips (emerald validated / amber candidate). Companion (F7): every active experiment entry in TASKS.md now carries its admission gate — trigger / expected / boundary / verdict checkboxes fixed before execution, the paper's anti-theatre discipline applied to our own backlog.",
+    lookFor:
+      "Server autopilot radar digest: a registry-collapse or shrink finding carries a ⛓ chain line naming the mechanism and its status; TASKS.md experiment entries end with checked trigger/expected/boundary/verdict boxes",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

@@ -177,6 +177,9 @@ type RadarFindingView = {
   tryable: string | null;
   /** r646: good-news finding (R7-symmetry recovery witness) — emerald tint. */
   tone?: "positive";
+  /** r657 slice 3 (F5): chain-typed evidence — validated = evidence-reviewed
+   * r640 chain; candidate = co-occurrence, not yet propagation. */
+  chain?: { status: "candidate" | "validated"; mechanism: string; from: string };
 };
 type RadarDigestView = {
   generatedAt: string;
@@ -1092,6 +1095,21 @@ export function ServerAutopilot() {
                             : "ⓘ"} {f.title}
                     </p>
                     <p className="mt-0.5 text-muted-foreground">{f.evidence}</p>
+                    {/* r657 slice 3 (F5): chain-typed evidence — the finding
+                    names the declared mechanism it activates, and the status
+                    says whether propagation is evidence-reviewed (validated)
+                    or a co-occurrence awaiting review (candidate). No chain
+                    field = no chain claimed (honest absent, r411 class). */}
+                    {f.chain ? (
+                      <p
+                        className={
+                          "mt-0.5 text-[10px] font-medium tabular-nums " +
+                          (f.chain.status === "validated" ? "text-emerald-400" : "text-amber-300")
+                        }
+                      >
+                        ⛓ {f.chain.status === "validated" ? "validated chain" : "candidate chain — co-occurrence, not yet propagation"} · {f.chain.mechanism}
+                      </p>
+                    ) : null}
                     {f.tryable ? (
                       <p className="mt-0.5 text-violet-300/90">
                         <span className="font-medium">→ try:</span> {f.tryable}

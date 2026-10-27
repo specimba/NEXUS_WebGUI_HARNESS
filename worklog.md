@@ -2424,3 +2424,28 @@ Round ID: r657 -> next patrol (job 473388)
 Next recommended action: (1) visual re-witness of the ⊙/⇄ families inside an expanded call log (open a run with server-relay history via the run-detail panel; headless locate friction twice — try clicking the run row then the "LLM calls" section header); (2) looped-path FAIL-branch live-witness (Looped x2 + harsh gate on a healthy ladder — staged since r645); (3) slice 3 radar chain-typed evidence + admission-gate checkboxes; (4) witness a REAL degraded-deep run when congestion next hits a deep schedule.
 Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed; autonomous engine cycles executing 2/2 with 0 failures per board telemetry).
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:calllog-lane=15/15 qa:golden=console-0-on-all-3 witness="lane lineage structured end-to-end (writer stamp + shared reader + QA pins); browser-direct ⊙ neutral family; FixNote r656" restart="0/1"
+
+---
+Task ID: r657
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280437)
+Task: r657 patrol — TraceTrial slice 3 (radar chain-typed evidence + F7 admission-gate checkboxes), golden QA first, gates, receipts.
+
+Work Log:
+- OPENING: worklog tail read (r656 lane-lineage round); server 200. Slice-3 spec recovered from TASKS.md P2 TraceTrial entry + paper digest (F5 radar chain semantics / F7 admission gate).
+- SCOUT: chain infra existed since r647 (ChainStatus/MechanismChain/attributeFailure/VALIDATED_R640_CHAIN in trace-trial.ts) with ZERO UI consumers; the radar surface is capability-radar.ts (RadarFinding) rendered by server-autopilot.tsx (RadarFindingView + findings list).
+- INCREMENT (user-facing, F5): RadarFinding.chain {status, mechanism, from} — single-vocabulary import from trace-trial (no copy drift). Honest stamping by evidence: R7 registry-collapse canary (evidence itself cites the witnessed r640 silent-DB-swap) -> VALIDATED; registry-shrink warning (evidence says "may be intentional") -> CANDIDATE co-occurrence, promotion stays with evidence review, never the radar; archive-corrupt finding stays UNCHAINED (its evidence names no mechanism — restraint pinned by QA: exactly 2 chain stamps in the file); the r643 429-window near-miss stays unclaimed. Renderer: ⛓ chip on the autopilot radar digest — emerald "validated chain" / amber "candidate chain — co-occurrence, not yet propagation" — chip only when chain present (honest absent, r411 class). View mirror updated.
+- INCREMENT (docs, F7): TASKS.md active experiment entries (TraceTrial, Looped-depth, peer blind-score) each gained a fixed-before-execution admission gate — [x] trigger / expected / boundary / verdict checkboxes citing the entry's own pre-execution anchors; TraceTrial entry truth-up: r656 lineage hardening + r657 slice 3 recorded, Remaining narrowed to looped-path FAIL-branch live-witness + degraded-deep live telemetry.
+- QA: NEW scripts/qa-radar-chain.ts 16/16 (schema + single-vocabulary import; validated/candidate/unchained stamp pins incl. "no other finding invents a chain"; renderer both branches + present-only chip; F7 checkbox pins on all three entries). Regression: qa-trace-trial 66/66 (import graph touched, logic untouched). One QA regex self-fix pre-ship ({0,300} -> {0,500} — the ⛓ sits past the className lines; suite caught its own locator, not the code).
+- GATES: tsc rc=0 (file-redirect), lint rc=0 EXACTLY 33-warning baseline, qa-radar-chain 16/16, qa-trace-trial 66/66.
+- GOLDEN QA: settings console 0; radar frontier scroller top=4699 moved=true; workflows surface renders; console-errors 0/0/0. Visual re-witness attempt #3 for the r656 call-log families: run-row locator returned no rows in headless (third strike; the board hydrates fine per snapshot last round — locator fragility, not a UI defect); the ⛓ chip itself honestly does NOT render on the current healthy digest (no collapse/shrink finding live = visible zero, not a missing feature — branches QA-pinned).
+- FixNote doctrine: r657 entry appended to whats-fixed.tsx.
+
+Stage Summary:
+- TraceTrial slice 3 closed: the radar now speaks the paper's chain-typed evidence vocabulary — validated chains only from evidence-reviewed incidents, candidates named as co-occurrences, and the discipline cuts both ways (a finding whose evidence names no mechanism gets NO chain).
+- F7 is now house practice: every active experiment entry carries its admission gate as checked boxes a reviewer can audit, and the TraceTrial entry's backlog reflects the true remaining frontier (looped live-witness + degraded-deep telemetry).
+
+Round Handoff:
+Round ID: r658 -> next patrol (job 473388)
+Next recommended action: (1) looped-path FAIL-branch live-witness (staged since r645 — run a Looped-armed workflow on the free ladder, watch the FAIL branch fire one bounded rework; the only remaining runtime witness on the TraceTrial/Looped frontier); (2) visual re-witness of the ⛓ chips when the radar next emits a registry finding (or force a synthetic digest check); (3) witness a REAL degraded-deep run when congestion hits a deep schedule; (4) Owner-witness of the vault restore happy path (real file chooser).
+Blockers: none. Owner queue: none pending (vault 20 slots, acquisition 3/3 keyed, schedules armed, radar digest fresh).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact, 0 new) qa:radar-chain=16/16 qa:trace-trial=66/66 qa:golden=console-0-on-all-3 witness="chain-typed radar evidence (validated/candidate/unchained pinned); F7 admission gates on 3 experiment entries; FixNote r657; call-log family re-witness third-strike deferred (locator fragility, console 0)" restart="0/1"
