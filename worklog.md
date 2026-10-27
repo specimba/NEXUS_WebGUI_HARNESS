@@ -1326,3 +1326,29 @@ Round ID: r617 -> next patrol (job 473388)
 Next recommended action: r617 — batched opening (expect HEAD = r616 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 PICKER half (agent-form-dialog registry chips: fetch /api/tools/registry on open, render toggleable pack chips under the builtin grid — the AnyToolId picker state + pack-aware ToolBadge from r615 already carry them; plus browser-direct defs wiring in chat-client) if budget allows a real start, else a small honest UI/engine increment; gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="live: pack_now/pack_stamp defs materialize from the registry (base schemas reused, builtin filtered); both chat-route defs sites concat buildRegistryPackDefs" restart="0/1 consumed"
+
+---
+Task ID: r617
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270937)
+Task: Patrol per r616 handoff — qa:golden QA face, plugin-manifest slice 2 PICKER half (registry chips in agent-form-dialog), gates, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = a5235b231 (r616, expected), server wake-up 000 -> 200 (same transient signature; no restart consumed 0/1).
+- QA: first golden run FAILED 3/4 (cold-route blip right after the wake-up — content legs present, console clean); immediate rerun PASS 4/4 (console 0->0). Diagnosed transient, no code bug — matches the server-wake signature seen at the last two round openings.
+- INCREMENT — slice 2 PICKER half (agent-form-dialog.tsx, 5 hunks):
+  * Registry fetch: per dialog open, GET /api/tools/registry with AbortController; failed/empty registry renders NOTHING (builtin picker unaffected — honest optional).
+  * Pack tools section: toggleable rows under the builtin grid — puzzle glyph, font-mono pack id, description, cyan provenance line ("preset of <base> · <pack name>"); selected rows get the cyan pack vocabulary (border-cyan-500/40 bg-cyan-500/5), unselected are dashed-outline. House chip language consistent with the r615 pack-aware ToolBadge.
+  * Selection rides the SAME AnyToolId picker state (toggleTool widened) — a toggled pack id persists through save -> migrate -> relay payload (r615), reaches the LLM tool surface (r616 buildRegistryPackDefs), and executes through its base builtin's preset dispatch (slice 1). The full picker loop is now wired end-to-end in the UI.
+  * Import hygiene: ToolId dropped from the file (fully AnyToolId now).
+- STYLING POLISH: the pack section IS this round's styling work (cyan pack vocabulary, dashed rest-state, mono ids, provenance microcopy) — consistent with the r614/r615 chip language.
+- Note: browser-direct engine (chat-client) defs wiring is the LAST remaining sliver of slice 2; the server relay path (default for auto) already serves pack defs since r616.
+
+Stage Summary:
+- The picker half SHIPPED: a user opening the agent form now SEES the pack tools the registry serves and can toggle them like builtins; the whole chain (registry -> picker -> persisted agent -> LLM defs -> preset execution -> pack-aware badges) is live. Remaining slice-2 sliver: browser-direct defs wiring in chat-client (small, engine-side).
+- Remaining meta-review queue r618+: (P2) chat-client registry defs wiring (last slice-2 sliver); (P2) vault seeding (Owner key — never invented); (P2) Supabase bucket (Owner action).
+
+Round Handoff:
+Round ID: r618 -> next patrol (job 473388)
+Next recommended action: r618 — batched opening (expect HEAD = r617 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 LAST sliver (chat-client browser-direct defs wiring: fetch /api/tools/registry once, concat buildPackToolDefs over the agent's pack ids — mirrors the route's buildRegistryPackDefs shape; consider a small isomorphic helper to avoid duplicating the filter logic) if budget allows, else a small honest UI/engine increment; gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="picker pack rows live from registry (toggleable, cyan pack vocabulary, provenance line); golden 3/4->rerun 4/4 diagnosed as cold-route wake-up transient" restart="0/1 consumed"

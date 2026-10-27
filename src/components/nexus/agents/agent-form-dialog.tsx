@@ -31,7 +31,7 @@ import { AUTO_MODEL, TOOL_IDS, TOOL_META } from "@/lib/constants";
 import { CHAT_PROVIDERS, loadLiveCatalog, providerModelOptions } from "@/lib/providers";
 import { relayHealthSnapshot } from "@/lib/relay";
 import { withRelayHealth } from "@/lib/relay-health";
-import type { Agent, AgentColor, AnyToolId, ToolId } from "@/lib/types";
+import type { Agent, AgentColor, AnyToolId } from "@/lib/types";
 import { firstGrapheme, uid } from "@/lib/helpers";
 import { useAgentsStore, useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -80,6 +80,11 @@ export function AgentFormDialog({
   const [temperature, setTemperature] = React.useState(0.7);
   const [maxIterations, setMaxIterations] = React.useState(6);
   const [tools, setTools] = React.useState<AnyToolId[]>([]);
+  // r617: registry pack tools for the picker (TASK-103 slice 2) — name/base/
+  // description/packName, fetched per dialog open (effect below).
+  const [packTools, setPackTools] = React.useState<
+    { name: string; base: string; description: string; packName: string }[]
+  >([]);
   const nameRef = React.useRef<HTMLInputElement | null>(null);
 
   // Dirty tracking: a baseline snapshot is seeded on every open; any drift
@@ -185,7 +190,35 @@ export function AgentFormDialog({
     setConfirmDiscard(false);
   }, [open, agent]);
 
-  const toggleTool = (id: ToolId, on: boolean) =>
+  // r617: pack tools from the plugin registry (TASK-103 slice 2, picker
+  // half) — fetched per dialog open; a failed or empty registry renders
+  // nothing and the builtin picker is unaffected (honest optional).
+  React.useEffect(() => {
+    if (!open) return;
+    const ctl = new AbortController();
+    fetch("/api/tools/registry", { signal: ctl.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(
+        (
+          data:
+            | {
+                packs?: { name: string; tools?: { name: string; base: string; description: string }[] }[];
+              }
+            | null
+        ) => {
+          if (!data?.packs) return;
+          setPackTools(
+            data.packs.flatMap((p) =>
+              (p.tools ?? []).map((t) => ({ ...t, packName: p.name }))
+            )
+          );
+        }
+      )
+      .catch(() => null); // registry optional — never blocks the form
+    return () => ctl.abort();
+  }, [open]);
+
+  const toggleTool = (id: AnyToolId, on: boolean) =>
     setTools((prev) => (on ? [...prev, id] : prev.filter((t) => t !== id)));
 
   const handleSave = (e: React.FormEvent) => {
@@ -427,6 +460,50 @@ export function AgentFormDialog({
               })}
             </div>
           </div>
+
+          {/* r617: pack tools from the plugin registry (TASK-103 slice 2,
+           * picker half) — toggleable rows under the builtin grid; a
+           * selected pack id rides the same AnyToolId picker state, renders
+           * as a cyan pack chip elsewhere (pack-aware ToolBadge), gets LLM
+           * defs via buildRegistryPackDefs (r616) and executes through its
+           * base builtin's preset dispatch (slice 1). */}
+          {packTools.length > 0 ? (
+            <div className="space-y-2">
+              <Label className="text-xs text-cyan-300/90">
+                Plugin pack tools · live from the registry
+              </Label>
+              {packTools.map((t) => {
+                const checked = tools.includes(t.name);
+                return (
+                  <div
+                    key={t.name}
+                    className={cn(
+                      "flex items-center justify-between gap-3 rounded-lg border p-3",
+                      checked ? "border-cyan-500/40 bg-cyan-500/5" : "border-dashed"
+                    )}
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="mt-0.5 text-lg leading-none" aria-hidden>
+                        🧩
+                      </span>
+                      <div className="min-w-0">
+                        <Label className="font-mono text-sm">{t.name}</Label>
+                        <p className="text-xs text-muted-foreground">{t.description}</p>
+                        <p className="text-[10px] text-cyan-300/70">
+                          preset of {t.base} · {t.packName}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={checked}
+                      onCheckedChange={(v) => toggleTool(t.name, v)}
+                      aria-label={`Enable ${t.name}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={requestClose}>
