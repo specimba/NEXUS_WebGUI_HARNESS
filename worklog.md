@@ -1824,3 +1824,26 @@ Round ID: r635 -> next patrol (job 473388)
 Next recommended action: r635 — batched opening (expect HEAD = r634 commit; server up; qa:golden 1 round, 6/6). Candidates: (a) chase the 1 residual ring-offset-1 line: rg -P 'ring-offset-1' src/components -g '*.tsx' | rg -v 'ring-offset-background' — if it is a focus ring, canonicalize (<2 rounds); if it is state/selection vocabulary, document honest skip; (b) consistency tier backlog (image-studio idea chips, chat-search option buttons — default outline present) as the follow-on polish; (c) fix-before-work wins; (d) if Owner asks for violet ui/ primitives, propose the --ring token override for approval first (do not self-approve a wide visual change). Plugin slice 2 stays deferred; never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="focus-ring saga closure: 10 sites canonicalized across 9 files (5 ring-ring partial variants + 5 ring-[3px]/50 legacy halos); nexus ring-ring drift 0; ui/ shadcn defaults out-of-scope documented; 1 residual bare-offset line queued r635" restart="0/1"
+
+---
+Task ID: r635
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271837)
+Task: Patrol r635 — per r634 handoff: (a) chase the 1 residual ring-offset-1 line; (b) consistency tier backlog (image-studio idea chips); server-death watch.
+
+Work Log:
+- OPENING (1 batched round): HEAD = 6e5c4330f (r634), server 200 (4th consecutive healthy round since the r632 death — no uptime escalation), tree clean, qa:golden 6/6 pre-edit, console 0->0.
+- CANDIDATE (a) RESOLVED (same round, probe): the 1 residual line = src/components/ui/resizable.tsx:42 — a shadcn primitive (resizable handle), same scope ruling as r634's 15 ui/ hits: library default vocabulary, out of drift-guard scope, honest skip. The custom focus-ring saga is now closed with ZERO unclassified residue repo-wide: every custom focus-visible ring in nexus/ is canonical; every remaining non-canonical ring lives in ui/ primitives and is governed by the --ring token lever (Owner decision, not patrol work).
+- CANDIDATE (b) SHIPPED (read 1 round, edit 1 round): image-studio idea chips (3 buttons via one shared className in the IDEAS map) — were bare with browser-default outline; now carry the canonical violet ring whole-copy, harmonizing with the chips' existing violet hover vocabulary. chat-search option buttons: r633's pointer-complement classification stands (keyboard lives on the input; skip documented, not re-litigated).
+- GATES (unmasked redirect): tsc rc=0; lint rc=0 (34 = 33 + summary baseline). Probe: 1x canonical string in image-studio. Post-edit qa:golden 6/6, console 0->0.
+- Budget: 7 rounds (opening 1, read 1, edit 1, gates 1, golden 1, worklog 1, push 1) — early clean exit.
+
+Stage Summary:
+- Focus-ring seam EXHAUSTED: (a) classified skip, (b) shipped, no further candidates in this direction. Next round must source its increment elsewhere — docs/strategy/TASKS.md review is the recommended first read (pick a non-Owner-gated item; avoid fishing-expedition sweeps with no concrete drift signal).
+- Consistency tier essentially complete; the only remaining honest skip is chat-search options (pointer-complement by design).
+- Server: 4 healthy rounds; watch continues passively.
+
+Round Handoff:
+Round ID: r636 -> next patrol (job 473388)
+Next recommended action: r636 — batched opening (expect HEAD = r635 commit; server up; qa:golden 1 round, 6/6). Increment sourcing order: (a) fix-before-work wins if golden finds anything; (b) read docs/strategy/TASKS.md and select the smallest non-Owner-gated item (TASK-101 durable-step semantics and TASK-102 NEXUS_BOT wave are Owner-gated/large — do NOT start them without explicit Owner go; plugin slice 2 stays deferred); (c) if TASKS.md offers nothing small and honest, ship a targeted styling-detail polish backed by a concrete observation (probe-led, capped at 2 reads), never a speculative sweep. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="focus-ring saga fully closed: residual resizable.tsx line classified ui-primitive out-of-scope; image-studio idea chips canonical ring shipped (3 buttons); chat-search skip stands" restart="0/1"

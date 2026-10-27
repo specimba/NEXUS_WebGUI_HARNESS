@@ -308,7 +308,7 @@ export function ImageStudioDialog() {
                   type="button"
                   onClick={() => setPrompt(idea)}
                   disabled={busy}
-                  className="text-muted-foreground hover:border-violet-500/40 hover:text-violet-500 rounded-full border px-2 py-0.5 text-[10px] transition-colors disabled:opacity-50"
+                  className="text-muted-foreground hover:border-violet-500/40 hover:text-violet-500 rounded-full border px-2 py-0.5 text-[10px] transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                   title={`Use idea: ${idea}`}
                 >
                   <Sparkles className="mr-1 inline h-2.5 w-2.5" />
