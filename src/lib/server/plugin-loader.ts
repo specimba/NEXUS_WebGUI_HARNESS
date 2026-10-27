@@ -15,8 +15,8 @@ import {
   validatePluginManifest,
   type PluginManifest,
 } from "../plugin-manifest";
-import { BUILTIN_TOOL_IDS, type ToolId } from "../types";
-import { buildPackToolDefs, buildToolDefs, type ToolDef } from "../tools-defs";
+import type { ToolId } from "../types";
+import { buildPackToolDefs, buildToolDefs, isBuiltinToolId, type ToolDef } from "../tools-defs";
 
 export interface LoadedPack {
   dir: string;
@@ -133,7 +133,7 @@ export function getPluginPreset(name: string): PluginPresetRef | null {
  * clash, mirroring getPluginPreset. The browser-direct engine stays
  * builtin-only until the picker slice wires the same source client-side. */
 export function buildRegistryPackDefs(toolIds: readonly string[]): ToolDef[] {
-  const packIds = toolIds.filter((t) => !(BUILTIN_TOOL_IDS as readonly string[]).includes(t));
+  const packIds = toolIds.filter((t) => !isBuiltinToolId(t));
   if (packIds.length === 0) return [];
   const wanted = new Set(packIds);
   const scan = loadPluginPacks();

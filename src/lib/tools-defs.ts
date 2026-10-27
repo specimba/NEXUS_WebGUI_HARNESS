@@ -5,7 +5,7 @@
 //    POST /api/tools/execute, so tool results still come from the server)
 // Split out of server/tools.ts so client code never imports node:vm / ZAI.
 
-import type { AnyToolId, ToolId } from "./types";
+import { BUILTIN_TOOL_IDS, type AnyToolId, type ToolId } from "./types";
 import type { CortexConfig } from "./cortex-edge";
 
 export interface ToolResult {
@@ -571,4 +571,12 @@ export function buildPackToolDefs(
     });
   }
   return out;
+}
+
+// ─── Builtin check (r618) ────────────────────────────────────────────────────
+/** Shared non-builtin filter source of truth — the server loader's
+ *  buildRegistryPackDefs and the browser-direct buildBrowserToolDefs both
+ *  pick pack ids with THIS predicate. */
+export function isBuiltinToolId(t: string): boolean {
+  return (BUILTIN_TOOL_IDS as readonly string[]).includes(t);
 }

@@ -5,7 +5,7 @@ import {
   type EngineBody,
   type RelayWireHop,
 } from "./agent-engine";
-import { buildToolDefs, httpToolExecutor } from "./tools-defs";
+import { buildPackToolDefs, buildToolDefs, httpToolExecutor, isBuiltinToolId, type ToolDef } from "./tools-defs";
 import {
   noteProvider429,
   provider429CooldownLeftMs,
@@ -336,7 +336,7 @@ async function runBrowserDirect(
     send,
     params.signal ?? new AbortController().signal,
     {
-      defs: buildToolDefs(params.tools ?? []),
+      defs: await buildBrowserToolDefs(params.tools ?? []),
       // 2-a: the browser-direct engine's tools still execute server-side via
       // /api/tools/execute — forward the Cortex config per request so
       // deep_scrape gets its edge lane there too (BYOK: transit only, never
@@ -555,3 +555,39 @@ export function isAbortError(err: unknown): boolean {
 // first-token/connect budgets abort with the plain "AbortError" name). It is
 // therefore a TRANSPORT-signal classifier, not a user-intent classifier —
 // user intent must come from params.signal.aborted (see classifyDirectLaneFailure).
+
+// ─── Browser-direct pack defs (r618, TASK-103 slice 2 last sliver) ───────────
+/** Registry pack decls, fetched ONCE per session and cached; a failed fetch
+ *  is NOT cached (fail-open) — a later turn may reach the registry. */
+let packDeclsCache: { name: string; base: string; description: string }[] | null = null;
+const loadPackDecls = async (): Promise<{ name: string; base: string; description: string }[]> => {
+  if (packDeclsCache) return packDeclsCache;
+  try {
+    const res = await fetch("/api/tools/registry");
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      packs?: { tools?: { name: string; base: string; description: string }[] }[];
+    };
+    packDeclsCache = (data.packs ?? []).flatMap((p) => p.tools ?? []);
+    return packDeclsCache;
+  } catch {
+    return []; // honest degradation — builtin-only defs for this turn
+  }
+};
+
+/** r618: full defs for the browser-direct engine — builtin defs plus
+ *  registry-fed pack defs for any pack ids the agent carries. Mirrors the
+ *  server route's buildRegistryPackDefs: non-builtin ids only, a pack def
+ *  reuses its base builtin's parameter schema, provenance inline, first
+ *  pack in scan order wins a cross-pack clash (inside buildPackToolDefs). */
+export async function buildBrowserToolDefs(tools: AnyToolId[]): Promise<ToolDef[]> {
+  const base = buildToolDefs(tools);
+  const packIds = tools.filter((t) => !isBuiltinToolId(t));
+  if (packIds.length === 0) return base;
+  const decls = await loadPackDecls();
+  const wanted = new Set(packIds);
+  const matched = decls.filter((d) => wanted.has(d.name));
+  if (matched.length === 0) return base;
+  const bases = [...new Set(matched.map((d) => d.base))] as ToolId[];
+  return base.concat(buildPackToolDefs(matched, buildToolDefs(bases)));
+}

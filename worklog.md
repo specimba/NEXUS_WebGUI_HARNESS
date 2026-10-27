@@ -1352,3 +1352,29 @@ Round ID: r618 -> next patrol (job 473388)
 Next recommended action: r618 — batched opening (expect HEAD = r617 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 LAST sliver (chat-client browser-direct defs wiring: fetch /api/tools/registry once, concat buildPackToolDefs over the agent's pack ids — mirrors the route's buildRegistryPackDefs shape; consider a small isomorphic helper to avoid duplicating the filter logic) if budget allows, else a small honest UI/engine increment; gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="picker pack rows live from registry (toggleable, cyan pack vocabulary, provenance line); golden 3/4->rerun 4/4 diagnosed as cold-route wake-up transient" restart="0/1 consumed"
+
+---
+Task ID: r618
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610271007)
+Task: Patrol per r617 handoff — qa:golden QA face, plugin-manifest slice 2 LAST sliver (browser-direct defs wiring in chat-client), gates, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = 19ed36863 (r617, expected), server UP first try (200 — no wake-up delay this round; no restart consumed 0/1). qa:golden 4/4 PASS (console 0->0) — no QA bugs.
+- INCREMENT — slice 2 LAST sliver: browser-direct engine learns pack defs (chat-client.ts + shared predicate):
+  * tools-defs.ts: isBuiltinToolId(t) exported — the ONE shared predicate for pack-id selection (r616's route-side filter refactored onto it; zero duplicated filter logic left).
+  * chat-client.ts: buildBrowserToolDefs(tools) — builtin defs + registry-fed pack defs; registry decls fetched ONCE per session (module cache), failed fetch NOT cached (fail-open: builtin-only for that turn, a later turn retries); assembly mirrors buildRegistryPackDefs (non-builtins only, base-schema reuse via buildPackToolDefs, bases deduped, cross-pack clash first-wins).
+  * Call site: the relayed-custom toolIO now `await`s buildBrowserToolDefs — pack ids ride into the BROWSER-DIRECT transport's LLM tool surface too.
+  * plugin-loader.ts: filter refactored onto isBuiltinToolId; the now-unused BUILTIN_TOOL_IDS value import dropped (ToolId type stays for the bases cast).
+- WITNESS (live): registry fetch -> matched decls -> buildPackToolDefs over deduped bases -> exactly pack_now ([plugin preset of current_time]) and pack_stamp ([plugin preset of uuid_hash]) with inline provenance — the precise post-fetch path buildBrowserToolDefs runs.
+- One stale-anchor perl miss (tools-defs import had gained AnyToolId in r615) — caught by tsc immediately, fixed, TSC=0. No other errors.
+- SCOPE CALL: styling polish rides the picker vocabulary shipped r614-r617; this round closes the ENGINE story (both transports now serve pack defs) — no cosmetic bolt-on faked.
+
+Stage Summary:
+- SLICE 2 IS WHOLE: declare (manifest) -> registry (loader, mtime-fresh) -> picker (toggleable chips) -> persist (AnyToolId contract surfaces) -> defs (route + browser-direct, base-schema reuse + provenance) -> execute (preset dispatch). Both transports, one shared predicate, no duplicated logic. TASK-103's meta-review queue now holds only Owner-gated items.
+- Remaining meta-review queue r619+: (P2) vault seeding (Owner key — never invented); (P2) Supabase backup bucket (Owner action); P1 backlog (TASK-101 durable-step semantics, TASK-102 NEXUS_BOT wave) is the natural next frontier for a fresh multi-round arc.
+
+Round Handoff:
+Round ID: r619 -> next patrol (job 473388)
+Next recommended action: r619 — batched opening (expect HEAD = r618 commit; else follow ITS handoff); qa:golden (1 round); increment = open the P1 backlog arc: TASK-101 durable-step semantics (docs/strategy/TASKS.md) — start with a READ-ONLY design probe (rg the workflow-run persistence path, draft the smallest honest semantic slice: which step state must survive a reload and where it currently evaporates) and ship either that first slice or its written design note if budget is short; else a small honest UI/engine increment. Never invent Owner-key-dependent work. Gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="browser-direct pack defs live (session-cached registry decls, fail-open); isBuiltinToolId single source of truth across route+browser" restart="0/1 consumed"
