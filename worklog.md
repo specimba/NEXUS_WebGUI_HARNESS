@@ -2195,3 +2195,25 @@ Round ID: r649 -> next patrol (job 473388)
 Next recommended action: (1) TraceTrial slice 2b — the "N harness debts" census also belongs on the Runs board / archive-panel digest line (same adapter, one more call site), or call-log lineage schema-hardening (every tool-call note carries result status + step id); (2) looped-path live-witness (staged since r645 — needs a healthy free ladder, the 429 warning persisted through r646); (3) precedent-exemplar lane via the r579 RRF shim.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:trace-trial=52/52 qa:golden=6/6 witness="TraceTrial slice 2: run-history harness chips (emerald/amber, bypass=null) + F3 'N harness debts' counter on the history header; adapter accepts the degraded alias; two QA self-catches (vacuous-pass bypass on empty runs per r183; errored-run PASS chip per F2 separation); console 0->0" restart="0/1"
+
+---
+Task ID: r649
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280037)
+Task: r649 patrol — TraceTrial slice 2b: the harness layer reaches the Runs board (handoff item 1).
+
+Work Log:
+- OPENING: chain audit clean — HEAD=5985e05e2 (r648, the parallel 00:07 session's own completed work; no collision, I proceed as r649). Tree clean, server 200, canary fresh (digest 16:02Z bucket, 1 finding). Golden 6/6 pre-edit: Settings->Model Relay intel ladder rendered; Radar->Frontier tab scroll clean; run-panel long-paste round-tripped a 745-char mixed-script payload byte-intact; console 0->0. No fix-before-work needed.
+- INCREMENT (handoff item 1): TraceTrial slice 2b — run-kanban.tsx becomes the second honest call site of the same pure adapter: (a) every run card renders the "harness n/n" chip (emerald pass / amber with the failed criteria NAMED in the tooltip; null when every criterion is bypassed — no signal, no chip) next to the rework/auto-digest chips; (b) the board gains the F3 digest line "N runs on the board · N harness debts" counting success-despite-violation runs across all VISIBLE cards (scheduled cards honestly skipped — they carry no run). Witnessed live: 23 chips across the board ("harness 5/5" clean, "harness 4/5" on the rework run), digest line rendering, console 0->0.
+- HONEST-EVIDENCE CATCH (recorded, not shipped): the archive-panel harness column (the handoff's other target) is NOT a same-adapter call — RunArchiveStep materializes only {name, agent, output, ms}; the archive writer drops step status/ok (run-archive.ts:529), so harnessChipForRun over archive rows would score E/L/O as VACUOUS passes — the exact phantom-green the r183/r648 self-catches kill. Staged as slice 2c with the caveat in TASKS.md: the archive variant must bypass every criterion whose evidence the archive does not materialize and score only output/ms lineage.
+- STYLING POLISH (mandatory): the card chip reuses the house 10px tabular-nums round chip language (py-px to match the rework/auto-digest row); the board digest line mirrors the run-history header's "N harness debts" phrasing with the amber debt chip.
+- TASKS.md truth-up: r649 slice 2b SHIPPED; slice 2c (archive column + evidence-honest variant) staged with the phantom-green caveat.
+
+Stage Summary:
+- The TraceTrial two-layer discipline now holds on both run surfaces: the board and the run panel share ONE adapter, so the harness verdict cannot diverge between them, and the F3 census ("green masks red") is visible at board altitude, not just per-pipeline.
+- Honest scope: no new pure code this round (adapter reused as-is, qa-trace-trial 52/52 unchanged); the archive column stays dark until its evidence-honest variant exists.
+
+Round Handoff:
+Round ID: r650 -> next patrol (job 473388)
+Next recommended action: (1) TraceTrial slice 2c — evidence-honest archive variant (bypass criteria whose evidence RunArchiveStep does not materialize; score only output/ms lineage) + the archive-panel harness column and its "N harness debts" toolbar census; (2) looped-path live-witness (staged since r645 — needs a healthy free ladder; the 429 warning persisted through r646-r648); (3) precedent-exemplar lane via the r579 RRF shim (paper F6/F7: the run archive is our precedent lane).
+Blockers: none. Owner queue: none pending (vault slots=4, schedules armed).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:trace-trial=52/52 qa:golden=6/6 witness="TraceTrial slice 2b: Runs board harness layer — per-card 'harness n/n' chips via the shared adapter (23 witnessed live, 4/5 on the rework run) + board F3 digest 'N runs on the board · N harness debts'; archive column staged as slice 2c on the honest-evidence caveat (writer drops status/ok — naive call would vacuous-pass); console 0->0" restart="0/1"

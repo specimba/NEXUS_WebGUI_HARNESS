@@ -28,6 +28,10 @@ import { cn } from "@/lib/utils";
 // client state — they archive here too (shared dedupe lives in run-archive).
 import { toast } from "sonner";
 import { archiveServerLaneRun } from "@/lib/run-archive";
+// r649 (TraceTrial slice 2b, arXiv 2610.32285): the same pure harness-layer
+// adapter the run panel uses — the board is a second honest call site, not a
+// reimplementation. No chip when every criterion is bypassed (no signal, no chip).
+import { harnessChipForRun } from "@/lib/trace-trial";
 
 /** v24: one server-lane AutomationRun row (from /api/automation/sync GET). */
 interface ServerRunRow {
@@ -341,6 +345,10 @@ function RunCard({
   const reworks = run.steps.filter((s) => s.verdict === "rework" || s.reworked).length;
   const degraded = run.steps.filter((s) => s.degraded).length;
   const doneSteps = run.steps.filter((s) => s.status === "done").length;
+  // r649 (TraceTrial slice 2b): the harness layer judged SEPARATELY from the
+  // task outcome on every board card — emerald "harness n/n" when every scored
+  // criterion passes, amber with the failed criteria named in the tooltip.
+  const harnessChip = harnessChipForRun(run.steps, run.status);
 
   return (
     <button
@@ -423,6 +431,20 @@ function RunCard({
             className="inline-flex items-center rounded-full border border-orange-500/40 bg-orange-500/10 px-1.5 py-px font-semibold text-orange-600 dark:text-orange-400"
           >
             {degraded} auto-digest
+          </span>
+        ) : null}
+        {harnessChip ? (
+          <span
+            title={harnessChip.tooltip}
+            aria-label={`Harness reliability ${harnessChip.label}`}
+            className={cn(
+              "inline-flex items-center rounded-full px-1.5 py-px font-semibold tabular-nums",
+              harnessChip.tone === "warn"
+                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            )}
+          >
+            {harnessChip.label}
           </span>
         ) : null}
       </div>
@@ -768,6 +790,23 @@ export function RunKanban({
     return out;
   }, [columns, filter]);
   const total = Object.values(visible).reduce((n, c) => n + c.length, 0);
+  // r649 (TraceTrial slice 2b): the F3 census belongs on the board too —
+  // runs that SUCCEEDED while violating >=1 harness criterion, counted across
+  // every VISIBLE card (scheduled cards carry no run — honestly skipped).
+  // Green icons must not mask red underneath, on any surface.
+  const boardHarness = React.useMemo(() => {
+    let runs = 0;
+    let debts = 0;
+    (Object.values(visible) as BoardCard[][]).forEach((cards) =>
+      cards.forEach((c) => {
+        if (!c.run) return;
+        runs += 1;
+        if (harnessChipForRun(c.run.steps, c.run.status)?.successDespiteViolation === true)
+          debts += 1;
+      })
+    );
+    return { runs, debts };
+  }, [visible]);
   // Chip choices: every pipeline that currently has at least one card, busiest first.
   const filterChoices = React.useMemo(() => {
     const counts = new Map<string, { name: string; n: number }>();
@@ -792,6 +831,21 @@ export function RunKanban({
   return (
     <div className="space-y-2">
       <EventEmitBar />
+      {boardHarness.runs > 0 ? (
+        <p
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[10px] tabular-nums text-muted-foreground"
+          title="TraceTrial F3 (arXiv 2610.32285): runs that finished green while violating at least one harness criterion — success is not reliable. Judged separately from the task outcome."
+        >
+          <span>
+            {boardHarness.runs} run{boardHarness.runs === 1 ? "" : "s"} on the board
+          </span>
+          {boardHarness.debts > 0 ? (
+            <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-px font-semibold text-amber-600 dark:text-amber-400">
+              {boardHarness.debts} harness debt{boardHarness.debts === 1 ? "" : "s"}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
       {filterChoices.length > 1 && (
         <div
           role="group"
