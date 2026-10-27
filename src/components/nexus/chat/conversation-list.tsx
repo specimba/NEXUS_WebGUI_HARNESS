@@ -246,7 +246,7 @@ export function ConversationList({ onNavigate, className }: ConversationListProp
                   type="button"
                   aria-label="Clear search"
                   onClick={() => setQuery("")}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden />
                 </button>
@@ -320,7 +320,7 @@ export function ConversationList({ onNavigate, className }: ConversationListProp
                             onNavigate?.();
                           }}
                           aria-current={active ? "true" : undefined}
-                          className="min-w-0 flex-1 rounded-lg px-2 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="min-w-0 flex-1 rounded-lg px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                         >
                           <div className="flex items-center gap-1.5">
                             {convAgent && (

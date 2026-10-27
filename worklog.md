@@ -1774,3 +1774,27 @@ Round ID: r633 -> next patrol (job 473388)
 Next recommended action: r633 — batched opening (expect HEAD = r632 commit; server up via the fresh detached daemon; qa:golden 1 round, 6/6). Candidates: (a) remaining single-raw-button files (chat-search.tsx, image-studio.tsx, conversation-list) — read capped at 2, touch only genuine gaps (default-outline-present buttons = consistency-polish tier, ship at most one file); (b) if a second server death occurs, treat as a P1 stability item: document uptime evidence in the worklog and surface it for the Owner briefing (no cron changes from inside the turn); (c) fix-before-work wins. Plugin slice 2 stays deferred. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="composer 4 remove-buttons canonical rings (slash options honest skip, pointer-complement); globals.css ring-template drift guard; server-death incident: restart 1/1, golden 6/6 post-restart, edits exonerated" restart="1/1 consumed"
+
+---
+Task ID: r633
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271737)
+Task: Patrol r633 — per r632 handoff: remaining single-raw-button files (read capped at 2, touch only genuine gaps, ship at most one file); server-death watch (b).
+
+Work Log:
+- OPENING (1 batched round: HEAD+server+golden+sizing): HEAD = 966ee97ef (r632), server 200 (r632's fresh detached daemon survived the round — no second death), tree clean, qa:golden 6/6 pre-edit, console 0->0.
+- SIZING (1 round): named candidates live under src/components/nexus/chat/ (chat-search 1 raw button, image-studio 1, conversation-list 2). Repo-wide <button census: 37 files; 18 single-button files remain.
+- READ (2 capped rounds): classified all 4 candidate buttons. (1) chat-search:152 role="option" hits — keyboard lives on the input onKeyDown:105, hits are pointer complements, default outline present -> honest skip (consistency tier). (2) image-studio:306 idea chips — default outline present -> consistency tier, skipped (one-file cap). (3) conversation-list:245 clear-search X — icon-only with aria-label, NO custom ring, genuinely Tab-reachable when visible -> genuine gap. (4) conversation-list:323 active row — DRIFTED partial ring (focus-visible:ring-ring, no offset, bare outline-none) -> genuine drift-guard case. Ship = conversation-list.tsx (one file, two real fixes).
+- EDIT (1 round, MultiEdit atomic-ok): both sites now carry the full canonical string from the globals.css drift guard (violet-500/40 + offset-1 + offset-background); row's bare outline-none + ring-ring partial replaced whole.
+- GATES (unmasked redirect): tsc rc=0; lint rc=0 (34 grep hits = 33 + summary baseline). Static probe: 2/2 canonical rings in file. Post-edit qa:golden 6/6, console 0->0.
+- Budget: 9 rounds (opening 1, sizing 1, read 2, edit 1, gates 1, golden 1, worklog 1, push 1).
+
+Stage Summary:
+- Conversation list: the icon-only clear-search X and the active conversation row share the canonical violet ring; the row's drifted partial ring (pre-r631-era vocabulary) is gone.
+- Honest skips documented: chat-search option buttons (pointer-complement by design, default outline present), image-studio idea chips (consistency tier, one-file cap), theme-picker:46 found DRIFTED (ring-ring + offset-2) — queued as the r634 genuine-gap candidate.
+- Server stability: r632's detached daemon healthy through the whole round — no recurrence, no uptime escalation needed.
+
+Round Handoff:
+Round ID: r634 -> next patrol (job 473388)
+Next recommended action: r634 — batched opening (expect HEAD = r633 commit; server up; qa:golden 1 round, 6/6). Candidates: (a) theme-picker.tsx:46 ring drift (ring-ring + ring-offset-2 variant) -> replace with the canonical string whole; sweep first with rg 'focus-visible:ring-ring' src/components/nexus to catch any siblings (should be just theme-picker after r633); (b) consistency tier backlog (image-studio idea chips, chat-search options) only if (a) exhausts in <2 rounds; (c) fix-before-work wins. Plugin slice 2 stays deferred; never invent Owner-key-dependent work. If the server dies again, execute handoff (b) of r632: document uptime evidence as a P1 stability item for the Owner briefing.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="conversation-list clear-search X + active row canonical violet rings (drifted partial ring retired); chat-search options + image-studio chips honest skips (default outline present); theme-picker drift queued r634" restart="0/1"
