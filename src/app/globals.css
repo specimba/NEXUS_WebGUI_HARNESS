@@ -542,3 +542,13 @@
     transform: none;
   }
 }
+
+/* ─── Focus-ring vocabulary (drift guard, r632): every custom focus-visible
+       ring in components copies THIS canonical string — violet is the
+       interaction color, ring-offset-background keeps the offset gap
+       theme-aware (bare ring-offset-1 defaults Tailwind's offset to white,
+       which halos on dark themes; r631 closed that class repo-wide).
+       Copy the string whole, never partially: ─────────────────────────────
+       focus-visible:outline-none focus-visible:ring-2
+       focus-visible:ring-violet-500/40 focus-visible:ring-offset-1
+       focus-visible:ring-offset-background ──────────────────────────────── */

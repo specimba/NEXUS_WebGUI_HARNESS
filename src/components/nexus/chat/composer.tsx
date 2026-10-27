@@ -748,7 +748,7 @@ export function Composer({
               type="button"
               aria-label="Remove queued message"
               onClick={onCancelQueued}
-              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             >
               <X className="h-3.5 w-3.5" aria-hidden />
             </button>
@@ -864,7 +864,7 @@ export function Composer({
                       type="button"
                       onClick={() => removeAttachment(i)}
                       aria-label={`Remove attachment ${a.name}`}
-                      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                     >
                       <span aria-hidden className="px-0.5 text-[13px] leading-none">×</span>
                     </button>
@@ -893,7 +893,7 @@ export function Composer({
                       type="button"
                       onClick={() => removeAttachment(i)}
                       aria-label={`Remove attachment ${a.name}`}
-                      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                     >
                       <span aria-hidden className="px-0.5 text-[13px] leading-none">×</span>
                     </button>

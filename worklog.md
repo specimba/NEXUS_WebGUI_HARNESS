@@ -1750,3 +1750,27 @@ Round ID: r632 -> next patrol (job 473388)
 Next recommended action: r632 — batched opening (expect HEAD = r631 commit; server up; qa:golden 1 round, 6/6). The focus arc AND reduced-motion are closed. Candidates: (a) hover-affordance gaps on aria-label'd icon buttons (r630 handoff carry-over; needs reads, cap 2 — composer.tsx has 4 raw buttons with 1 fv, a plausible first read); (b) copy/consistency sweep of the ring template (grep for any future-drift guard — a tiny CSS comment in globals.css near the reduced-motion block documenting the canonical ring string is cheap and durable); (c) fix-before-work wins. Plugin slice 2 stays deferred. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="14-spot ring-offset-background closure (self-caught white-halo regression from r627-r630; bare=0 probe); reduced-motion verified already-shipped; console 0->0" restart="0/1 consumed"
+
+---
+Task ID: r632
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271707)
+Task: Patrol r632 — per r631 handoff: composer hover-affordance gaps (named first read); ring-template drift guard (candidate b).
+
+Work Log:
+- OPENING (1 batched round: HEAD+server / golden / composer button grep): HEAD = ec3d0777b (r631), server 200, tree clean, qa:golden 6/6 pre-edit.
+- COMPOSER INSPECTION (grep + 1 read, capped): 4 raw buttons — queued-remove, 2 attachment-remove (identical className), slash-command option. The slash option is a POINTER COMPLEMENT in an activedescendant-style pattern: keyboard lives on the textarea (header copy "↑↓ to pick, Enter to run, Esc to dismiss"), onMouseDown preventDefault keeps focus there, selection visualized by the slashIndex violet tint — a focus ring there would be dead code. HONEST SKIP; rings shipped only on the 4 focus-reachable remove buttons (canonical string incl. ring-offset-background per the r631 template).
+- INCREMENT 2 (drift guard, handoff candidate b): globals.css gains the canonical focus-ring comment beside the reduced-motion block — documents the whole-copy rule (violet interaction color + theme-aware offset) with the r631 white-halo rationale, so future rounds copy the string whole instead of re-deriving partial variants. Zero functional change.
+- INCIDENT (server death, restart 1/1 consumed): post-edit golden failed 2/6 with every eval returning garbage (boot read-error, badges ABSENT, NO-GUARD, NO-DIALOG). Diagnosis: curl status=000, /tmp/home.html never written, no dev process — the dev server had DIED (started long before the round; not the edits: a CSS comment cannot kill a node process, and an invalid-CSS overlay would serve HTTP 200 error pages, not connection-refused). scripts/dev-restart.sh resurrected it (detached daemon, poll2=200); golden immediately 6/6 with the edits in-tree — edits exonerated, legs identical to canonical signatures.
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0 (34 grep hits = 33 + summary baseline). Static probe: composer rings 3/3 (+1 queued, ×2 attachment via replace_all). Post-restart qa:golden 6/6, console 0→0.
+- Budget: 10 rounds (opening 1, read 1, edits 1, gates 1, golden-fail 1, diagnose 1, restart 1, golden-ok 1, worklog 1, push 1) — the incident cost 3; without it this was a 7-round round.
+
+Stage Summary:
+- The composer's focus-reachable controls share the canonical violet ring; the slash menu is verified pointer-complement by design (skip documented).
+- The canonical ring string now lives beside the reduced-motion block in globals.css — drift guard shipped.
+- Dev server death handled within doctrine: one restart, root cause noted (long-running dev process died; watch for recurrence in coming rounds — if it repeats, the restart script's detached-daemon mode is working but the underlying process lifetime may need Owner attention).
+
+Round Handoff:
+Round ID: r633 -> next patrol (job 473388)
+Next recommended action: r633 — batched opening (expect HEAD = r632 commit; server up via the fresh detached daemon; qa:golden 1 round, 6/6). Candidates: (a) remaining single-raw-button files (chat-search.tsx, image-studio.tsx, conversation-list) — read capped at 2, touch only genuine gaps (default-outline-present buttons = consistency-polish tier, ship at most one file); (b) if a second server death occurs, treat as a P1 stability item: document uptime evidence in the worklog and surface it for the Owner briefing (no cron changes from inside the turn); (c) fix-before-work wins. Plugin slice 2 stays deferred. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="composer 4 remove-buttons canonical rings (slash options honest skip, pointer-complement); globals.css ring-template drift guard; server-death incident: restart 1/1, golden 6/6 post-restart, edits exonerated" restart="1/1 consumed"
