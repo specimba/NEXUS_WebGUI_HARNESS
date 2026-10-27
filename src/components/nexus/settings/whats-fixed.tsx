@@ -516,6 +516,82 @@ const FIXES: FixNote[] = [
     lookFor:
       "Settings → Model Relay: an emerald “Benchmark intelligence” panel (source chips + top-6 board + Refresh) and “Intel 0.9xx” badges on every hop; Radar → Frontier scrolls; a long paste in the run panel keeps Run visible; a GitHub refresh that needed the pool toasts “Refreshed via the egress pool”",
   },
+  // r654: the receipts backlog — 138 rounds shipped after r516 while this
+  // panel rendered nothing newer (Owner's own paste proved the stall). The
+  // entries below are compressed ARC digests, each sourced from the round's
+  // commit chain, not invented detail. Patrol rounds append here again.
+  {
+    round: "r654",
+    title: "The receipts return — this panel had quietly stalled at r516",
+    detail:
+      "Honest confession, caught from the Owner's own capture: 138 rounds shipped (r517-r653) while this panel rendered nothing newer — receipts lived only in git + worklog, and the auto-derived range label kept LOOKING alive (the r294 guard protects the header string, not the backlog). This round backfills the arcs below as compressed digests and bounds the list with an internal scroll so the growing wall stays scannable; patrol rounds feed this panel again from now on.",
+    lookFor:
+      "this panel leads with r654 and the entry list scrolls internally instead of stretching Settings",
+  },
+  {
+    round: "r651-r653",
+    title: "The run archive became a precedent lane — and was witnessed live",
+    detail:
+      "arXiv:2610.31421 F6/F7 ported dial-free: past SUCCESSFUL run outputs are the precedent store — a shared honesty mapper refuses blind rows (the archive chip's verdict gates eligibility), an RRF hybrid retriever picks the top-2 similar precedents, a both-legs confidence gate refuses single-leg noise (the refusal is still countable in the call log), and the survivors ride every step's context as two-occurrence exemplars closest to the generation point. Closed the loop on a REAL run: the persisted call log carried 'Precedent lane — 13 eligible precedents, top 2 … both legs … block injected'.",
+    lookFor:
+      "a workflow run's call log shows a violet ◈ 'Precedent lane …' note; the workflow editor's generate steps mirror the same verdict as a live preview chip (emerald 'gate ✓ both legs' / amber 'gate · single-leg')",
+  },
+  {
+    round: "r648-r650",
+    title: "TraceTrial: every run surface grew an evidence-honest harness chip",
+    detail:
+      "arXiv:2610.32285 ported: run-history rows, runs-board cards and archive rows each render a harness chip scored ONLY over the evidence that surface actually materializes (six criteria at the run surface; one — lineage — at the archive, with the bypassed count named in the tooltip: visible zero, not attributed). The F3 'harness debts' census (success despite violation — green masks red) is visible at all three altitudes, and a control test pins the vacuous-pass it prevents.",
+    lookFor:
+      "run cards and archive rows carry a harness chip; the archive toolbar shows 'N harness debts' only when real debts exist",
+  },
+  {
+    round: "r641-r647",
+    title: "Radar grew a registry canary — in both directions — and generate steps learned to loop",
+    detail:
+      "The radar compares registry.enabled against the previous digest: a ≥2→0 collapse is CRITICAL with re-arm tryables, and (r646-r647) the heal direction is witnessed too — prev≤1 → now≥2 renders a violet ✓ recovery witness, the radar's first positive-tone finding. Loop depth (r643-r645): generate steps gained a Looped Off/×2/×3 toggle wired into the engine with per-turn via-lane telemetry — the depth-growth looping shape from the paper deep-dive, opt-in and gated.",
+    lookFor:
+      "radar capability strip: red/amber/violet severity chips including a violet 'recovered' witness; the workflow editor's generate steps show a Looped segmented toggle",
+  },
+  {
+    round: "r621-r640",
+    title: "Incident repairs, a focus-ring canon, and badges that admit their age",
+    detail:
+      "A sandbox rollback incident was repaired and root-caused (mixed-generation SQLite pair → corruption → the r639 fresh-schema swap restored the 500ing endpoints live; the radar now degrades honestly instead of 500ing). The keyboard story was unified: violet focus-visible rings closed across cards, messages, schedules and run rows. Intel + census badges speak their vintage — live/cached · HH:MM relative age instead of a wall clock that could hide a 3-day-old snapshot.",
+    lookFor:
+      "Tab shows violet rings on cards/chips; Model Relay badges read 'live/cached · HH:MM'",
+  },
+  {
+    round: "r594-r619",
+    title: "The plugin-manifest dynasty + the honesty copy pass",
+    detail:
+      "One JSON manifest registers a tool pack without code edits (slices 1-2: loader + pack_stamp, registry-fed pack defs, agent-form toggleable pack rows, browser-direct defs, open-world tool-id widening). In parallel, copy stopped overpromising: queue/dial contracts stated on cards and empty states ('dials only with a vault key…'), the in-dialog Run gate self-explains, run-archive gained status filter chips + clipboard copy, and a repo-wide fetch-catch audit triaged 12 silent-failure sites.",
+    lookFor:
+      "agent form shows toggleable pack rows; run-archive toolbar has All/Done/Failed/Amber filter chips with live counts",
+  },
+  {
+    round: "r580-r593",
+    title: "Harness-adapter spec, AWorld seeds, and chips that speak live vs cached",
+    detail:
+      "docs/specs/harness-adapter-spec.md fixed the six-rule contract for lane adapters; Frontier Scout gained AWorld explore→reproduce→improve seeds with per-seed evidence; peer blind-scoring (r578) and the RRF hybrid retrieval shim (r579) landed as pure modules — the shim later became the precedent lane's retrieval engine. The benchmark-intelligence and free-reach badges learned to state live vs cached with age + refresh affordances.",
+    lookFor:
+      "Frontier Scout AWorld rows carry evidence chips; relay badges state their vintage",
+  },
+  {
+    round: "r561-r579",
+    title: "The vault card modularized and paste plans learned hygiene",
+    detail:
+      "The vault card broke into honest modules (acquisition panel, mirror strip, lane-slots list), the paste-plan dialog gained a live char count, numbered rotation echo, step-prefix stripping and an honest 8-step overflow warning, Evolution's true-zero vanish bug was fixed, and proposal plan-size chips surfaced scale. r577 pinned plugin-lane drift flags in resume QA.",
+    lookFor:
+      "paste a multi-step plan — the dialog echoes '(1 Agent → 2 Scout …)' with a char count and warns past 8 steps",
+  },
+  {
+    round: "r522-r560",
+    title: "The TASK-100/101/102 dynasty: redaction, encrypted vault, dialects, durable steps",
+    detail:
+      "Three tracks closed in sequence: token-lean request shaping; TASK-102's acquisition lane (single redaction choke on engine dials, AES-256-GCM vault encryption at rest, Anthropic/SSE dialect threading, the Exa lane verified end-to-end); TASK-101's durable-step semantics (resume-after-failure from the persisted step boundary, resume plans surfaced on armed schedule rows). Infra: the dev-server liveness supervisor and the golden-path QA script were born here (r522), and the vault gained a two-way seed bridge.",
+    lookFor:
+      "an errored run resumes from its last durable step; the vault card shows acquisition lanes with key-source readouts",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead
@@ -537,11 +613,11 @@ export function WhatsFixedSection() {
           a minute.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="max-h-[38rem] space-y-3 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-violet-500/30 scrollbar-track-transparent">
         {[...FIXES].reverse().map((f) => (
           <div key={f.round} className="rounded-lg border p-3">
             <div className="flex items-baseline gap-2">
-              <span className="shrink-0 rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400">
+              <span className="shrink-0 rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-violet-600 dark:text-violet-400">
                 {f.round}
               </span>
               <span className="text-sm font-medium">{f.title}</span>
