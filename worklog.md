@@ -1656,3 +1656,27 @@ Round ID: r628 -> next patrol (job 473388)
 Next recommended action: r628 — batched opening (expect HEAD = r627 commit; server up; qa:golden 1 round, now 6/6 with boot canonical). Increment candidates: (a) schedule-chip / next-run countdown focus-visible sweep in workflows-view (same arc as gateway-pulse; grep "focus-visible" coverage first, only touch what genuinely lacks it); (b) P1 backlog docs/strategy/TASKS.md review — TASK-101/102 status check, Owner-gated items stay untouched; (c) fix-before-work wins. Never invent Owner-key-dependent work; probes target aria-labels; restore any UI state a probe flips (boot leg now backstops golden, but keep probes honest).
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="boot-canonical leg added (boardOpen=false, first-run green, pollution closed by construction); gateway-pulse focus-visible violet ring (tsc-honest, chip renders only with recent 429s); console delta 0" restart="0/1 consumed"
+
+---
+Task ID: r628
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271507)
+Task: Patrol r628 — per r627 handoff: (a) schedule-chip focus-visible sweep (grep coverage first, touch only what genuinely lacks it); (b) P1 backlog TASKS.md status check.
+
+Work Log:
+- OPENING (1 batched round: HEAD+server+worklog grep / golden / 2 coverage greps): HEAD = 27ab8b29b (r627), server 200, tree clean, qa:golden 6/6 pre-edit (boot canonical holding).
+- INSPECTION (2 rounds as capped): workflows-view has exactly 3 INTERACTIVE schedule chips — backoff·auto-resume (amber, L2685), auto-paused·click-to-resume (red, L2722), stopped·click-to-resume (zinc, L2744) — all real buttons with onClick+hover+cursor-pointer and ZERO focus-visible. Promise/evidence/deep-pause/server-lane chips are passive spans (r597 doctrine: no fake affordance) — honest skip. resumeSchedule already toasts success (L1781) — toast idea skipped, no theatre.
+- TASKS.MD STATUS (candidate b): remaining P1s are ALL Owner-gated (PAT rotation, Webshare token, NEXUS_BOT live-wire keyed proofs). P2 plugin-manifest slice 2 is "agent-picker ToolId typing surgery" — too large for one patrol round, honest defer. Peer-blind-scoring remainder needs real crew-run verdicts — no fake data. Backlog is clean; nothing shippable without Owner keys or multi-round scope.
+- INCREMENT 1 (styling/a11y, keyboard users): violet focus vocabulary on all 3 interactive resume chips (focus-visible:outline-none + ring-2 violet-500/40 + offset-1) — hover keeps lane identity (amber/red/zinc), focus ring is the shared interaction vocabulary (r626 kanban / r627 pulse doctrine). Static probe: 3/3 rings in workflows-view.
+- INCREMENT 2 (probe consistency, harness-facing): backoff + auto-paused chips gain data-testids (backoff-schedule-chip, autopause-schedule-chip) — stopped-schedule-chip had one, its two siblings didn't; the family (schedule-evidence/stopped/deep-pause/server-lane) is now uniformly addressable for future stateful probes.
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0 (34 grep hits = 33 + summary baseline). Post-edit qa:golden 6/6, console 34→34 delta 0.
+- Budget: 8 rounds (opening+golden+greps 1, reads 2, edit 1, gates 1, golden 1, worklog 1, push 1) — discipline held third round running.
+
+Stage Summary:
+- All three schedule-resume chips are keyboard-visible in the shared violet focus vocabulary and probeable by testid; the schedule chip family is now uniform (interactive = ring + testid, passive = honest span).
+- Backlog confirmed clean of non-Owner-gated quick wins — future rounds ride the styling arc or fix-before-work unless the Owner unblocks keys.
+
+Round Handoff:
+Round ID: r629 -> next patrol (job 473388)
+Next recommended action: r629 — batched opening (expect HEAD = r628 commit; server up; qa:golden 1 round, 6/6). Increment candidates: (a) styling arc continues — other views' interactive chips (radar tab strips, tracker panel controls, settings gallery buttons): grep focus-visible coverage repo-wide in the opening batch, touch only genuine gaps; (b) small P2 slice with real scope: plugin-manifest slice 2 is available but is typing surgery — only attempt if a clean seam is found in a 2-round inspection, else defer again honestly; (c) fix-before-work wins. Never invent Owner-key-dependent work; probes target aria-label/testid; restore any UI state a probe flips (boot leg backstops golden).
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="3/3 schedule resume chips focus-visible violet rings (static probe); backoff/autopause testids added (family uniform); console delta 0" restart="0/1 consumed"
