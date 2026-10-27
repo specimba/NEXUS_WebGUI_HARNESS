@@ -648,6 +648,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Workflow run panel on a congested ladder: 'Decision gate engaged but no judge answered (tried: intern-systemone — not armed (no intern-discovery key); fast-judge — relay chain exhausted (top 2 hops, no verdict); jev (paid rung) — not armed (no key)) — output accepted unchanged (verdict not possible, not a pass)' — the silence now carries its own evidence",
   },
+  {
+    round: "r663",
+    title: "Palette workflow commands are findable by verb and by screen reader — 'run' now filters them, and each item speaks its action",
+    detail:
+      "The r663 patrol drove golden path 3 (Workflows → run-panel long-paste) through the ⌘K palette and hit a locator lesson: the 'Run a workflow' group was fully functional, but its items exposed only bare-noun text ('Deep Research Dossier· 4 steps') — no verb, no accessible name. Typing 'run' in the palette matched nothing in that group (the value carried no verb), and a screen reader heard a list of nouns with no action attached. Each workflow item now carries an explicit aria-label ('Run workflow: <name> — N steps'), the searchable value gains a 'run' prefix so the verb itself finds the group, the step count sets tabular-nums so 4/3/1-step columns align, and the Play icon brightens (emerald-400 → 300) on keyboard-selected items via an honest compound variant (data-play marker scoped to the item — the first attempt used group-data-[selected] against a base component that has no group class, a dead selector caught before shipping).",
+    lookFor:
+      "⌘K palette: type 'run' — the 'Run a workflow' group surfaces; keyboard onto an item reads 'Run workflow: <name> — N steps' and the Play icon brightens; step counts align in tabular figures",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

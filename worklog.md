@@ -2594,3 +2594,28 @@ Round ID: r663 -> next patrol (job 473388)
 Next recommended action: (1) confident-verdict witness — try during a visibly calm ladder window, or (deliberate Owner-key spend, single cheap call) temporarily arm the intern-discovery or a vault fast lane as judge; (2) witness the chain radar chips on the next registry finding; (3) degraded-deep live telemetry in a congestion window; (4) Owner-witnessed vault restore happy path.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings exact) qa=23/23+17/17+26/26 golden=0/0/0 witness="attempt #7: gate engaged, no-judge line re-proven, judge 0/8; cleanup-race lesson recorded; onAttempt trace shipped (no-judge note now names the tried rungs)" restart="0/1"
+
+---
+Task ID: r663
+Agent: NEXUS patrol (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280737)
+Task: Patrol round — golden QA, one real increment, gates, dual push.
+
+Work Log:
+- OPENING: server 200, clean tree, HEAD=r662. TASKS.md re-check: TASK-101 durable-step semantics DONE (r520/521/535); TASK-102 remaining item is live-wire keyed proofs (Owner-held keys) — neither actionable; increment had to come from QA findings.
+- GOLDEN QA 3/3 GREEN, console 0 errors everywhere, ZERO product bugs found:
+  (1) Settings → Model Relay: intel ladder honest-fallback snapshot with 3d vintage stated ("upstream is dark right now"), free-reach census 4h old + refresh affordance, FixNote renders through r662;
+  (2) Radar → Frontier: tab click + scroller moved 900px over 60 items, console clean;
+  (3) Workflows → run-panel long-paste: driven through the ⌘K palette ("Deep Research Dossier" → run panel opened → Pipeline task textarea took a 3480-char paste, value intact, console 0).
+- LOCATOR FRICTION (honest, self-inflicted, ~8 rounds): two simultaneous misreads cost the budget — (a) I grepped for a nonexistent action name (setPendingRunWorkflow) and concluded the palette entry was dead code, when the real action (requestRunWorkflow) is wired and live; (b) my snapshot rg pattern ('option ' prefix) missed cmdk items rendered as bare text, "confirming" the false absence. A live eval counting [cmdk-item] showed 26 items with the full "Run a workflow" group intact. LESSON: search the actual symbol before declaring dead code; verify absence with a DOM count, not a log-grep. No product defect — palette + run-panel chain re-proven E2E.
+- INCREMENT (user-facing a11y + styling, riding that friction as its motivation): palette workflow items exposed only bare-noun text — typing "run" matched nothing in the group (no verb in value), screen readers heard nouns with no action, locator queries had no hook. Shipped: explicit aria-label "Run workflow: <name> — N steps" on every item; searchable value gains a "run" prefix so the verb finds the group; step counts set tabular-nums; Play icon brightens emerald-400 → 300 on keyboard selection via an honest compound variant (data-play marker scoped to the item). SELF-CATCH: first attempt used group-data-[selected] but ui/command.tsx's CommandItem has NO group class — dead selector caught pre-ship and replaced. FixNote r663 appended per doctrine (RANGE_LABEL auto-derives).
+- GATES: tsc rc=0; lint rc=0 with EXACTLY the 33-warning baseline; LIVE increment proof: palette filtered by "run" → 6/6 workflow items carry the new aria-label ("Run workflow: Novelty Lab (sample) — 1 step"); console 0 errors after the change.
+
+Stage Summary:
+- All three golden paths green with zero product defects; the round's budget went to locator friction, not brokenness — recorded so the next round skips the same trap.
+- Palette workflow commands are now verb-searchable, screen-reader-spoken, and locator-addressable: the same mechanism (requestRunWorkflow → run panel) is easier to reach for humans, AT users, and future patrol drivers alike.
+
+Round Handoff:
+Round ID: r664 -> next patrol (job 473388)
+Next recommended action: (1) confident-verdict witness remains #1 — still purely judge-availability-gated (0/8 live answers); a visibly calm ladder window, or the deliberate Owner-key single cheap call, is the only path; (2) witness the chain radar chips on the next registry finding; (3) degraded-deep live telemetry in a congestion window; (4) Owner-witnessed vault restore happy path (real file chooser). Driver note for r664: the palette route (⌘K → "Run workflow: …" aria-label) is now the CHEAPEST way to open a run panel — use it for any future witness run instead of card-button archaeology.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0 lint=0(33-warnings exact) golden=3/3(console 0/0/0) increment="palette wf items: aria-label + run-verb search + tabular-nums + selected Play brighten; live-proven 6/6" restart="0/1" budget="overran on locator friction (~8 rounds) — lesson logged"

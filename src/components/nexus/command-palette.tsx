@@ -318,12 +318,14 @@ export function CommandPalette() {
               {workflows.map((w) => (
                 <CommandItem
                   key={w.id}
-                  value={`workflow ${w.name} ${w.description}`}
+                  value={`workflow run ${w.name} ${w.description}`}
+                  aria-label={`Run workflow: ${w.name} — ${w.steps.length} step${w.steps.length === 1 ? "" : "s"}`}
                   onSelect={() => run(() => requestRunWorkflow(w.id))}
+                  className="data-[selected=true]:[&_[data-play]]:text-emerald-300"
                 >
-                  <Play className="text-emerald-400" />
+                  <Play data-play className="text-emerald-400" />
                   <span className="truncate font-medium">{w.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-xs tabular-nums text-muted-foreground">
                     · {w.steps.length} step{w.steps.length === 1 ? "" : "s"}
                   </span>
                 </CommandItem>
