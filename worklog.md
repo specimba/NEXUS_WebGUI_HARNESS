@@ -1445,3 +1445,26 @@ Round ID: r621 -> next patrol (job 473388)
 Next recommended action: r621 — batched opening (expect HEAD = r620 commit; else follow ITS handoff); qa:golden (1 round); increment candidates: (a) persist run-archive status chip across visits via localStorage (r619 handoff leftover, small); (b) styling polish arc on a fresh surface (e.g. Agents page roster rows — hover affordances consistent with r619 chip vocabulary); mandatory styling polish + feature; gates + witness; ship under 12. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:golden=4/4 qa-peer-blind-score=8/8 witness="crew alignment counts the r578 peer pattern (PASS/FAIL/UNCERTAIN) + panel badge stack; vocabulary anchored to peerBlindNote" restart="0/1 consumed"
+
+---
+Task ID: r621
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271137)
+Task: Patrol r621 — follow r620 handoff, golden QA, increment, gates, dual push. Round consumed by an environment-level incident: sandbox rollback.
+
+Work Log:
+- OPENING: server DOWN (curl 000) — consumed the ONE allowed restart (dev-restart.sh OK, detached daemon, HTTP 200). restart="1/1 consumed".
+- HEAD MISMATCH DISCOVERED: local HEAD = 19ed36863 (r617) and origin/main tracking also r617, while worklog expected r620 (02b3b03a9). Reflog top = the r617 commit itself (no reset entry) ⇒ the sandbox was rolled back to a post-r617 snapshot; rounds r618–r620 survived only as uncommitted working-tree edits plus resurrected untracked debris.
+- RECOVERY (history first): git fetch revealed the REAL remote (github specimba/NEXUS_WebGUI_HARNESS) still holds the true r618→r620 chain (pushed by those rounds pre-rollback) — the earlier local recovery-replay commit was discarded via `git reset --soft origin/main` (HEAD back to true 02b3b03a9; tree matched r620 content exactly, zero code delta). Both remotes re-synced.
+- DEBRIS PURGE (fix-before-work): the rollback resurrected ~20 untracked files absent from origin/main — old test scripts importing removed APIs (peekLastExecutorTick, isFreeLane, MCP_INPUT_*…: these ALONE broke the tsc gate), the pre-r615 src/components/praison/ dir (ToolId[] type errors), stale src/lib/{mcp*,dream,lane-quota,prompt-evolution,relay-events,relay-prober,skills,suite-*,tracker-caps-index}.ts and src/lib/server/redaction.ts (pre-r525 location). `git clean` per-path; tracked tree now byte-identical to origin/main r620.
+- GOLDEN STATUS (honest): ran 3× — 2/4 every time: leg1 PASS, leg3 PASS, leg2 frontier NO-GUARD + console delta +3/run. Frontier API verified HEALTHY (curl ok:true with items) ⇒ client-side. DIAGNOSIS LEAD (unbudgeted): qa-golden's consoleErrors() counts the substring "error" in `agent-browser console` output — text-based, not structured console entries; the +3 may be benign text or real page errors. NO-GUARD with a healthy API suggests the tab render/scroll-height probe failing, not data.
+- Budget (12) exhausted by the incident + recovery; the r619-handoff increment (chip persistence) NOT started — bugs-first rule consumed the round.
+
+Stage Summary:
+- Incident contained: history restored to true r620, both remotes synced, tsc-gate-breaking debris purged, working tree clean vs origin. No code delta shipped this round — the user-facing repair IS the round (app back on the true r620 surface).
+- Open: golden leg2 NO-GUARD + console delta — needs a fresh-budget diagnosis round.
+
+Round Handoff:
+Round ID: r622 -> next patrol (job 473388)
+Next recommended action: r622 — batched opening (expect HEAD = r621 worklog commit; server may be up — check before any restart); (1) DIAGNOSE leg2+console first: dump `agent-browser console` raw text to see the actual +3 lines (real console.error vs benign text), re-run frontier leg after a 10s warm; if benign, harden qa-golden's consoleErrors() to parse structured console entries (that hardening = legitimate increment, QA-harness integrity); (2) then the r619-leftover increment: run-archive status chip persisted via localStorage + focus-visible ring polish on the chips; gates + witness; ship under 12. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 lint=0(33) witness="r621 incident round: sandbox rollback to r617 repaired via fetch+soft-reset onto true origin/main r620; ~20 resurrected debris files purged (tsc gate restored); golden 2/4 (leg2 NO-GUARD + console delta) documented for r622 diagnosis" restart="1/1 consumed"
