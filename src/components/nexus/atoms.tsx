@@ -14,7 +14,7 @@ import {
 import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Agent, AgentColor, PipelineDepth, ToolId } from "@/lib/types";
+import type { Agent, AgentColor, AnyToolId, PipelineDepth, ToolId } from "@/lib/types";
 import { TOOL_META } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -60,9 +60,20 @@ export function AgentAvatar({
 }
 
 // ─── Badges ──────────────────────────────────────────────────────────────────
-export function ToolBadge({ tool, className }: { tool: ToolId; className?: string }) {
-  const meta = TOOL_META[tool];
-  if (!meta) return null;
+export function ToolBadge({ tool, className }: { tool: AnyToolId; className?: string }) {
+  // r615: pack tool ids (TASK-103) have no TOOL_META entry — they used to
+  // vanish here (return null), silently invisible on agent cards and the
+  // chat composer. They are boundary-shaped (TOOL_NAME_RE) and validated
+  // at the manifest, so render as a cyan pack chip carrying the raw id.
+  const meta = TOOL_META[tool as ToolId];
+  if (!meta) {
+    return (
+      <Badge variant="outline" className={cn("gap-1 border-cyan-500/40 font-normal text-cyan-300", className)}>
+        <span aria-hidden>🧩</span>
+        {tool}
+      </Badge>
+    );
+  }
   return (
     <Badge variant="secondary" className={cn("gap-1 font-normal", className)}>
       <span aria-hidden>{meta.emoji}</span>

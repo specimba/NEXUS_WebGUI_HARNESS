@@ -25,7 +25,7 @@ import {
   type ToolResult,
   type TurnSafetyAudit,
 } from "./tools-defs";
-import type { RouteReceipt, ToolCallInfo, ToolId } from "./types";
+import type { AnyToolId, RouteReceipt, ToolCallInfo, ToolId } from "./types";
 
 // r529 — TASK-102 slice 5: the Anthropic-dialect lane adapter (body shaping,
 // x-api-key auth headers, streaming-SSE translation) shared with
@@ -81,7 +81,7 @@ export interface EngineBody {
   maxIterations?: number;
   system?: string;
   messages: { role: "user" | "assistant"; content: string }[];
-  tools?: ToolId[];
+  tools?: AnyToolId[];
   /**
    * 2-a: Cortex Edge config (BYOK, browser → server per request, never
    * persisted). The server chat route threads it into executeTool's context

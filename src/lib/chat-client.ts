@@ -1,4 +1,4 @@
-import type { RouteReceipt, ToolCallInfo, ToolId } from "./types";
+import type { AnyToolId, RouteReceipt, ToolCallInfo, ToolId } from "./types";
 import {
   classifyUpstreamError,
   runRelayedCustom,
@@ -50,7 +50,7 @@ export interface RunAgentParams {
   maxIterations?: number;
   system?: string;
   messages: { role: "user" | "assistant"; content: string }[];
-  tools?: ToolId[];
+  tools?: AnyToolId[];
   /** Images attached to the newest user message (data URLs) — vision path. */
   images?: { name: string; dataUrl: string }[];
   /**

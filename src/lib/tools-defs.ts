@@ -5,7 +5,7 @@
 //    POST /api/tools/execute, so tool results still come from the server)
 // Split out of server/tools.ts so client code never imports node:vm / ZAI.
 
-import type { ToolId } from "./types";
+import type { AnyToolId, ToolId } from "./types";
 import type { CortexConfig } from "./cortex-edge";
 
 export interface ToolResult {
@@ -23,7 +23,7 @@ export interface ToolDef {
   };
 }
 
-export function buildToolDefs(tools: ToolId[]): ToolDef[] {
+export function buildToolDefs(tools: AnyToolId[]): ToolDef[] {
   const defs: Record<ToolId, ToolDef> = {
     web_search: {
       type: "function",
@@ -285,7 +285,10 @@ export function buildToolDefs(tools: ToolId[]): ToolDef[] {
       },
     },
   };
-  return tools.map((t) => defs[t]).filter(Boolean);
+  // r615: pack ids (TASK-103) have no isomorphic def yet — the registry feeds
+  // the picker slice; until then they drop out here instead of crashing the
+  // builder with a missing record entry.
+  return tools.map((t) => defs[t as ToolId]).filter(Boolean);
 }
 
 /** The executor half — server implements directly, browser via /api/tools/execute. */

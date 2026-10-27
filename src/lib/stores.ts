@@ -10,7 +10,7 @@ import type {
   ConversationMemory,
   Settings,
   ToolCallInfo,
-  ToolId,
+  AnyToolId,
   View,
   Workflow,
   WorkflowRun,
@@ -20,6 +20,7 @@ import type {
   StepKind,
 } from "./types";
 import { DEFAULT_SETTINGS, PRESEED_PROVIDER_KEYS, SEED_AGENTS, TOOL_IDS } from "./constants";
+import { TOOL_NAME_RE } from "./plugin-manifest";
 import { uid } from "./helpers";
 import { noteProvider429, provider429CooldownLeftMs } from "./provider-rotation";
 import { CHAT_PROVIDERS } from "./providers";
@@ -363,13 +364,19 @@ export const useAgentsStore = create<AgentsState>()(
       // r414: same unguarded-writer fix as nexus-settings above.
       storage: createJSONStorage(() => debouncedStorage(300)),
       // r26.2 tool-expansion migration (v0 → v1): seeded agents gain the new
-      // tools (UNION — nothing the user kept is removed) and tool ids that no
-      // longer exist in the closed-world registry are dropped. Runs once.
+      // tools (UNION — nothing the user kept is removed) and unknown tool ids
+      // are dropped. r615 open-world update (TASK-103 slice 2): pack tool ids
+      // pass through when they carry the manifest boundary shape (TOOL_NAME_RE
+      // — the same snake-id regex the loader validated them against); a pack
+      // that later uninstalls leaves inert ids that fail honestly at call
+      // time instead of being silently stripped on load.
       version: 1,
       migrate: (persisted) => {
         const state = (persisted ?? {}) as Partial<AgentsState>;
         const agents = (state.agents ?? []).map((a) => {
-          const valid = (a.tools ?? []).filter((t): t is ToolId => (TOOL_IDS as string[]).includes(t));
+          const valid = (a.tools ?? []).filter(
+            (t): t is AnyToolId => (TOOL_IDS as string[]).includes(t) || TOOL_NAME_RE.test(t)
+          );
           const seed = SEED_AGENTS.find((s) => s.id === a.id);
           return seed
             ? { ...a, tools: [...new Set([...valid, ...seed.tools])] }

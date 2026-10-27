@@ -1278,3 +1278,27 @@ Round ID: r615 -> next patrol (job 473388)
 Next recommended action: r615 — batched opening (expect HEAD = r614 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 second half if budget allows a real start (ToolId widening + stores save-filter pass-through of pack tool ids is the smallest honest sliver), else a small UI/engine increment; gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS(441) qa:tsc=rc0 qa:golden=4/4 witness="live registry: sample pack serves lanes/crews after edit without reload (mtime sweep); strip chips cyan house vocabulary" restart="0/1 consumed"
+
+---
+Task ID: r615
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270807 + 202610270837 continuation)
+Task: Patrol per r614 handoff — qa:golden QA face, plugin-manifest slice 2 second half (open-world ToolId widening + stores save-filter pass-through), gates, worklog, dual push.
+
+Work Log:
+- OPENING (07:37 dispatch): HEAD = 65e661954 (r614, shipped by the parallel session) — followed ITS handoff as r615. qa:golden 4/4 PASS. Shipped the widening across types.ts / plugin-manifest.ts / stores.ts / tools-defs.ts / chat-client.ts / agent-engine.ts, then the gate chain aborted at tsc: 5 downstream sinks still typed ToolId. Budget cap (12) hit exactly there — stopped clean, nothing committed, no worklog claim; the 5 fix sites were named in the turn summary for this continuation.
+- INTERIM: a cron process committed the working tree as-is (9efcf59dc "…-cron", unpushed, main ahead of fork by 1) — the widening was preserved verbatim, tsc still red. This round adopted that state.
+- CONTINUATION (08:37 dispatch): server transient-000 on first curl, 200 on recheck — no restart consumed (0/1). Fixed the 5 sinks (line-targeted perl, all anchors probed first):
+  * atoms.tsx — ToolBadge widened to AnyToolId with a PACK-AWARE branch: unknown ids used to hit `if (!meta) return null` and VANISH from agent cards + composer; they now render as cyan pack chips (border-cyan-500/40 text-cyan-300, puzzle glyph, raw boundary-shaped id). User-facing + styling polish in one hunk.
+  * agent-form-dialog.tsx — picker useState<AnyToolId[]> + blank-agent default widened: pack ids survive open->edit->save instead of corrupting or being stripped.
+  * workflow-runner.ts — passTools/effectiveTools annotations widened (AnyToolId[]), Set<AnyToolId> merge for synthetic deep-research passes.
+- GATES: tsc=0, lint=0(33-exact), qa:syntax=PASS, qa:tsc=rc0, qa:golden=4/4 (console 0->0). The cron-named commit was amended into this r615 commit (safe: unpushed) so history stays honest.
+
+Stage Summary:
+- Slice 2 second half SHIPPED: pack tool ids now persist end-to-end (agent card badge -> form edit -> migrate -> relay payload) with the manifest boundary shape as the only gate; TOOL_NAME_RE is the single shared source of truth between loader and store. What remains of slice 2 is the picker frontier (registry-fed chips + registry-fed defs at the buildToolDefs boundary).
+- Remaining meta-review queue r616+: (P2) plugin-manifest slice 2 frontier — agent-picker registry integration; (P2) vault seeding (Owner key — never invented); (P2) Supabase bucket (Owner action).
+
+Round Handoff:
+Round ID: r616 -> next patrol (job 473388)
+Next recommended action: r616 — batched opening (expect HEAD = r615 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 frontier (agent-picker registry integration: chips + defs sourced from /api/tools/registry, buildToolDefs learns pack defs) if budget allows a real start, else a small honest UI/engine increment; gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="pack-aware ToolBadge (unknown ids render cyan pack chips instead of vanishing); picker state + runner annotations widened; cron interim commit amended into r615" restart="0/1 consumed"

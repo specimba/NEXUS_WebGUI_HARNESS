@@ -48,6 +48,13 @@ export const BUILTIN_TOOL_IDS = [
   "tts_speak",
 ] as const satisfies readonly ToolId[];
 
+/** r615: open-world widening (TASK-103 slice 2, second half). Pack tools get
+ *  LLM-safe snake names at the manifest boundary (TOOL_NAME_RE in
+ *  plugin-manifest.ts, builtin-collision checked there) — the type system
+ *  cannot enumerate them, so persisted/contract surfaces carry AnyToolId
+ *  while ToolId stays CLOSED where executors dispatch on it. */
+export type AnyToolId = ToolId | (string & {});
+
 export type AgentColor = "violet" | "emerald" | "amber" | "rose" | "cyan" | "fuchsia";
 
 export type ProviderMode = "auto" | "custom";
@@ -70,7 +77,7 @@ export interface Agent {
   model: string; // "auto" for built-in, or a model id for custom providers
   temperature: number; // 0 – 1.5
   maxIterations: number; // 1 – 10
-  tools: ToolId[];
+  tools: AnyToolId[];
   createdAt: number;
   updatedAt: number;
 }
@@ -292,7 +299,7 @@ export interface WorkflowRunStep {
    */
   instruction?: string;
   /** Effective tool set for synthetic passes (merged at materialization). */
-  tools?: ToolId[];
+  tools?: AnyToolId[];
   /** Review-gate outcome for kind = "review" steps. */
   verdict?: "pass" | "rework";
   /** True when this generate step was redone after a review rework. */

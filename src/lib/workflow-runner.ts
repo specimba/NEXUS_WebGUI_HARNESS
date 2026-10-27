@@ -82,6 +82,7 @@ import type {
   RunErrorInfo,
   RunErrorKind,
   ToolCallInfo,
+  AnyToolId,
   ToolId,
   Workflow,
   WorkflowRun,
@@ -581,9 +582,9 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[], depthOverr
     // arXiv fits research — grant the merged tool set only when the base agent
     // already has any tools (an agent authored without tools stays tool-free).
     const baseTools = firstAgent?.tools ?? [];
-    const passTools: ToolId[] | undefined =
+    const passTools: AnyToolId[] | undefined =
       baseTools.length > 0
-        ? Array.from(new Set<ToolId>([...baseTools, "web_search", "arxiv_search"]))
+        ? Array.from(new Set<AnyToolId>([...baseTools, "web_search", "arxiv_search"]))
         : undefined;
     const passes: WorkflowRunStep[] = DEEP_PASSES.map(({ label }) => ({
       stepId: uid("deep"),
@@ -1371,7 +1372,7 @@ export async function executeWorkflowRun(
       : null;
     // Synthetic deep-research passes carry a merged tool set (base tools +
     // web_search + arxiv_search) materialized on the run step itself.
-    const effectiveTools: ToolId[] = runStep.tools ?? agent.tools ?? [];
+    const effectiveTools: AnyToolId[] = runStep.tools ?? agent.tools ?? [];
     // Task fit (Genius-rotator doctrine): research steps with search tools
     // prefer fast models first (many quick tool rounds); review/writing steps
     // prefer flagships first (one excellent pass matters most).

@@ -31,7 +31,7 @@ import { AUTO_MODEL, TOOL_IDS, TOOL_META } from "@/lib/constants";
 import { CHAT_PROVIDERS, loadLiveCatalog, providerModelOptions } from "@/lib/providers";
 import { relayHealthSnapshot } from "@/lib/relay";
 import { withRelayHealth } from "@/lib/relay-health";
-import type { Agent, AgentColor, ToolId } from "@/lib/types";
+import type { Agent, AgentColor, AnyToolId, ToolId } from "@/lib/types";
 import { firstGrapheme, uid } from "@/lib/helpers";
 import { useAgentsStore, useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -79,7 +79,7 @@ export function AgentFormDialog({
   const [model, setModel] = React.useState<string>(AUTO_MODEL.id);
   const [temperature, setTemperature] = React.useState(0.7);
   const [maxIterations, setMaxIterations] = React.useState(6);
-  const [tools, setTools] = React.useState<ToolId[]>([]);
+  const [tools, setTools] = React.useState<AnyToolId[]>([]);
   const nameRef = React.useRef<HTMLInputElement | null>(null);
 
   // Dirty tracking: a baseline snapshot is seeded on every open; any drift
@@ -165,7 +165,7 @@ export function AgentFormDialog({
           model: AUTO_MODEL.id,
           temperature: 0.7,
           maxIterations: 6,
-          tools: [] as ToolId[],
+          tools: [] as AnyToolId[],
         };
     setName(next.name);
     setEmoji(next.emoji);

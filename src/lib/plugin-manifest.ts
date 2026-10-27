@@ -41,7 +41,9 @@ export interface ManifestValidation {
 }
 
 const ID_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
-const TOOL_NAME_RE = /^[a-z][a-z0-9_]{2,31}$/;
+/** r615: exported — the stores save-filter reuses THIS regex so pack tool ids
+ *  held on agents pass through with exactly the shape the loader enforced. */
+export const TOOL_NAME_RE = /^[a-z][a-z0-9_]{2,31}$/;
 const PRESET_JSON_BUDGET = 2048;
 const MAX_TOOLS_PER_PACK = 16;
 const DECL_RE = /^[a-z][a-z0-9_-]{1,23}$/;
