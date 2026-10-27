@@ -1634,3 +1634,25 @@ Round ID: r627 -> next patrol (job 473388)
 Next recommended action: r627 — batched opening (expect HEAD = r626 commit; server up; qa:golden 1 round, expect 5/5). Candidates: (a) qa-golden hardening: reset the persisted ui-state key (workflowBoardOpen etc.) at startup so probe pollution can never fail a leg again — harness integrity, small; (b) styling arc: gateway-pulse-chip / schedule chips focus-visible sweep if any interactive element lacks it; (c) fix-before-work wins. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0 qa:golden=5/5 witness="kanban RunCard focus-visible rings 12/12 probe; arrow keyboard parity; probe-pollution incident root-caused (persisted boardOpen) + repaired, golden canonical" restart="0/1 consumed"
+
+---
+Task ID: r627
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271437)
+Task: Patrol r627 — per r626 handoff: (a) qa-golden hardening — reset persisted ui-state at startup so probe pollution can never fail a leg again; (b) focus-visible sweep on interactive chips lacking it.
+
+Work Log:
+- OPENING: HEAD = be33f917c (r626), server up (200, restart untouched), tree clean. qa:golden 5/5 pre-edit. Inspection folded into the opening batch (1 grep round): nexus-ui persist store (stores.ts:964) carries workflowBoardOpen/boardWorkflowFilter via partialize; GatewayPulse is an interactive button with hover styles and ZERO focus-visible.
+- INCREMENT 1 (harness integrity): qa-golden boot-canonical leg — before the residue reload, a surgical eval forces state.workflowBoardOpen=false in the nexus-ui persist key (only the field evidence implicates; view/hash-nav proven harmless across rounds), reload rehydrates it, and a read-back eval is recorded as a real PASS/FAIL leg ("boot canonical — boardOpen=false"). Absent key / absent state read back as canonical defaults (fresh profile must not false-fail). Probe pollution is now STRUCTURALLY impossible, not procedural.
+- INCREMENT 2 (styling, keyboard users): gateway-pulse-chip button gains the violet focus vocabulary (focus-visible:outline-none + ring-2 violet-500/40 + offset-1) — chip identity stays amber (congestion) / emerald (rescue); focus ring is interaction vocabulary, same doctrine as r626's kanban lanes. The rescue chip is a non-interactive span — honest skip, no fake affordance. Verification is tsc-honest only: the chip renders null without recent 429s (line 78), so no in-browser probe without burning real traffic (r625 via-stamp precedent).
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0 (34 grep hits = 33 + summary, known baseline). Post-edit qa:golden 6/6 — boot canonical green on first run, legs 1-3 unchanged, console 34→34 delta 0.
+- Budget: 7 rounds projected at ship (opening 1, golden+grep 1, reads 1, edits 1, gates 1, golden 1, worklog+push 1) — handoff-decided increment + capped inspection held for the second round running.
+
+Stage Summary:
+- Golden harness now self-heals persisted UI state before asserting, and ships a witnessed boot leg — the r626 class of probe-induced false failures is closed by construction.
+- The gateway pulse chip is keyboard-visible in the shared violet focus vocabulary.
+
+Round Handoff:
+Round ID: r628 -> next patrol (job 473388)
+Next recommended action: r628 — batched opening (expect HEAD = r627 commit; server up; qa:golden 1 round, now 6/6 with boot canonical). Increment candidates: (a) schedule-chip / next-run countdown focus-visible sweep in workflows-view (same arc as gateway-pulse; grep "focus-visible" coverage first, only touch what genuinely lacks it); (b) P1 backlog docs/strategy/TASKS.md review — TASK-101/102 status check, Owner-gated items stay untouched; (c) fix-before-work wins. Never invent Owner-key-dependent work; probes target aria-labels; restore any UI state a probe flips (boot leg now backstops golden, but keep probes honest).
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="boot-canonical leg added (boardOpen=false, first-run green, pollution closed by construction); gateway-pulse focus-visible violet ring (tsc-honest, chip renders only with recent 429s); console delta 0" restart="0/1 consumed"

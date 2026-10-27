@@ -76,8 +76,21 @@ function record(leg: string, ok: boolean, detail: string) {
   );
 }
 
-// Fresh document: clears any prior witness residue (fetch patches, pollers).
-sh("agent-browser reload >/dev/null 2>&1", 30000);
+// r627: canonical boot — normalize the persisted UI state a leg depends on
+// BEFORE the reload, then verify by read-back. r626 incident: a probe left
+// workflowBoardOpen=true in the nexus-ui persist store; the reload rehydrated
+// it and leg3's card-grid ^run$ button did not exist in board mode (4/5, no
+// code regression). The reset is surgical (only the field evidence says
+// matters — view/hash-nav proven harmless across rounds) and the read-back
+// makes probe pollution STRUCTURALLY impossible, not procedural.
+{
+  sh(`agent-browser eval '(() => { try { const k="nexus-ui"; const raw=localStorage.getItem(k); if(!raw) return "absent"; const s=JSON.parse(raw); if(!s || typeof s!=="object" || !s.state) return "no-state"; s.state.workflowBoardOpen=false; localStorage.setItem(k, JSON.stringify(s)); return "normalized"; } catch(e) { return "reset-error"; } })()' >/dev/null 2>&1`, 30000);
+  // Fresh document: rehydrates the normalized store; also clears any prior
+  // witness residue (fetch patches, pollers).
+  sh("agent-browser reload >/dev/null 2>&1", 30000);
+  const boot = evalJs("boot-canonical", `(() => { try { const raw=localStorage.getItem("nexus-ui"); if(!raw) return "boardOpen=default"; const s=JSON.parse(raw); const v=s?.state?.workflowBoardOpen; return "boardOpen="+(v===false||v===undefined?"false":String(v)); } catch(e) { return "boardOpen=read-error"; } })()`);
+  record("boot canonical", boot === "boardOpen=false" || boot === "boardOpen=default", boot);
+}
 const baseline = consoleErrors();
 
 // ── Leg 1: Settings -> Model Relay (intel badge + census chip) ──────────────

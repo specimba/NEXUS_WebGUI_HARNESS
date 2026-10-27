@@ -108,7 +108,7 @@ export function GatewayPulse() {
         aria-label={`Gateway pulse: last rate limit ${fmtRel(pulse.last429At)}, ${pulse.count24h} in the last 24 hours. Click to refresh.`}
         title={title}
         className={cn(
-          "inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
+          "inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1",
           fresh
             ? "border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
             : "border-border bg-muted/40 text-muted-foreground hover:bg-muted/60"
