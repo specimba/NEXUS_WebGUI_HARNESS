@@ -136,7 +136,7 @@ export function AcquisitionLanesPanel({
                 laneKeyRef.current?.focus();
                 laneKeyRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
               }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-left text-[10px] font-medium transition-colors hover:border-foreground/30 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-left text-[10px] font-medium transition-colors hover:border-foreground/30 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             >
               <span aria-hidden className={dot} />
               <span className={tone}>

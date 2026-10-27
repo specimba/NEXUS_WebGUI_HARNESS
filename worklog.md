@@ -1798,3 +1798,29 @@ Round ID: r634 -> next patrol (job 473388)
 Next recommended action: r634 — batched opening (expect HEAD = r633 commit; server up; qa:golden 1 round, 6/6). Candidates: (a) theme-picker.tsx:46 ring drift (ring-ring + ring-offset-2 variant) -> replace with the canonical string whole; sweep first with rg 'focus-visible:ring-ring' src/components/nexus to catch any siblings (should be just theme-picker after r633); (b) consistency tier backlog (image-studio idea chips, chat-search options) only if (a) exhausts in <2 rounds; (c) fix-before-work wins. Plugin slice 2 stays deferred; never invent Owner-key-dependent work. If the server dies again, execute handoff (b) of r632: document uptime evidence as a P1 stability item for the Owner briefing.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="conversation-list clear-search X + active row canonical violet rings (drifted partial ring retired); chat-search options + image-studio chips honest skips (default outline present); theme-picker drift queued r634" restart="0/1"
+
+---
+Task ID: r634
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271807)
+Task: Patrol r634 — per r633 handoff candidate (a): theme-picker ring drift + sibling sweep; server-death watch.
+
+Work Log:
+- OPENING (1 batched round): HEAD = a191172c3 (r633), server 200 (daemon healthy, no recurrence), tree clean, qa:golden 6/6 pre-edit, console 0->0.
+- SWEEP SURPRISE (opening round): handoff expected "just theme-picker" — the sibling sweep actually found 5 drifted `ring-ring` partial-variant sites across 5 files: server-autopilot:938 (resume chip), model-ticker:386 + model-radar-tab:322 (search inputs), theme-picker:46 (radio cards), acquisition-lanes-panel:139 (lane chips). All genuine drift (no offset / wrong token / bare outline-none).
+- WAVE 1 (reads 1 round, edits 1 round, 5 files): all 5 sites -> canonical string whole (violet-500/40 + offset-1 + offset-background). theme-picker nuance: line 48 `ring-2 ring-primary` is the ACTIVE-STATE ring on role="radio" cards — selection semantics, untouched; only the focus-visible vocabulary changed.
+- WAVE 2 (probe-led): broader probe revealed a SECOND legacy family the opening pattern missed — `ring-[3px] ring-ring/50` soft halo, 5 sites / 4 files: egress-card:314 + provider-card:194 + cortex-edge-card:151 (identical eye/X reveal buttons), provider-gallery:550 (expand header), provider-card:120 (provider option card, bare outline-none folded into canonical). Reads 1 round, edits 1 round (MultiEdit atomic-ok).
+- CLASSIFICATION (decisive): post-wave-2 repo probe shows 15 remaining `focus-visible:ring-ring` hits — ALL in src/components/ui/* shadcn primitives (button, input, textarea, switch, tabs, select, ...). That ring-ring/50+ring-[3px] vocabulary IS the shadcn v4 library default, not custom drift -> out of drift-guard scope, honest skip. Correct future lever if Owner ever wants violet primitives: override the `--ring` CSS token in globals.css (1 line, wide effect, needs golden) — NOT per-component edits.
+- GATES x2 (unmasked redirect): tsc rc=0, lint rc=0 (34 = baseline) after each wave. Post-edit qa:golden 6/6, console 0->0.
+- Budget: 11 rounds (opening 1, reads 2, edits 2, gates 2, probe 1, classify+golden 1, worklog 1, push 1).
+
+Stage Summary:
+- FOCUS-RING SAGA CLOSED for custom components: every custom focus-visible ring in src/components/nexus now copies the canonical string; `rg 'focus-visible:ring-ring' src/components/nexus` = 0. Two families retired this round (5 partial variants + 5 legacy halos), 3 sites r633, template drift guard shipped r632.
+- Residual: ONE line repo-wide matches ring-offset-1-without-ring-offset-background (probe in gates round; likely a multi-line cn() split or a non-focus state usage) — unchased this round, cheap first probe for r635.
+- ui/ primitives permanently out of scope unless Owner opts into the --ring token override.
+- Server: three consecutive healthy rounds since the r632 death — no uptime escalation.
+
+Round Handoff:
+Round ID: r635 -> next patrol (job 473388)
+Next recommended action: r635 — batched opening (expect HEAD = r634 commit; server up; qa:golden 1 round, 6/6). Candidates: (a) chase the 1 residual ring-offset-1 line: rg -P 'ring-offset-1' src/components -g '*.tsx' | rg -v 'ring-offset-background' — if it is a focus ring, canonicalize (<2 rounds); if it is state/selection vocabulary, document honest skip; (b) consistency tier backlog (image-studio idea chips, chat-search option buttons — default outline present) as the follow-on polish; (c) fix-before-work wins; (d) if Owner asks for violet ui/ primitives, propose the --ring token override for approval first (do not self-approve a wide visual change). Plugin slice 2 stays deferred; never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="focus-ring saga closure: 10 sites canonicalized across 9 files (5 ring-ring partial variants + 5 ring-[3px]/50 legacy halos); nexus ring-ring drift 0; ui/ shadcn defaults out-of-scope documented; 1 residual bare-offset line queued r635" restart="0/1"

@@ -116,8 +116,8 @@ export function ProviderCard() {
                   })
                 }
                 className={cn(
-                  "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors outline-none",
-                  "focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                  "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                   selected
                     ? "border-violet-500/60 bg-violet-500/5 ring-2 ring-violet-500/30"
                     : "hover:border-violet-500/30 hover:bg-muted/50"
@@ -191,7 +191,7 @@ export function ProviderCard() {
                   type="button"
                   onClick={() => setShowKey((v) => !v)}
                   aria-label={showKey ? "Hide API key" : "Show API key"}
-                  className="absolute top-1/2 right-1 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]"
+                  className="absolute top-1/2 right-1 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                 >
                   {showKey ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
                 </button>

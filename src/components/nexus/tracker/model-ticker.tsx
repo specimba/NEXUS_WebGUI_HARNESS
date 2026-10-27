@@ -383,7 +383,7 @@ export function ModelTicker() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search all lanes…"
               aria-label="Search tracked models"
-              className="h-7 w-full rounded-md border bg-transparent pl-7 pr-2 text-[12px] outline-none placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-7 w-full rounded-md border bg-transparent pl-7 pr-2 text-[12px] placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             />
           </div>
           {queryActive && (

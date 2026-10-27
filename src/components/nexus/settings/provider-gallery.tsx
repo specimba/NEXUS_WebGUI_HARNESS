@@ -547,7 +547,7 @@ export function ProviderGallery() {
           type="button"
           onClick={() => toggleExpand(p.id)}
           aria-expanded={isOpen}
-          className="flex w-full items-center gap-3 p-3 text-left outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px] rounded-xl"
+          className="flex w-full items-center gap-3 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background rounded-xl"
         >
           <span
             className={cn(

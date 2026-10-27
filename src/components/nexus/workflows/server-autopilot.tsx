@@ -935,7 +935,7 @@ export function ServerAutopilot() {
                     data-testid={`schedule-resume-${r.id}`}
                     title={planTitle}
                     onClick={() => setOpenRun(hit.runId)}
-                    className="inline-flex items-center rounded-md border border-amber-400/30 bg-amber-400/5 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-400 transition-colors hover:border-amber-400/60 hover:bg-amber-400/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="inline-flex items-center rounded-md border border-amber-400/30 bg-amber-400/5 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-400 transition-colors hover:border-amber-400/60 hover:bg-amber-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                   >
                     ↻ next fire resumes
                     {plan ? ` at step ${plan.step}/${plan.total}` : " at the failed step"}

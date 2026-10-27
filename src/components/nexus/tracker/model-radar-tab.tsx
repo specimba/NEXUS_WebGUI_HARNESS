@@ -319,7 +319,7 @@ export function ModelRadarTab() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search lanes — ids, display names, providers…"
               aria-label="Search watched lanes"
-              className="h-8 w-full rounded-md border bg-transparent pl-7 pr-2 text-[12.5px] outline-none placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 w-full rounded-md border bg-transparent pl-7 pr-2 text-[12.5px] placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             />
           </div>
           {loading ? (

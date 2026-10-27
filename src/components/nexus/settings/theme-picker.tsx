@@ -43,7 +43,7 @@ export function ThemePicker() {
             aria-checked={isActive}
             aria-label={`${t.label} theme — ${t.tagline}`}
             onClick={() => pick(t.id, t.label)}
-            className={`group relative overflow-hidden rounded-xl border text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+            className={`group relative overflow-hidden rounded-xl border text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background ${
               isActive
                 ? "border-transparent ring-2 ring-primary ring-offset-2 ring-offset-background"
                 : "hover:border-primary/40 hover:shadow-lg"
