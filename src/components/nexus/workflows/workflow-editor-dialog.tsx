@@ -35,6 +35,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+// r651 (arXiv 2610.31421 F6/F7): the precedent-exemplar lane preview —
+// authoring-time mirror of what the archive-fed two-occurrence block would
+// inject for this generate step.
+import { PrecedentLanePreview } from "./precedent-lane-preview";
 import { ModelPicker } from "@/components/nexus/model-picker";
 import { AUTO_PLAN_SYSTEM } from "@/lib/constants";
 // r503 (owner directive): quality-marked lane pool for pipeline/step pins.
@@ -881,6 +885,15 @@ export function WorkflowEditorDialog({
                       className="ml-auto h-8 w-full text-xs sm:w-44"
                     />
                   </div>
+
+                  {/* r651: precedent-exemplar lane preview — what the archive
+                      would inject for this step, live while authoring. */}
+                  {(step.kind ?? "generate") === "generate" ? (
+                    <PrecedentLanePreview
+                      query={`${agent?.name ?? ""} ${step.label ?? ""} ${step.instruction ?? ""}`}
+                      stepIndex={i + 1}
+                    />
+                  ) : null}
 
                   {/* r182: authoring-time honesty — an explicit role that
                       disagrees with the worker says so NOW, not after a run. */}

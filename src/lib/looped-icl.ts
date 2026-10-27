@@ -181,8 +181,8 @@ export function loopExit(verdicts: LoopVerdict[]): LoopExit {
   return { exitedAt: verdicts.length, planned: verdicts.length, reason: "cap-reached" };
 }
 
-const ANCHOR_TAG = "Reference shape (anchor):";
-const TARGET_TAG = "Reference shape (repeat — follow exactly):";
+export const ANCHOR_TAG = "Reference shape (anchor):";
+export const TARGET_TAG = "Reference shape (repeat — follow exactly):";
 
 export interface TwoOccurrenceResult {
   prompt: string;
