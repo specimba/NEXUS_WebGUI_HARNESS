@@ -7,6 +7,9 @@
 // the "nexus:run-archive-updated" event + cross-tab "storage" events.
 // r619: one-click status filter chips (done / failed / amber) + clipboard copy
 // (batch Markdown pack and per-run Markdown) + search clear affordance.
+// r623: the chosen status chip persists across visits (localStorage, guarded
+// against invalid values) and the chips/clear affordances gained a
+// focus-visible ring so keyboard navigation stays legible.
 
 import * as React from "react";
 import { toast } from "sonner";
@@ -89,6 +92,22 @@ const STATUS_GROUPS = [
   },
 ] as const;
 
+type StatusGroupKey = (typeof STATUS_GROUPS)[number]["key"];
+
+/** r623: the last-used status chip survives visits — validated against the
+ *  real group keys so tampered/stale storage falls back to `all`. */
+const STATUS_FILTER_STORAGE_KEY = "nexus:run-archive-status-filter";
+
+function readStoredStatusFilter(): StatusGroupKey {
+  try {
+    const v = window.localStorage.getItem(STATUS_FILTER_STORAGE_KEY);
+    if (v && STATUS_GROUPS.some((g) => g.key === v)) return v as StatusGroupKey;
+  } catch {
+    /* storage unavailable (private mode / disabled) — default silently */
+  }
+  return "all";
+}
+
 function fmtDuration(ms?: number): string {
   if (ms == null || !Number.isFinite(ms)) return "—";
   if (ms < 1000) return `${ms}ms`;
@@ -104,9 +123,7 @@ function fmtDateTime(iso: string): string {
 export function RunArchivePanel() {
   const [entries, setEntries] = React.useState<RunArchiveEntry[]>([]);
   const [query, setQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<
-    (typeof STATUS_GROUPS)[number]["key"]
-  >("all");
+  const [statusFilter, setStatusFilter] = React.useState<StatusGroupKey>("all");
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
   // The one-time backfill from the persisted run store — idempotent inside
   // (flag key + getRun dedupe); the ref just avoids re-invoking per remount.
@@ -117,6 +134,12 @@ export function RunArchivePanel() {
   // vanishing. Still instant: the hot tier renders first, the warm merge
   // lands a tick later via the async reload.
   const reload = React.useCallback(() => void listArchiveFull().then(setEntries), []);
+
+  React.useEffect(() => {
+    // r623: restore the last-used status chip once on mount, after hydration
+    // (the server render always ships the `all` default — no mismatch).
+    setStatusFilter(readStoredStatusFilter());
+  }, []);
 
   React.useEffect(() => {
     if (!backfilledRef.current) {
@@ -162,6 +185,16 @@ export function RunArchivePanel() {
     }
     return c;
   }, [entries]);
+
+  /** r623: chip clicks persist the choice so the filter survives the visit. */
+  const changeStatusFilter = (key: StatusGroupKey) => {
+    setStatusFilter(key);
+    try {
+      window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, key);
+    } catch {
+      /* persistence is best-effort; the in-session state still applies */
+    }
+  };
 
   const filtered = React.useMemo(() => {
     // r619: status chip first (cheap), then the text query.
@@ -285,7 +318,7 @@ export function RunArchivePanel() {
               onClick={() => setQuery("")}
               aria-label="Clear the archive search"
               title="Clear the search"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40"
             >
               <X className="h-3 w-3" aria-hidden />
             </button>
@@ -306,11 +339,12 @@ export function RunArchivePanel() {
               <button
                 key={g.key}
                 type="button"
-                onClick={() => setStatusFilter(g.key)}
+                onClick={() => changeStatusFilter(g.key)}
                 aria-pressed={active}
                 title={g.title}
                 className={cn(
                   "h-7 rounded-full border px-2.5 text-[11px] font-medium tabular-nums transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                   active
                     ? g.activeClass
                     : "border-border bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"

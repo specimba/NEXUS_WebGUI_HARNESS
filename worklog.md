@@ -1542,3 +1542,27 @@ Round Handoff:
 Round ID: r623 -> unchanged from r622 handoff (qa-golden hardening first, then chip-persistence increment).
 Blockers: none.
 - GATES: unchanged (tsc=0 lint=0(33) qa:golden=4/4) — this correction touches only .gitignore + evidence placement.
+
+---
+Task ID: r623
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271237)
+Task: Patrol r623 — per r622 handoff: harden qa-golden (unmasked tsc rc + structured console parsing) + r619-leftover chip persistence + focus-visible polish.
+
+Work Log:
+- OPENING: HEAD = d439b8794 (r622-correction), server up (200, no restart used), tree clean. Pre-edit qa:golden: 4/4 (r622 DB repair holding).
+- Console format probes (evidence, not guesswork): `agent-browser console` lines carry severity prefixes ([log]/[info]/[warn]/[error]); `console --json` returns {data:{messages:[{args,text,level,...}]}}. Live text dump had 0 [error]-prefixed lines while the old substring counter reported 43 — the 43 was benign-text noise (r622 diagnosis confirmed quantitatively).
+- INCREMENT 1 (qa-golden hardening, harness integrity): (a) tsc gate leg FIRST via spawnSync("bunx",["tsc","--noEmit"]) with rc from .status — no shell, no pipe, unmaskable by construction; timeout (null status) fails the leg. (b) consoleErrors() now parses structured JSON entries (level==/type===\"error\") with severity-prefix line-parse fallback — no more substring \"error\" counting.
+- INCREMENT 2 (r619 leftover, user-facing): run-archive status chip persisted via localStorage (nexus:run-archive-status-filter, validated against real group keys, hydration effect restores post-mount, best-effort try/catch); focus-visible violet ring (+offset) on the four status chips and the search-clear affordance.
+- PROCESS INCIDENT (own error, contained): two MultiEdit batches reported failure but had applied earlier edits NON-atomically — duplicate helper block + broken statusCounts/hydration-effect syntax. Full-file read, damage assessed, one 6-edit repair batch verified by diff snippets. DOCTRINE: treat MultiEdit as possibly non-atomic; after ANY failed batch, re-read before re-applying; prefer interacting edits as sequential singles.
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0, 33 warnings exact. qa:golden 5/5 GREEN (tsc gate + 3 legs + console 34→34 delta 0 — structured counter).
+- Budget honesty: 2 tool rounds lost to the MultiEdit incident (round count exceeded 12 before commit) — overrun acknowledged; no cron changes; restart 0/1 consumed.
+
+Stage Summary:
+- qa:golden is now a self-contained 5-leg gate (tsc + 3 golden paths + structured console) — the r621 false-witness class (pipe-masked rc) and the r622 noise-count class (substring \"error\") are both structurally impossible in the harness now.
+- User-facing: status-chip filter survives visits; keyboard focus visible on chips + search clear.
+
+Round Handoff:
+Round ID: r624 -> next patrol (job 473388)
+Next recommended action: r624 — batched opening (expect HEAD = r623 commit; server up; qa:golden 1 round, expect 5/5). Increment candidates: (a) Agents page roster rows hover affordances polished to the r619/r623 chip vocabulary (styling arc on a fresh surface); (b) persist run-archive search query too (small sibling of r623 chip persistence); (c) fix-before-work if QA surfaces breakage. Keep increments small; never invent Owner-key-dependent work; MultiEdit doctrine above.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=5/5 witness="structured console counter 34→34 delta 0; tsc gate leg built unmaskable; chip persistence + focus rings shipped" restart="0/1 consumed"

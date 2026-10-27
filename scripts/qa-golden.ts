@@ -6,6 +6,16 @@
 // observable truth, and counts NEW console errors per leg (baseline-aware).
 // Exit 0 = all green; exit 1 = first failure with a named leg.
 //   bun run qa:golden
+// r623 hardening (harness integrity, per r621/r622 post-mortems):
+//   1. tsc gate leg FIRST with the rc captured unmasked via spawnSync().status
+//      (the r621 false witness came from `tsc | head` pipe-masking; a spawn
+//      without a shell cannot be pipe-masked by construction).
+//   2. consoleErrors() parses STRUCTURED console entries — `agent-browser
+//      console --json`, counting level=="error" entries — instead of counting
+//      the substring "error" anywhere in the text dump (r622 proved benign
+//      warning bodies containing the word "error" inflated the count and
+//      masked the real DB-corruption signal). Severity-prefix line parse is
+//      the fallback when --json is unavailable.
 import { spawnSync } from "node:child_process";
 
 function sh(cmd: string, timeoutMs = 60000): string {
@@ -13,9 +23,23 @@ function sh(cmd: string, timeoutMs = 60000): string {
   return (p.stdout ?? "") + (p.stderr ?? "");
 }
 
+// r623: structured console-entry parse — only REAL error-level entries count.
 function consoleErrors(): number {
+  const raw = sh("agent-browser console --json 2>&1", 30000);
+  try {
+    const parsed = JSON.parse(raw) as {
+      data?: { messages?: { level?: string; type?: string }[] };
+    };
+    const msgs = parsed?.data?.messages;
+    if (Array.isArray(msgs)) {
+      return msgs.filter((m) => m?.level === "error" || m?.type === "error")
+        .length;
+    }
+  } catch {
+    /* --json unavailable or shape changed — fall back to the prefix parse */
+  }
   const out = sh("agent-browser console 2>&1", 30000);
-  return (out.match(/error/gi) ?? []).length;
+  return (out.match(/^\s*\[error\]/gim) ?? []).length;
 }
 
 function evalJs(label: string, js: string, timeoutMs = 45000): string {
@@ -28,6 +52,28 @@ const results: { leg: string; ok: boolean; detail: string }[] = [];
 function record(leg: string, ok: boolean, detail: string) {
   results.push({ leg, ok, detail });
   console.log(`${ok ? "PASS" : "FAIL"} ${leg} — ${detail}`);
+}
+
+// ── Gate: TypeScript compiles — rc captured UNMASKED (no shell, no pipe) ────
+// r621 doctrine: a gate rc must never travel through a pipe. spawnSync()
+// without a shell hands us .status directly; a timeout surfaces as null and
+// fails the leg (a hung gate is a broken gate).
+{
+  const tsc = spawnSync("bunx", ["tsc", "--noEmit"], {
+    encoding: "utf8",
+    timeout: 180000,
+  });
+  const diag = ((tsc.stdout ?? "") + (tsc.stderr ?? ""))
+    .split("\n")
+    .filter((l) => l.trim())
+    .slice(0, 3)
+    .join(" | ")
+    .slice(0, 200);
+  record(
+    "tsc gate",
+    tsc.status === 0,
+    tsc.status === 0 ? "rc=0" : `rc=${tsc.status ?? "timeout"} :: ${diag}`
+  );
 }
 
 // Fresh document: clears any prior witness residue (fetch patches, pollers).
