@@ -70,6 +70,7 @@ import {
   writeIntelligenceCache,
   type IntelligenceIndex,
 } from "@/lib/intelligence";
+import { fmtRel } from "@/lib/helpers";
 // r517: free reach census — freellm.sh's filtered view (free access ∩
 // operational, newest first): the REACH half of "reach × intelligence".
 import {
@@ -484,12 +485,7 @@ export function ModelRelayCard() {
                   border while in the snapshot state — dashed = provisional
                   fallback, solid = live parse. */}
               {(() => {
-                const age = intel
-                  ? new Date(intel.asOf).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "";
+                const age = intel ? fmtRel(intel.asOf) : "";
                 return (
                   <Badge
                     variant="outline"
@@ -625,12 +621,7 @@ export function ModelRelayCard() {
                   vs "no census yet" (fetch not landed — Refresh seeds it).
                   Nothing is invented in any state. */}
               {(() => {
-                const age = freellm
-                  ? new Date(freellm.asOf).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "";
+                const age = freellm ? fmtRel(freellm.asOf) : "";
                 return (
                   <Badge
                     variant="outline"
