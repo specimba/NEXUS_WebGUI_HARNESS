@@ -2090,3 +2090,22 @@ Round ID: r644 -> next patrol (job 473388)
 Next recommended action: r644 — patrol opening per r642 handoff: ONE-liner canary (curl -s localhost:3000/api/radar/hourly; read vault.slots, registry.enabled, findings) + chain audit. Increment candidates in honesty order: (1) slice 2 of the looped-depth experiment — engine wiring: workflow-runner accepts loopedPasses<=3 on generate steps, executes prelude/block x r/coda with the r516 gate as the verdict source, amber "↻ looped k/r" chip + "Looped pass k/r" call-log notes; (2) radar post-growth recovery-window annotation (needs a lastGrowthEvent marker written by deploy paths); (3) r642 staged candidate: R7-symmetry recovery-witness rule (prev<=1 -> now>=2 info finding). Gates: tsc=0, lint=0 (33-warning baseline), golden 6/6 via bun scripts/qa-golden.ts. Never invent Owner keys; never touch cron config; hard budget <=12.
 Blockers: none patrol-side; Owner one-click re-mirror still pending.
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:looped-icl=51/51 witness="arXiv 2610.31421 digested (F1-F9 + 5-expert panel + adaptation map); slice 1 shipped pure (loopedPlan/grownPlan/loopExit/twoOccurrencePrompt/reassignLabels/iclIwlSplit) with dial-free QA 51/51 incl. two fixture-side self-catches; TASKS.md P2 entry staged for slice 2 engine wiring" restart="0/1"
+
+---
+Task ID: r644 (ship chain)
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610272237)
+Task: r644 ship chain — first gate run caught a real pre-ship bug; fixed and re-shipped.
+
+Work Log:
+- GATE SELF-CATCH (the gates doing their job): the first ship chain aborted honestly at tsc rc=2 — TS2339 loopedPasses missing on WorkflowRunStep. Root cause: the types edit added the looped runtime outcome to WorkflowRunStep but forgot the MATERIALIZED loopedPasses field (it existed only on the authored WorkflowStep). One-line fix (loopedPasses?: number materialized from WorkflowStep), no logic changed. Note: golden's tsc leg failed for the same reason (5/6, legs otherwise green) — consistent signals, no masking anywhere.
+- RE-SHIPPED after fix: gates re-run green (tsc=0 unmasked, lint=0/33, golden 6/6 incl. leg3 real generate step on the legacy path, console 0->0). Commit + double push below this line in the same gated chain.
+- Everything else in the r644 section above stands as written (canary slots=4 Owner re-mirrored; slice 2 wiring; honest witness scope: looped path dial-dependent, not live-witnessed).
+
+Stage Summary:
+- Slice 2 shipped on a green gate set; the pre-ship self-catch is the r621/r622 gate-hardening lineage paying off (rc unmasked -> abort -> fix -> re-ship, no false witness).
+
+Round Handoff:
+Round ID: r645 -> next patrol (job 473388)
+Next recommended action: unchanged from the r644 section above — (1) slice 2b editor toggle for loopedPasses; (2) live-witness the looped path if the free ladder is healthy; (3) TASKS.md truth-up + the r642-staged R7-symmetry recovery rule. Opening canary ONE-liner + chain audit as doctrine.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:golden=6/6 witness="looped-depth slice 2 shipped after gate self-catch (missing materialized loopedPasses on WorkflowRunStep — 1-line fix, no logic change); legacy path byte-identical (leg3 real run green); looped path dial-dependent, not live-witnessed (honest); vault canary slots=4 OWNER re-mirrored; console 0->0" restart="0/1"

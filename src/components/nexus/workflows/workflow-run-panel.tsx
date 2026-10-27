@@ -1834,6 +1834,14 @@ export function WorkflowRunPanel({
                           redone
                         </span>
                       ) : null}
+                      {step.looped ? (
+                        <span
+                          title={`Looped-depth semantics: ${step.looped.k} tied pass(es) of ${step.looped.r} ran, exit ${step.looped.reason} — re-judged after every pass (arXiv 2610.31421 adaptation)`}
+                          className="inline-flex shrink-0 items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400"
+                        >
+                          ↻ looped {step.looped.k}/{step.looped.r}
+                        </span>
+                      ) : null}
                       <StatusIndicator
                         status={step.status}
                         ms={step.ms}

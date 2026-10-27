@@ -262,6 +262,17 @@ export interface WorkflowStep {
    * funneling every dial into one saturated connection.
    */
   lane?: string;
+  /**
+   * r644 (paper adaptation slice 2, arXiv 2610.31421): opt-in looped-depth
+   * semantics for generate steps — after a Decision gate FAIL, the TIED
+   * rework block (byte-identical prompt, the looped invariant) re-runs up
+   * to N passes (hard cap 3, the RegBench plateau), each pass RE-JUDGED by
+   * the same free gate; exit on pass / consecutive-fail exhausted / cap.
+   * Absent = legacy single-rework behavior, byte-identical. The opt-in
+   * deliberately extends the default max-two-rework budget (paper thesis:
+   * reuse-shaped iteration buys the plateau, not more).
+   */
+  loopedPasses?: number;
 }
 
 export type StepKind = "generate" | "review";
@@ -300,6 +311,14 @@ export interface WorkflowRunStep {
   instruction?: string;
   /** Effective tool set for synthetic passes (merged at materialization). */
   tools?: AnyToolId[];
+  /**
+   * r644 looped-depth runtime outcome: set when the step ran with
+   * loopedPasses >= 2 — { k } tied passes delivered of { r } planned,
+   * exit { reason }; drives the amber "↻ looped k/r" chip on the run row.
+   */
+  looped?: { k: number; r: number; reason: string };
+  /** r644: the looped-depth opt-in materialized from WorkflowStep (absent = legacy). */
+  loopedPasses?: number;
   /** Review-gate outcome for kind = "review" steps. */
   verdict?: "pass" | "rework";
   /** True when this generate step was redone after a review rework. */

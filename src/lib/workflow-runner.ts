@@ -11,6 +11,7 @@ import {
 } from "@/lib/gateway-cadence";
 import { buildAngleHistory, latestScoredNovelty, maybeProposeSpawn, withFrontierSeed, NOVELTY_SPAWN_THRESHOLD } from "@/lib/spawn-proposal-engine";
 import { buildDefaultConstraints } from "@/lib/constraint-block";
+import { LOOP_PASSES_CAP } from "@/lib/looped-icl";
 import type { FrontierSeedRef } from "@/lib/spawn-proposal-engine";
 // r511 frontier seeding: the browser-side seed ledger the radar's Frontier tab
 // writes — stall proposals get enriched with the freshest unused seed.
@@ -556,6 +557,8 @@ export function materializeRunSteps(wf: Workflow, agentsNow: Agent[], depthOverr
       // r182: explicit role travels with the run so run rows prefer it over
       // the parsed "[Tag]" label prefix (directive item (a) completion).
       roleId: s.roleId,
+      // r644: looped-depth opt-in travels with the run (absent = legacy).
+      loopedPasses: s.loopedPasses,
       // r503: the lane this step dials — step pin wins, pipeline default
       // second, absent = follow the agent/global (chip shows only when set).
       lane: s.lane?.trim() ? s.lane.trim() : wf.lane?.trim() ? wf.lane.trim() : undefined,
@@ -2330,25 +2333,88 @@ export async function executeWorkflowRun(
                 attempt: 1,
                 note: `Decision gate FAIL ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — one free rework pass runs`,
               });
-              patchRunStep(step.stepId, { status: "running", reworked: true });
-              const rework = await streamStep(
-                step,
-                step.agentId,
-                `${baseSystem}\n\nREWORK REQUIRED — the quality judge rejected the previous output as incomplete or off-topic for this step. Deliver a complete, substantive result.`,
-                context
-              );
-              finalOutput = rework.content;
-              pushCall({
-                stepId: step.stepId,
-                stepLabel: step.label,
-                agentName: agentRow.name,
-                engine: gate.judge,
-                model: gate.via,
-                ms: rework.ms,
-                ok: true,
-                attempt: 2,
-                note: `Rework pass delivered after Decision gate FAIL (${gate.via}) — output replaced`,
-              });
+              const rCap = Math.min(Math.max(Math.floor(step.loopedPasses ?? 0), 0), LOOP_PASSES_CAP);
+              if (rCap >= 2) {
+                // ─── r644 LOOPED DEPTH (paper adaptation slice 2, arXiv
+                // 2610.31421): the FAIL branch becomes a verdict-gated loop —
+                // the TIED rework block (byte-identical prompt, the looped
+                // invariant) re-runs up to rCap passes, each pass RE-JUDGED by
+                // the same free gate; loopExit semantics: pass exits,
+                // consecutive fail exhausts, unsure iterates toward the cap.
+                // Opt-in only (step.loopedPasses); default steps take the
+                // legacy single-rework path below, byte-identical.
+                const tiedBlock = `${baseSystem}\n\nREWORK REQUIRED — the quality judge rejected the previous output as incomplete or off-topic for this step. Deliver a complete, substantive result.`;
+                let loopK = 0;
+                let loopReason = "cap-reached";
+                for (let i = 1; i <= rCap; i++) {
+                  loopK = i;
+                  patchRunStep(step.stepId, { status: "running", reworked: true });
+                  const lp = await streamStep(step, step.agentId, tiedBlock, context);
+                  finalOutput = lp.content;
+                  pushCall({
+                    stepId: step.stepId,
+                    stepLabel: step.label,
+                    agentName: agentRow.name,
+                    engine: gate.judge,
+                    model: gate.via,
+                    ms: lp.ms,
+                    ok: true,
+                    attempt: i + 1,
+                    note: `Looped pass ${i}/${rCap} delivered (tied block) — re-judging`,
+                  });
+                  try {
+                    const v2 = await decide({
+                      settings: settings.settings,
+                      signal,
+                      state: `TASK:\n${task}\n\nSTEP: ${step.label}\nSTEP ASSIGNMENT: ${instruction ?? "(the agent's standing instructions)"}\n\nOUTPUT UNDER REVIEW:\n${finalOutput.slice(0, 5000)}`,
+                      question: {
+                        id: "step-gate-looped",
+                        type: "noul",
+                        prompt:
+                          "Does this output fulfill the step assignment — substantive, on-topic, no placeholder text, and no obviously unfinished sections?",
+                        criteriaTrue: "the output fulfills the step assignment",
+                        criteriaFalse:
+                          "the output is incomplete, off-topic, placeholder, or clearly unfinished",
+                      },
+                    });
+                    if (v2?.answer === "yes" && v2.confidence >= SYSTEMONE_GATE_CONFIDENCE) {
+                      loopReason = "pass-verdict";
+                      pushCall({ stepId: step.stepId, stepLabel: step.label, agentName: agentRow.name, engine: v2.judge, model: v2.via, ms: v2.ms, ok: true, attempt: i + 1, note: `Looped exit at pass ${loopK}/${rCap} (pass-verdict) — output accepted` });
+                      break;
+                    }
+                    if (v2?.answer === "no" && v2.confidence >= SYSTEMONE_GATE_CONFIDENCE) {
+                      loopReason = "rework-exhausted";
+                      pushCall({ stepId: step.stepId, stepLabel: step.label, agentName: agentRow.name, engine: v2.judge, model: v2.via, ms: v2.ms, ok: true, attempt: i + 1, note: `Looped exit at pass ${loopK}/${rCap} (rework-exhausted) — best attempt kept` });
+                      break;
+                    }
+                  } catch {
+                    /* judge error on a looped pass → stop iterating honestly */
+                    loopReason = "judge-unavailable";
+                    break;
+                  }
+                }
+                patchRunStep(step.stepId, { looped: { k: loopK, r: rCap, reason: loopReason } });
+              } else {
+                patchRunStep(step.stepId, { status: "running", reworked: true });
+                const rework = await streamStep(
+                  step,
+                  step.agentId,
+                  `${baseSystem}\n\nREWORK REQUIRED — the quality judge rejected the previous output as incomplete or off-topic for this step. Deliver a complete, substantive result.`,
+                  context
+                );
+                finalOutput = rework.content;
+                pushCall({
+                  stepId: step.stepId,
+                  stepLabel: step.label,
+                  agentName: agentRow.name,
+                  engine: gate.judge,
+                  model: gate.via,
+                  ms: rework.ms,
+                  ok: true,
+                  attempt: 2,
+                  note: `Rework pass delivered after Decision gate FAIL (${gate.via}) — output replaced`,
+                });
+              }
             }
             // Uncertain (0.5–0.75) or no judge → accept unchanged, silently.
           } catch {
