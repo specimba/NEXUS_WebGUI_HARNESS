@@ -1874,3 +1874,28 @@ Round ID: r637 -> next patrol (job 473388)
 Next recommended action: r637 — batched opening MUST now include: git fetch origin + fork, compare HEAD vs origin/main (expect HEAD = r636 commit). If divergence/rollback is found again: repeat the r636 recovery recipe verbatim (remotes-first, reset --hard origin/main, untracked-orphan sweep into .archive-snapshot-1027/, gates, golden) — it is proven lossless. Then: (a) fix-before-work; (b) TASKS.md review for the smallest non-Owner-gated increment (deferred from this round; TASK-101/102 remain Owner-gated/large — no start without explicit Owner go; plugin slice 2 deferred); (c) targeted probe-led polish only with a concrete observation. Never invent Owner-key-dependent work.
 Blockers: none (Owner-side platform investigation recommended, not blocking).
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="rollback recovery: HEAD re-pinned to 833edda01 from remotes-first verification; 28 orphan paths quarantined (.archive-snapshot-1027, tsconfig+eslint excluded); wedge self-resolved, restart 0/1; golden 6/6 post-recovery" restart="0/1"
+
+---
+Task ID: r637
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271937)
+Task: Patrol r637 — per r636 handoff: opening now includes remote-divergence check (new post-rollback doctrine); TASKS.md review for the smallest non-Owner-gated increment.
+
+Work Log:
+- OPENING (1 batched round, new doctrine live): HEAD = 9c3fb1a4c (r636); divergence check local=origin=fork=9c3fb1a4c (NO rollback recurrence — the r636 recovery holds); server 200; tree clean; qa:golden 6/6 pre-edit, console 0->0.
+- TASKS.md REVIEW (full 64-line read): the mirror is STALE vs shipped reality — line 34 (plugin-manifest) still says "Slice 2 pending: agent-picker integration (ToolId typing surgery) + lanes/crews declarations" although the committed worklog history proves r614 (lanes/crews declarations) + r616 (registry-fed engine half) + r617 (picker half, ToolId retired from the dialog) + r618 (browser-direct pack defs + isBuiltinToolId, both transports) closed slice 2 end-to-end; line 40 (peer blind-scoring) still lists "crew-panel alignment math" as remaining although r620 shipped it (CrewAlignment peerReviews/Concur/Revise/Uncertain badge stack).
+- EVIDENCE SCOPE (2 probe rounds, honestly scoped out): no dedicated call-log model in prisma/schema (AutomationRun/RunReport only); db/custom.db is env-URL'd and WAL-active — a runtime DB census for "first real crew-run verdicts" is not cheaply reachable in-budget; the git worklog history is the authoritative evidence for the shipped halves. Peer-verdict runtime witness stays OPEN, honestly.
+- INCREMENT (1 edit round): (1) mirror truth-up — line 34 flipped to [x] with the r614->r618 citation chain (declare->registry->picker->persist->defs->execute closed end-to-end); line 40 marks the r620 alignment math SHIPPED and narrows the remaining clause to the runtime witness only. (2) styling polish with a concrete observation — theme-picker active-state ring offset-2 -> offset-1, aligning the selection ring with the canonical focus-ring offset (r634 noted the mismatch; focused+active theme card no longer stacks two different-offset rings).
+- GATES (unmasked redirect): tsc rc=0; lint rc=0 with EXACTLY the 33-warning baseline; probes 3/3 (both mirror edits + offset alignment present in-tree). Post-edit qa:golden 6/6, console 0->0.
+- Budget: 10 of 12 rounds (opening 1, structure 1, read 1, schema-probe 1, db-probe 1, edits 1, gates 1, golden 1, worklog 1, push 1).
+
+Stage Summary:
+- The strategy mirror now tells the truth: plugin-manifest slice 2 marked complete with evidence chain; peer blind-scoring narrowed to its genuine remaining item (runtime witness). The architect loop and Owner read accurate backlog state.
+- Theme picker's selection and focus rings now share one offset vocabulary — the last known ring-vocabulary inconsistency on a Settings surface.
+- Backlog thinning is real: after the truth-up, the non-Owner-gated open lanes are (i) peer blind-score runtime witness (needs a live crew run — propose to Owner, do not self-trigger engine dials) and (ii) probe-led polish opportunities. Everything else in TASKS.md is done or Owner-gated.
+- Rollback watch: 1 healthy round since the r636 event; divergence check stays in the opening doctrine.
+
+Round Handoff:
+Round ID: r638 -> next patrol (job 473388)
+Next recommended action: r638 — batched opening WITH divergence check (expect HEAD = r637 commit; local=origin=fork; server up; qa:golden 1 round, 6/6). Increment sourcing: (a) fix-before-work wins; (b) the backlog is thin — if nothing small and honest exists, do ONE probe-led polish pass with a concrete observation (capped at 2 reads; candidates from prior rounds' own observations only, no speculative sweeps) and/or propose-to-Owner items in the worklog briefing (peer blind-score live witness run; harness-adapter HTTP route needs Owner nod; plugin slice 3 undefined). (c) If the sandbox rollback recurs, repeat the r636 recovery recipe verbatim (remotes-first, reset --hard origin/main, orphan sweep, gates, golden). Never invent Owner-key-dependent work; TASK-101 done; NEXUS_BOT remaining item is keyed-proof (Owner-gated).
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="TASKS.md mirror truth-up (plugin slice 2 [x] with r614-r618 chain; peer alignment marked shipped r620); theme-picker active ring offset aligned to canonical offset-1; divergence check clean (local=origin=fork)" restart="0/1"
