@@ -15,6 +15,8 @@ import {
   validatePluginManifest,
   type PluginManifest,
 } from "../plugin-manifest";
+import { BUILTIN_TOOL_IDS, type ToolId } from "../types";
+import { buildPackToolDefs, buildToolDefs, type ToolDef } from "../tools-defs";
 
 export interface LoadedPack {
   dir: string;
@@ -120,4 +122,25 @@ export function getPluginPreset(name: string): PluginPresetRef | null {
     }
   }
   return null;
+}
+
+// ─── Registry-fed pack defs (r616, TASK-103 slice 2 frontier) ────────────────
+/** LLM defs for the pack tools named in `toolIds`, sourced from the
+ * mtime-swept registry scan. Non-pack ids are ignored; a pack tool's def
+ * reuses its BASE builtin's parameter schema — the dispatcher (executeTool →
+ * getPluginPreset) merges the manifest preset UNDER the caller's args and
+ * prefixes the provenance. First pack in scan order wins a cross-pack name
+ * clash, mirroring getPluginPreset. The browser-direct engine stays
+ * builtin-only until the picker slice wires the same source client-side. */
+export function buildRegistryPackDefs(toolIds: readonly string[]): ToolDef[] {
+  const packIds = toolIds.filter((t) => !(BUILTIN_TOOL_IDS as readonly string[]).includes(t));
+  if (packIds.length === 0) return [];
+  const wanted = new Set(packIds);
+  const scan = loadPluginPacks();
+  const decls = scan.packs
+    .flatMap((p) => p.manifest.tools)
+    .filter((d) => wanted.has(d.name));
+  if (decls.length === 0) return [];
+  const bases = [...new Set(decls.map((d) => d.base))] as ToolId[];
+  return buildPackToolDefs(decls, buildToolDefs(bases));
 }

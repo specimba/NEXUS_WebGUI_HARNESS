@@ -1302,3 +1302,27 @@ Round ID: r616 -> next patrol (job 473388)
 Next recommended action: r616 — batched opening (expect HEAD = r615 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 frontier (agent-picker registry integration: chips + defs sourced from /api/tools/registry, buildToolDefs learns pack defs) if budget allows a real start, else a small honest UI/engine increment; gates + witness; ship under 12.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="pack-aware ToolBadge (unknown ids render cyan pack chips instead of vanishing); picker state + runner annotations widened; cron interim commit amended into r615" restart="0/1 consumed"
+
+---
+Task ID: r616
+Agent: NEXUS WebGUI Harness (patrol, job 473388, trace 202610270907)
+Task: Patrol per r615 handoff — qa:golden QA face, plugin-manifest slice 2 frontier (registry-fed pack defs), gates, worklog, dual push.
+
+Work Log:
+- Opening: HEAD = 59fcf954c (r615, expected), server wake-up 000 -> 200 (transient signature, no restart consumed 0/1). qa:golden 4/4 PASS (console 0->0) — no QA bugs.
+- INCREMENT — slice 2 frontier, ENGINE half (the r615 handoff's "buildToolDefs learns pack defs"):
+  * tools-defs.ts (isomorphic): buildPackToolDefs(decls, baseDefs) — a pack tool's LLM def reuses its BASE builtin's parameter schema (the dispatcher merges the manifest preset UNDER the caller's args) and carries provenance inline ("[plugin preset of <base>] ..."); cross-pack name clash resolves first-wins with a seen-set.
+  * plugin-loader.ts (server): buildRegistryPackDefs(toolIds) — filters to non-builtin ids, sources decls from the mtime-swept registry scan (r614 cache semantics), dedupes bases, delegates to buildPackToolDefs. Registry knowledge stays in the loader; the isomorphic module stays dependency-free.
+  * /api/chat route: BOTH defs sites now concat pack defs — the streaming toolIO (auto engine function-calling) and the custom-engine TOOLS text block. Execution already existed via the slice-1 preset dispatch (getPluginPreset), so the loop DECLARE -> DEFS -> TOOL_CALL -> PRESET DISPATCH is now closed end-to-end: agents carrying pack tool ids can actually USE them through either chat engine.
+- WITNESS (live, direct): buildRegistryPackDefs(["pack_now","pack_stamp","web_search"]) -> exactly 2 defs: pack_now (no params — current_time base) and pack_stamp (op/value/secret/length — uuid_hash base schema reused); the builtin id is filtered out. Base-schema reuse behaves exactly as designed.
+- SCOPE CALL: the browser-direct engine stays builtin-only until the picker slice wires the same registry source client-side (documented in code — no silent half-path). Styling polish rides with that picker slice next round; this round's user-facing delta is functional (pack tools usable in chat), so no cosmetic bolt-on was faked.
+
+Stage Summary:
+- Slice 2 frontier is half-open: the ENGINE half (defs + execution) is done and witnessed; what remains is the PICKER half — agent-form-dialog chips sourced from /api/tools/registry (toggleable pack tools) + browser-direct defs wiring (chat-client can fetch the registry and concat packDefs the same way the route does).
+- Remaining meta-review queue r617+: (P2) picker half above; (P2) vault seeding (Owner key — never invented); (P2) Supabase bucket (Owner action).
+
+Round Handoff:
+Round ID: r617 -> next patrol (job 473388)
+Next recommended action: r617 — batched opening (expect HEAD = r616 commit; else follow ITS handoff); qa:golden (1 round); increment = plugin-manifest slice 2 PICKER half (agent-form-dialog registry chips: fetch /api/tools/registry on open, render toggleable pack chips under the builtin grid — the AnyToolId picker state + pack-aware ToolBadge from r615 already carry them; plus browser-direct defs wiring in chat-client) if budget allows a real start, else a small honest UI/engine increment; gates + witness; ship under 12.
+Blockers: none.
+- GATES: tsc=0 lint=0(33-exact) qa:syntax=PASS qa:tsc=rc0 qa:golden=4/4 witness="live: pack_now/pack_stamp defs materialize from the registry (base schemas reused, builtin filtered); both chat-route defs sites concat buildRegistryPackDefs" restart="0/1 consumed"

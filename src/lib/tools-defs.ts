@@ -541,3 +541,34 @@ export const httpToolExecutor: (
     composed?.dispose();
   }
 };
+
+// ─── Pack defs (r616, TASK-103 slice 2 frontier) ─────────────────────────────
+/** Build LLM defs for pack tools from their manifest declarations. A pack
+ * tool dispatches through its BASE builtin's executor, so its def reuses the
+ * base's parameter schema and carries the provenance inline — the model sees
+ * the pack alias AND the executor it will actually hit. `baseDefs` comes
+ * from buildToolDefs over the bases; decls whose base is missing are skipped
+ * defensively (the loader already validates base ∈ BUILTIN_TOOL_IDS). */
+export function buildPackToolDefs(
+  decls: { name: string; base: string; description: string }[],
+  baseDefs: ToolDef[]
+): ToolDef[] {
+  const byBase = new Map(baseDefs.map((d) => [d.function.name, d]));
+  const seen = new Set<string>();
+  const out: ToolDef[] = [];
+  for (const d of decls) {
+    if (seen.has(d.name)) continue; // cross-pack clash: first wins
+    seen.add(d.name);
+    const base = byBase.get(d.base);
+    if (!base) continue;
+    out.push({
+      type: "function",
+      function: {
+        name: d.name,
+        description: `[plugin preset of ${d.base}] ${d.description}`,
+        parameters: base.function.parameters,
+      },
+    });
+  }
+  return out;
+}

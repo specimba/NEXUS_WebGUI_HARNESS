@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import ZAI from "z-ai-web-dev-sdk";
 import { executeTool } from "@/lib/server/tools";
+import { buildRegistryPackDefs } from "@/lib/server/plugin-loader";
 import {
   buildToolDefs,
   fenceToolOutputForModel,
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
         // the executor so the deep_scrape lane ladder runs on the server lane.
         const cortexContext = { cortex: body.cortex };
         const toolIO: EngineToolIO = {
-          defs: buildToolDefs((body.tools ?? []).filter(Boolean)),
+          defs: buildToolDefs((body.tools ?? []).filter(Boolean)).concat(buildRegistryPackDefs((body.tools ?? []).filter(Boolean))),
           execute: (name, argsJson, sig) => executeTool(name, argsJson, sig, cortexContext),
         };
         // v0.2 receipt (r26-3): one audit per turn, fed by whichever engine ran
@@ -245,7 +246,7 @@ async function runAutoEngine(
 ): Promise<void> {
   const zai = await ZAI.create();
   const toolIds = (body.tools ?? []).filter(Boolean);
-  const toolDefs = buildToolDefs(toolIds);
+  const toolDefs = buildToolDefs(toolIds).concat(buildRegistryPackDefs(toolIds));
   const maxIterations = clampIter(body.maxIterations);
   const collected: ToolCallInfo[] = [];
   let graceUsed = false; // r29: one final-pass leak execution
