@@ -721,13 +721,13 @@ function EventEmitBar() {
         }}
         placeholder="event name (e.g. deploy-done)"
         aria-label="Event name to emit"
-        className="min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 py-1 text-[11px] outline-none placeholder:text-muted-foreground/50 focus:border-amber-500/50"
+        className="min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 py-1 text-[11px] outline-none placeholder:text-muted-foreground/50 focus:border-amber-500/50 focus-visible:ring-2 focus-visible:ring-violet-500/40"
       />
       <button
         type="button"
         onClick={() => void emit()}
         disabled={!name.trim() || state === "busy"}
-        className="shrink-0 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-600 transition-colors hover:bg-amber-500/20 disabled:opacity-40 dark:text-amber-400"
+        className="shrink-0 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-600 transition-colors hover:bg-amber-500/20 disabled:opacity-40 dark:text-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
       >
         {state === "busy" ? "…" : state === "ok" ? "emitted ✓" : state === "err" ? "failed" : "Emit"}
       </button>

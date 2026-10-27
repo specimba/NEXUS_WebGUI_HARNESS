@@ -1703,3 +1703,27 @@ Round ID: r630 -> next patrol (job 473388)
 Next recommended action: r630 — batched opening (expect HEAD = r629 commit; server up; qa:golden 1 round, 6/6). Increment candidates: (a) the focus-visible arc is DONE — new polish candidates: the edit-textarea in message-item (L464 outline-none on a textarea without replacement ring — same class, one-line fix if still uncovered); or hover-affordance gaps (aria-label'd icon buttons with no hover state); (b) plugin-manifest slice 2 (agent-picker ToolId typing surgery) — only with a clean seam in 2-round inspection, else defer honestly; (c) fix-before-work wins. Never invent Owner-key-dependent work; probes target aria-label/testid; boot leg backstops golden.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="message-item 8/8 violet focus rings (census-isolated single genuine gap; hover-reveal parity + route receipt); console delta 0" restart="0/1 consumed"
+
+---
+Task ID: r630
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271607)
+Task: Patrol r630 — per r629 handoff: the named edit-textarea one-liner + same-class text-field closure; plugin slice 2 seam-check decision.
+
+Work Log:
+- OPENING (1 batched round: HEAD+server / golden / census grep): HEAD = 135039d53 (r629), server 200, tree clean, qa:golden 6/6 pre-edit — and the console baseline now reads 0→0: the r627 boot normalization's reload evidently cleared the old 34-residue, a free harness win.
+- CENSUS EXTENSION (same genuine class, new element set): standalone ` outline-none` (space-prefixed, excludes the focus-visible: compound) = 13 hits. Classified from grep evidence: 10 carry a focus/focus-visible replacement (ring, or ring-ring theme vocab — different tone but present, left alone) — provider-card:119 verified COVERED via its cn's second arg (L120 focus-visible:ring-[3px]); genuine gaps: message-item:464 edit textarea (suppression, NOTHING) and run-kanban:724 emit input (border-only 1px amber tint = near-invisible keyboard indicator).
+- INCREMENT 1 (handoff's named one-liner): message-item edit textarea gains the violet focus vocabulary — text inputs always match :focus-visible per spec, so the ring shows during editing clicks too (standard text-field semantics, same as shadcn inputs). message-item now 9/9 (8 buttons + textarea).
+- INCREMENT 2 (weak-indicator subclass, row consistency): run-kanban emit input gets focus-visible ring-2 violet-500/40 (amber border tint kept as lane identity — border = identity, ring = indicator doctrine) and the Emit button gets the full ring+offset vocab (raw button, previously only the browser default). kanban now 5/5 (3 card variants + input + emit).
+- SLICE-2 DEFER (honest, budget math): plugin-manifest slice 2 is ToolId typing surgery across registry/executor/agent-picker — a 2-round inspection cannot verify a clean seam without blind multi-file edits, and a half-refactor at edit time is exactly the budget-overrun shape r625 documented. Deferred with reason, again.
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0 (34 grep hits = 33 + summary baseline). Static probes: message-item 9, run-kanban 5. Post-edit qa:golden 6/6, console 0→0 delta 0.
+- Budget: 8 rounds (opening+census 1, reads 1, edits 1, gates 1, golden 1, worklog 1, push 1, +1 slack) — the class-closure framing keeps increments small and probeable.
+
+Stage Summary:
+- Every suppressed focus indicator in nexus components now has a visible replacement: the outline-none census is fully closed across buttons (r629) AND text fields (r630) — keyboard users get a consistent, visible indicator everywhere.
+- Backlog posture unchanged: all shippable-without-Owner work is either done or is multi-round surgery; the styling-arc census is exhausted at the component-class level.
+
+Round Handoff:
+Round ID: r631 -> next patrol (job 473388)
+Next recommended action: r631 — batched opening (expect HEAD = r630 commit; server up; qa:golden 1 round, 6/6; console baseline expected 0→0). The focus-suppression census is CLOSED — do not re-run it. New candidates: (a) different polish class: prefers-reduced-motion audit (animate-ping/pulse/spin instances — the ping dots are decorative aria-hidden, honest skips; check for any motion-carrying INTERACTIVE control without motion-reduce guards); (b) hover-affordance gaps on aria-label'd icon buttons (grep className-less or hover-less icon buttons — needs reads, cap at 2); (c) fix-before-work wins. Plugin slice 2 stays deferred unless the Owner expands the round budget. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="edit-textarea + kanban emit row violet focus closure (census classes complete: buttons r629 + text fields r630); console 0->0" restart="0/1 consumed"

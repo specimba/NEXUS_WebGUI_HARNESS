@@ -461,7 +461,7 @@ function UserBubble({
             }}
             rows={Math.min(8, Math.max(2, draft.split("\n").length))}
             aria-label="Edit message"
-            className="w-full resize-none bg-transparent text-[14.5px] leading-relaxed outline-none placeholder:text-muted-foreground"
+            className="w-full resize-none bg-transparent text-[14.5px] leading-relaxed outline-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
             placeholder="Edit your message…"
           />
           <div className="mt-2 flex items-center justify-end gap-2">
