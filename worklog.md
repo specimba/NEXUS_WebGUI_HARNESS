@@ -2287,3 +2287,26 @@ Round ID: r653 -> next patrol (job 473388)
 Next recommended action: (1) live-witness the injection end to end — run a real generate-step workflow whose task verbatim-matches an archived success (both-legs gate fires) and read the "Precedent lane …" note in the call log; if the ladder is healthy this also covers the looped-path live-witness staged since r645; (2) call-log lineage schema-hardening (every tool-call note carries result status + step id); (3) slice 3 radar chain-typed evidence + admission-gate checkboxes.
 Blockers: none. Owner queue: none pending (vault slots=4, schedules armed).
 - GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:precedent-lane=43/43 qa:looped-icl=51/51 qa:trace-trial=66/66 qa:golden=6/6 witness="precedent-lane slice 2: engine injection via the shared mapper (preview's inline mapper deleted — single adapter), two-occurrence block pushed LAST in prev, both-legs confidence gate with the refusal note O1-observable, first-step relayNotes carrier; preview gate chip (emerald/amber); console-buffer lesson: --clear or nothing; console 0->0" restart="1/1"
+
+---
+Task ID: r653
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280237)
+Task: r653 patrol — live-witness the precedent-lane injection end to end (r652 handoff item 1).
+
+Work Log:
+- OPENING: chain audit clean — HEAD=2566695a4 (r652, mine), tree clean, server 200. Golden legs 1+2 pre-work: Model Relay intel present; Radar Frontier 2 tall scrollables (4576/349); console 0 after a proper --clear.
+- GOLDEN-LEG TRAP SELF-CAUGHT: my "largest textarea" heuristic pasted the 403-char task into the IMPORT textarea (the r650 trap, again — that box is the tallest on the landing view). Cleaned it (native setter, empty string) and re-did the leg PROPERLY: opened the Continuous Research run panel, pasted the archived task VERBATIM into the real "Describe the task for this pipeline…" box — BYTE-INTACT, and this time the paste was also the witness setup, not a throwaway.
+- WITNESS (handoff item 1) — the injection, end to end on a REAL run: clicked Run on Continuous Research; ~2 min later the persisted nexus-workflows store carries, inside the run's callLog: "Precedent lane — 13 eligible precedents, top 2: Novelty Lab (sample) (rrf 0.0325, both legs); Novelty Lab (sample) (rrf 0.0323, both legs) — two-occurrence layout assembled — block injected into this run's step contexts (closest to each generation point) → Model relay: primary (deepseek-v4.1) answered ✓". Everything the design promised is IN ONE NOTE: the both-legs gate FIRED, the block rode, and the lane's story is composed with the dial's own relay telemetry (the O1 carrier — real pushCall, not a synthetic row). Honest detail: the top-2 matches were Novelty Lab rows, not Continuous Research's own past runs — the retrieval answered for itself; the verbatim task text shared more terms/trigrams with the Novelty Lab corpus. 13 eligible matches the r651 preview's census.
+- QUOTA DISCIPLINE: the run was STOPPED right after the witness (one short cycle, not a marathon). A transient step-6 error (network/timeout/rate- class, the park/resume vocabulary) occurred mid-run and is visible honestly in the board — the stopped row is REAL telemetry and stays.
+- STYLING POLISH (mandatory) + USER-FACING: workflow-run-panel call-log notes — precedent-lane notes now render in the lane's VIOLET family with a ◈ marker (were amber/↻, indistinguishable from warnings); sky/⇄ (server relay) and amber/↻ unchanged. DOM-witnessed: the text-violet-300 span renders and the full note text shows in the expanded call log.
+- GATES: tsc=0 (rc unmasked via file redirect), lint=0(33 warnings), qa-precedent-lane 43/43 (no pure code changed — regression check), console 0->0 throughout the round.
+
+Stage Summary:
+- The precedent-exemplar lane is now PROVEN at runtime, not just in QA: archive in -> shared honesty mapper -> RRF top-2 -> both-legs gate -> two-occurrence block in every step context, with the whole story countable in one call-log note composed with real dial telemetry.
+- The lane's visual identity is complete: violet in the editor preview, violet in the call log — the Owner can trace the lane's fingerprint from authoring to runtime.
+
+Round Handoff:
+Round ID: r654 -> next patrol (job 473388)
+Next recommended action: (1) call-log lineage schema-hardening (every tool-call note carries result status + step id — the O1 criterion's evidence becomes first-class at the run surface); (2) looped-path live-witness (a FAIL-branch rework loop — needs a workflow with Looped ×2 armed and a harsh gate; staged since r645); (3) slice 3 radar chain-typed evidence + admission-gate checkboxes.
+Blockers: none. Owner queue: none pending (vault slots=4, schedules armed).
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:precedent-lane=43/43 qa:golden=6/6 witness="LIVE: injection witnessed end to end — both-legs gate fired (13 eligible, Novelty Lab top-2 both legs), note composed with the dial's relay telemetry ('→ Model relay: primary deepseek-v4.1 answered ✓'), read from the persisted callLog AND the rendered DOM; violet ◈ styling for precedent notes witnessed; import-textarea paste trap self-caught, real task-box leg byte-intact (403 chars); run stopped after the witness" restart="0/1"

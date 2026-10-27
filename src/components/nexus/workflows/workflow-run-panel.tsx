@@ -220,12 +220,22 @@ function CallLogList({ log }: { log: RunCallLogEntry[] }) {
                     <span
                       className={
                         "mt-0.5 block font-mono text-[10px] " +
-                        (c.note.startsWith("server relay")
-                          ? "text-sky-300/90"
-                          : "text-amber-300/90")
+                        (c.note.startsWith("Precedent lane")
+                          ? "text-violet-300/90"
+                          : c.note.startsWith("server relay")
+                            ? "text-sky-300/90"
+                            : "text-amber-300/90")
                       }
                     >
-                      {c.note.startsWith("server relay") ? "⇄ " : "↻ "}
+                      {/* r653: the precedent lane's O1 note gets the lane's
+                      violet family (same accent as the editor preview) —
+                      a composed lane+relay note reads as one story, not a
+                      warning. */}
+                      {c.note.startsWith("Precedent lane")
+                        ? "◈ "
+                        : c.note.startsWith("server relay")
+                          ? "⇄ "
+                          : "↻ "}
                       {c.note}
                     </span>
                   ) : null}
