@@ -91,7 +91,7 @@ function RouteReceiptChip({
                   : `Route receipt: served by ${receipt.resolved_label}`
             }
             className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide transition-opacity",
+              "inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1",
               fallback || safetyVisible
                 ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
                 : "border-border bg-muted/40 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover/msg:opacity-100"
@@ -508,7 +508,7 @@ function UserBubble({
           type="button"
           onClick={handleCopy}
           aria-label="Copy message"
-          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
         >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
@@ -521,7 +521,7 @@ function UserBubble({
             type="button"
             onClick={startEdit}
             aria-label="Edit and resend message"
-            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden />
           </button>
@@ -535,7 +535,7 @@ function UserBubble({
                   type="button"
                   aria-label="Answer with a different agent"
                   title="Answer as…"
-                  className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
                 >
                   <Users className="h-3.5 w-3.5" aria-hidden />
                 </button>
@@ -589,7 +589,7 @@ function UserBubble({
                     onClick={() => setLightbox(a)}
                     aria-label={`View image ${a.name}`}
                     title={`${a.name} · click to enlarge`}
-                    className="group/img relative overflow-hidden rounded-xl border border-violet-500/30 shadow-sm transition-all duration-200 hover:scale-[1.03] hover:border-violet-500/60 hover:shadow-md hover:shadow-violet-500/20"
+                    className="group/img relative overflow-hidden rounded-xl border border-violet-500/30 shadow-sm transition-all duration-200 hover:scale-[1.03] hover:border-violet-500/60 hover:shadow-md hover:shadow-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1"
                   >
                     { }
                     <img
@@ -839,7 +839,7 @@ export const MessageItem = React.memo(function MessageItem({
                       : "Read this reply aloud"
                   }
                   className={cn(
-                    "ml-0.5 rounded p-0.5 opacity-0 transition-all hover:text-violet-400 focus-visible:opacity-100 group-hover/msg:opacity-100",
+                    "ml-0.5 rounded p-0.5 opacity-0 transition-all hover:text-violet-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 group-hover/msg:opacity-100",
                     speechState === "playing" && "text-violet-400 opacity-100",
                     speechState === "loading" && "text-violet-400/70 opacity-100"
                   )}
@@ -867,7 +867,7 @@ export const MessageItem = React.memo(function MessageItem({
                 type="button"
                 onClick={handleCopy}
                 aria-label="Copy message"
-                className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/msg:opacity-100"
+                className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 group-hover/msg:opacity-100"
               >
                 {copied ? (
                   <Check className="h-3 w-3 text-emerald-400" aria-hidden />
@@ -888,7 +888,7 @@ export const MessageItem = React.memo(function MessageItem({
               }
               title={confirmDelete ? "Click again to confirm" : "Delete this reply"}
               className={cn(
-                "rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-red-400 focus-visible:opacity-100 group-hover/msg:opacity-100",
+                "rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 group-hover/msg:opacity-100",
                 confirmDelete && "text-red-400 opacity-100"
               )}
             >

@@ -1680,3 +1680,26 @@ Round ID: r629 -> next patrol (job 473388)
 Next recommended action: r629 — batched opening (expect HEAD = r628 commit; server up; qa:golden 1 round, 6/6). Increment candidates: (a) styling arc continues — other views' interactive chips (radar tab strips, tracker panel controls, settings gallery buttons): grep focus-visible coverage repo-wide in the opening batch, touch only genuine gaps; (b) small P2 slice with real scope: plugin-manifest slice 2 is available but is typing surgery — only attempt if a clean seam is found in a 2-round inspection, else defer again honestly; (c) fix-before-work wins. Never invent Owner-key-dependent work; probes target aria-label/testid; restore any UI state a probe flips (boot leg backstops golden).
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="3/3 schedule resume chips focus-visible violet rings (static probe); backoff/autopause testids added (family uniform); console delta 0" restart="0/1 consumed"
+
+---
+Task ID: r629
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271537)
+Task: Patrol r629 — per r628 handoff: repo-wide focus-visible coverage census (touch only genuine gaps) on other views' interactive controls.
+
+Work Log:
+- OPENING (1 batched round: HEAD+server / golden / census greps): HEAD = d7dd47863 (r628), server 200, tree clean, qa:golden 6/6 pre-edit.
+- CENSUS (evidence-driven scoping): 104 raw <button> across 38 nexus files vs 33 focus-visible:ring across 19 — but raw buttons WITHOUT outline-none keep the browser's default focus outline, so the GENUINE regression class is outline-none suppressing the default with no ring replacement. Cross-referencing outline-none (16 files) against focus-visible (19 files) isolates exactly ONE uncovered file: chat/message-item.tsx (8 raw buttons, 1 outline-none on the edit textarea, 0 rings) — the chat message action row, the app's highest-traffic interactive surface.
+- GAP ANALYSIS (from reads): two classes — (A) hover-revealed buttons (speak, assistant copy, delete, route receipt) already had focus-visible:opacity-100 so keyboard focus REVEALS them, but with 3 revealed buttons in a row and no ring you cannot tell which holds focus; (B) always-visible user-footer buttons (copy/edit/answer-as, image lightbox) had hover tints only.
+- INCREMENT (styling/a11y, one MultiEdit, 6 anchors from exact reads): violet focus vocabulary (outline-none + ring-2 violet-500/40 + offset-1) on all 8 buttons — 3 user-footer via replace_all on the shared className, image lightbox (ring, no scale-on-focus — motion on focus disorienting), speak/copy/delete hover-revealed (reveal kept, ring added), route receipt base string (covers amber + muted branches). Static probe: 8/8 rings in message-item.tsx.
+- GATES (unmasked, redirect): tsc rc=0; lint rc=0 (34 grep hits = 33 + summary baseline). Post-edit qa:golden 6/6, console 34→34 delta 0.
+- Budget: 9 rounds (opening+census 1, cross-grep 1, locate 1, reads 1, edit 1, gates 1, golden 1, worklog 1, push 1).
+
+Stage Summary:
+- The chat message action row is fully keyboard-visible in the shared violet vocabulary — revealed-but-indistinguishable controls now show which one holds focus; the repo-wide focus-visible census leaves zero genuine outline-none-without-ring gaps in nexus components.
+- Next styling-arc rounds need a different probe class: this arc is exhausted (chips, cards, message actions all covered).
+
+Round Handoff:
+Round ID: r630 -> next patrol (job 473388)
+Next recommended action: r630 — batched opening (expect HEAD = r629 commit; server up; qa:golden 1 round, 6/6). Increment candidates: (a) the focus-visible arc is DONE — new polish candidates: the edit-textarea in message-item (L464 outline-none on a textarea without replacement ring — same class, one-line fix if still uncovered); or hover-affordance gaps (aria-label'd icon buttons with no hover state); (b) plugin-manifest slice 2 (agent-picker ToolId typing surgery) — only with a clean seam in 2-round inspection, else defer honestly; (c) fix-before-work wins. Never invent Owner-key-dependent work; probes target aria-label/testid; boot leg backstops golden.
+Blockers: none.
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="message-item 8/8 violet focus rings (census-isolated single genuine gap; hover-reveal parity + route receipt); console delta 0" restart="0/1 consumed"
