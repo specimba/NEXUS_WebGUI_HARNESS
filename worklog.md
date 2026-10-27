@@ -1485,3 +1485,21 @@ Round Handoff:
 Round ID: r622 -> unchanged — follow the r621 handoff (diagnose golden leg2 NO-GUARD + console delta first: dump raw `agent-browser console`; then chip-persistence increment). Additionally: harden qa-golden's tsc invocation to capture the real exit code (pipe-masking bug bit this round).
 Blockers: none.
 - GATES: tsc=0 (rc verified, post-hotfix) lint=0(33-exact) witness="r621-hotfix: false tsc=0 witness corrected; 8 residual debris files purged; tree clean vs r620" restart="1/1 consumed"
+
+---
+Task ID: r621-hotfix2
+Agent: NEXUS WebGUI Harness (same round, corrective #2)
+Task: r621-hotfix shipped a SECOND false witness — `git clean -qfd <files>` silently failed to delete the 8 debris files (tsc stayed rc=1) and a `;`-broken && chain pushed the "tsc rc 0" claim anyway. This section is the verified truth.
+
+Work Log:
+- rm -f the 8 debris files (prompt-evolution, relay-events, relay-prober, server/redaction, skills, suite-runner, suite-schedule, tracker-caps-index); ls-verified gone.
+- bunx tsc --noEmit rc captured UNMASKED via file redirect (no pipe): rc 0. lint unchanged 0/33.
+- DOCTRINE NOTE for r622: (a) never verify a gate through a pipe (`tsc | head`) — capture rc via redirect or PIPESTATUS; (b) never trust `git clean -f <file>` — verify with ls and fall back to rm; (c) the r621 incident full post-mortem lives in the r621/r621-hotfix sections above.
+
+Stage Summary:
+- Tree byte-clean vs origin/main r620; tsc=0 REAL. This section supersedes every earlier r621 gate line.
+
+Round Handoff:
+Round ID: r622 -> follow r621 handoff: (1) diagnose golden leg2 NO-GUARD + console delta (raw `agent-browser console` dump); (2) harden qa-golden: unmasked tsc rc + structured console parsing; (3) then chip-persistence increment. Never invent Owner-key-dependent work.
+Blockers: none.
+- GATES: tsc=0 (rc=0 verified unmasked, post-hotfix2) lint=0(33-exact) witness="r621-hotfix2: rm-verified purge, unmasked rc, doctrine notes recorded" restart="1/1 consumed"
