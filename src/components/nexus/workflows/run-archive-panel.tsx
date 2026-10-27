@@ -32,6 +32,11 @@ import { EmptyState } from "@/components/nexus/atoms";
 import { copyText, fmtRel } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
 import { useWorkflowsStore } from "@/lib/stores";
+// r650 (TraceTrial slice 2c, arXiv 2610.32285): the ARCHIVE-surface adapter —
+// deliberately NOT the run-panel one: the archive materializes only output/ms
+// per step, so the variant bypasses every unobservable criterion instead of
+// scoring vacuous passes (r183 no-phantom doctrine, enforced by construction).
+import { harnessChipForArchiveRun } from "@/lib/trace-trial";
 import {
   archivePackStamp,
   backfillArchiveFromRuns,
@@ -203,6 +208,22 @@ export function RunArchivePanel() {
     return c;
   }, [entries]);
 
+  // r650 (TraceTrial slice 2c): the F3 census at archive altitude — runs that
+  // SUCCEEDED while violating the one criterion this surface can observe
+  // (output/ms lineage). The archive toolbar refuses to let green status
+  // badges mask the debt, mirroring the run panel and the runs board.
+  const archiveHarness = React.useMemo(() => {
+    let debts = 0;
+    let chips = 0;
+    for (const e of entries) {
+      const chip = harnessChipForArchiveRun(e.steps, e.status);
+      if (!chip) continue;
+      chips += 1;
+      if (chip.successDespiteViolation) debts += 1;
+    }
+    return { chips, debts };
+  }, [entries]);
+
   /** r623: chip clicks persist the choice so the filter survives the visit. */
   const changeStatusFilter = (key: StatusGroupKey) => {
     setStatusFilter(key);
@@ -354,6 +375,14 @@ export function RunArchivePanel() {
         <Badge variant="outline" className="shrink-0 tabular-nums" title="Runs currently in the local archive">
           {entries.length} archived
         </Badge>
+        {archiveHarness.debts > 0 ? (
+          <span
+            title="TraceTrial F3 (arXiv 2610.32285): archived runs that finished green while violating the one criterion this surface can observe (output/ms lineage) — success is not reliable."
+            className="inline-flex shrink-0 items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-amber-600 dark:text-amber-400"
+          >
+            {archiveHarness.debts} harness debt{archiveHarness.debts === 1 ? "" : "s"}
+          </span>
+        ) : null}
         <div
           className="flex shrink-0 items-center gap-1"
           role="group"
@@ -484,6 +513,27 @@ export function RunArchivePanel() {
                   <Badge className={cn("shrink-0 text-[10px] capitalize", statusChipClass(entry.status))}>
                     {entry.status}
                   </Badge>
+                  {(() => {
+                    // r650 (TraceTrial slice 2c): the archive-surface harness
+                    // chip — 1 criterion scored honestly (lineage), 5 bypassed
+                    // with the count named; null when nothing is observable.
+                    const chip = harnessChipForArchiveRun(entry.steps, entry.status);
+                    if (!chip) return null;
+                    return (
+                      <span
+                        title={chip.tooltip}
+                        aria-label={`Harness reliability (archive surface) ${chip.label}`}
+                        className={cn(
+                          "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                          chip.tone === "warn"
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        )}
+                      >
+                        {chip.label}
+                      </span>
+                    );
+                  })()}
                   <span
                     className="shrink-0 text-[11px] tabular-nums text-muted-foreground"
                     title={`${entry.steps.length} step${entry.steps.length === 1 ? "" : "s"} recorded`}

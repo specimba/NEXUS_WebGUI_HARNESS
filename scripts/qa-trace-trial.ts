@@ -13,6 +13,7 @@ import {
   harnessSummary,
   attributionNote,
   harnessChipForRun,
+  harnessChipForArchiveRun,
   type RunShape,
 } from "../src/lib/trace-trial";
 
@@ -211,6 +212,31 @@ check("adapter: empty steps => null (no signal, no chip)", harnessChipForRun([],
 const chipErrored = harnessChipForRun([{ status: "error", output: "" }], "error");
 check("adapter: errored run => pass chip (F2 separation: harness behaved, agent layer failed)", chipErrored?.tone === "pass" && chipErrored.successDespiteViolation === false);
 check("empty run: every criterion bypassed (no vacuous green, r183 doctrine)", classifyRunCriteria({ success: true, steps: [] }).every((c) => c.verdict === "bypassed"));
+
+// ── 7. r650 slice-2c adapter: the ARCHIVE surface (evidence-honest) ────────
+const archClean = harnessChipForArchiveRun(
+  [{ output: "step one answer", ms: 120 }, { output: "step two answer" }],
+  "done",
+);
+check("archive: clean rows => pass chip 1/1 (only lineage is observable)", archClean?.tone === "pass" && archClean.label === "harness 1/1");
+check("archive: pass chip is not a debt", archClean?.successDespiteViolation === false);
+check("archive: tooltip names the bypass count (5 unobservable, not attributed)", (archClean?.tooltip ?? "").includes("5 other criteria are unobservable"));
+check("archive: tooltip says visible zero, not attributed", (archClean?.tooltip ?? "").includes("visible zero, not attributed"));
+const archBlind = harnessChipForArchiveRun([{ output: "", ms: 5 }, { output: "" }], "done");
+check("archive: a row with no output and no ms => warn chip 0/1", archBlind?.tone === "warn" && archBlind.label === "harness 0/1");
+check("archive: blind row inside a done run => the F3 debt", archBlind?.successDespiteViolation === true);
+check("archive: debt tooltip names the criterion", (archBlind?.tooltip ?? "").includes("O/lineage-present FAIL"));
+const archErrored = harnessChipForArchiveRun([{ output: "" }], "error");
+check("archive: errored run with blind row => warn chip but NO debt (F2 separation)", archErrored?.tone === "warn" && archErrored.successDespiteViolation === false);
+const archSentinel = harnessChipForArchiveRun([{ output: "(no output recorded)" }], "done");
+check("archive: the (no output recorded) marker does NOT impersonate evidence (F6 wrapper shape)", archSentinel?.tone === "warn" && archSentinel.successDespiteViolation === true);
+const archMsOnly = harnessChipForArchiveRun([{ output: "", ms: 42 }], "done");
+check("archive: duration alone IS lineage (replayable timing)", archMsOnly?.tone === "pass");
+check("archive: empty rows => null (no signal, no chip)", harnessChipForArchiveRun([], "done") === null);
+check("archive: garbage input never throws => null", harnessChipForArchiveRun(undefined as never, "done") === null);
+check("archive: non-array steps => null", harnessChipForArchiveRun("nonsense" as never, "done") === null);
+const archNaive = harnessChipForRun([{ output: "answer without status fields" }] as never, "done");
+check("control: the RUN adapter over archive rows would vacuous-pass — why this variant exists (r183 doctrine)", archNaive !== null);
 
 // ── verdict ─────────────────────────────────────────────────────────────
 const total = pass + fails.length;

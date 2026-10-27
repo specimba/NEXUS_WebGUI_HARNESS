@@ -398,3 +398,60 @@ export function harnessChipForRun(
     return null;
   }
 }
+
+// ── r650 slice-2c adapter: the ARCHIVE surface (evidence-honest) ────────────
+
+/** The archive's own "no output recorded" marker (run-archive writers) — a
+ * placeholder that IMPERSONATES evidence must not score as lineage (the
+ * paper's F6 wrapper shape, at our own surface). */
+const ARCHIVE_NO_OUTPUT_MARKER = "(no output recorded)";
+
+/** How many criteria the archive surface cannot observe: E×2 / L / V / T —
+ * RunArchiveStep materializes only {name, agent, output, ms}; the writer
+ * drops step status/ok, so error rows, sentinels, rework, verdicts and tool
+ * calls are unobservable here. Unobservable = BYPASSED (visible zero, never
+ * a vacuous pass — the r183/r648 doctrine, now enforced by construction). */
+const ARCHIVE_UNOBSERVABLE_CRITERIA = 5;
+
+/**
+ * Classify one ARCHIVED run into its harness-layer chip. Deliberately NOT
+ * `harnessChipForRun` over archive rows: that adapter would read the missing
+ * status fields as clean evidence and score vacuous passes. The archive
+ * surface scores exactly ONE criterion honestly — O/lineage-present (every
+ * archived row carries non-empty, non-sentinel output or a duration) — and
+ * bypasses the other five with the count named in the tooltip.
+ */
+export function harnessChipForArchiveRun(
+  steps: Array<{ output?: string; ms?: number }>,
+  status?: string,
+): HarnessChip | null {
+  try {
+    const list = Array.isArray(steps) ? steps : [];
+    const success = status === "done";
+    if (list.length === 0) return null; // nothing observable at all — no chip
+    const blind = list.filter((s) => {
+      const out = typeof s.output === "string" ? s.output : "";
+      return (out.length === 0 || out === ARCHIVE_NO_OUTPUT_MARKER) && typeof s.ms !== "number";
+    }).length;
+    const scored = 1;
+    const o1Fail = blind > 0;
+    const label = `harness ${o1Fail ? 0 : scored}/${scored}`;
+    const bypassTail = ` ${ARCHIVE_UNOBSERVABLE_CRITERIA} other criteria are unobservable at the archive surface (the archive materializes only output/ms per step — visible zero, not attributed).`;
+    if (!o1Fail) {
+      return {
+        label,
+        tone: "pass",
+        tooltip: `TraceTrial harness layer, archive surface (arXiv 2610.32285): ${scored}/${scored} criterion scored — every archived row carries output or duration.${bypassTail}`,
+        successDespiteViolation: false,
+      };
+    }
+    return {
+      label,
+      tone: "warn",
+      tooltip: `TraceTrial harness layer, archive surface (arXiv 2610.32285): O/lineage-present FAIL — ${blind} archived row${blind === 1 ? "" : "s"} with no output and no duration (not replayable)${success ? " · run SUCCEEDED despite the violation (F3: success ≠ reliable)" : ""}.${bypassTail}`,
+      successDespiteViolation: success,
+    };
+  } catch {
+    return null;
+  }
+}
