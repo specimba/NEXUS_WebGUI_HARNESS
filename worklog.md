@@ -1525,3 +1525,20 @@ Round ID: r623 -> next patrol (job 473388)
 Next recommended action: r623 — batched opening (expect HEAD = r622 commit; server up; qa:golden 1 round); increment: (1) harden qa-golden — unmasked tsc rc (redirect, never pipes) + structured console parsing (count real console.error entries, not "error" substrings); (2) r619-leftover: run-archive status chip persisted via localStorage + focus-visible ring polish; ship BOTH if budget allows, else (1) first. Never invent Owner-key-dependent work.
 Blockers: none (Owner-side: forensic backups in db/ await a keep/prune decision whenever convenient).
 - GATES: tsc=0 (rc unmasked via redirect) lint=0(33) qa:golden=4/4 witness="DB corruption root-caused (mixed-generation WAL vs snapshot main) + repaired via clean prisma re-lay; golden back to canonical signatures; evidence preserved + gitignored" restart="1 deliberate DB-swap (server was up)" 
+
+---
+Task ID: r622-correction
+Agent: NEXUS WebGUI Harness (same round, corrective)
+Task: The r622 commit accidentally included the forensic db binaries from .zscripts/dbtest/ (git add -A swept them; `db/*.db` gitignore did not cover .zscripts/). Corrected: path class gitignored (.zscripts/dbtest/, .zscripts/*.log), files removed from the index and disk (the canonical evidence archive remains in db/ — custom.db.corrupt-backup-*, custom.db-wal/shm.corrupt-backup-*, custom.db.pre-reset-backup-*, all under the db/ ignore rules).
+
+Work Log:
+- .gitignore += .zscripts/dbtest/ + .zscripts/*.log; git rm --cached the staged binaries; disk duplicates removed (db/ archive retained).
+- DOCTRINE: forensic/evidence files belong ONLY in gitignored locations; never run experiments inside the repo tree without an ignore rule first (second git add -A bite this incident — r621's debris, r622's dbtest binaries).
+
+Stage Summary:
+- Repo clean: no db binaries in history from this commit onward (the a560c4175 blob remains in remote history — prune decision is Owner-side if desired).
+
+Round Handoff:
+Round ID: r623 -> unchanged from r622 handoff (qa-golden hardening first, then chip-persistence increment).
+Blockers: none.
+- GATES: unchanged (tsc=0 lint=0(33) qa:golden=4/4) — this correction touches only .gitignore + evidence placement.

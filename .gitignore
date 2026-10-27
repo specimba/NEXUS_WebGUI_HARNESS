@@ -110,3 +110,5 @@ db/custom.db-wal
 # r622: DB-forensics evidence from the rollback incident — never commit
 db/custom.db.*
 db/custom.db-*
+.zscripts/dbtest/
+.zscripts/*.log
