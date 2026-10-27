@@ -1847,3 +1847,30 @@ Round ID: r636 -> next patrol (job 473388)
 Next recommended action: r636 — batched opening (expect HEAD = r635 commit; server up; qa:golden 1 round, 6/6). Increment sourcing order: (a) fix-before-work wins if golden finds anything; (b) read docs/strategy/TASKS.md and select the smallest non-Owner-gated item (TASK-101 durable-step semantics and TASK-102 NEXUS_BOT wave are Owner-gated/large — do NOT start them without explicit Owner go; plugin slice 2 stays deferred); (c) if TASKS.md offers nothing small and honest, ship a targeted styling-detail polish backed by a concrete observation (probe-led, capped at 2 reads), never a speculative sweep. Never invent Owner-key-dependent work.
 Blockers: none.
 - GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="focus-ring saga fully closed: residual resizable.tsx line classified ui-primitive out-of-scope; image-studio idea chips canonical ring shipped (3 buttons); chat-search skip stands" restart="0/1"
+
+---
+Task ID: r636
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610271907)
+Task: Patrol r636 — per r635 handoff: TASKS.md-sourced increment; candidate (a) fix-before-work. OVERTAKEN BY EVENTS: repo rollback + server wedge — full recovery round.
+
+Work Log:
+- ANOMALY (opening): HEAD = 02b3b03a9 (r620 — NOT the expected r635), 54 dirty porcelain lines, server 000 (curl timeout 8s). Command chain aborted at curl; TASKS.md sweep deferred.
+- FORENSICS (fact-gather round): reflog top = r620's ORIGINAL commit time (03:11 UTC) with NO entries after it — no checkout/reset occurred in-repo; therefore .git metadata was replaced externally by a filesystem snapshot rollback. Working tree still held r635-era content (worklog +402 lines = exactly the r621-r635 sections). Server processes alive, port listening, HTTP hanging — cold-compile wedge, not death. A "pre-recovery-1792785796" stash (external agent) and a stray "clean-main" branch confirmed outside intervention.
+- REMOTES-FIRST (before any destructive action): git fetch both — origin/main AND fork/main both at 833edda01 (r635): every patrol push since r626 had genuinely landed. Local object 833edda01 present. LESSON RETIRED: the historic `git push ... | tail; echo $?` pattern reports tail's rc, not git's — false-confidence risk; this round's pushes use rc-honest redirect form.
+- RECOVERY (lossless): git reset --hard 833edda01 — working tree already r635 content, so zero data loss; pre-recovery stash untouched. Post-reset: clean except 28 untracked orphan paths. Server self-resolved on 45s long-poll (try1=200) — NO restart consumed (allowance still 0/1).
+- ORPHAN QUARANTINE: the snapshot carried an entire alternate-timeline tree (11 stale scripts incl. qa-executor-tick-echo.ts/qa-r376-server-steps.ts referencing non-existent exports; 17 src paths: api/lanes, api/mcp, api/router, components/praison, mcp/skills/suite/lib stack) — all untracked, none reachable from r635's import graph (r635 gates were green without them). Moved whole to .archive-snapshot-1027/ (evidence preserved for Owner inspection); dir excluded in tsconfig + eslint.config.mjs ignores. tsc rc=0; lint rc=0 with exactly the 33-warning baseline restored.
+- GATES+GOLDEN: first post-recovery golden 3/6 (tsc orphan errors + transient boot read-error / leg2 NO-GUARD during next-dev recompile churn). After quarantine + settle: qa:golden 6/6, console 0->0.
+- Budget: 11 of 12 rounds (anomaly-opening 1, forensics 1, remotes-first 1, reset+poll 1, golden-fail 1, quarantine+tsc 1, lint-inspect 1, eslint-locate 1, eslint-fix+lint+golden 1, worklog 1, push 1).
+
+Stage Summary:
+- The patrol's full r621-r635 history re-materialized from the remotes; app state, focus-ring vocabulary, and qa:golden 6/6 all verified on the restored tree. Fix-before-work consumed the round: the user-facing increment IS the restoration (the app's last ten rounds of work back in the served UI); no cosmetic add-on — stated plainly rather than theatre.
+- P1 STABILITY BRIEFING FOR OWNER (r632 handoff (b) triggered; second server-life event + FIRST filesystem rollback):
+  - Evidence timeline (+08): r632 ~17:14 dev death (restart 1/1 consumed) -> r633 17:37 200 -> r634 18:07 200 -> r635 18:37 200 -> r636 19:07 HTTP wedge + project-dir rollback to ~03:11 UTC state -> recovered in-round.
+  - Two distinct failure modes inside 2h: (1) dev process death; (2) external snapshot/sync layer restoring the directory INCLUDING .git while the tree stayed newer — local-only state would NOT survive a third event if remotes lagged. Patrol doctrine absorbed both, but this is beyond in-repo remediation: recommend Owner investigate the platform snapshot/backup mechanism. Mitigation now in doctrine: opening batch gains a remote-divergence check (fetch + compare HEAD) every round.
+  - No cron changes made from inside the turn (per doctrine). Quarantine dir left on disk (gitignored) for Owner review; delete at will.
+
+Round Handoff:
+Round ID: r637 -> next patrol (job 473388)
+Next recommended action: r637 — batched opening MUST now include: git fetch origin + fork, compare HEAD vs origin/main (expect HEAD = r636 commit). If divergence/rollback is found again: repeat the r636 recovery recipe verbatim (remotes-first, reset --hard origin/main, untracked-orphan sweep into .archive-snapshot-1027/, gates, golden) — it is proven lossless. Then: (a) fix-before-work; (b) TASKS.md review for the smallest non-Owner-gated increment (deferred from this round; TASK-101/102 remain Owner-gated/large — no start without explicit Owner go; plugin slice 2 deferred); (c) targeted probe-led polish only with a concrete observation. Never invent Owner-key-dependent work.
+Blockers: none (Owner-side platform investigation recommended, not blocking).
+- GATES: tsc=0 (rc unmasked) lint=0(33-exact) qa:golden=6/6 witness="rollback recovery: HEAD re-pinned to 833edda01 from remotes-first verification; 28 orphan paths quarantined (.archive-snapshot-1027, tsconfig+eslint excluded); wedge self-resolved, restart 0/1; golden 6/6 post-recovery" restart="0/1"

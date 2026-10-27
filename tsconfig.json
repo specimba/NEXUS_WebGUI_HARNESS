@@ -37,6 +37,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
+    ".archive-snapshot-1027",
     "node_modules",
     "examples",
     "skills",
