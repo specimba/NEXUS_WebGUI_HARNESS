@@ -2174,3 +2174,24 @@ Round ID: r648 -> next patrol (job 473388)
 Next recommended action: (1) TraceTrial slice 2 — run-panel harness chips + success-despite-violation counter (classifyRunCriteria over live run rows, no new runtime, user-facing); (2) looped-path live-witness (staged since r645, needs a healthy free ladder); (3) precedent-exemplar lane via the r579 RRF shim. Owner queue: none pending.
 Blockers: none.
 - GATES: tsc=0 lint=0(33-warnings) qa:trace-trial=43/43 witness="arXiv 2610.32285 Trial by Trace deep-read (abstract + full-text HTML verified); digest F1-F8 + 5-expert panel + adaptation map shipped; slice 1 pure port (classifyRunCriteria/attributeFailure/harnessSummary with bypass math + candidate/validated chains) 43/43 dial-free incl. two self-catches; TASKS.md P2 entry staged slices 2-3" restart="0/1"
+
+---
+Task ID: r648
+Agent: NEXUS WebGUI Harness (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280007)
+Task: r648 patrol — TraceTrial slice 2: run-panel harness chips + the F3 success-despite-violation counter (handoff item 1).
+
+Work Log:
+- OPENING: chain audit clean — HEAD=94289c7d7 (r647), tree clean, no parallel appends (last section = r647, mine). Canary: 1 finding, digest 16:02Z fresh hourly bucket, server up. Golden 6/6 in the gate chain (no fix-before-work needed).
+- INCREMENT (handoff item 1): TraceTrial slice 2 — the harness layer becomes visible on run rows. workflow-run-panel.tsx: (a) every run-history row renders a "harness n/n" chip computed by the new pure adapter harnessChipForRun (emerald when every scored criterion passes; amber with the failed criteria NAMED in the tooltip; null when every criterion is bypassed — no signal, no chip, absent evidence renders absent); (b) the history header gains the F3 counter "· N harness debts" — runs that SUCCEEDED while violating >=1 harness criterion (paper F3: 31.1% of successful runs do; success is not reliable). Styling polish: the chips reuse the house 10px tabular-nums round chip language (emerald/amber tints matching novelty/verdict chips).
+- ADAPTER DESIGN: harnessChipForRun in src/lib/trace-trial.ts accepts the WorkflowRunStep `degraded` alias (r29 sentinel) so call sites need zero mapping; success = run status "done"; classification is pure over native artifacts (no new runtime, no dials).
+- QA SELF-CATCHES (the gates doing their job — 49/51 first run, 52/52 after): (1) empty runs scored VACUOUS passes on E/L criteria — a false green violating the r183 no-phantom doctrine; empty runs now bypass every step-derived criterion (all-bypassed => no chip), V stays scoreable because claims-vs-gates needs no steps; (2) my errored-run check expected a warn chip — wrong per the paper's own F2 layer separation: an errored run with clean harness criteria is a PASS chip (the agent layer failed, the harness behaved; that is a model error, not a harness debt). Check rewritten to pin the F2 semantics.
+- GATES: qa-trace-trial 52/52, tsc=0 (rc unmasked), lint=0(33-warnings), golden 6/6, console 0->0.
+
+Stage Summary:
+- The TraceTrial two-layer discipline is now user-facing: task outcome chips and harness chips are separate signals on every run row, and the history header refuses to let green masks red underneath (the F3 debt counter). Slices staged: call-log lineage hardening, radar chain-typed evidence, archive-panel harness column.
+
+Round Handoff:
+Round ID: r649 -> next patrol (job 473388)
+Next recommended action: (1) TraceTrial slice 2b — the "N harness debts" census also belongs on the Runs board / archive-panel digest line (same adapter, one more call site), or call-log lineage schema-hardening (every tool-call note carries result status + step id); (2) looped-path live-witness (staged since r645 — needs a healthy free ladder, the 429 warning persisted through r646); (3) precedent-exemplar lane via the r579 RRF shim.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0 (rc unmasked) lint=0(33-warnings) qa:trace-trial=52/52 qa:golden=6/6 witness="TraceTrial slice 2: run-history harness chips (emerald/amber, bypass=null) + F3 'N harness debts' counter on the history header; adapter accepts the degraded alias; two QA self-catches (vacuous-pass bypass on empty runs per r183; errored-run PASS chip per F2 separation); console 0->0" restart="0/1"

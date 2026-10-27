@@ -31,6 +31,7 @@ import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
 // r503: lane witness chip on run steps — short name + shared provider glyph.
 import { laneShortName } from "@/lib/lane-catalog";
 import { providerMeta } from "@/lib/tracker-types";
+import { harnessChipForRun } from "@/lib/trace-trial";
 import { truncate } from "@/lib/helpers";
 import { angleOfProposal } from "@/lib/spawn-proposal-engine";
 import { Button } from "@/components/ui/button";
@@ -1049,6 +1050,18 @@ export function WorkflowRunPanel({
     [liveWorkflow]
   );
 
+  // r648 (TraceTrial slice 2, arXiv 2610.32285): F3 debt counter — runs that
+  // SUCCEEDED while violating >=1 harness criterion. Success is not
+  // reliable; the history header carries the debt count even when every
+  // row icon is green.
+  const historyHarnessDebts = React.useMemo(
+    () =>
+      (liveWorkflow?.runs ?? []).filter(
+        (r) => harnessChipForRun(r.steps, r.status)?.successDespiteViolation === true,
+      ).length,
+    [liveWorkflow],
+  );
+
   // Run history list — reachable from BOTH the empty state and the run view,
   // so past runs can be re-opened, compared and exported anytime.
   const historySection = (
@@ -1061,6 +1074,9 @@ export function WorkflowRunPanel({
           aria-label="Toggle run history"
         >
           Run history ({liveWorkflow?.runs.length ?? 0})
+          {historyHarnessDebts > 0
+            ? ` · ${historyHarnessDebts} harness debt${historyHarnessDebts === 1 ? "" : "s"}`
+            : ""}
           <ChevronDown
             className={cn(
               "h-4 w-4 transition-transform",
@@ -1172,6 +1188,29 @@ export function WorkflowRunPanel({
                   const prop = proposals.find((p) => p.sourceRunId === r.id);
                   if (!prop) return null;
                   return <RunRouterChip prop={prop} workflows={workflows} />;
+                })()}
+                {(() => {
+                  // r648 (TraceTrial slice 2, arXiv 2610.32285): the harness
+                  // layer judged SEPARATELY from the task outcome — emerald
+                  // "harness n/n" when every scored criterion passes, amber
+                  // with failed criteria named in the tooltip; no chip when
+                  // every criterion is bypassed (no signal, no chip).
+                  const chip = harnessChipForRun(r.steps, r.status);
+                  if (!chip) return null;
+                  return (
+                    <span
+                      title={chip.tooltip}
+                      aria-label={`Harness reliability ${chip.label}`}
+                      className={cn(
+                        "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                        chip.tone === "warn"
+                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                      )}
+                    >
+                      {chip.label}
+                    </span>
+                  );
                 })()}
                 <span className="shrink-0 text-[11px] text-muted-foreground">
                   {fmtRel(r.startedAt)}

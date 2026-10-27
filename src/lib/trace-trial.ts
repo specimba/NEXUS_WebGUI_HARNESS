@@ -109,14 +109,17 @@ export function classifyRunCriteria(run: RunShape): RunCriterion[] {
     const out: RunCriterion[] = [];
 
     // E1 — no-silent-failure: a successful run must not carry error rows.
+    // Empty run = property unobservable = bypassed (no vacuous green, r183).
     const errorSteps = steps.filter((s) => s.status === "error").length;
     out.push({
       component: "execution",
       criterion: "execution/no-silent-failure",
-      verdict: success && errorSteps > 0 ? "fail" : "pass",
-      note: success && errorSteps > 0
-        ? `TraceTrial E/no-silent-failure FAIL — run reports success with ${errorSteps} error row${errorSteps === 1 ? "" : "s"} (success ≠ reliable, paper F3)`
-        : "TraceTrial E/no-silent-failure pass — error rows and success agree",
+      verdict: steps.length === 0 ? "bypassed" : success && errorSteps > 0 ? "fail" : "pass",
+      note: steps.length === 0
+        ? "TraceTrial E/no-silent-failure BYPASSED — empty run (property unobservable, visible zero)"
+        : success && errorSteps > 0
+          ? `TraceTrial E/no-silent-failure FAIL — run reports success with ${errorSteps} error row${errorSteps === 1 ? "" : "s"} (success ≠ reliable, paper F3)`
+          : "TraceTrial E/no-silent-failure pass — error rows and success agree",
     });
 
     // E2 — no-sentinel-impersonation: an auto-digest sentinel must not count
@@ -125,10 +128,12 @@ export function classifyRunCriteria(run: RunShape): RunCriterion[] {
     out.push({
       component: "execution",
       criterion: "execution/no-sentinel-impersonation",
-      verdict: success && sentinels > 0 ? "fail" : "pass",
-      note: success && sentinels > 0
-        ? `TraceTrial E/no-sentinel-impersonation FAIL — ${sentinels} auto-digest sentinel row${sentinels === 1 ? "" : "s"} inside a successful run (bypass shape, paper F6)`
-        : "TraceTrial E/no-sentinel-impersonation pass — no sentinel row read as a real answer",
+      verdict: steps.length === 0 ? "bypassed" : success && sentinels > 0 ? "fail" : "pass",
+      note: steps.length === 0
+        ? "TraceTrial E/no-sentinel-impersonation BYPASSED — empty run (property unobservable, visible zero)"
+        : success && sentinels > 0
+          ? `TraceTrial E/no-sentinel-impersonation FAIL — ${sentinels} auto-digest sentinel row${sentinels === 1 ? "" : "s"} inside a successful run (bypass shape, paper F6)`
+          : "TraceTrial E/no-sentinel-impersonation pass — no sentinel row read as a real answer",
     });
 
     // L1 — rework converges: a reworked step must reach a terminal done state,
@@ -139,12 +144,14 @@ export function classifyRunCriteria(run: RunShape): RunCriterion[] {
     out.push({
       component: "lifecycle",
       criterion: "lifecycle/rework-converges",
-      verdict: capBreach || unconverged > 0 ? "fail" : "pass",
-      note: capBreach
-        ? `TraceTrial L/rework-converges FAIL — looped pass count exceeded the cap (${LOOP_CAP})`
-        : unconverged > 0
-          ? `TraceTrial L/rework-converges FAIL — ${unconverged} reworked step${unconverged === 1 ? "" : "s"} did not reach done`
-          : "TraceTrial L/rework-converges pass — rework bounded and convergent",
+      verdict: steps.length === 0 ? "bypassed" : capBreach || unconverged > 0 ? "fail" : "pass",
+      note: steps.length === 0
+        ? "TraceTrial L/rework-converges BYPASSED — empty run (property unobservable, visible zero)"
+        : capBreach
+          ? `TraceTrial L/rework-converges FAIL — looped pass count exceeded the cap (${LOOP_CAP})`
+          : unconverged > 0
+            ? `TraceTrial L/rework-converges FAIL — ${unconverged} reworked step${unconverged === 1 ? "" : "s"} did not reach done`
+            : "TraceTrial L/rework-converges pass — rework bounded and convergent",
     });
 
     // V1 — claims match gates: success must not contradict a failing final
@@ -333,5 +340,61 @@ export function attributionNote(report: AttributionReport): string {
     return `TraceTrial attribution — ${n} harness failure${n === 1 ? "" : "s"}, ${b} bypassed (visible, unattributed)${chains ? ` — ${chains}` : ""}${report.agentFailed ? " — agent layer failed" : " — agent layer passed"}`;
   } catch {
     return "TraceTrial attribution — report unreadable";
+  }
+}
+
+// ── r648 slice-2 adapter: run-level chip for UI surfaces ────────────────────
+
+export type HarnessChipTone = "pass" | "warn";
+
+export interface HarnessChip {
+  label: string;
+  tone: HarnessChipTone;
+  tooltip: string;
+  /** F3: the run SUCCEEDED while violating >=1 harness criterion (a debt). */
+  successDespiteViolation: boolean;
+}
+
+/**
+ * Classify one run into its harness-layer chip. Accepts the house run-step
+ * shape INCLUDING the `degraded` alias (WorkflowRunStep's r29 sentinel field
+ * name) so UI call sites need no mapping. Returns null when every criterion
+ * is bypassed — no signal, no chip (absent evidence renders absent).
+ */
+export function harnessChipForRun(
+  steps: Array<RunStepShape & { degraded?: boolean }>,
+  status?: string,
+): HarnessChip | null {
+  try {
+    const list = Array.isArray(steps) ? steps : [];
+    const success = status === "done";
+    const criteria = classifyRunCriteria({
+      steps: list.map((s) => ({ ...s, autoDigest: s.autoDigest === true || s.degraded === true })),
+      success,
+      finalVerdict: null,
+    });
+    const sum = harnessSummary(criteria, success);
+    const scored = sum.pass + sum.fail;
+    if (scored === 0) return null;
+    const failed = criteria.filter((c) => c.verdict === "fail");
+    const label = `harness ${sum.pass}/${scored}`;
+    if (sum.fail === 0) {
+      return {
+        label,
+        tone: "pass",
+        tooltip: `TraceTrial harness layer (arXiv 2610.32285): ${sum.pass}/${scored} criteria pass — judged separately from the task outcome.`,
+        successDespiteViolation: false,
+      };
+    }
+    return {
+      label,
+      tone: "warn",
+      tooltip: `TraceTrial harness layer (arXiv 2610.32285): ${sum.fail} violation${sum.fail === 1 ? "" : "s"} — ${failed
+        .map((f) => f.criterion)
+        .join(", ")}${sum.successDespiteViolation ? " · run SUCCEEDED despite violations (F3: success ≠ reliable)" : ""}`,
+      successDespiteViolation: sum.successDespiteViolation,
+    };
+  } catch {
+    return null;
   }
 }

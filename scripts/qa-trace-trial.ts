@@ -12,6 +12,7 @@ import {
   attributeFailure,
   harnessSummary,
   attributionNote,
+  harnessChipForRun,
   type RunShape,
 } from "../src/lib/trace-trial";
 
@@ -184,7 +185,34 @@ check("classification is deterministic", a === b);
 check("attribution note is countable", attributionNote(rep).startsWith("TraceTrial attribution —"));
 check("attribution note carries candidate chain language", attributionNote(rep).includes("candidate chain"));
 
-// ── verdict ─────────────────────────────────────────────────────────────────
+// ── 6. r648 slice-2 adapter: run-level chip ─────────────────────────────
+const chipClean = harnessChipForRun(
+  [
+    { status: "done", kind: "generate", output: "ok", ms: 10, toolCalls: [{ id: "t" }] },
+    { status: "done", kind: "review", verdict: "pass" },
+  ],
+  "done",
+);
+check("adapter: clean done run => pass chip 6/6", chipClean?.tone === "pass" && chipClean.label === "harness 6/6");
+check("adapter: pass chip is not a debt", chipClean?.successDespiteViolation === false);
+const chipDebt = harnessChipForRun(
+  [
+    { status: "error", output: "" },
+    { status: "done", autoDigest: true, output: "digest" },
+  ],
+  "done",
+);
+check("adapter: success despite violations => warn chip", chipDebt?.tone === "warn" && chipDebt.successDespiteViolation === true);
+check("adapter: debt tooltip names F3", (chipDebt?.tooltip ?? "").includes("SUCCEEDED despite"));
+check("adapter: debt tooltip cites criteria", (chipDebt?.tooltip ?? "").includes("execution/no-silent-failure"));
+const chipDegraded = harnessChipForRun([{ status: "done", degraded: true, output: "d" }], "done");
+check("adapter: degraded alias maps to the sentinel criterion", chipDegraded?.tone === "warn" && chipDegraded.tooltip.includes("no-sentinel-impersonation"));
+check("adapter: empty steps => null (no signal, no chip)", harnessChipForRun([], "done") === null);
+const chipErrored = harnessChipForRun([{ status: "error", output: "" }], "error");
+check("adapter: errored run => pass chip (F2 separation: harness behaved, agent layer failed)", chipErrored?.tone === "pass" && chipErrored.successDespiteViolation === false);
+check("empty run: every criterion bypassed (no vacuous green, r183 doctrine)", classifyRunCriteria({ success: true, steps: [] }).every((c) => c.verdict === "bypassed"));
+
+// ── verdict ─────────────────────────────────────────────────────────────
 const total = pass + fails.length;
 console.log(`QA:TRACE-TRIAL ${pass}/${total} checks PASS`);
 if (fails.length > 0) {
