@@ -2980,3 +2980,29 @@ Round Handoff:
 Round ID: r678 -> next patrol (job 473388)
 Next recommended action: (1) Verify the ⧉/⚖ drift-witness tooltips render on the live board (hover in golden QA — the harness can read the title attribute of the ⧉ chip and assert the family sentence appears now that 20 events exist). (2) KB-1-a backlog: forensic-diagnosis fixtures deepened (#3) or poison-purge store hygiene (#4). (3) The natural run's events landed with kind gate-no-judge mostly? Read the ledger's latest 5 — if the natural run produced verdicts, witness chips should already show on its ⚖ chip. (4) Radar chips witness on the next registry finding. Driver notes: lib = src/lib/family-witness.ts; tally sites = evals route GET + run-kanban (fam const ~506) + panel chip; fixture = scripts/qa-family-witness.ts (imports the lib directly).
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+
+---
+Task ID: r678
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 678 (job 473388) — follow r677 handoff: P4 board drift-witness check + drift counts inline on the ledger chip
+
+Work Log:
+- Ledger auto-growth witnessed AGAIN: census 20 -> {total:27, verdicts:10, fails:5, family:{cross:14, same:0}} — the r677 QA palette-pick started a second natural run (latest event gate-uncertain, no verdict). The r672 wiring keeps confirming itself.
+- Golden QA first: P1/P2/P3 PASS, console-errors 0 — no product bugs.
+- SHIP (user-facing + styling): the ⧉ ledger chip's drift counts LEFT the tooltip — the digest chip now renders "⧉ ledger 27·10 ◈14" inline (violet cross-family tally, muted ◇M when same-family exists). No hover needed; the numbers are the r677 server-side tally.
+- P4 LEDGER-DRIFT-WITNESS golden check — four attempts, honestly NOT green yet:
+  1. Post-palette-pick read: found:false — the run panel DISPLACES the digest DOM (real DOM lesson: board-level checks read the pristine board).
+  2. Relocated pre-pick: still found:false.
+  3. Root cause found in code: the chip lives on the BOARD layout — a persisted ui-store toggle (workflowBoardOpen, grid default on a fresh profile); RunKanban never mounts in grid view.
+  4. Harness now clicks aria-label "Runs board" then polls the chip (8 x 1.3s retry loop + boardMode diagnostic in the JSON output; patch persisted as scripts/patch-r678-harness.py). Diagnostic: boardMode "no-toggle" — the layout toggle is NOT a native <button> (role-based element, aria-checked radio pattern), so querySelectorAll("button") misses it.
+- GATES: tsc 0 · lint 0/33-exact · fixtures qa-family-witness 17/17, qa-cross-family 32/32, qa-gate-census 25/25, qa-gate-events 13/13, qa-cortex-census 16/16 · golden QA P1-P3 PASS console 0 · P4 FAIL (documented, not hidden).
+- FixNote r678.
+
+Stage Summary:
+- Drift health is now readable at a glance (inline ◈N on the digest chip), on hover (r677 tooltips), per-note (r676 chip) — one shared lib contract underneath.
+- P4 is the first golden check to ship red — deliberately honest: the harness gained real diagnostics (boardMode, poll loop) and the exact fix is handed off.
+
+Round Handoff:
+Round ID: r679 -> next patrol (job 473388)
+Next recommended action: (1) P4 green: the "Runs board" toggle is not a button — query `[aria-label="Runs board"]` (any tag) or `[role="radio"][aria-label="Runs board"]` in the harness's boardMode step; then P4 should pass (chip + "Drift witness" sentence + gateWitnessed counts). (2) The QA palette-pick keeps starting REAL runs (2 natural ledger growths so far) — consider a harness dry-run flag (pick a workflow but Escape before confirm) OR let it keep feeding the corpus deliberately (it is honest natural-run witness); decide explicitly next round. (3) KB-1-a backlog: forensic-diagnosis fixtures deepened (#3) or poison-purge (#4). (4) Radar chips witness on the next registry finding. Driver notes: inline glyphs = run-kanban.tsx r678 block (line ~1031); P4 = cdp-qa-golden-r673.mjs (boardMode + poll loop, patch script scripts/patch-r678-harness.py already applied); family lib = src/lib/family-witness.ts.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.

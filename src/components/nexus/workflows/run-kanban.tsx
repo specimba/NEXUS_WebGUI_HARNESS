@@ -1029,6 +1029,14 @@ export function RunKanban({
               )}
             >
               ⧉ ledger {ledger.total}·{ledger.verdicts}
+              {/* r678: drift counts leave the tooltip — cross/same-family
+              tallies read at a glance on the digest line itself. */}
+              {ledger.family && ledger.family.cross > 0 ? (
+                <span className="ml-1 text-violet-600 dark:text-violet-400">◈{ledger.family.cross}</span>
+              ) : null}
+              {ledger.family && ledger.family.same > 0 ? (
+                <span className="ml-1 text-muted-foreground">◇{ledger.family.same}</span>
+              ) : null}
             </span>
           ) : null}
         </p>

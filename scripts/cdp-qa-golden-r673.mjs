@@ -118,6 +118,35 @@ try {
   await evalJs(ws, `location.hash = "#/workflows"`);
   await sleep(1800);
   await evalReady(ws);
+  // ── P4 board drift witness (r678): the ⧉ ledger chip must carry the
+  // family tally sentence once the corpus holds witnessed notes (r677 ship).
+  // The chip lives on the BOARD layout — a persisted ui-store toggle
+  // (workflowBoardOpen, grid is the default on a fresh profile), so ensure
+  // board mode first. Read BEFORE the palette pick (post-pick the run panel
+  // displaces the digest DOM — r678 first witness).
+  await sleep(600);
+  const boardMode = await evalJs(ws, `(() => {
+    if ([...document.querySelectorAll("span[title]")].some((el) => (el.textContent ?? "").includes("⧉ ledger"))) return "already";
+    const btn = [...document.querySelectorAll("button")].find((b) => (b.getAttribute("aria-label") ?? "") === "Runs board");
+    if (btn) { btn.click(); return "clicked"; }
+    return "no-toggle";
+  })()`);
+  await sleep(1400);
+  let drift = { found: false };
+  for (let attempt = 0; attempt < 8 && drift.found !== true; attempt++) {
+    drift = await evalJs(ws, `(() => {
+    const chips = [...document.querySelectorAll("span[title]")];
+    const led = chips.find((el) => (el.textContent ?? "").includes("⧉ ledger"));
+    if (!led) return { found: false };
+    const t = led.getAttribute("title") ?? "";
+    const gateWitnessed = chips
+      .filter((el) => /⚖ gate/.test(el.textContent ?? ""))
+      .filter((el) => /Judge family witness/.test(el.getAttribute("title") ?? "")).length;
+    return { found: true, text: (led.textContent ?? "").slice(0, 30), driftWitness: /Drift witness/.test(t), gateWitnessed };
+    })()`);
+    if (drift.found !== true) await sleep(1300);
+  }
+  results.push(["P4 ledger-drift-witness", drift.found === true && drift.driftWitness === true, `ledger=${drift.found ? drift.text : "absent"} driftWitness=${drift.driftWitness} gateWitnessed=${drift.gateWitnessed}`]);
   const openedSyn = await evalJs(ws, `(() => {
     const ev = (mod) => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", bubbles: true, cancelable: true, ...mod }));
     ev({ metaKey: true });
@@ -172,7 +201,7 @@ try {
   await sleep(600);
   results.push(["P3 paste-mechanics+panel", (picked || openedPal) ? true : pasted >= 2300, `palette=${!!openedPal} picked=${picked ?? "-"} pasted=${pasted}`]);
 
-  console.log(JSON.stringify({ palette: opened, paletteSyn: openedSyn, picked, pasted, p1, p2, results: results.map(([n, ok]) => `${ok ? "PASS" : "FAIL"} ${n}`) }, null, 1));
+  console.log(JSON.stringify({ palette: opened, paletteSyn: openedSyn, picked, pasted, p1, p2, boardMode, drift, results: results.map(([n, ok, note]) => `${ok ? "PASS" : "FAIL"} ${n}${note ? ` [${note}]` : ""}`) }, null, 1));
 } catch (e) {
   console.log(`CATCH: ${e?.stack ?? e}`);
   results.push(["caught-exception", false]);
