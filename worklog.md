@@ -2914,3 +2914,24 @@ Round Handoff:
 Round ID: r675 -> next patrol (job 473388)
 Next recommended action: (1) Ledger auto-growth witness: GET /api/evals should exceed 11 after any natural run; the board ⧉ chip mirrors it. (2) Small accuracy follow-up: the peer blind-REVISE pass (streamStep ~2634) produces a NEW output but finalOutput's genFamily still points at the original generator dial — stamp the revise dial's family when it replaces finalOutput. (3) P3 palette headless: try raw CDP Input.dispatchKeyEvent (keyEvent rawDown) for ⌘K — synthetic KeyboardEvent is filtered by cmdk. (4) Radar chips witness on the next registry finding. Driver notes: genFamily flows PrevStepOutput → verification/peer decide(); family helpers in systemone.ts; golden QA = scripts/cdp-qa-golden-r673.mjs.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+
+---
+Task ID: r675
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 675 (job 473388) — follow r674 handoff: replacement dials re-stamp genFamily (stale-family fix across all three re-dial sites)
+
+Work Log:
+- Ledger census GET /api/evals still {total:11, verdicts:4, fails:3} — no natural run since the r672 backfill; auto-growth witness stays pending (wiring remains fixture-covered).
+- SHIP — stale-family fix, fleet-wide re-dials (r674 handoff #2, found BIGGER than handed off): the handoff named only the peer blind-revise (~2634), but grep showed THREE finalOutput replacement sites discarding the replacement dial's family — looped tied pass (lp, ~2501), single rework dial (~2554), peer blind-revise (~2648). Until now prev stamped the ORIGINAL draft's lane family, so downstream verification/peer judges computed family-disjointness against a lane that no longer produced the kept output. Fix: genFamily is rebindable (let destructure at the generate dial, r675 comment) and each replacement refreshes it truthy-guarded (`if (x.generatorFamily)` — an unknown family never clobbers a known one); the looped re-judge (v2) now also compares against the replacement's family. Review-branch (2198) and verification-draft push (2387) untouched — their stamps were already correct.
+- Styling polish: ↻ looped board chip gains cursor-help (rich r660 tooltip already there; now matches the ⧉ ledger + ⚖ gate chips' pointer affordance).
+- FixNote r675 appended to Settings What's Fixed.
+- GATES: tsc 0 · lint 0/33-exact · qa-cross-family 32/32 · golden QA via scripts/cdp-qa-golden-r673.mjs: P1 settings+model-relay PASS, P2 radar+frontier PASS, P3 paste-mechanics+panel PASS (pasted=2310), console-errors 0. Palette headless still honestly null (raw CDP Input.dispatchKeyEvent remains the open idea — not attempted this round, budget).
+
+Stage Summary:
+- Family witness is now end-to-end honest: the family stamped into prev is always the dial that produced the KEPT output, across draft → loop → rework → peer-revise → verification → peer blind score. The whole chain of judges reasons against the real generator family.
+- Ledger auto-growth witness: still pending a natural run (11·4 stable).
+
+Round Handoff:
+Round ID: r676 -> next patrol (job 473388)
+Next recommended action: (1) Ledger auto-growth witness: GET /api/evals past 11 on any natural run; board ⧉ chip mirrors. (2) P3 palette headless: raw CDP Input.dispatchKeyEvent (type:key, modifiers:4 for ⌘K / 2 for ⌃K, code KeyK) — synthetic KeyboardEvent is filtered by cmdk; keep the harness's paste-mechanics PASS as the P3 floor. (3) Adaptation backlog next items: forensic-diagnosis fixtures deepened (KB-1-a #3) or poison-purge store hygiene (KB-1-a #4). (4) Radar chips witness on the next registry finding. Driver notes: genFamily rebinds at 3 replacement sites (workflow-runner ~2507/2561/2656); family helpers in systemone.ts; golden QA = scripts/cdp-qa-golden-r673.mjs.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.

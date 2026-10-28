@@ -456,7 +456,7 @@ function RunCard({
               <span
                 title={`Looped-depth: ${loopedStep.looped.k} tied pass(es) of ${loopedStep.looped.r} on "${loopedStep.label}", exit ${loopedStep.looped.reason} — ${oc.says} (arXiv 2610.31421 adaptation)`}
                 className={cn(
-                  "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                  "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
                   oc.tone === "pass" &&
                     "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                   oc.tone === "warn" &&

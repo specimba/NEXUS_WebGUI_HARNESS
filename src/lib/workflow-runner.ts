@@ -2407,7 +2407,12 @@ export async function executeWorkflowRun(
           }
           // FAIL / uncertain / no judge available → run the full verification pass.
         }
-        const { content, generatorFamily: genFamily } = await streamStep(step, step.agentId, baseSystem, context);
+        // r675: genFamily is REBINDABLE — every replacement dial (looped
+        // pass, single rework, peer blind-revise) refreshes it so prev
+        // stamps the family of the dial that ACTUALLY produced the kept
+        // output, not the original draft's lane. Truthy-guarded: an
+        // unknown family never clobbers a known one.
+        let { content, generatorFamily: genFamily } = await streamStep(step, step.agentId, baseSystem, context);
 
         // ─── r516 PER-STEP DECISION GATE (owner directive: "decision models
         // should be used in our workflows to improve our LLM's capabilities").
@@ -2499,6 +2504,7 @@ export async function executeWorkflowRun(
                   patchRunStep(step.stepId, { status: "running", reworked: true });
                   const lp = await streamStep(step, step.agentId, tiedBlock, context);
                   finalOutput = lp.content;
+                  if (lp.generatorFamily) genFamily = lp.generatorFamily;
                   pushCall({
                     stepId: step.stepId,
                     stepLabel: step.label,
@@ -2552,6 +2558,7 @@ export async function executeWorkflowRun(
                   context
                 );
                 finalOutput = rework.content;
+                if (rework.generatorFamily) genFamily = rework.generatorFamily;
                 pushCall({
                   stepId: step.stepId,
                   stepLabel: step.label,
@@ -2646,6 +2653,7 @@ export async function executeWorkflowRun(
                   context
                 );
                 finalOutput = revise.content;
+                if (revise.generatorFamily) genFamily = revise.generatorFamily;
                 pushCall({
                   stepId: step.stepId,
                   stepLabel: step.label,
