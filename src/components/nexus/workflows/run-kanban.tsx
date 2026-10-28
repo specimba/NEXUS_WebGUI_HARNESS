@@ -897,6 +897,13 @@ export function RunKanban({
   // before this, exhausted tries silenced the chip until a coincidental
   // navigation remounted the board).
   const [ledgerRetry, setLedgerRetry] = React.useState(0);
+  // r691: session growth baseline — the first successful census of this
+  // page. The ▲ badge shows the DELTA (landed since the page opened), the
+  // board-visible form of the auto-growth the worklog has tracked since
+  // r677: the corpus breathing is now glanceable, not just census numbers.
+  // State, not a ref: the delta is read during render (the react-hooks/refs
+  // gate forbids ref reads there), and one extra render per session is free.
+  const [ledgerBaseline, setLedgerBaseline] = React.useState<number | null>(null);
   React.useEffect(() => {
     let alive = true;
     let tries = 0;
@@ -929,6 +936,8 @@ export function RunKanban({
             throw new Error("ledger census shape");
           }
           if (!alive) return;
+          const landedTotal: number = j.total;
+          setLedgerBaseline((b) => (b === null ? landedTotal : b));
           setLedger({
             total: j.total,
             verdicts: j.verdicts,
@@ -969,6 +978,10 @@ export function RunKanban({
   const ledgerLatest = ledger?.latest?.[0];
   const ledgerAge = ledgerAgeOf(ledgerLatest?.createdAt);
   const ledgerStale = ledgerAgeIsStale(ledgerLatest?.createdAt);
+  // r691: corpus growth since this page opened (null baseline -> 0; the
+  // badge renders only positive deltas — a hygiene trim can read negative
+  // and is honestly shown as nothing, never as a fake decline or growth).
+  const ledgerGrowth = ledger !== null && ledgerBaseline !== null ? ledger.total - ledgerBaseline : 0;
   // Pipeline filter lives in the ui store (persisted): it survives layout
   // switches (grid <-> board) and reloads instead of resetting on unmount.
   const filter = useUiStore((s) => s.boardWorkflowFilter);
@@ -1123,6 +1136,17 @@ export function RunKanban({
               ) : null}
               {ledger.family && ledger.family.same > 0 ? (
                 <span className="ml-1 text-muted-foreground">◇{ledger.family.same}</span>
+              ) : null}
+              {/* r691: auto-growth leaves the worklog — the session delta of
+              the durable total reads at a glance (emerald ▲N), the same
+              vocabulary as the family tone spans. Hover for the doctrine. */}
+              {ledgerGrowth > 0 ? (
+                <span
+                  title={`▲ ${ledgerGrowth} gate event${ledgerGrowth === 1 ? "" : "s"} landed in the durable corpus since this page opened — the board's own runs finalizing server-side (the r672 fire-and-forget wiring). The badge is this session's delta of the total, never a live stream; a ledger hygiene trim can only read as nothing here, not as a decline.`}
+                  className="ml-1 cursor-help font-semibold text-emerald-600 dark:text-emerald-400"
+                >
+                  ▲{ledgerGrowth}
+                </span>
               ) : null}
               {/* r684/r690: freshness at a glance — the corpus outlives the
               browser; the age token says whether it is still breathing, no

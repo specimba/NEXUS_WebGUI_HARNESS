@@ -12,6 +12,7 @@
  * r690: familyTallyOf (the tally half) joins the freeze — the last helper
  * the r688 audit named uncovered.
  */
+import { readFileSync } from "node:fs";
 import { crossFamilyTag } from "../src/lib/systemone";
 import { familyTallyOf, splitFamilyWitness } from "../src/lib/family-witness";
 
@@ -90,6 +91,16 @@ check("tally single cross", familyTallyOf([crossNote]), { cross: 1, same: 0 });
 check("tally single same", familyTallyOf([sameNote]), { cross: 0, same: 1 });
 check("tally mixed + unwitnessed", familyTallyOf([crossNote, sameNote, crossNote, "plain", null]), { cross: 2, same: 1 });
 check("tally first-match-wins parity", familyTallyOf(["A · cross-family then B · same-family"]), { cross: 1, same: 0 });
+
+// 10. r691: the census GET's tally pre-filters to witness-bearing notes
+// (source contract, the r688 style): the OR-contains where is a
+// case-insensitive SUPERSET of the witness regex — familyTallyOf remains
+// the exact counter, and the scan is bounded by witnessed rows instead of
+// the whole corpus (previously every stored note, every poll).
+const route = readFileSync("src/app/api/evals/route.ts", "utf8");
+check("route imports the family-witness home", route.includes(`from "@/lib/family-witness"`), true);
+check("route tally pre-filters to witness-bearing notes", route.includes('note: { contains: "· cross-family" }') && route.includes('note: { contains: "· same-family" }'), true);
+check("route tally still counts through familyTallyOf", /familyTallyOf\(/.test(route), true);
 
 function gateVia(hopKey: string): string {
   // mirrors the runner's via rendering: the hop's display name

@@ -15,7 +15,10 @@ export const dynamic = "force-dynamic";
 // POST { runId, workflow, events: [{ stepId?, kind, verdict?, confidence?, note }] }
 //   → { ok, written } — tolerant row validation, capped batch (64), capped
 //     note (500), ledger hygiene keeps the newest 4000 rows.
-// GET → { total, verdicts, fails, latest: [...] } — the board census.
+// GET → { total, verdicts, fails, family, latest: [...] } — the board census.
+//   r691: the drift tally pre-filters to witness-bearing notes (a
+//   case-insensitive superset of the regex) — the scan no longer carries
+//   every stored note on every poll; familyTallyOf stays the exact counter.
 
 const KINDS = new Set([
   "gate-verdict",
@@ -112,8 +115,15 @@ export async function GET(): Promise<NextResponse> {
       }),
       // r677: drift-witness tally over the stored notes — the shared
       // family-witness contract, applied server-side (never-throw: the
-      // tally skips unwitnessed/junk notes silently).
-      db.evalEvent.findMany({ select: { note: true } }),
+      // tally skips unwitnessed/junk notes silently). r691: the tally
+      // pre-filters to witness-bearing notes (contains is a case-insensitive
+      // superset of the regex, so the fetch can only return MORE candidates,
+      // never fewer) — familyTallyOf stays the exact first-match counter
+      // while the scan is bounded by witnessed rows, not the whole corpus.
+      db.evalEvent.findMany({
+        where: { OR: [{ note: { contains: "· cross-family" } }, { note: { contains: "· same-family" } }] },
+        select: { note: true },
+      }),
     ]);
     const family = familyTallyOf(notes.map((n) => n.note));
     return NextResponse.json({ total, verdicts, fails, family, latest });
