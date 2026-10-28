@@ -3120,3 +3120,24 @@ Round Handoff:
 Round ID: r684 -> next patrol (job 473388)
 Next recommended action: (1) PROPOSAL awaiting Owner: /api/evals?runId= per-run ledger read (server-finalized gate health on the board) — do not build without Owner direction; if no direction arrives, pick the increment from live QA data again. (2) Watch gateChip: if a natural run's client record ever lands WITH callLogs (a browser-completed gate run), the r682 digest witness lights up — check the QA JSON's gateChip field each round. (3) Ledger auto-growth: the r683 QA pick's run should land as round 9 (~45 -> ~49); confirm the census rise on entry. (4) Radar chips witness on the next registry finding. Driver notes: ghost button + nonce = run-kanban.tsx r683 blocks (state ~880-884, deps ~937, button ~1090-1105); harness digest regex = cdp-qa-golden-r673.mjs ~153-156; FixNote r683 = whats-fixed.tsx newest-first block.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download; NEW: per-run ledger read proposal (r683 handoff #1).
+---
+Task ID: r684
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 684 (job 473388) — follow r683 handoff: increment from live data (Owner proposal still unanswered) -> corpus freshness on the ledger chip
+
+Work Log:
+- Golden QA first: 4/4 PASS, console 0 — census read 45·23✕7∅22◈30 with NO growth vs r683: the r683 pick's natural run had not finalized server-side yet by QA time. Honest pause of the 8-round streak, recorded as lag-not-death — which the round's own increment then made legible (see below). gateChip still "" (client-vs-server split persists).
+- SHIP (user-facing + styling): CORPUS FRESHNESS — the census GET has shipped its newest events since r672 (kind, verdict, confidence, createdAt, newest first) and the board discarded them every round; the client now keeps the newest row and renders (a) a compact inline age token on the ⧉ chip — muted font-normal "· now / · 4m / · 3h / · 2d" after the ◈/◇ tallies — and (b) a tooltip sentence naming the event: "Latest event: gate-verdict PASS 95% — 4m ago." Defensive parse throughout (junk row -> nothing, malformed timestamp -> honest absence, never a fake "now"; clock skew clamps to "now"); ZERO API change.
+- Verification is the round's highlight: the post-ship QA re-run witnessed BOTH stories in one line — ledger 45 -> 54 (round 9 of auto-growth: the r683 pick's run landed between the two QA runs) with the age token reading "· 3m" (latest event minutes old). The lag the entry run recorded became a visible, timed fact instead of a mysterious flatline — the increment explaining the data that motivated it, same round.
+- The per-run ledger read (r683 proposal) stays UNBUILT — no Owner direction arrived; handoff keeps it queued.
+- Radar chips witness: no registry finding again — pending.
+- GATES: tsc 0 · lint 0/33-exact · golden QA 4/4 PASS (both runs) · console 0.
+
+Stage Summary:
+- The ⧉ glance line now reads the corpus's full story: total·verdicts, bold ✕F failures, muted ∅U unanswered, violet ◈K drift — and now "· 3m" freshness: whether the corpus is breathing or stale, no hover.
+- Nine consecutive rounds of natural ledger auto-growth witnessed (11→20→27→30→34→37→41→45→54), with the two-QA-run gap resolved by the new freshness token itself.
+
+Round Handoff:
+Round ID: r685 -> next patrol (job 473388)
+Next recommended action: (1) PROPOSAL still awaiting Owner: /api/evals?runId= per-run ledger read — do not build without direction. (2) Watch gateChip each round (QA JSON field): a browser-completed gate run would light the r682 digest witness. (3) The freshness token makes corpus staleness measurable: if a future round reads an age token of hours+, that is the honest signal the natural-run cadence changed — investigate the runner, not the chip. (4) Radar chips witness on the next registry finding. (5) If a small increment is needed: the tooltip's latest-event sentence could name the workflow too (workflow field is already parsed and stored) — one-line additive change. Driver notes: freshness helper + derived = run-kanban.tsx r684 block (~957-971); inline age ~1124; tooltip tail ~1092; FixNote r684 = whats-fixed.tsx newest-first block.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download; per-run ledger read proposal (r683, unanswered).

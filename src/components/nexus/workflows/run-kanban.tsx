@@ -873,6 +873,15 @@ export function RunKanban({
     verdicts: number;
     fails: number;
     family?: { cross: number; same: number };
+    // r684: the census GET has shipped its newest events since r672 — the
+    // board finally keeps them (freshness at a glance, zero API change).
+    latest?: Array<{
+      workflow?: string;
+      kind?: string;
+      verdict?: string | null;
+      confidence?: number | null;
+      createdAt?: string;
+    }>;
   } | null>(null);
   // r681: failed-census attempts — the honest silence marker below renders
   // only after real, REPEATED fetch failures (never for an empty corpus).
@@ -896,6 +905,13 @@ export function RunKanban({
             verdicts?: number;
             fails?: number;
             family?: { cross?: number; same?: number };
+            latest?: Array<{
+              workflow?: string;
+              kind?: string;
+              verdict?: string | null;
+              confidence?: number | null;
+              createdAt?: string;
+            }>;
           };
           if (
             !(
@@ -915,6 +931,9 @@ export function RunKanban({
               j.family && typeof j.family.cross === "number" && typeof j.family.same === "number"
                 ? { cross: j.family.cross, same: j.family.same }
                 : undefined,
+            // r684: defensive — a junk row renders as nothing (the r670
+            // fixture lesson), never as a fake fresh event.
+            latest: Array.isArray(j.latest) ? j.latest.slice(0, 3) : undefined,
           });
           setLedgerMisses(0);
         })
@@ -935,6 +954,21 @@ export function RunKanban({
       if (timer) clearTimeout(timer);
     };
   }, [ledgerRetry]);
+  // r684: corpus freshness — compact age token for the ⧉ chip ("now" /
+  // "4m" / "3h" / "2d"), null when the timestamp is missing or unreadable:
+  // an honest absence, never a fake "now". Clock skew clamps to "now".
+  const ledgerAgeOf = (iso: string | undefined | null): string | null => {
+    if (!iso) return null;
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return null;
+    const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (s < 60) return "now";
+    if (s < 3_600) return `${Math.floor(s / 60)}m`;
+    if (s < 172_800) return `${Math.floor(s / 3_600)}h`;
+    return `${Math.floor(s / 86_400)}d`;
+  };
+  const ledgerLatest = ledger?.latest?.[0];
+  const ledgerAge = ledgerAgeOf(ledgerLatest?.createdAt);
   // Pipeline filter lives in the ui store (persisted): it survives layout
   // switches (grid <-> board) and reloads instead of resetting on unmount.
   const filter = useUiStore((s) => s.boardWorkflowFilter);
@@ -1055,7 +1089,7 @@ export function RunKanban({
           ) : null}
           {ledger !== null && ledger.total > 0 ? (
             <span
-              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}`}
+              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}.` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
                 ledger.fails > 0
@@ -1084,6 +1118,11 @@ export function RunKanban({
               ) : null}
               {ledger.family && ledger.family.same > 0 ? (
                 <span className="ml-1 text-muted-foreground">◇{ledger.family.same}</span>
+              ) : null}
+              {/* r684: freshness at a glance — the corpus outlives the browser;
+              the age token says whether it is still breathing, no hover. */}
+              {ledgerAge ? (
+                <span className="ml-1 font-normal opacity-70">· {ledgerAge}</span>
               ) : null}
             </span>
           ) : null}
