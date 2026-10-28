@@ -1116,7 +1116,7 @@ export function RunKanban({
             <span
               tabIndex={0}
               title={`Visible runs' Decision gate census: ${boardGates.engaged} gate call${boardGates.engaged === 1 ? "" : "s"} · ${boardGates.verdicts} verdict${boardGates.verdicts === 1 ? "" : "s"}${boardGates.failRuns > 0 ? ` · ${boardGates.failRuns} latest-FAIL` : ""} — amber while a run's latest verdict is a FAIL, emerald when verdicts landed clean, muted while judges stay unanswered. Counts only what the browser's own run records still hold; the ⧉ ledger chip beside it covers the durable corpus (server-side finalization POSTs after the browser is gone — the visible-vs-corpus split).${boardGates.witness.cross + boardGates.witness.same > 0 ? ` Drift witness: ◈ ${boardGates.witness.cross} cross-family · ◇ ${boardGates.witness.same} same-family.` : ""}`}
-              aria-label={`Visible runs' gate census: ${boardGates.engaged} gate calls, ${boardGates.verdicts} verdicts${boardGates.failRuns > 0 ? `, ${boardGates.failRuns} latest-FAIL` : ""}${boardGates.witness.cross + boardGates.witness.same > 0 ? `, drift ${boardGates.witness.cross} cross-family, ${boardGates.witness.same} same-family` : ""}. The ledger chip beside it covers the durable corpus.`}
+              aria-label={`Visible runs' gate census: ${boardGates.engaged} gate calls, ${boardGates.verdicts} verdicts${boardGates.failRuns > 0 ? `, ${boardGates.failRuns} latest-FAIL` : ""}, chip ${boardGates.failRuns > 0 ? "amber, a run's latest verdict is a FAIL" : boardGates.verdictRuns > 0 ? "emerald, verdicts landed clean" : "muted, judges unanswered"}${boardGates.witness.cross + boardGates.witness.same > 0 ? `, drift ${boardGates.witness.cross} cross-family, ${boardGates.witness.same} same-family` : ""}. The ledger chip beside it covers the durable corpus.`}
               className={cn(
                 "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors",
                 CHIP_FOCUS_RING,
@@ -1143,11 +1143,12 @@ export function RunKanban({
               on a FAIL-toned amber chip the amber text alone would vanish
               against itself. r696: the underline is structural (transparent
               while fresh) and its color fades in with the amber — the shift
-              obeys the r690 fade doctrine, never snaps. */}
+              obeys the r690 fade doctrine, never snaps. r697: hover brightens
+              (opacity 70→100) and the transition set widens to cover it. */}
               {gateAge ? (
                 <span
                   title={`Visible runs' newest gate activity is ${gateAge === "now" ? "moments" : gateAge} old${gateStale ? " — quiet for over an hour (amber): the visible set's gate story is stale even if the durable corpus is not (they see different runs — the visible-vs-corpus split)." : " — the corpus token (⧉) covers every archived event; this one covers only the browser's visible runs."}`}
-                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500 underline decoration-dotted underline-offset-2 decoration-transparent", gateStale && "text-amber-600 dark:text-amber-400 decoration-amber-600 dark:decoration-amber-400")}
+                  className={cn("ml-1 cursor-help font-normal opacity-70 transition duration-500 hover:opacity-100 underline decoration-dotted underline-offset-2 decoration-transparent", gateStale && "text-amber-600 dark:text-amber-400 decoration-amber-600 dark:decoration-amber-400")}
                 >
                   · {gateAge}
                 </span>
@@ -1211,11 +1212,14 @@ export function RunKanban({
               dotted underline — a FAIL-led census turns the whole chip amber,
               and amber-on-amber would hide the shift. r696: the underline is
               structural (transparent while fresh) and fades in with the
-              color — transition-colors covers text-decoration-color. */}
+              color — transition-colors covers text-decoration-color. r697:
+              the transition widens to the full default set (opacity aboard)
+              and hover brightens the token 70→100 — the cursor-help promise
+              gets a visual answer. */}
               {ledgerAge ? (
                 <span
                   title={`Newest corpus event is ${ledgerAge === "now" ? "moments" : ledgerAge} old${ledgerStale ? " — quiet for over an hour (amber): a stalled-runner signal; investigate the runner (free-ladder congestion / judge availability), not the chip. Missing timestamps never alarm, and clock skew clamps to now." : " — still breathing; the token turns amber past one hour."}`}
-                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500 underline decoration-dotted underline-offset-2 decoration-transparent", ledgerStale && "text-amber-600 dark:text-amber-400 decoration-amber-600 dark:decoration-amber-400")}
+                  className={cn("ml-1 cursor-help font-normal opacity-70 transition duration-500 hover:opacity-100 underline decoration-dotted underline-offset-2 decoration-transparent", ledgerStale && "text-amber-600 dark:text-amber-400 decoration-amber-600 dark:decoration-amber-400")}
                 >
                   · {ledgerAge}
                 </span>

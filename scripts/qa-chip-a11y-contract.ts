@@ -20,6 +20,12 @@
  *      standalone comment lines first, so a run-kanban COMMENT carrying a
  *      literal contract token can no longer inflate a pin (the r690 + r692
  *      trap, fired twice, is now structural instead of conventional).
+ *      r697 — the stripper learns the JSX block comment form: the
+ *      r694 regex anchored on line starts and the `{` defeated it, so JSX
+ *      block bodies were NEVER stripped — the first JSX comment to mention
+ *      cursor-help in plain English inflated the pointer pin 9→10 and the
+ *      fixture caught its own armor's gap. Now a line-state machine strips
+ *      openers, continuations and closer lines of block comments too.
  * This is a source-contract fixture by design: the chips render only when
  * live data does (most runs carry no gate notes), so a DOM probe would
  * witness the contract only on lucky rounds — the source pins it always.
@@ -37,14 +43,28 @@ const lines = src.split("\n");
  * literal token inflated the raw count and the fixture caught its own
  * author. The counters run over comment-stripped source — same line count
  * (stripped lines become empty, never removed), so line numbers stay true.
- * Standalone comment lines only (//, block openers and continuations);
- * trailing inline comments still count — conservative, and the family's
- * comment style is standalone lines.
+ * r697: standalone // lines AND full block comments — the classic form and
+ * the JSX form alike — strip openers, continuations and closers via line
+ * state; trailing inline comments still count — conservative, and the
+ * family's comment style is standalone lines.
  */
 function stripCommentLines(text: string): string {
+  let inBlock = false;
   return text
     .split("\n")
-    .map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? "" : l))
+    .map((l) => {
+      if (inBlock) {
+        if (/\*\//.test(l)) inBlock = false; // the closer line ends the block
+        return ""; // continuation + closer lines strip
+      }
+      if (/^\s*(\/\/|\*|\/\*)/.test(l)) return ""; // r694: // and *-anchored lines
+      if (/^\s*\{\/\*/.test(l)) {
+        // r697: JSX block opener — a same-line closer ({/* note */}) stays out
+        if (!/\*\//.test(l)) inBlock = true;
+        return "";
+      }
+      return l;
+    })
     .join("\n");
 }
 const codeSrc = stripCommentLines(src);
@@ -147,6 +167,10 @@ const commentTrap = ["<span", "  // the className below carries cursor-help", ' 
 const realToken = ["<span", '  className={cn("cursor-help x")}', ">", "  // a comment mention is not a contract token"].join("\n");
 check("self-test: comment-carried token does not count", Array.from(stripCommentLines(commentTrap).matchAll(/cursor-help/g)).length === 0);
 check("self-test: code-carried token still counts", Array.from(stripCommentLines(realToken).matchAll(/cursor-help/g)).length === 1);
+const jsxSingle = ["<span", "  {/* the className below carries cursor-help */}", '  className={cn("x")}', ">"].join("\n");
+const jsxMulti = ["<span", "  {/* a multi-line block:", "     it mentions cursor-help in plain prose", "  */}", '  className={cn("x")}', ">"].join("\n");
+check("self-test: jsx single-line comment token does not count", Array.from(stripCommentLines(jsxSingle).matchAll(/cursor-help/g)).length === 0);
+check("self-test: jsx multi-line block token does not count", Array.from(stripCommentLines(jsxMulti).matchAll(/cursor-help/g)).length === 0);
 
 console.log(`\nqa-chip-a11y-contract: ${pass} passed, ${fail} failed (${FILE})`);
 if (fail > 0) process.exit(1);
