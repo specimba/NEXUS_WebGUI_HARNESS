@@ -60,7 +60,7 @@ import {
   type LaneSaturation,
 } from "@/lib/lane-rotation";
 import { resolveExplicitLlm, resolveLlm, type ResolvedLlm } from "@/lib/llm-config";
-import { decide, GATE_MIN_CHARS, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
+import { crossFamilyTag, decide, GATE_MIN_CHARS, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
 import { gateEventsOf } from "@/lib/gate-census";
 import {
   BLIND_REVIEW_QUESTION,
@@ -1445,7 +1445,7 @@ export async function executeWorkflowRun(
     agentId: string,
     system: string,
     context: string
-  ): Promise<{ content: string; ms: number }> => {
+  ): Promise<{ content: string; ms: number; generatorFamily?: string }> => {
     const agent = useAgentsStore.getState().agents.find((a) => a.id === agentId);
     if (!agent) throw new Error(`Agent for step "${runStep.label}" not found`);
     const stepStart = Date.now();
@@ -1883,7 +1883,14 @@ export async function executeWorkflowRun(
           // "auto-digest" chip and downstream steps can tell material is thin.
           degraded: /^_The model ended/.test(res.content) || undefined,
         });
-        return { content: res.content, ms: Date.now() - stepStart };
+        // r673: the generator's provider family rides back — the Decision
+        // gate uses it to prefer a family-disjoint judge (no narcissistic
+        // drift) and to stamp the cross-family witness into the verdict note.
+        return {
+          content: res.content,
+          ms: Date.now() - stepStart,
+          generatorFamily: laneFamilyKey(dialLlm.providerId),
+        };
       } catch (err) {
         if (isAbortError(err)) {
           pushCall({
@@ -2364,7 +2371,7 @@ export async function executeWorkflowRun(
               // panel's alignment math counts these notes.
               note: roleGate
                 ? `System-One gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via} · role:${roleGate.id}) — flagship verification pass skipped`
-                : `System-One gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — flagship verification pass skipped`,
+                : `System-One gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via}${crossFamilyTag(gate)}) — flagship verification pass skipped`,
             });
             toast("System-One gate passed", {
               icon: "✓",
@@ -2395,7 +2402,7 @@ export async function executeWorkflowRun(
           }
           // FAIL / uncertain / no judge available → run the full verification pass.
         }
-        const { content } = await streamStep(step, step.agentId, baseSystem, context);
+        const { content, generatorFamily: genFamily } = await streamStep(step, step.agentId, baseSystem, context);
 
         // ─── r516 PER-STEP DECISION GATE (owner directive: "decision models
         // should be used in our workflows to improve our LLM's capabilities").
@@ -2430,6 +2437,10 @@ export async function executeWorkflowRun(
               onAttempt: (line) => {
                 if (gateAttempts.length < 6) gateAttempts.push(line);
               },
+              // r673: the judge should NOT share the generator's provider
+              // family — the ladder prefers disjoint hops and the verdict
+              // note carries the cross-family (or same-family) witness.
+              generatorFamily: genFamily,
               state: `TASK:\n${task}\n\nSTEP: ${step.label}\nSTEP ASSIGNMENT: ${instruction ?? "(the agent's standing instructions)"}\n\nOUTPUT UNDER REVIEW:\n${content.slice(0, 5000)}`,
               question: {
                 id: "step-gate",
@@ -2451,7 +2462,7 @@ export async function executeWorkflowRun(
                 ms: gate.ms,
                 ok: true,
                 attempt: 1,
-                note: `Decision gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — output accepted`,
+                note: `Decision gate PASS ${(gate.confidence * 100).toFixed(0)}% (${gate.via}${crossFamilyTag(gate)}) — output accepted`,
               });
             } else if (gate?.answer === "no" && gate.confidence >= SYSTEMONE_GATE_CONFIDENCE) {
               pushCall({
@@ -2463,7 +2474,7 @@ export async function executeWorkflowRun(
                 ms: gate.ms,
                 ok: true,
                 attempt: 1,
-                note: `Decision gate FAIL ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — one free rework pass runs`,
+                note: `Decision gate FAIL ${(gate.confidence * 100).toFixed(0)}% (${gate.via}${crossFamilyTag(gate)}) — one free rework pass runs`,
               });
               const rCap = Math.min(Math.max(Math.floor(step.loopedPasses ?? 0), 0), LOOP_PASSES_CAP);
               if (rCap >= 2) {
@@ -2498,6 +2509,7 @@ export async function executeWorkflowRun(
                     const v2 = await decide({
                       settings: settings.settings,
                       signal,
+                      generatorFamily: genFamily,
                       state: `TASK:\n${task}\n\nSTEP: ${step.label}\nSTEP ASSIGNMENT: ${instruction ?? "(the agent's standing instructions)"}\n\nOUTPUT UNDER REVIEW:\n${finalOutput.slice(0, 5000)}`,
                       question: {
                         id: "step-gate-looped",
@@ -2544,7 +2556,7 @@ export async function executeWorkflowRun(
                   ms: rework.ms,
                   ok: true,
                   attempt: 2,
-                  note: `Rework pass delivered after Decision gate FAIL (${gate.via}) — output replaced`,
+                  note: `Rework pass delivered after Decision gate FAIL (${gate.via}${crossFamilyTag(gate)}) — output replaced`,
                 });
               }
             }
@@ -2564,7 +2576,7 @@ export async function executeWorkflowRun(
                 ok: true,
                 attempt: 1,
                 note: gate
-                  ? `Decision gate uncertain ${(gate.confidence * 100).toFixed(0)}% (${gate.via}) — no confident verdict; output accepted unchanged`
+                  ? `Decision gate uncertain ${(gate.confidence * 100).toFixed(0)}% (${gate.via}${crossFamilyTag(gate)}) — no confident verdict; output accepted unchanged`
                   : `Decision gate engaged but no judge answered${gateAttempts.length ? ` (tried: ${gateAttempts.join("; ")})` : ""} — output accepted unchanged (verdict not possible, not a pass)`,
               });
             }

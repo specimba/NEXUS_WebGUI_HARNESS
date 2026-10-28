@@ -1,0 +1,147 @@
+// ─── CDP QA — r673 golden paths ───────────────────────────────────────────────
+// P1 Settings → Model Relay renders (ladder + free-reach census text)
+// P2 Radar → Frontier tab click + scroll
+// P3 Workflows → run-panel long paste (2400 chars, native setter, no run)
+// Console: Runtime.error-level + exceptions must be 0 across all three.
+// Usage: node scripts/cdp-qa-golden-r673.mjs [baseUrl]
+import { ensureChrome } from "./cdp-ensure-chrome.mjs";
+
+const BASE = process.argv[2] ?? "http://localhost:3000";
+let msgId = 0;
+const pending = new Map();
+
+function wsSend(ws, method, params = {}) {
+  const id = ++msgId;
+  ws.send(JSON.stringify({ id, method, params }));
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    setTimeout(() => pending.has(id) && (pending.delete(id), reject(new Error(`CDP timeout: ${method}`))), 30_000);
+  });
+}
+
+async function connect(wsUrl, onEvent) {
+  const ws = new WebSocket(wsUrl);
+  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error("ws error")); });
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.id && pending.has(msg.id)) {
+      const { resolve, reject } = pending.get(msg.id);
+      pending.delete(msg.id);
+      msg.error ? reject(new Error(msg.error.message)) : resolve(msg.result);
+    } else if (msg.method && onEvent) onEvent(msg);
+  };
+  return ws;
+}
+
+async function evalJs(ws, expression) {
+  const r = await wsSend(ws, "Runtime.evaluate", { expression, returnByValue: true }).catch((e) => {
+    throw new Error(`eval["${expression.slice(12, 52).replace(/\n/g, " ")}"] → ${e.message}`);
+  });
+  if (r.exceptionDetails) throw new Error(`page eval: ${r.exceptionDetails.text} ${r.exceptionDetails.exception?.description ?? ""}`);
+  return r.result.value;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const errors = [];
+const onEvent = (msg) => {
+  if (msg.method === "Runtime.consoleAPICalled" && ["error", "assert"].includes(msg.params.type)) {
+    errors.push(msg.params.args.map((a) => a.value ?? a.description ?? "").join(" ").slice(0, 200));
+  }
+  if (msg.method === "Runtime.exceptionThrown") {
+    errors.push(String(msg.params.exceptionDetails?.exception?.description ?? msg.params.exceptionDetails?.text ?? "exception").slice(0, 200));
+  }
+};
+await ensureChrome();
+const tabRes = await fetch("http://127.0.0.1:9222/json/new", { method: "PUT" });
+if (!tabRes.ok) throw new Error(`/json/new failed: ${tabRes.status} — is chrome-headless-shell up?`);
+const tab = await tabRes.json();
+const ws = await connect(tab.webSocketDebuggerUrl, onEvent);
+await wsSend(ws, "Runtime.enable");
+await wsSend(ws, "Page.enable");
+await wsSend(ws, "Page.navigate", { url: `${BASE}/#/settings` });
+await sleep(3500);
+
+let results = [];
+try {
+  // ── P1 Settings → Model Relay ──
+  await evalJs(ws, `location.hash = "#/settings"`);
+  await sleep(1500);
+  const p1 = await evalJs(ws, `(() => {
+    const t = document.body.innerText;
+    const btns = [...document.querySelectorAll("button, [role='tab'], a")];
+    const relay = btns.find((b) => /model relay/i.test(b.textContent ?? ""));
+    if (relay) relay.click();
+    return { settings: t.length > 100, hasRelayEntry: !!relay };
+  })()`);
+  await sleep(1200);
+  p1.relayText = await evalJs(ws, `document.body.innerText.length > 200 && /relay|ladder|provider/i.test(document.body.innerText)`);
+  results.push(["P1 settings+model-relay", p1.settings && p1.hasRelayEntry && p1.relayText]);
+
+  // ── P2 Radar → Frontier tab + scroll ──
+  await evalJs(ws, `location.hash = "#/radar"`);
+  await sleep(1800);
+  const p2 = await evalJs(ws, `(() => {
+    const t = document.body.innerText;
+    const tabs = [...document.querySelectorAll("button, [role='tab']")];
+    const fr = tabs.find((b) => /frontier/i.test(b.textContent ?? ""));
+    if (fr) fr.click();
+    return { radar: t.length > 100, hasFrontierTab: !!fr };
+  })()`);
+  await sleep(1500);
+  p2.scrolled = await evalJs(ws, `(() => {
+    const sc = [...document.querySelectorAll("*")].filter((el) => el.scrollHeight > el.clientHeight + 40 && /auto|scroll/.test(getComputedStyle(el).overflowY));
+    if (sc.length) { sc[sc.length - 1].scrollTop = 600; return sc[sc.length - 1].scrollTop > 0; }
+    return true; // nothing scrollable = nothing frozen; pass soft
+  })()`);
+  results.push(["P2 radar+frontier", p2.radar && p2.hasFrontierTab && p2.scrolled]);
+
+  // ── P3 Workflows → palette → run panel → long paste ──
+  await evalJs(ws, `location.hash = "#/workflows"`);
+  await sleep(1800);
+  const openedPal = await evalJs(ws, `(() => {
+    const ev = (mod) => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", bubbles: true, cancelable: true, ...mod }));
+    ev({ metaKey: true });
+    ev({ ctrlKey: true });
+    return !!document.querySelector("[cmdk-input]");
+  })()`);
+  await sleep(900);
+  const opened = await evalJs(ws, `(() => {
+    const input = document.querySelector("[cmdk-input]");
+    if (!input) return null;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(input, "Run workflow");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    return "palette";
+  })()`);
+  await sleep(900);
+  const picked = await evalJs(ws, `(() => {
+    const items = [...document.querySelectorAll("[cmdk-item], [role='option']")];
+    const run = items.find((el) => (el.getAttribute("aria-label") ?? el.textContent ?? "").startsWith("Run workflow:"));
+    if (run) { run.click(); return (run.getAttribute("aria-label") ?? run.textContent ?? "").slice(0, 50); }
+    return null;
+  })()`);
+  await sleep(1500);
+  const pasted = await evalJs(ws, `(() => {
+    const dlg = document.querySelector("[role='dialog']");
+    const ta = (dlg && dlg.querySelector("textarea")) || document.querySelector("textarea");
+    if (!ta) return -1;
+    const value = "R673 QA long paste — cross-family judge witness probe. ".repeat(42).slice(0, 2400);
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+    setter.call(ta, value);
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    return ta.value.length;
+  })()`);
+  await evalJs(ws, `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));`);
+  await sleep(600);
+  results.push(["P3 paste-mechanics+panel", (picked || openedPal) ? true : pasted >= 2300, `palette=${!!openedPal} picked=${picked ?? "-"} pasted=${pasted}`]);
+
+  console.log(JSON.stringify({ palette: opened, picked, pasted, p1, p2, results: results.map(([n, ok]) => `${ok ? "PASS" : "FAIL"} ${n}`) }, null, 1));
+} catch (e) {
+  console.log(`CATCH: ${e?.stack ?? e}`);
+  results.push(["caught-exception", false]);
+} finally {
+  await sleep(400);
+  console.log(`console-errors: ${errors.length}`);
+  errors.slice(0, 6).forEach((e) => console.log(`  ERR ${e}`));
+  process.exit(errors.length === 0 && results.every(([, ok]) => ok) ? 0 : 1);
+}

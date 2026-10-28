@@ -23,6 +23,7 @@
 // CORS — the ladder simply falls through, never breaks the harness.
 
 import { buildRelayChain, type RelayHop } from "./relay";
+import { laneFamilyKey } from "./lane-rotation";
 import { redactDialBody } from "./redaction";
 import type { Settings } from "./types";
 
@@ -67,6 +68,76 @@ export interface SystemOneVerdict {
   /** Calibrated 0–1 confidence from the judge (Jev: version-sensitive — treat as a prior). */
   confidence: number;
   ms: number;
+  /** r673 (cross-family judge): the provider family the answering rung
+   * dialed ("vyce", "zai", "intern-ai", "typesafe", …). Absent = unknown —
+   * callers must render nothing rather than guess. */
+  judgeFamily?: string;
+  /** r673: true when the judge's family differs from the generator's — the
+   * no-narcissistic-drift witness (a model grading its own family's output
+   * is the weakest review shape; the verdict note says so honestly). */
+  crossFamily?: boolean;
+}
+
+// ─── r673 cross-family judge (KB-1-a #1 adaptation) ──────────────────────────
+// The KICK corpus's RSI doctrine: a judge from the SAME provider family as
+// the generator drifts narcissistic (shared blind spots, shared training
+// biases). The ladder now KNOWS each rung's family and, when the caller
+// names the generator's family, prefers family-disjoint hops — without ever
+// blocking (same-family answers still land, honestly tagged).
+
+/** Known provider families by model-name substring (hop keys carry the
+ * provider id directly, so this table is only for bare model names — the
+ * intern/jev constants and any name-shaped fallback). */
+const NAME_FAMILIES: [RegExp, string][] = [
+  [/glm|chatglm|z\.ai/i, "zai"],
+  [/deepseek/i, "deepseek"],
+  [/qwen/i, "qwen"],
+  [/kimi|moonshot/i, "moonshot"],
+  [/intern/i, "intern-ai"],
+  [/jev/i, "typesafe"],
+  [/grok/i, "xai"],
+  [/gemini/i, "google"],
+  [/claude/i, "anthropic"],
+  [/llama/i, "meta"],
+  [/mercury/i, "mercury"],
+  [/mistral|mixtral/i, "mistral"],
+  [/gpt|openai/i, "openai"],
+];
+
+/** Provider family of a hop key ("vyce::deepseek-v4.1" → "vyce") or a bare
+ * model name ("glm-4.7-air" → "zai"). Empty/junk → "" (unknown, never
+ * guessed); never throws. */
+export function judgeFamilyOf(keyOrModel: string): string {
+  const s = (keyOrModel ?? "").trim();
+  if (!s) return "";
+  const keyFam = laneFamilyKey(s);
+  if (keyFam !== "" && keyFam !== s) return keyFam; // "providerId::model" form
+  for (const [re, fam] of NAME_FAMILIES) if (re.test(s)) return fam;
+  return keyFam; // bare unknown name → itself as a coarse family
+}
+
+/** r673: reorder the fast-judge chain so family-disjoint hops answer FIRST
+ * when the generator's family is known. Honest degradation: with no disjoint
+ * hop (single-provider vault, unknown families) the chain is returned
+ * unchanged — the gate never blocks on family, it only prefers diversity. */
+export function orderJudgeChain(chain: RelayHop[], generatorFamily?: string): RelayHop[] {
+  if (!generatorFamily || chain.length === 0) return chain;
+  const fam = (h: RelayHop) => judgeFamilyOf(h.key || h.model);
+  const disjoint = chain.filter((h) => {
+    const f = fam(h);
+    return f !== "" && f !== generatorFamily;
+  });
+  if (disjoint.length === 0) return chain;
+  const rest = chain.filter((h) => !disjoint.includes(h));
+  return [...disjoint, ...rest];
+}
+
+/** The verdict-note suffix for the family witness: " · cross-family" when a
+ * family-disjoint rung answered, " · same-family" when only the generator's
+ * own family could, "" when family is unknown (pre-r673 verdicts). */
+export function crossFamilyTag(v: { judgeFamily?: string; crossFamily?: boolean } | null | undefined): string {
+  if (!v || v.judgeFamily == null || v.crossFamily == null) return "";
+  return v.crossFamily ? " · cross-family" : " · same-family";
 }
 
 // ─── ① Intern SystemOne (FREE — intern-decision-4b on the decision quota) ────
@@ -220,7 +291,8 @@ async function fastJudge(
   state: string,
   question: SystemOneQuestion,
   signal?: AbortSignal,
-  onAttempt?: (line: string) => void
+  onAttempt?: (line: string) => void,
+  generatorFamily?: string
 ): Promise<(SystemOneVerdict & { judge: string }) | null> {
   // r309: the vault chain is client-side (lib/relay is "use client") — on the
   // server lane skip ①'s relay hop entirely; the ladder falls through to ②
@@ -231,6 +303,9 @@ async function fastJudge(
       (h) => !!h.baseUrl // skip the built-in auto hop — it has no OpenAI-compatible surface here
     );
   }
+  // r673: when the generator's family is known, family-disjoint hops lead
+  // (no narcissistic drift); same-family hops stay as honest fallbacks.
+  chain = orderJudgeChain(chain, generatorFamily);
   const asked = state.slice(0, 8_000);
   const prompt =
     `${question.prompt}\n\nAnswer with ONLY a raw JSON object (no markdown fences):\n` +
@@ -275,12 +350,15 @@ async function fastJudge(
       if (question.type === "choice" && question.options && !question.options.includes(parsed.answer)) {
         throw new Error("judge answered outside the closed option set");
       }
+      const hopFam = judgeFamilyOf(hop.key || hop.model);
       return {
         via: "fast-model",
         judge: hop.label,
         answer: parsed.answer,
         confidence: Math.min(1, Math.max(0, parsed.confidence)),
         ms: 0,
+        judgeFamily: hopFam,
+        ...(generatorFamily ? { crossFamily: hopFam !== generatorFamily } : {}),
       };
     } catch {
       // lane dead / timeout / CORS — try the next fast lane, then give up
@@ -328,6 +406,11 @@ export interface DecideOptions {
    * shape; the caller composes them into the no-judge witness note.
    */
   onAttempt?: (line: string) => void;
+  /** r673 (cross-family judge): the provider family of the engine that
+   * PRODUCED the artifact under judgment (laneFamilyKey of the generator's
+   * dialed provider). When set, the fast-judge chain prefers family-disjoint
+   * hops and every verdict carries the cross-family witness. */
+  generatorFamily?: string;
 }
 
 /** The intern-discovery vault key, when the owner saved one. */
@@ -356,12 +439,15 @@ export async function decide(opts: DecideOptions): Promise<SystemOneVerdict | nu
       const answers = await askInternSystemOne(state, [question], internKey, signal);
       const a = answers[question.id];
       if (a && a.answer) {
+        const internFam = judgeFamilyOf(INTERN_SYSTEMONE_MODEL);
         return {
           via: "intern-systemone",
           judge: `Intern SystemOne · ${INTERN_SYSTEMONE_MODEL}`,
           answer: a.answer,
           confidence: a.confidence,
           ms: Date.now() - started,
+          judgeFamily: internFam,
+          ...(opts.generatorFamily ? { crossFamily: internFam !== opts.generatorFamily } : {}),
         };
       }
     } catch {
@@ -374,7 +460,7 @@ export async function decide(opts: DecideOptions): Promise<SystemOneVerdict | nu
   }
 
   // ② Fast-model JSON judge over the vault.
-  const judged = await fastJudge(settings, state, question, signal, opts.onAttempt);
+  const judged = await fastJudge(settings, state, question, signal, opts.onAttempt, opts.generatorFamily);
   if (judged) return { ...judged, ms: Date.now() - started };
 
   // ③ Jev (PAID) — legacy rung, only when explicitly opted in.
@@ -384,7 +470,16 @@ export async function decide(opts: DecideOptions): Promise<SystemOneVerdict | nu
       const answers = await askJev(state, [question], jevKey, signal);
       const a = answers[question.id];
       if (a && a.answer) {
-        return { via: "jev", judge: "Jev (jev-latest)", answer: a.answer, confidence: a.confidence, ms: Date.now() - started };
+        const jevFam = judgeFamilyOf("jev-latest");
+        return {
+          via: "jev",
+          judge: "Jev (jev-latest)",
+          answer: a.answer,
+          confidence: a.confidence,
+          ms: Date.now() - started,
+          judgeFamily: jevFam,
+          ...(opts.generatorFamily ? { crossFamily: jevFam !== opts.generatorFamily } : {}),
+        };
       }
     } catch {
       // CORS / timeout / quota → no opinion

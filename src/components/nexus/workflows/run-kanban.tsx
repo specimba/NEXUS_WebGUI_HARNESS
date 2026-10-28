@@ -1002,7 +1002,7 @@ export function RunKanban({
             <span
               title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}. The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors",
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
                 ledger.fails > 0
                   ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : ledger.verdicts > 0
