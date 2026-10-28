@@ -60,6 +60,15 @@ check("junk timestamp → never an alarm", ledgerAgeIsStale("garbage"), false);
 const kanban = readFileSync("src/components/nexus/workflows/run-kanban.tsx", "utf8");
 check("run-kanban imports the freshness home", /from "@\/lib\/ledger-freshness"/.test(kanban), true);
 check("run-kanban carries no inline ledgerAgeOf copy", /const ledgerAgeOf = /.test(kanban), false);
+// r695: the stale channel must survive a FAIL-toned (amber) chip — amber text
+// alone is invisible against the chip's own amber, so staleness also
+// underlines (dotted) on BOTH age tokens (the ⧉ corpus token and the ⚖
+// visible-run token). Raw-source count: keep it exactly two.
+check(
+  "run-kanban stale tokens carry the dotted-underline channel",
+  (kanban.match(/underline decoration-dotted underline-offset-2/g) ?? []).length,
+  2,
+);
 
 // ─── 6. r692: number stamps (epoch ms) — the ⚖ chip's callLog `at` rides
 // ─── the same home: numeric path, junk numbers are honest absence.

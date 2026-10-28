@@ -40,6 +40,11 @@ import { GATE_MIN_CHARS } from "@/lib/systemone";
 import { gateCensusOf } from "@/lib/gate-census";
 import { familyTallyOf } from "@/lib/family-witness";
 
+// r695: one focus-ring home for the board's focusable chip family — the
+// digest ⧉/⚖ pair, the per-run ⚖/↻/harness chips, and the r683 ghost button
+// all carry the same ring, so the affordance can never drift apart.
+const CHIP_FOCUS_RING = "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
 /** v24: one server-lane AutomationRun row (from /api/automation/sync GET). */
 interface ServerRunRow {
   id: string;
@@ -460,7 +465,8 @@ function RunCard({
                 title={`Looped-depth: ${loopedStep.looped.k} tied pass(es) of ${loopedStep.looped.r} on "${loopedStep.label}", exit ${loopedStep.looped.reason} — ${oc.says} (arXiv 2610.31421 adaptation)`}
                 aria-label={`Looped depth on "${loopedStep.label}": ${loopedStep.looped.k} tied ${loopedStep.looped.k === 1 ? "pass" : "passes"} of ${loopedStep.looped.r}, exit ${loopedStep.looped.reason}`}
                 className={cn(
-                  "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                  CHIP_FOCUS_RING,
                   oc.tone === "pass" &&
                     "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                   oc.tone === "warn" &&
@@ -514,7 +520,8 @@ function RunCard({
               title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
               aria-label={`Decision gate on this run: engaged ${census.engaged} ${census.engaged === 1 ? "time" : "times"}, ${census.verdicts} confident ${census.verdicts === 1 ? "verdict" : "verdicts"} landed${fam.cross + fam.same > 0 ? `, drift ${fam.cross} cross-family, ${fam.same} same-family` : ""}`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
+                CHIP_FOCUS_RING,
                 census.verdictTone === "fail"
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : census.verdictTone === "pass"
@@ -532,7 +539,8 @@ function RunCard({
             title={harnessChip.tooltip}
             aria-label={`Harness reliability ${harnessChip.label}`}
             className={cn(
-              "inline-flex cursor-help items-center rounded-full px-1.5 py-px font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              "inline-flex cursor-help items-center rounded-full px-1.5 py-px font-semibold tabular-nums",
+              CHIP_FOCUS_RING,
               harnessChip.tone === "warn"
                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                 : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
@@ -1110,7 +1118,8 @@ export function RunKanban({
               title={`Visible runs' Decision gate census: ${boardGates.engaged} gate call${boardGates.engaged === 1 ? "" : "s"} · ${boardGates.verdicts} verdict${boardGates.verdicts === 1 ? "" : "s"}${boardGates.failRuns > 0 ? ` · ${boardGates.failRuns} latest-FAIL` : ""} — amber while a run's latest verdict is a FAIL, emerald when verdicts landed clean, muted while judges stay unanswered. Counts only what the browser's own run records still hold; the ⧉ ledger chip beside it covers the durable corpus (server-side finalization POSTs after the browser is gone — the visible-vs-corpus split).${boardGates.witness.cross + boardGates.witness.same > 0 ? ` Drift witness: ◈ ${boardGates.witness.cross} cross-family · ◇ ${boardGates.witness.same} same-family.` : ""}`}
               aria-label={`Visible runs' gate census: ${boardGates.engaged} gate calls, ${boardGates.verdicts} verdicts${boardGates.failRuns > 0 ? `, ${boardGates.failRuns} latest-FAIL` : ""}${boardGates.witness.cross + boardGates.witness.same > 0 ? `, drift ${boardGates.witness.cross} cross-family, ${boardGates.witness.same} same-family` : ""}. The ledger chip beside it covers the durable corpus.`}
               className={cn(
-                "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors",
+                CHIP_FOCUS_RING,
                 boardGates.failRuns > 0
                   ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : boardGates.verdictRuns > 0
@@ -1130,11 +1139,13 @@ export function RunKanban({
               activity beside the corpus's (⧉ token). Same family styling:
               muted, font-normal, amber when stale; own title + pointer-honest
               per the family contract; hover-only (the chip is the
-              focusable surface). */}
+              focusable surface). r695: stale also gains a dotted underline —
+              on a FAIL-toned amber chip the amber text alone would vanish
+              against itself. */}
               {gateAge ? (
                 <span
                   title={`Visible runs' newest gate activity is ${gateAge === "now" ? "moments" : gateAge} old${gateStale ? " — quiet for over an hour (amber): the visible set's gate story is stale even if the durable corpus is not (they see different runs — the visible-vs-corpus split)." : " — the corpus token (⧉) covers every archived event; this one covers only the browser's visible runs."}`}
-                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500", gateStale && "text-amber-600 dark:text-amber-400")}
+                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500", gateStale && "text-amber-600 dark:text-amber-400 underline decoration-dotted underline-offset-2")}
                 >
                   · {gateAge}
                 </span>
@@ -1147,7 +1158,8 @@ export function RunKanban({
               title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? " — corpus quiet for over an hour (amber staleness signal)" : ""}.` : ""}`}
               aria-label={`Eval ledger, durable corpus: ${ledger.total} archived gate events, ${ledger.verdicts} verdicts, ${ledger.fails} failures, ${ledger.total - ledger.verdicts} engaged without a confident verdict${ledger.family ? `, drift ${ledger.family.cross} cross-family, ${ledger.family.same} same-family` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? `. Latest event ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""}, ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? ", corpus quiet for over an hour" : ""}` : ""}`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
+                CHIP_FOCUS_RING,
                 ledger.fails > 0
                   ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : ledger.verdicts > 0
@@ -1192,11 +1204,14 @@ export function RunKanban({
               the token's own hover doctrine, a spoken sentence in the chip's
               aria-label, and a transition so the shift fades rather than
               snaps. The token stays hover-only (the parent ⧉ chip is the
-              focusable surface) and pointer-honest per the family contract. */}
+              focusable surface) and pointer-honest per the family contract.
+              r695 adds a fourth channel that survives every chip tone: a
+              dotted underline — a FAIL-led census turns the whole chip amber,
+              and amber-on-amber would hide the shift. */}
               {ledgerAge ? (
                 <span
                   title={`Newest corpus event is ${ledgerAge === "now" ? "moments" : ledgerAge} old${ledgerStale ? " — quiet for over an hour (amber): a stalled-runner signal; investigate the runner (free-ladder congestion / judge availability), not the chip. Missing timestamps never alarm, and clock skew clamps to now." : " — still breathing; the token turns amber past one hour."}`}
-                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500", ledgerStale && "text-amber-600 dark:text-amber-400")}
+                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500", ledgerStale && "text-amber-600 dark:text-amber-400 underline decoration-dotted underline-offset-2")}
                 >
                   · {ledgerAge}
                 </span>
@@ -1214,7 +1229,10 @@ export function RunKanban({
                 setLedgerRetry((n) => n + 1);
               }}
               title={`RSI eval ledger census UNREACHABLE — ${ledgerMisses} fetch attempt${ledgerMisses === 1 ? "" : "s"} failed (best-effort, retried in-session). Click to re-arm the retry loop now. This is an honest silence marker, not a census: no chip is faked for an empty corpus (the r648 doctrine), and an unreachable ledger is never a verdict — the r659/r660 trace doctrine just refuses to let an infra failure vanish without a trace.`}
-              className="inline-flex items-center rounded-full border border-dashed border-border bg-muted/40 px-1.5 py-px text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className={cn(
+                "inline-flex items-center rounded-full border border-dashed border-border bg-muted/40 px-1.5 py-px text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground",
+                CHIP_FOCUS_RING
+              )}
             >
               ⧉ ledger …
             </button>
