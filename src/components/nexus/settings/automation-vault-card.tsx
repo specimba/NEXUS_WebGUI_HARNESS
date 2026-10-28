@@ -15,7 +15,10 @@ import {
   Download,
   Eye,
   EyeOff,
+  FileDown,
   FlaskConical,
+  Globe,
+  HardDrive,
   KeyRound,
   Loader2,
   ShieldCheck,
@@ -1022,6 +1025,82 @@ export function AutomationVaultCard() {
                 from the acquisition lanes below. The executor dials only with a key stored
                 here: an empty vault is an honest no-op, never an implicit fallback.
               </p>
+              {/* r698: the durability ledger — the in-UI answer to "my stored
+                  settings vanished". An empty vault after a sandbox rebuild is
+                  indistinguishable from a never-used one unless the page says
+                  where each layer lives and what it survives: browser storage
+                  dies with the profile/origin, this machine's SQLite dies with
+                  a sandbox rebuild (the rollback class the patrol has
+                  witnessed empty this very table), and only the backup file
+                  travels. The kicker is the r567 forensic made visible: no
+                  background cleanup exists, so a vanished key means the
+                  database was reverted — never the app deleting it. */}
+              <div
+                data-testid="vault-durability-ledger"
+                className="space-y-1.5 rounded-md border border-border/60 bg-muted/20 px-2.5 py-2"
+              >
+                <p className="text-[10px] font-medium text-muted-foreground">
+                  Where keys live — and what each layer survives:
+                </p>
+                <ul className="space-y-1">
+                  <li
+                    className="flex cursor-help items-start gap-1.5"
+                    title="Browser-saved keys never leave the browser — while a tab is open, schedules dial with them in-page. They do not follow you to a new browser profile or a rebuilt sandbox."
+                  >
+                    <Globe
+                      className="mt-0.5 h-3 w-3 shrink-0 text-cyan-500"
+                      aria-hidden
+                    />
+                    <span className="text-[10px] leading-relaxed text-muted-foreground/80">
+                      <strong className="font-medium text-muted-foreground">
+                        Browser-saved
+                      </strong>{" "}
+                      — this browser&apos;s storage; survives tab closes, lost when the
+                      browser profile or sandbox origin resets (the waiting mirror
+                      candidates above live here).
+                    </span>
+                  </li>
+                  <li
+                    className="flex cursor-help items-start gap-1.5"
+                    title="Encrypted at rest (AES-256-GCM), masked in the UI, never telemetered. The closed-tab executor dials only with a key stored here — and no background cleanup ever removes one."
+                  >
+                    <HardDrive
+                      className="mt-0.5 h-3 w-3 shrink-0 text-amber-500"
+                      aria-hidden
+                    />
+                    <span className="text-[10px] leading-relaxed text-muted-foreground/80">
+                      <strong className="font-medium text-muted-foreground">
+                        Stored here
+                      </strong>{" "}
+                      — this machine&apos;s SQLite; survives browser resets, but a sandbox
+                      rebuild reverts the database file itself — keys here have vanished
+                      that way before.
+                    </span>
+                  </li>
+                  <li
+                    className="flex cursor-help items-start gap-1.5"
+                    title="The Backup button exports the plaintext key file; Restore (below) or bun scripts/seedwrite.ts --import re-populates the vault from it."
+                  >
+                    <FileDown
+                      className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500"
+                      aria-hidden
+                    />
+                    <span className="text-[10px] leading-relaxed text-muted-foreground/80">
+                      <strong className="font-medium text-muted-foreground">
+                        Backup file
+                      </strong>{" "}
+                      — the only layer that travels: export plaintext, keep it safe,
+                      restore below after any reset.
+                    </span>
+                  </li>
+                </ul>
+                <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+                  No background cleanup ever touches this vault — a vanished key means the
+                  machine&apos;s database was reverted, not deleted by the app. Code and
+                  history live in version control and survive resets; this database does
+                  not — the backup file is the bridge for keys.
+                </p>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
