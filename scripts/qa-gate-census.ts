@@ -92,5 +92,18 @@ const noOutcomeLast = gateCensusOf([
 check("no-outcome last: line PASS 95%", noOutcomeLast.verdictLine === "PASS 95%");
 check("no-outcome last: tone pass", noOutcomeLast.verdictTone === "pass");
 
+// 14. r692: latestAt — the newest gate-relevant `at` (epoch ms), the digest
+// ⚖ chip's visible-run freshness input. ONLY census-counted rows stamp it;
+// junk at-values are skipped (the tolerant-input doctrine).
+const stamped = gateCensusOf([
+  { note: "Decision gate PASS 95% (fast-model)", at: 1_000 },
+  { note: "System-One gate FAIL 90% — output replaced", at: 3_000 },
+  { note: "Unrelated engine call", at: 9_999 },
+]);
+check("latestAt: max over gate rows only", stamped.latestAt === 3_000);
+check("latestAt: junk at skipped", gateCensusOf([{ note: "Decision gate engaged", at: "x" as unknown as number }]).latestAt === undefined);
+check("latestAt: NaN skipped", gateCensusOf([{ note: "System-One gate PASS 90%", at: Number.NaN }]).latestAt === undefined);
+check("latestAt: absent on empty census", empty.latestAt === undefined);
+
 console.log(`qa-gate-census: ${pass}/${pass + fail}`);
 if (fail > 0) process.exit(1);

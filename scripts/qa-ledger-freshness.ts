@@ -61,5 +61,12 @@ const kanban = readFileSync("src/components/nexus/workflows/run-kanban.tsx", "ut
 check("run-kanban imports the freshness home", /from "@\/lib\/ledger-freshness"/.test(kanban), true);
 check("run-kanban carries no inline ledgerAgeOf copy", /const ledgerAgeOf = /.test(kanban), false);
 
+// ─── 6. r692: number stamps (epoch ms) — the ⚖ chip's callLog `at` rides
+// ─── the same home: numeric path, junk numbers are honest absence.
+check("number stamp ≡ ISO string", ledgerAgeOf(1_700_000_060_000), ledgerAgeOf(new Date(1_700_000_060_000).toISOString()));
+check("NaN → null", ledgerAgeOf(Number.NaN), null);
+check("stale number parity (60min+)", ledgerAgeIsStale(Date.now() - 3_600_001), ledgerAgeIsStale(new Date(Date.now() - 3_600_001).toISOString()));
+check("stale NaN → never an alarm", ledgerAgeIsStale(Number.NaN), false);
+
 console.log(`\nqa-ledger-freshness: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

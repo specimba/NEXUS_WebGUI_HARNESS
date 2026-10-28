@@ -1026,6 +1026,10 @@ export function RunKanban({
     // hold more (server-side finalization POSTs after the browser is gone);
     // the digest makes the visible-vs-corpus gap legible instead of silent.
     const notes: Array<string | null | undefined> = [];
+    // r692: visible-run gate freshness — the newest census-counted `at`
+    // across the visible set (the ⚖ chip's own age token; the ⧉ token's
+    // visible-vs-corpus counterpart).
+    const gateStamps: number[] = [];
     (Object.values(visible) as BoardCard[][]).forEach((cards) =>
       cards.forEach((c) => {
         if (!c.run) return;
@@ -1034,14 +1038,22 @@ export function RunKanban({
         engaged += 1;
         verdicts += census.verdicts;
         notes.push(...(c.run.callLog ?? []).map((row) => row?.note));
+        if (typeof census.latestAt === "number") gateStamps.push(census.latestAt);
         if (census.verdicts > 0) {
           verdictRuns += 1;
           if (census.verdictTone === "fail") failRuns += 1;
         }
       })
     );
-    return { engaged, verdictRuns, verdicts, failRuns, witness: familyTallyOf(notes) };
+    const latestAt = gateStamps.length > 0 ? Math.max(...gateStamps) : undefined;
+    return { engaged, verdictRuns, verdicts, failRuns, witness: familyTallyOf(notes), latestAt };
   }, [visible]);
+  // r692: the ⚖ chip's own freshness — visible-run gate activity (callLog
+  // `at`, read through the same ledger-freshness home) beside the corpus's
+  // (⧉ token). Divergence is glanceable: a fresh corpus beside a stale
+  // visible set — or the reverse — reads without hovering.
+  const gateAge = ledgerAgeOf(boardGates.latestAt);
+  const gateStale = ledgerAgeIsStale(boardGates.latestAt);
   // Chip choices: every pipeline that currently has at least one card, busiest first.
   const filterChoices = React.useMemo(() => {
     const counts = new Map<string, { name: string; n: number }>();
@@ -1100,6 +1112,19 @@ export function RunKanban({
               ) : null}
               {boardGates.witness.same > 0 ? (
                 <span className="ml-1 text-muted-foreground">◇{boardGates.witness.same}</span>
+              ) : null}
+              {/* r692: the ⚖ chip's own freshness token — visible-run gate
+              activity beside the corpus's (⧉ token). Same family styling:
+              muted, font-normal, amber when stale; own title + pointer-honest
+              per the family contract; hover-only (the chip is the
+              focusable surface). */}
+              {gateAge ? (
+                <span
+                  title={`Visible runs' newest gate activity is ${gateAge === "now" ? "moments" : gateAge} old${gateStale ? " — quiet for over an hour (amber): the visible set's gate story is stale even if the durable corpus is not (they see different runs — the visible-vs-corpus split)." : " — the corpus token (⧉) covers every archived event; this one covers only the browser's visible runs."}`}
+                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500", gateStale && "text-amber-600 dark:text-amber-400")}
+                >
+                  · {gateAge}
+                </span>
               ) : null}
             </span>
           ) : null}

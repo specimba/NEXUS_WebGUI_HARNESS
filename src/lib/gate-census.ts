@@ -45,18 +45,31 @@ export interface GateCensus {
   verdictLine?: string;
   /** Tone of the latest verdict: pass → emerald, fail → amber. */
   verdictTone?: "pass" | "fail";
+  /** r692: newest gate-relevant `at` (epoch ms) — visible-run freshness.
+   *  Stamped only by rows the census counts (gate heads); junk skipped. */
+  latestAt?: number;
 }
 
 const EMPTY: GateCensus = { engaged: 0, verdicts: 0 };
 
-/** Count gate engagements + verdicts from a run's call log (tolerant input). */
+/** Count gate engagements + verdicts from a run's call log (tolerant input).
+ *  r692: rows may carry `at` (epoch ms, RunCallLogEntry) — the newest
+ *  gate-relevant one returns as latestAt, the digest ⚖ chip's visible-run
+ *  freshness input (read through the ledger-freshness home). */
 export function gateCensusOf(
-  callLog?: { note?: string }[] | null
+  callLog?: { note?: string; at?: number }[] | null
 ): GateCensus {
   if (!callLog || callLog.length === 0) return EMPTY;
   let engaged = 0;
   let verdicts = 0;
   let verdictLine: string | undefined;
+  let latestAt: number | undefined;
+  // r692: only rows the census COUNTS stamp freshness — an unrelated
+  // engine call's newer `at` must never read as gate activity.
+  const stampGate = (row?: { at?: number }): void => {
+    if (!row || typeof row.at !== "number" || !Number.isFinite(row.at)) return;
+    latestAt = latestAt === undefined ? row.at : Math.max(latestAt, row.at);
+  };
   for (const c of callLog) {
     const note = c?.note;
     // r670 fixture catch: a junk row (note: 123) must be skipped, not throw —
@@ -64,9 +77,11 @@ export function gateCensusOf(
     if (!note || typeof note !== "string") continue;
     if (note.startsWith(GATE_VERDICT_PREFIX)) {
       verdicts += 1;
+      stampGate(c);
       verdictLine = VERDICT_OUTCOME_RE.exec(note)?.[0] ?? verdictLine;
     } else if (note.startsWith(GATE_ENGAGE_PREFIX)) {
       engaged += 1;
+      stampGate(c);
       // r669: the fast-model verdict family ("Decision gate FAIL 95%
       // (fast-model) — one free rework pass runs") is a verdict too.
       if (/^Decision gate (?:PASS|FAIL) \d+%/.test(note)) {
@@ -83,9 +98,10 @@ export function gateCensusOf(
     : verdictLine?.startsWith("FAIL")
       ? "fail"
       : undefined;
+  const withStamp = latestAt !== undefined ? { latestAt } : {};
   return verdictLine
-    ? { engaged, verdicts, verdictLine, ...(verdictTone ? { verdictTone } : {}) }
-    : { engaged, verdicts };
+    ? { engaged, verdicts, verdictLine, ...(verdictTone ? { verdictTone } : {}), ...withStamp }
+    : { engaged, verdicts, ...withStamp };
 }
 
 /**
