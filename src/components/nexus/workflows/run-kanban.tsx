@@ -24,6 +24,7 @@ import {
 import { fmtIn, fmtIntervalShort, fmtMs, fmtRel } from "@/lib/helpers";
 import type { Workflow, WorkflowRun } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ledgerAgeIsStale, ledgerAgeOf } from "@/lib/ledger-freshness";
 // r486-a (Run Archive epic): the board's own poll lands server-lane rows in
 // client state — they archive here too (shared dedupe lives in run-archive).
 import { toast } from "sonner";
@@ -959,21 +960,15 @@ export function RunKanban({
       if (timer) clearTimeout(timer);
     };
   }, [ledgerRetry]);
-  // r684: corpus freshness — compact age token for the ⧉ chip ("now" /
-  // "4m" / "3h" / "2d"), null when the timestamp is missing or unreadable:
-  // an honest absence, never a fake "now". Clock skew clamps to "now".
-  const ledgerAgeOf = (iso: string | undefined | null): string | null => {
-    if (!iso) return null;
-    const t = Date.parse(iso);
-    if (!Number.isFinite(t)) return null;
-    const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
-    if (s < 60) return "now";
-    if (s < 3_600) return `${Math.floor(s / 60)}m`;
-    if (s < 172_800) return `${Math.floor(s / 3_600)}h`;
-    return `${Math.floor(s / 86_400)}d`;
-  };
+  // r684 corpus freshness, r689 lifted to src/lib/ledger-freshness.ts —
+  // one contract, one home (the r677 family-witness precedent); the chip
+  // imports the same helper the fixture freezes. Compact age token for the
+  // ⧉ chip ("now" / "4m" / "3h" / "2d"), null when the timestamp is missing
+  // or unreadable: an honest absence, never a fake "now". Clock skew
+  // clamps to "now". A corpus quiet >= 1h reads stale (amber token).
   const ledgerLatest = ledger?.latest?.[0];
   const ledgerAge = ledgerAgeOf(ledgerLatest?.createdAt);
+  const ledgerStale = ledgerAgeIsStale(ledgerLatest?.createdAt);
   // Pipeline filter lives in the ui store (persisted): it survives layout
   // switches (grid <-> board) and reloads instead of resetting on unmount.
   const filter = useUiStore((s) => s.boardWorkflowFilter);
@@ -1132,7 +1127,7 @@ export function RunKanban({
               {/* r684: freshness at a glance — the corpus outlives the browser;
               the age token says whether it is still breathing, no hover. */}
               {ledgerAge ? (
-                <span className="ml-1 font-normal opacity-70">· {ledgerAge}</span>
+                <span className={cn("ml-1 font-normal opacity-70", ledgerStale && "text-amber-600 dark:text-amber-400")}>· {ledgerAge}</span>
               ) : null}
             </span>
           ) : null}
