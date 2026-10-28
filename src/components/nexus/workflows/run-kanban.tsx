@@ -1141,11 +1141,13 @@ export function RunKanban({
               per the family contract; hover-only (the chip is the
               focusable surface). r695: stale also gains a dotted underline —
               on a FAIL-toned amber chip the amber text alone would vanish
-              against itself. */}
+              against itself. r696: the underline is structural (transparent
+              while fresh) and its color fades in with the amber — the shift
+              obeys the r690 fade doctrine, never snaps. */}
               {gateAge ? (
                 <span
                   title={`Visible runs' newest gate activity is ${gateAge === "now" ? "moments" : gateAge} old${gateStale ? " — quiet for over an hour (amber): the visible set's gate story is stale even if the durable corpus is not (they see different runs — the visible-vs-corpus split)." : " — the corpus token (⧉) covers every archived event; this one covers only the browser's visible runs."}`}
-                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500", gateStale && "text-amber-600 dark:text-amber-400 underline decoration-dotted underline-offset-2")}
+                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500 underline decoration-dotted underline-offset-2 decoration-transparent", gateStale && "text-amber-600 dark:text-amber-400 decoration-amber-600 dark:decoration-amber-400")}
                 >
                   · {gateAge}
                 </span>
@@ -1155,8 +1157,8 @@ export function RunKanban({
           {ledger !== null && ledger.total > 0 ? (
             <span
               tabIndex={0}
-              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? " — corpus quiet for over an hour (amber staleness signal)" : ""}.` : ""}`}
-              aria-label={`Eval ledger, durable corpus: ${ledger.total} archived gate events, ${ledger.verdicts} verdicts, ${ledger.fails} failures, ${ledger.total - ledger.verdicts} engaged without a confident verdict${ledger.family ? `, drift ${ledger.family.cross} cross-family, ${ledger.family.same} same-family` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? `. Latest event ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""}, ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? ", corpus quiet for over an hour" : ""}` : ""}`}
+              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The chip reads amber while a FAIL verdict sits in the corpus (the bold ✕F beside the tally), emerald once verdicts have landed clean, muted before the first confident verdict. The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? " — corpus quiet for over an hour (amber staleness signal)" : ""}.` : ""}`}
+              aria-label={`Eval ledger, durable corpus: ${ledger.total} archived gate events, ${ledger.verdicts} verdicts, ${ledger.fails} failures, ${ledger.total - ledger.verdicts} engaged without a confident verdict, chip ${ledger.fails > 0 ? "amber, a FAIL verdict sits in the corpus" : ledger.verdicts > 0 ? "emerald, verdicts landed clean" : "muted, no confident verdict yet"}${ledger.family ? `, drift ${ledger.family.cross} cross-family, ${ledger.family.same} same-family` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? `. Latest event ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""}, ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? ", corpus quiet for over an hour" : ""}` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
                 CHIP_FOCUS_RING,
@@ -1207,11 +1209,13 @@ export function RunKanban({
               focusable surface) and pointer-honest per the family contract.
               r695 adds a fourth channel that survives every chip tone: a
               dotted underline — a FAIL-led census turns the whole chip amber,
-              and amber-on-amber would hide the shift. */}
+              and amber-on-amber would hide the shift. r696: the underline is
+              structural (transparent while fresh) and fades in with the
+              color — transition-colors covers text-decoration-color. */}
               {ledgerAge ? (
                 <span
                   title={`Newest corpus event is ${ledgerAge === "now" ? "moments" : ledgerAge} old${ledgerStale ? " — quiet for over an hour (amber): a stalled-runner signal; investigate the runner (free-ladder congestion / judge availability), not the chip. Missing timestamps never alarm, and clock skew clamps to now." : " — still breathing; the token turns amber past one hour."}`}
-                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500", ledgerStale && "text-amber-600 dark:text-amber-400 underline decoration-dotted underline-offset-2")}
+                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500 underline decoration-dotted underline-offset-2 decoration-transparent", ledgerStale && "text-amber-600 dark:text-amber-400 decoration-amber-600 dark:decoration-amber-400")}
                 >
                   · {ledgerAge}
                 </span>
