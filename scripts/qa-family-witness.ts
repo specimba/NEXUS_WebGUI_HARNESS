@@ -42,20 +42,20 @@ check("tag unknown empty", crossFamilyTag(null), "");
 check("tag no-family empty", crossFamilyTag({ judgeFamily: undefined }), "");
 
 // 2. Decision-gate PASS shape (witness trailing inside the via-paren)
-const g1 = `Decision gate PASS 95% (fast-model${crossFamilyTag({ crossFamily: true })})`;
-check("gate PASS split", split(g1), { head: "Decision gate PASS 95% (fast-model", witness: "cross", tail: ")" });
+const g1 = `Decision gate PASS 95% (fast-model${crossFamilyTag({ judgeFamily: "typesafe", crossFamily: true })})`;
+check("gate PASS split", split(g1), { head: "Decision gate PASS 95% (fast-model ", witness: "cross", tail: ")" });
 
 // 3. Decision-gate FAIL mid-note shape (rework note composes witness mid-string)
-const g2 = `Rework pass delivered after Decision gate FAIL (${gateVia("fast-model::x")}${crossFamilyTag({ crossFamily: false })}) — output replaced`;
+const g2 = `Rework pass delivered after Decision gate FAIL (${gateVia("fast-model::x")}${crossFamilyTag({ judgeFamily: "zai", crossFamily: false })}) — output replaced`;
 check("rework mid-note split", split(g2), {
-  head: "Rework pass delivered after Decision gate FAIL (fast-model",
+  head: "Rework pass delivered after Decision gate FAIL (fast-model ",
   witness: "same",
   tail: ") — output replaced",
 });
 
 // 4. Peer blind score trailing shape (r674 vocabulary)
-const g3 = `Peer blind score PASS 92% (intern-decision-4b${crossFamilyTag({ crossFamily: true })})`;
-check("peer trailing split", split(g3), { head: "Peer blind score PASS 92% (intern-decision-4b", witness: "cross", tail: ")" });
+const g3 = `Peer blind score PASS 92% (intern-decision-4b${crossFamilyTag({ judgeFamily: "intern-ai", crossFamily: true })})`;
+check("peer trailing split", split(g3), { head: "Peer blind score PASS 92% (intern-decision-4b ", witness: "cross", tail: ")" });
 
 // 5. Pre-r673 verdicts render no tag — the renderer must NOT chip them
 const plain = [

@@ -2935,3 +2935,26 @@ Round Handoff:
 Round ID: r676 -> next patrol (job 473388)
 Next recommended action: (1) Ledger auto-growth witness: GET /api/evals past 11 on any natural run; board ⧉ chip mirrors. (2) P3 palette headless: raw CDP Input.dispatchKeyEvent (type:key, modifiers:4 for ⌘K / 2 for ⌃K, code KeyK) — synthetic KeyboardEvent is filtered by cmdk; keep the harness's paste-mechanics PASS as the P3 floor. (3) Adaptation backlog next items: forensic-diagnosis fixtures deepened (KB-1-a #3) or poison-purge store hygiene (KB-1-a #4). (4) Radar chips witness on the next registry finding. Driver notes: genFamily rebinds at 3 replacement sites (workflow-runner ~2507/2561/2656); family helpers in systemone.ts; golden QA = scripts/cdp-qa-golden-r673.mjs.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+
+---
+Task ID: r676
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 676 (job 473388) — follow r675 handoff: witness chip in the call log + P3 palette via raw CDP
+
+Work Log:
+- Ledger census GET /api/evals still {total:11, verdicts:4, fails:3} — auto-growth witness stays pending (no natural run).
+- QA FIRST caught a real harness gap: P2's first eval hit "CDP timeout: Runtime.evaluate" — cold-route lazy-compile blocked the main thread (first witness of this failure mode). FIX: evalReady(ws) polls a trivial eval (12 tries × 1.5s) before every route's checks. Post-fix golden QA: P1 PASS, P2 PASS, P3 PASS, console-errors 0.
+- BREAKTHROUGH (handoff #2 landed): P3 palette finally opens headless — raw CDP Input.dispatchKeyEvent (rawKeyDown/keyUp, modifiers 4 = Meta, 2 = Ctrl fallback, code KeyK, vk 75). Synthetic KeyboardEvent was filtered by cmdk's trust gate all along (r670-r675 "environment-limited" caveat dead). The harness picks "Run workflow: Continuous Research & Evaluation — 5" THROUGH the palette and long-pastes 2310 chars: FULL P3 witness (palette → pick → panel → paste) for the first time. paletteSyn=false vs palette="palette" proves the raw route did it.
+- SHIP — the drift witness is now a chip (user-facing + styling): the run-panel call log splits the family-witness token out of verdict notes and renders it as a tone chip — violet ◈ CROSS-FAMILY (disjoint judge) vs muted ◇ SAME-FAMILY (honest degradation), hover tooltips explain the doctrine; pre-r673 un-witnessed notes render untouched. Notes remain byte-identical in storage (renderer-only split).
+- FIXTURE scripts/qa-family-witness.ts — freezes the NOTE CONTRACT between runner composition (crossFamilyTag) and the panel's witness regex: tag vocabulary + leading-space contract, gate-PASS trailing shape, rework mid-note shape, peer trailing shape, 6 plain-note no-witness cases, note-head preservation for census anchoring, first-match-wins, junk safety. 17/17 after r676a.
+- FixNote r676 appended. GATES: tsc 0 · lint 0/33-exact · fixtures qa-family-witness 17/17 + qa-cross-family 32/32 · golden QA 3/3 PASS · console 0.
+- GATE SELF-CATCH (honest): the r676 ship chain ran the fixture mid-chain but a newline after the worklog heredoc broke the && guard — the commit shipped while qa-family-witness read 14/17 (3 FAILs were MY fixture omitting judgeFamily and the tag's leading space — both contracts qa-cross-family already freezes). r676a fixes the fixture, appends this worklog section (the abort had dropped it), and re-pushes. Lesson: heredoc side-effects go LAST in a && chain, on one line.
+
+Stage Summary:
+- The golden QA floor is permanently higher: full P3 (palette-picked run panel + long paste) is witnessed headless every round, and cold-route compile stalls can no longer fake a QA failure.
+- The r673/r674 family doctrine is now visible at a glance — the witness chip carries the why on hover.
+
+Round Handoff:
+Round ID: r677 -> next patrol (job 473388)
+Next recommended action: (1) Ledger auto-growth witness: GET /api/evals past 11 on any natural run; board ⧉ chip mirrors. (2) Lift the witness-split regex to a shared lib (src/lib/family-witness.ts) imported by BOTH the run-panel chip and qa-family-witness — kills the intentional duplication. (3) Adaptation backlog: forensic-diagnosis fixtures deepened (KB-1-a #3) or poison-purge store hygiene (KB-1-a #4). (4) Radar chips witness on the next registry finding. Driver notes: witness chip = workflow-run-panel.tsx r676 IIFE block (regex /· (cross-family|same-family)/); harness evalReady + raw-CDP palette in scripts/cdp-qa-golden-r673.mjs; fixture = scripts/qa-family-witness.ts.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
