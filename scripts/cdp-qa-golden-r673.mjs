@@ -164,7 +164,9 @@ try {
       // r685: the chip story is keyboard-reachable — the census chip is Tab-focusable.
       focusable: led.getAttribute("tabindex") === "0",
       // r686: the per-run card chips joined the contract — focusable count board-wide.
-      focusableChips: document.querySelectorAll('span[tabindex="0"]').length, gateWitnessed,
+      focusableChips: document.querySelectorAll('span[tabindex="0"]').length,
+      // r687: focusable chips carry spoken names — the AT-legibility count board-wide.
+      namedChips: document.querySelectorAll('span[tabindex="0"][aria-label]').length, gateWitnessed,
       // r682: the digest ⚖ chip now carries its own visible-runs witness tally.
       gateChip: ((chips.find((el) => /gate call/.test(el.textContent ?? ""))?.textContent ?? "").replace(/\s+/g, " ").trim()).slice(0, 44) };
     })()`);

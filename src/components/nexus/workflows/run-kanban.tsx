@@ -457,6 +457,7 @@ function RunCard({
               <span
                 tabIndex={0}
                 title={`Looped-depth: ${loopedStep.looped.k} tied pass(es) of ${loopedStep.looped.r} on "${loopedStep.label}", exit ${loopedStep.looped.reason} — ${oc.says} (arXiv 2610.31421 adaptation)`}
+                aria-label={`Looped depth on "${loopedStep.label}": ${loopedStep.looped.k} tied ${loopedStep.looped.k === 1 ? "pass" : "passes"} of ${loopedStep.looped.r}, exit ${loopedStep.looped.reason}`}
                 className={cn(
                   "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   oc.tone === "pass" &&
@@ -487,7 +488,7 @@ function RunCard({
             <span
               title={`Gate-floor readiness: ${met} of ${withOut.length} output-bearing step(s) reach the decision gate's length floor (≥${GATE_MIN_CHARS} chars). Length only — a verdict also needs a generate kind, a non-degraded stream, the toggle on, and a judge that answers.`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
                 all
                   ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
                   : "border-border bg-muted/40 text-muted-foreground"
@@ -510,6 +511,7 @@ function RunCard({
             <span
               tabIndex={0}
               title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
+              aria-label={`Decision gate on this run: engaged ${census.engaged} ${census.engaged === 1 ? "time" : "times"}, ${census.verdicts} confident ${census.verdicts === 1 ? "verdict" : "verdicts"} landed${fam.cross + fam.same > 0 ? `, drift ${fam.cross} cross-family, ${fam.same} same-family` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 census.verdictTone === "fail"
@@ -529,7 +531,7 @@ function RunCard({
             title={harnessChip.tooltip}
             aria-label={`Harness reliability ${harnessChip.label}`}
             className={cn(
-              "inline-flex items-center rounded-full px-1.5 py-px font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              "inline-flex cursor-help items-center rounded-full px-1.5 py-px font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               harnessChip.tone === "warn"
                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                 : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
@@ -1073,6 +1075,7 @@ export function RunKanban({
             <span
               tabIndex={0}
               title={`Visible runs' Decision gate census: ${boardGates.engaged} gate call${boardGates.engaged === 1 ? "" : "s"} · ${boardGates.verdicts} verdict${boardGates.verdicts === 1 ? "" : "s"}${boardGates.failRuns > 0 ? ` · ${boardGates.failRuns} latest-FAIL` : ""} — amber while a run's latest verdict is a FAIL, emerald when verdicts landed clean, muted while judges stay unanswered. Counts only what the browser's own run records still hold; the ⧉ ledger chip beside it covers the durable corpus (server-side finalization POSTs after the browser is gone — the visible-vs-corpus split).${boardGates.witness.cross + boardGates.witness.same > 0 ? ` Drift witness: ◈ ${boardGates.witness.cross} cross-family · ◇ ${boardGates.witness.same} same-family.` : ""}`}
+              aria-label={`Visible runs' gate census: ${boardGates.engaged} gate calls, ${boardGates.verdicts} verdicts${boardGates.failRuns > 0 ? `, ${boardGates.failRuns} latest-FAIL` : ""}${boardGates.witness.cross + boardGates.witness.same > 0 ? `, drift ${boardGates.witness.cross} cross-family, ${boardGates.witness.same} same-family` : ""}. The ledger chip beside it covers the durable corpus.`}
               className={cn(
                 "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 boardGates.failRuns > 0
@@ -1096,6 +1099,7 @@ export function RunKanban({
             <span
               tabIndex={0}
               title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}.` : ""}`}
+              aria-label={`Eval ledger, durable corpus: ${ledger.total} archived gate events, ${ledger.verdicts} verdicts, ${ledger.fails} failures, ${ledger.total - ledger.verdicts} engaged without a confident verdict${ledger.family ? `, drift ${ledger.family.cross} cross-family, ${ledger.family.same} same-family` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? `. Latest event ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""}, ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 ledger.fails > 0
