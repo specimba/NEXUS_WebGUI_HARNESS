@@ -455,9 +455,10 @@ function RunCard({
             const oc = loopedOutcomeChip(loopedStep.looped.reason);
             return (
               <span
+                tabIndex={0}
                 title={`Looped-depth: ${loopedStep.looped.k} tied pass(es) of ${loopedStep.looped.r} on "${loopedStep.label}", exit ${loopedStep.looped.reason} — ${oc.says} (arXiv 2610.31421 adaptation)`}
                 className={cn(
-                  "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                  "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   oc.tone === "pass" &&
                     "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                   oc.tone === "warn" &&
@@ -507,9 +508,10 @@ function RunCard({
           if (census.engaged === 0 && census.verdicts === 0) return null;
           return (
             <span
+              tabIndex={0}
               title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 census.verdictTone === "fail"
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : census.verdictTone === "pass"
@@ -523,10 +525,11 @@ function RunCard({
         })()}
         {harnessChip ? (
           <span
+            tabIndex={0}
             title={harnessChip.tooltip}
             aria-label={`Harness reliability ${harnessChip.label}`}
             className={cn(
-              "inline-flex items-center rounded-full px-1.5 py-px font-semibold tabular-nums",
+              "inline-flex items-center rounded-full px-1.5 py-px font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               harnessChip.tone === "warn"
                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                 : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"

@@ -3161,3 +3161,23 @@ Round Handoff:
 Round ID: r686 -> next patrol (job 473388)
 Next recommended action: (1) PROPOSAL still awaiting Owner: /api/evals?runId= per-run ledger read — do not build without direction. (2) A11y continuation if live data is quiet: the per-run card chips (⚖ gate / harness n/n / ↻ looped) carry the same hover-only titles — extend tabIndex+focus-ring (grep first: their className strings may be shared; line ~512 run-kanban is one such site). (3) Watch gateChip (QA JSON): a browser-completed gate run would light the r682 witness. (4) The looped confident-FAIL live witness stays judge-availability-gated — attempt only if a round has budget to spare (r659 shape: throwaway Looped workflow, 3 live runs). Driver notes: digest chip focus = run-kanban.tsx (⚖ ~1069-1080, ⧉ ~1093-1097); workflow sentence = tooltip tail ~1095; harness focusable = cdp-qa-golden-r673.mjs found-branch; FixNote r685 = whats-fixed.tsx newest-first block.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download; per-run ledger read proposal (r683, unanswered).
+---
+Task ID: r686
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 686 (job 473388) — follow r685 handoff #2: per-run card chips join the keyboard-reachable contract
+
+Work Log:
+- Golden QA first: 4/4 PASS, console 0 — ledger auto-growth round 11 witnessed on entry: census 65 -> {total:69, verdicts:34, fails:8, family:{cross:52}}, freshness "· 3m" (the r685 pick's run landed between rounds). gateChip still "".
+- SHIP (user-facing + styling, handoff #2 delivered): the a11y contract extends from the digest to the three doctrine-heavy PER-RUN card chips — ⚖ gate census, ↻ looped-depth, harness n/n are now Tab-reachable (tabIndex={0} + the same focus-visible ring as r683/r685). Their tooltips are the only board-level statements of gate-census semantics, loop-exit shape and harness-criteria verdicts; keyboard users now get what mouse users hover. Scope DISCIPLINE recorded: the novelty / degraded-deep / gate-floor chips keep hover-only titles — the panel is their full surface, and blanket tabIndex on every glance chip would pollute the tab order (a11y is a contract, not a blanket).
+- Harness: P4 diagnostic gained focusableChips (board-wide count of span[tabindex="0"]) — post-ship run witnessed focusable=true, focusableChips=1 (the honest live count: most client records carry no gate notes, so few card chips exist today; the contract lights up wherever the data does).
+- MultiEdit clean this round (r685 lesson applied: unique anchors prepared via read first; all four diffs verified in the edit output — no partial-application surprise).
+- GATES: tsc 0 · lint 0/33-exact · golden QA 4/4 PASS · console 0.
+
+Stage Summary:
+- The chip family's keyboard story is now consistent at both zoom levels: digest (r685) and per-run cards (r686) share one focus-visible ring + native-title-on-focus contract; remaining title-only chips are deliberate exclusions with a named reason.
+- Eleven rounds of natural ledger auto-growth (…54→65→69), freshness legible throughout.
+
+Round Handoff:
+Round ID: r687 -> next patrol (job 473388)
+Next recommended action: (1) PROPOSAL still awaiting Owner: /api/evals?runId= per-run ledger read — do not build without direction. (2) Watch gateChip (QA JSON): a browser-completed gate run would light the r682 digest witness AND make focusableChips climb (gate chips on cards). (3) The looped confident-FAIL live witness stays judge-availability-gated (0/6) — attempt only with spare budget. (4) Radar chips witness on the next registry finding. (5) If quiet again: the ⌈floor gate-floor chip (run-kanban ~486) lacks cursor-help entirely while carrying a title — a one-class consistency fix candidate. Driver notes: card chip focus = run-kanban.tsx (↻ ~457-461, ⚖ ~510-514, harness ~527-532); focusableChips = cdp-qa-golden-r673.mjs found-branch; FixNote r686 = whats-fixed.tsx newest-first block.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download; per-run ledger read proposal (r683, unanswered).
