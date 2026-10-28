@@ -490,10 +490,10 @@ export function ModelRelayCard() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-[10px] font-normal tabular-nums",
+                      "text-[10px] font-normal tabular-nums transition-colors duration-500",
                       intel?.origin === "live"
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                        : "border-dashed border-amber-500/40 bg-amber-500/10 text-amber-300"
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:border-emerald-500/70 hover:bg-emerald-500/20"
+                        : "border-dashed border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/70 hover:bg-amber-500/20"
                     )}
                     title={
                       intel?.origin === "live"
