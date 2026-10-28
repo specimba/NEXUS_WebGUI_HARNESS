@@ -1044,11 +1044,11 @@ export function AutomationVaultCard() {
                 </p>
                 <ul className="space-y-1">
                   <li
-                    className="flex cursor-help items-start gap-1.5"
+                    className="group flex cursor-help items-start gap-1.5"
                     title="Browser-saved keys never leave the browser — while a tab is open, schedules dial with them in-page. They do not follow you to a new browser profile or a rebuilt sandbox."
                   >
                     <Globe
-                      className="mt-0.5 h-3 w-3 shrink-0 text-cyan-500"
+                      className="mt-0.5 h-3 w-3 shrink-0 text-cyan-500 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
                       aria-hidden
                     />
                     <span className="text-[10px] leading-relaxed text-muted-foreground/80">
@@ -1061,11 +1061,11 @@ export function AutomationVaultCard() {
                     </span>
                   </li>
                   <li
-                    className="flex cursor-help items-start gap-1.5"
-                    title="Encrypted at rest (AES-256-GCM), masked in the UI, never telemetered. The closed-tab executor dials only with a key stored here — and no background cleanup ever removes one."
+                    className="group flex cursor-help items-start gap-1.5"
+                    title="Encrypted at rest (AES-256-GCM), masked in the UI, never telemetered. The closed-tab executor dials only with a key stored here — and no background cleanup ever removes one. This vault has come back empty after two database rebuilds (Oct 27 and Oct 28, 2026) — the backup file below is the bridge."
                   >
                     <HardDrive
-                      className="mt-0.5 h-3 w-3 shrink-0 text-amber-500"
+                      className="mt-0.5 h-3 w-3 shrink-0 text-amber-500 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
                       aria-hidden
                     />
                     <span className="text-[10px] leading-relaxed text-muted-foreground/80">
@@ -1074,15 +1074,15 @@ export function AutomationVaultCard() {
                       </strong>{" "}
                       — this machine&apos;s SQLite; survives browser resets, but a sandbox
                       rebuild reverts the database file itself — keys here have vanished
-                      that way before.
+                      that way twice now.
                     </span>
                   </li>
                   <li
-                    className="flex cursor-help items-start gap-1.5"
+                    className="group flex cursor-help items-start gap-1.5"
                     title="The Backup button exports the plaintext key file; Restore (below) or bun scripts/seedwrite.ts --import re-populates the vault from it."
                   >
                     <FileDown
-                      className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500"
+                      className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
                       aria-hidden
                     />
                     <span className="text-[10px] leading-relaxed text-muted-foreground/80">
