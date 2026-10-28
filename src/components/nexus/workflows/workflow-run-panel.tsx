@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
+import { GATE_MIN_CHARS } from "@/lib/systemone";
 // r503: lane witness chip on run steps — short name + shared provider glyph.
 import { laneShortName } from "@/lib/lane-catalog";
 import { laneOfEntry } from "@/lib/call-log-lane";
@@ -1935,6 +1936,37 @@ export function WorkflowRunPanel({
                               )}
                             >
                               ↻ looped {step.looped.k}/{step.looped.r} · {oc.label}
+                            </span>
+                          );
+                        })()
+                      ) : null}
+                      {step.output ? (
+                        (() => {
+                          // r664: the gate's length floor made visible where outputs
+                          // render — the runner engages the gate at >= GATE_MIN_CHARS
+                          // (shared constant, r659 economics), but that number lived
+                          // only in the runner; an Owner preparing a gate-witness run
+                          // had no way to see whether an output even reaches the floor.
+                          // Length-only claim by design: the gate ALSO needs a generate
+                          // kind, a non-degraded stream, and the toggle — this chip
+                          // never promises a verdict, it states the floor.
+                          const n = step.output.trim().length;
+                          const meets = n >= GATE_MIN_CHARS;
+                          return (
+                            <span
+                              title={
+                                meets
+                                  ? `Output meets the decision gate's length floor (≥${GATE_MIN_CHARS} chars). The gate also requires a generate step, a non-degraded stream, and the toggle on — whether a verdict lands then depends on judge availability.`
+                                  : `Short outputs skip the decision gate — it engages at ≥${GATE_MIN_CHARS} chars (no judge round-trip for a three-line answer).`
+                              }
+                              className={cn(
+                                "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums",
+                                meets
+                                  ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                                  : "border-border bg-muted/40 text-muted-foreground"
+                              )}
+                            >
+                              {meets ? "gate floor met" : "below gate floor"} · {n.toLocaleString()}
                             </span>
                           );
                         })()

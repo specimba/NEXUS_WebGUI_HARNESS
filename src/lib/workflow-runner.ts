@@ -60,7 +60,7 @@ import {
   type LaneSaturation,
 } from "@/lib/lane-rotation";
 import { resolveExplicitLlm, resolveLlm, type ResolvedLlm } from "@/lib/llm-config";
-import { decide, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
+import { decide, GATE_MIN_CHARS, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
 import {
   BLIND_REVIEW_QUESTION,
   buildBlindReviewInput,
@@ -2383,7 +2383,7 @@ export async function executeWorkflowRun(
         const gateEnabled = settings.settings.decisionGates !== false;
         const gateWorthy =
           gateEnabled &&
-          content.trim().length >= 200 &&
+          content.trim().length >= GATE_MIN_CHARS &&
           !/^_The model ended/.test(content) &&
           kind === "generate";
         if (gateWorthy) {
@@ -2565,7 +2565,7 @@ export async function executeWorkflowRun(
         if (
           gateEnabled &&
           settings.settings.peerBlindScore !== false &&
-          finalOutput.trim().length >= 200 &&
+          finalOutput.trim().length >= GATE_MIN_CHARS &&
           !/^_The model ended/.test(finalOutput)
         ) {
           try {

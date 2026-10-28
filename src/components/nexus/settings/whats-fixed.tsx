@@ -656,6 +656,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "⌘K palette: type 'run' — the 'Run a workflow' group surfaces; keyboard onto an item reads 'Run workflow: <name> — N steps' and the Play icon brightens; step counts align in tabular figures",
   },
+  {
+    round: "r664",
+    title: "The decision gate's 200-char floor is now visible where outputs render — and named in one place instead of two",
+    detail:
+      "The r659 gate engages only on outputs of ≥200 chars, but that number lived inline at two independent runner sites (the generate gate and the peer blind-score) — a drift pair waiting to diverge — and was invisible to the one person who needs it: an Owner preparing a gate-witness run had no way to know whether a step's output even reaches the floor. The threshold is now a named constant (GATE_MIN_CHARS in systemone.ts, shared by both runner sites), and every step header in the run panel carries a length chip: 'gate floor met · 1,240' in violet when the output reaches the floor, 'below gate floor · 120' muted when it does not. The chip claims length only, by design — the gate also needs a generate kind, a non-degraded stream, and the toggle, and this chip never promises a verdict; its tooltip names those remaining conditions honestly.",
+    lookFor:
+      "Run panel step headers: each finished step shows a length chip — violet 'gate floor met · N' once the output crosses 200 chars, muted 'below gate floor · N' under it; hover states exactly what the floor does and does not guarantee",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

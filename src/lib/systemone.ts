@@ -31,6 +31,11 @@ const JEV_TIMEOUT_MS = 5_000;
 const FAST_JUDGE_TIMEOUT_MS = 9_000;
 /** Confidence bar for a PASS to actually skip a downstream flagship call. */
 export const SYSTEMONE_GATE_CONFIDENCE = 0.75;
+/** r664: the gate's output-length floor, named at last — it was inline `>= 200`
+ * at two independent runner sites (generate-gate + peer blind-score), a drift
+ * pair waiting to diverge. Single source: the panel's gate-floor chip reads the
+ * same constant, so the UI can never describe a threshold the runner forgot. */
+export const GATE_MIN_CHARS = 200;
 /** r510: the free decision primitive — Shanghai AI Lab's 书生 Decision 4B. */
 const INTERN_SYSTEMONE_MODEL = "intern-decision-4b";
 const INTERN_SYSTEMONE_TIMEOUT_MS = 8_000;

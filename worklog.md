@@ -2619,3 +2619,25 @@ Round ID: r664 -> next patrol (job 473388)
 Next recommended action: (1) confident-verdict witness remains #1 — still purely judge-availability-gated (0/8 live answers); a visibly calm ladder window, or the deliberate Owner-key single cheap call, is the only path; (2) witness the chain radar chips on the next registry finding; (3) degraded-deep live telemetry in a congestion window; (4) Owner-witnessed vault restore happy path (real file chooser). Driver note for r664: the palette route (⌘K → "Run workflow: …" aria-label) is now the CHEAPEST way to open a run panel — use it for any future witness run instead of card-button archaeology.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0 lint=0(33-warnings exact) golden=3/3(console 0/0/0) increment="palette wf items: aria-label + run-verb search + tabular-nums + selected Play brighten; live-proven 6/6" restart="0/1" budget="overran on locator friction (~8 rounds) — lesson logged"
+
+---
+Task ID: r664
+Agent: NEXUS patrol (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280807)
+Task: Patrol round — golden QA, one real increment, gates, dual push.
+
+Work Log:
+- OPENING: server 200, clean tree, HEAD=r663. Handoff re-read: witness #1 still externally gated; palette route recommended for run-panel access.
+- GOLDEN QA 3/3 GREEN, console 0 errors, zero product bugs: (1) relay — ladder snapshot 4d honest vintage + census live·5h; (2) Frontier — 900px scroll clean; (3) run-panel long-paste — palette aria-label one-shot opened "Novelty Lab (sample)", 4410-char paste landed. THE R663 INVESTMENT PAID: path 3 cost ONE round this time (last round's 8-round archaeology is dead).
+- INCREMENT (serves handoff item #1 directly): the r659 gate engages at ≥200 chars of step output, but the threshold lived inline at TWO runner sites (generate gate + peer blind-score) — a drift pair — and was invisible to the Owner preparing a gate-witness run. Shipped: GATE_MIN_CHARS named constant in systemone.ts (single source; both runner sites now reference it); run-panel step headers gained a length chip — violet "gate floor met · N" / muted "below gate floor · N", tabular-nums, tooltip states EXACTLY what the floor does and does not guarantee (generate kind + non-degraded + toggle + judge availability remain; the chip never promises a verdict). FixNote r664 appended.
+- GATES: tsc rc=0; lint rc=0 EXACTLY 33-warning baseline; console 0 after reload.
+- HONEST GAP: the chip's LIVE RENDER was not witnessed this round — after a real reload (r661 lesson re-applied) the history list of the sample workflows holds no selectable run rows, and the patched header renders only in the viewedRun view. Code path verified (viewedRun.steps render chain, gates green); first real run doubles as the chip's live debut — witness attempt #9 will see it.
+
+Stage Summary:
+- The gate's most important internal number is now single-sourced and user-visible: drift-proof in the runner, readable in the panel, honest in the tooltip.
+- Golden QA at its cheapest yet (3 rounds for 3 paths) — the r663 aria-labels are now the canonical run-panel driver.
+
+Round Handoff:
+Round ID: r665 -> next patrol (job 473388)
+Next recommended action: (1) confident-verdict witness remains #1 (judge 0/8, availability-gated) — a real run via the palette route NOW ALSO debuts the r664 gate-floor chips in the same run; pick a workflow with a generate step and a long task; (2) if the ladder is calm, that same run may finally produce a confident PASS/FAIL line; (3) witness the chain radar chips on the next registry finding; (4) Owner-witnessed vault restore happy path. Driver notes: location.reload() after any store/bundle change; chip live-check = open panel → select a run with outputs → count "gate floor" spans.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0 lint=0(33-warnings exact) golden=3/3(console 0/0/0) increment="GATE_MIN_CHARS single-source + run-panel gate-floor length chips (violet/muted, honest tooltip)" chip-live="pending first real run (no archived rows in sample workflows)" restart="0/1"
