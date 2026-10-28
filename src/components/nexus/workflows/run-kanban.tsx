@@ -486,6 +486,8 @@ function RunCard({
           // claim: counts outputs that reach the floor, never a verdict —
           // the tooltip names what else a verdict needs (generate kind,
           // non-degraded stream, toggle, and a judge that answers).
+          // r700: the pointer promise now answers the pointer — the chip's own
+          // tone channel brightens on hover (border arm), over transition-colors.
           const steps = run.steps ?? [];
           const withOut = steps.filter((s) => (s.output ?? "").trim().length > 0);
           if (withOut.length === 0) return null;
@@ -495,10 +497,10 @@ function RunCard({
             <span
               title={`Gate-floor readiness: ${met} of ${withOut.length} output-bearing step(s) reach the decision gate's length floor (≥${GATE_MIN_CHARS} chars). Length only — a verdict also needs a generate kind, a non-degraded stream, the toggle on, and a judge that answers.`}
               className={cn(
-                "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors",
                 all
-                  ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
-                  : "border-border bg-muted/40 text-muted-foreground"
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-600 hover:border-violet-500/70 dark:text-violet-400"
+                  : "border-border bg-muted/40 text-muted-foreground hover:border-muted-foreground/40"
               )}
             >
               ⌈floor {met}/{withOut.length}
@@ -539,11 +541,11 @@ function RunCard({
             title={harnessChip.tooltip}
             aria-label={`Harness reliability ${harnessChip.label}`}
             className={cn(
-              "inline-flex cursor-help items-center rounded-full px-1.5 py-px font-semibold tabular-nums",
+              "inline-flex cursor-help items-center rounded-full px-1.5 py-px font-semibold tabular-nums transition-colors",
               CHIP_FOCUS_RING,
               harnessChip.tone === "warn"
-                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                ? "bg-amber-500/15 text-amber-600 hover:bg-amber-500/25 dark:text-amber-400"
+                : "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400"
             )}
           >
             {harnessChip.label}
