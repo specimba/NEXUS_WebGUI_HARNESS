@@ -35,6 +35,7 @@ import { harnessChipForRun } from "@/lib/trace-trial";
 // r660: the looped-depth outcome reaches the Runs board — same shared adapter
 // as the run panel (single mapping, second honest call site, r649 doctrine).
 import { loopedOutcomeChip } from "@/lib/looped-outcome";
+import { GATE_MIN_CHARS } from "@/lib/systemone";
 
 /** v24: one server-lane AutomationRun row (from /api/automation/sync GET). */
 interface ServerRunRow {
@@ -467,6 +468,32 @@ function RunCard({
             );
           })()
         ) : null}
+        {(() => {
+          // r666: the gate-floor readiness census at board scale — the r664
+          // panel chip's second honest call site (r649 doctrine), reading the
+          // same GATE_MIN_CHARS constant the runner enforces. Length-only
+          // claim: counts outputs that reach the floor, never a verdict —
+          // the tooltip names what else a verdict needs (generate kind,
+          // non-degraded stream, toggle, and a judge that answers).
+          const steps = run.steps ?? [];
+          const withOut = steps.filter((s) => (s.output ?? "").trim().length > 0);
+          if (withOut.length === 0) return null;
+          const met = withOut.filter((s) => s.output.trim().length >= GATE_MIN_CHARS).length;
+          const all = met === withOut.length;
+          return (
+            <span
+              title={`Gate-floor readiness: ${met} of ${withOut.length} output-bearing step(s) reach the decision gate's length floor (≥${GATE_MIN_CHARS} chars). Length only — a verdict also needs a generate kind, a non-degraded stream, the toggle on, and a judge that answers.`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                all
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                  : "border-border bg-muted/40 text-muted-foreground"
+              )}
+            >
+              ⌈floor {met}/{withOut.length}
+            </span>
+          );
+        })()}
         {harnessChip ? (
           <span
             title={harnessChip.tooltip}

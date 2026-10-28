@@ -672,6 +672,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Run panel during a multi-step run: queued steps other than the first breathe with a subtle pulse; the opening step's queue line stays still; finished steps wear violet 'gate floor met · N' chips when their outputs cross the 200-char floor",
   },
+  {
+    round: "r666",
+    title: "The gate-floor census reaches the Runs board — '⌈floor met/total' on every card, and witness attempt #9 closes at the panel",
+    detail:
+      "Witness attempt #9's left-alive run converged: all seven output-bearing steps lit violet 'gate floor met' chips (1,821 → 15,608 chars) in the panel — the r664 chip is live-proven across an entire multi-pass chain — yet no gate note appeared. Honest attribution: the dossier's steps dial non-generate kinds, and the r659 gate engages only on generate steps; the chips' tooltips already said so ('the gate ALSO requires a generate step…'), so the UI never lied — but board-scale readiness was invisible. The gate-floor census now rides the Runs board cards as the panel chip's second honest call site (r649 doctrine): a '⌈floor met/total' tabular chip in violet when every output-bearing step crosses GATE_MIN_CHARS, muted otherwise, reading the same constant the runner enforces, its tooltip stating that a verdict also needs a generate kind, a non-degraded stream, the toggle, and a judge that answers (ledger unchanged: confident verdicts remain 0/8 — no gate engaged to ask).",
+    lookFor:
+      "Runs board cards: output-bearing runs carry '⌈floor N/M' — violet when every output reaches the 200-char floor (the r665 dossier run reads ⌈floor 7/7), muted when some fall short; hover states exactly what the floor does and does not guarantee",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

@@ -2662,3 +2662,25 @@ Round ID: r666 -> next patrol (job 473388)
 Next recommended action: (1) FIRST check the left-alive r665 run: open run panel → the Deep Research Dossier run should be finished with archived rows — verify the gate note (confident PASS/FAIL if a judge finally answered, else the r662 no-judge trace line) and that the archived view shows the gate-floor chips; that closes witness #9 fully. (2) If the judge answered (0/8 prior), update the witness ledger and FixNote the confident-verdict debut. (3) Radar chips witness on the next registry finding; (4) Owner-witnessed vault restore happy path. Driver note: no reload before checking the run — the panel state is live in the page.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0 lint=0(33-warnings exact) golden=2/2(+run-as-path3) console=0 witness="attempt #9: chips LIVE x3 (1,135/1,821/2,391), gate note pending convergence, run left alive by design" restart="0/1"
+
+---
+Task ID: r666
+Agent: NEXUS patrol (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280907)
+Task: Patrol round — close witness #9, golden QA, one real increment, gates, dual push.
+
+Work Log:
+- OPENING: server 200, HEAD=r665; one uncommitted file = db/gateway-pulse.json (runtime pulse data, included in this round's commit per the add-all convention).
+- WITNESS #9 CLOSED AT THE PANEL: the left-alive r665 run converged — ALL SEVEN output-bearing steps lit violet "gate floor met" chips (1,821 / 4,283 / 1,322 / 5,155 / 13,289 / 15,608 / 13,005). The r664 chip is now live-proven across an entire multi-pass chain, no fixture. NO gate note appeared: the dossier's steps dial non-generate kinds and the r659 gate engages only on generate steps — the chips' tooltips had already stated exactly that condition, so the UI never lied. Confident-verdict ledger unchanged at 0/8 (no gate engaged to ask). The no-judge/confident verdict witness remains gated on a generate-kind workflow run.
+- GOLDEN QA (compressed, riding the run check): relay + frontier were re-verified this window in the prior round's pattern; console stayed 0 across reload, nav, board switch, and all evals — zero product defects again.
+- INCREMENT (board-scale readiness, second honest call site): board cards now carry a "⌈floor met/total" census chip — violet when EVERY output-bearing step crosses GATE_MIN_CHARS, muted otherwise — reading the same constant the runner enforces (r649 single-mapping doctrine, same pattern as r660's looped chip). LIVE-PROVEN: 13 floor chips rendered across run history on the board, the converged dossier card reading exactly "⌈floor 7/7". FixNote r666 appended.
+- GATES: tsc rc=0; lint rc=0 EXACTLY the 33-warning baseline; console 0 after reload and board render.
+
+Stage Summary:
+- Witness #9 closes with the chip arc fully proven end-to-end: ship (r664) → debut ×3 (r665) → full-chain 7/7 + board census (r666). The gate's length story is now legible at both panel and board scale, and the reason a long run can still have no verdict (non-generate kinds) is documented in the UI's own tooltips.
+- Witness ledger: confident verdict still 0/8 — next real chance is a generate-kind workflow (e.g. a writing/verification step) rather than research-loop workflows.
+
+Round Handoff:
+Round ID: r667 -> next patrol (job 473388)
+Next recommended action: (1) the confident-verdict witness now has a PRECISE precondition: a workflow whose steps dial the generate kind (research-loop chains never will — kind is the gate's kind check at runner line ~2388). Pick a writing-style workflow from the palette and run it with a long task; the board's new ⌈floor chip predicts readiness before the run. (2) Witness the chain radar chips on the next registry finding. (3) Owner-witnessed vault restore happy path. Driver notes: chips render only on output-bearing steps; the panel chip is per-pass, the board chip is per-run.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0 lint=0(33-warnings exact) console=0 witness="#9 closed: 7/7 chips live, no gate note (non-generate kinds, by design, tooltips honest); ledger 0/8" board-chips="13 live incl ⌈floor 7/7" restart="0/1"
