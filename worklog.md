@@ -3076,3 +3076,25 @@ Round Handoff:
 Round ID: r682 -> next patrol (job 473388)
 Next recommended action: (1) Visible-card witness coverage: gateWitnessed stayed 0 across three runs while the corpus holds 23 witnessed notes — decide: a digest-level counter of witnessed notes among VISIBLE runs' callLogs, or investigate whether store trimming simply hides the witnessed runs (honest zero vs blind spot — read the run store's trim policy). (2) Consider hardening other once-per-mount fetches the same way (grep "useEffect" + "void fetch" for the pattern family) — the r681 class likely has more members. (3) Radar chips witness on the next registry finding. (4) If time remains: the harness digest diagnostic phrase is dead — repoint it at a real digest anchor or drop it. Driver notes: retry + ghost = run-kanban.tsx r681 blocks (state ~line 877-879, effect 880-932, ghost 1074-1081); radios dump = cdp-qa-golden-r673.mjs drift eval diagnostics.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+---
+Task ID: r682
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 682 (job 473388) — follow r681 handoff: once-per-mount fetch audit + visible-card witness counter
+
+Work Log:
+- Golden QA first: 4/4 PASS, console 0 — P4 green on entry (the r681 retry fix visibly working: boardMode "clicked" with the chip landing inside the hardened window).
+- r681 BUG-CLASS AUDIT (handoff #2): grep "void fetch(" across src — only THREE sites: the kanban census (fixed r681) and the runner's two one-shot POSTs (workflow-runner.ts /api/evals + /api/runs/archive) — retries there would DOUBLE-WRITE ledger rows, correctly unretryable. No other members of the once-per-mount GET class via this pattern. Audit closed.
+- Trim policy read (handoff #1): stores.ts keeps 60 runs/workflow (MAX_RUNS_PER_WF), full outputs only 4 newest — trimming is NOT why gateWitnessed reads 0.
+- SHIP (user-facing + styling): the digest ⚖ chip now carries the family witness for the VISIBLE runs — boardGates memo collects the same visible set's callLog notes through familyTallyOf (the shared lib, third call site: per-run chip r677, ledger GET r677, digest r682) and renders violet ◈N / muted ◇M beside the verdict counts; the digest tooltip explains visible-vs-corpus (the ledger covers every archived SQLite event — server-side finalization POSTs after the browser is gone — the ⚖ chip counts only the browser's own run records). Harness drift eval gained an additive gateChip diagnostic.
+- DATA ANSWER (the r681 open question settled): first live run — ledger ⧉ 41·19✕7∅22◈26 vs gateChip EMPTY: NO visible run carries gate notes at all. The witnessed verdicts exist ONLY in server-side records: the QA palette-pick's natural runs finalize server-side and POST to the ledger after the headless browser exits — their client records never land with callLogs. gateWitnessed 0 is now a MEASURED fact about client-vs-server record split, not a mystery; the counter will light up the day a browser-completed gate run is visible.
+- Ledger auto-growth round 7: census 37 -> {total:41, verdicts:19, fails:7, family:{cross:26}}.
+- GATES: tsc 0 · lint re-checked in ship chain · golden QA 4/4 PASS · console 0.
+
+Stage Summary:
+- The drift-witness vocabulary is now consistent at every zoom level (per-note chip, per-run chip, digest chip, ledger chip) with ONE shared tally lib — and the digest chip's honest absence in the live run is itself the visible-vs-corpus doctrine rendered as UI.
+- The r681 class audit closed: two unretryable POSTs by design, one GET fixed, nothing else.
+
+Round Handoff:
+Round ID: r683 -> next patrol (job 473388)
+Next recommended action: (1) The client-vs-server record split is the live data story: if the Owner wants gate health visible for SERVER-finalized runs, the board would need to read the ledger per-run (a /api/evals?runId= query) — a bigger slice, Owner-adjacent decision, propose before building. (2) Small alternative: the dead "runs on the board" harness diagnostic phrase — repoint to "run(s) on the board" (the real digest text) or drop it. (3) Radar chips witness on the next registry finding. (4) If a natural run lands while a browser STAYS OPEN (long-lived profile), the client record may land — watch gateChip turn non-empty in a future QA JSON. Driver notes: digest witness = run-kanban.tsx boardGates memo (r682 comment ~line 973) + chip block (~1043); gateChip diagnostic = cdp-qa-golden-r673.mjs drift eval found-branch; trim policy = stores.ts MAX_RUNS_PER_WF 60.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
