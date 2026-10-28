@@ -2706,3 +2706,26 @@ Round ID: r668 -> next patrol (job 473388)
 Next recommended action: (1) confident-verdict witness: the precondition is now OBSERVED, not inferred — Novelty Lab (sample) answered at 95% FAIL once; a short run on it (or any generate-kind chain) during a calm window is the cheapest attempt yet; the board ⚖ chip gives instant post-run readout (any verdicts>0 = witness complete). (2) Optionally verify the panel renders the historic FAIL note with its amber styling when the Novelty Lab run is opened (note styling family check). (3) Radar chips witness on the next registry finding; (4) Owner-witnessed vault restore happy path. Driver notes: read gate truth from callLog in the store, not rendered text; ⚖ chip = engaged·verdicts.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0(after 1 caught misfire, optional-chaining fix) lint=0(33-warnings exact) console=0 witness="dossier run: gate engaged 6x, no-judge x6 (ledger 0/14 window); HISTORIC VERDICT FOUND: Novelty Lab FAIL 95% — ladder can answer" board-chips="4 live incl 6·0 and 2·1" restart="0/1"
+
+---
+Task ID: r668
+Agent: NEXUS patrol (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610281007)
+Task: Patrol round — witness attempt #10, golden QA, gate-census adapter, gates, dual push.
+
+Work Log:
+- OPENING: server 200, HEAD=r667, clean tree. Golden QA 1+2 green (relay snapshot 4d + census live·just-now — it auto-refreshed; frontier 900px; console 0).
+- WITNESS ATTEMPT #10: Novelty Lab (sample) via the palette route, 673-char gate-worthy task, Run pressed cleanly. The free lane was DEEPLY congested — no dial landed in ~3 minutes (callLog:0). Stop-loss per budget: run left converging untouched (r665 launch-and-leave pattern).
+- INCREMENT: gate census promoted to a shared adapter — src/lib/gate-census.ts (Decision-gate prefix = engagement, System-One prefix = confident verdict, tolerant, honest zero) with TWO call sites: the r667 board chip (now reading the adapter) and a NEW panel-header chip ("⚖ gate N·M" beside the export button — gate story visible without expanding the call log). r649 single-mapping doctrine, three readers become one. FixNote r668 appended.
+- SERVER DOWN MID-ROUND (http:000, chrome-error doc): the one permitted restart via scripts/dev-restart.sh restored it (200, restart 1/1). Root cause unproven (likely rebuild + long client-run memory pressure); the restart honestly downgraded witness #10's run to "partial" per the r25 zombie-sweep semantics.
+- FINAL VERIFICATION (post-restart): board renders FIVE ⚖ chips via the adapter (1·0, 1·0, 6·0, 1·1, 1·0) — note the second verdict-bearing run (1·1); witness #10 reached a 14,513-char generate output + a 277-char verification output with ONE gate engagement note recorded before the partial downgrade. Console 0.
+- GATES: tsc rc=0; lint rc=0 EXACTLY the 33-warning baseline. One transient eval SecurityError traced to the dead server, not the code.
+
+Stage Summary:
+- The gate census is now ONE adapter feeding board + panel header; gate truth is a data-layer read everywhere.
+- Witness #10's archive holds a 14.5K-char generate output and one engagement note — the note's TYPE (no-judge vs confident) is the first thing r669 should read.
+
+Round Handoff:
+Round ID: r669 -> next patrol (job 473388)
+Next recommended action: (1) READ witness #10's gate note type from the store (Novelty Lab runs[0].callLog — "System-One gate" prefix = the confident-verdict witness LANDED; "Decision gate engaged but no judge answered" = ledger extends) — one eval, one round, possibly the arc's closing receipt. (2) Identify the second verdict run behind the board's "⚖ gate 1·1" chip (which workflow, which note). (3) Radar chips witness on the next registry finding; (4) Owner-witnessed vault restore happy path. Driver notes: the w10 run is "partial" by honest downgrade — its outputs and notes are still fully readable in the store.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0 lint=0(33-warnings exact) console=0 qa=2/2(+w10-as-path3) witness="#10 launched into congestion, converged to partial after server restart; 14,513-char output + 1 engagement note; note TYPE pending r669 read" adapter="gate-census.ts live ×2 call sites, 5 board chips" restart="1/1 used (server down mid-round, restored 200)"

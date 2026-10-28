@@ -688,6 +688,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Runs board cards: the converged dossier run now reads '⚖ gate 6·0' next to '⌈floor 7/7' — engaged six times, zero verdicts, muted; a run with a confident PASS/FAIL would show an emerald chip with a non-zero verdict count",
   },
+  {
+    round: "r668",
+    title: "The gate census becomes a shared adapter and reaches the run panel's header — and witness attempt #10 launched into a congestion window",
+    detail:
+      "The r667 board census chip proved gate truth must be read from the data layer; this round promotes that reader into a shared adapter (gate-census.ts: 'Decision gate' prefix = engagement, 'System-One gate' prefix = confident verdict, tolerant input, honest zero) and gives it a second call site — the run panel's header, next to the export button, so a run's gate story is visible WITHOUT expanding the call log. Board card and panel header now read one mapping (r649 doctrine), not two copies. Same round: witness attempt #10 (Novelty Lab, 673-char gate-worthy task) launched cleanly through the palette route but hit a deeply congested free lane — no dial landed in ~3 minutes, so the run was left converging untouched (the r665 launch-and-leave pattern, which paid off when r666 read its converged archive); the census chip will speak on whichever round finds it finished.",
+    lookFor:
+      "Run panel header (a viewed run with gate activity): '⚖ gate N·M' beside the export button — muted while verdicts are zero, emerald the moment a confident verdict lands; the Runs board card carries the same census from the same adapter",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

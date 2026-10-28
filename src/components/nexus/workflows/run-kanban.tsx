@@ -36,6 +36,7 @@ import { harnessChipForRun } from "@/lib/trace-trial";
 // as the run panel (single mapping, second honest call site, r649 doctrine).
 import { loopedOutcomeChip } from "@/lib/looped-outcome";
 import { GATE_MIN_CHARS } from "@/lib/systemone";
+import { gateCensusOf } from "@/lib/gate-census";
 
 /** v24: one server-lane AutomationRun row (from /api/automation/sync GET). */
 interface ServerRunRow {
@@ -495,30 +496,22 @@ function RunCard({
           );
         })()}
         {(() => {
-          // r667: gate activity at board scale — the r666 patrol misattributed a
-          // silent gate because the verdict notes live in the COLLAPSIBLE call
-          // log (6 no-judge notes sat unseen inside the converged dossier run).
-          // This census chip reads the same callLog notes the panel colors:
-          // 'Decision gate …' prefixes are engagements, 'System-One gate …'
-          // prefixes are confident verdicts. engaged·verdicts, honest zero.
-          const gateRows = (run.callLog ?? []).filter(
-            (c) =>
-              c.note &&
-              (c.note.startsWith("Decision gate") || c.note.startsWith("System-One gate"))
-          );
-          if (gateRows.length === 0) return null;
-          const verdicts = gateRows.filter((c) => c.note?.startsWith("System-One gate")).length;
+          // r668: the r667 board census promoted to the shared gate-census
+          // adapter (r649 doctrine) — same note prefixes, same shape, now also
+          // read by the run panel's header. Data-layer truth, not rendered text.
+          const census = gateCensusOf(run.callLog);
+          if (census.engaged === 0 && census.verdicts === 0) return null;
           return (
             <span
-              title={`Decision gate engaged ${gateRows.length} time(s) on this run; ${verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log).`}
+              title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log).`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
-                verdicts > 0
+                census.verdicts > 0
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   : "border-border bg-muted/40 text-muted-foreground"
               )}
             >
-              ⚖ gate {gateRows.length}·{verdicts}
+              ⚖ gate {census.engaged}·{census.verdicts}
             </span>
           );
         })()}

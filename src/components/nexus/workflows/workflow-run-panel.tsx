@@ -29,6 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
 import { GATE_MIN_CHARS } from "@/lib/systemone";
+import { gateCensusOf } from "@/lib/gate-census";
 // r503: lane witness chip on run steps — short name + shared provider glyph.
 import { laneShortName } from "@/lib/lane-catalog";
 import { laneOfEntry } from "@/lib/call-log-lane";
@@ -1501,6 +1502,28 @@ export function WorkflowRunPanel({
                 : "This workflow has no steps yet — edit it first."}
             </p>
             <div className="flex shrink-0 items-center gap-1.5">
+              {(() => {
+                // r668: gate activity at the panel's top — the shared
+                // gate-census adapter's second call site (board card first).
+                // The verdict notes were board-visible since r667 but still
+                // one click deep here; the header now speaks engaged·verdicts
+                // without expanding the call log.
+                const census = viewedRun ? gateCensusOf(viewedRun.callLog) : null;
+                if (!census || (census.engaged === 0 && census.verdicts === 0)) return null;
+                return (
+                  <span
+                    title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the full tried-ladder trace lives in the call log below.`}
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums",
+                      census.verdicts > 0
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-border bg-muted/40 text-muted-foreground"
+                    )}
+                  >
+                    ⚖ gate {census.engaged}·{census.verdicts}
+                  </span>
+                );
+              })()}
               {viewedRun && !running && (
                 <Button
                   variant="ghost"
