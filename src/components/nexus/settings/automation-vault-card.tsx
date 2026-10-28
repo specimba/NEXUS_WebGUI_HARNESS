@@ -1092,6 +1092,26 @@ export function AutomationVaultCard() {
                       — the only layer that travels: export plaintext, keep it safe,
                       restore below after any reset.
                     </span>
+                    {/* r705: the row's own action — the prose pointed at the card's
+                        Backup button; the bridge is now clickable in place. Same
+                        r655 flow (confirm → plaintext JSON download), honest empty
+                        toast included; hover arms ride the r690 fade clock. */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid="vault-ledger-backup"
+                      className="ml-auto h-5 shrink-0 gap-1 self-start px-1.5 text-[10px] font-medium text-emerald-600 transition-colors duration-500 hover:bg-emerald-500/15 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-300"
+                      onClick={() => void backupVault()}
+                      disabled={backingUp || restoring}
+                      title="Back up now — the same export flow as the card's Backup button: a confirm dialog, then the plaintext JSON download (an empty vault honestly says so)."
+                    >
+                      {backingUp ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                      ) : (
+                        <FileDown className="h-3 w-3" aria-hidden />
+                      )}
+                      Back up now
+                    </Button>
                   </li>
                 </ul>
                 <p className="text-[10px] leading-relaxed text-muted-foreground/70">
