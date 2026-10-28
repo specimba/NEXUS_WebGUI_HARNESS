@@ -1,0 +1,11 @@
+  http://localhost:3000/#settings
+"{\"r711beforeR710\":true,\"r711Title\":true,\"census\":true}"
+  http://localhost:3000/#radar
+"frontier-aria-miss"
+  http://localhost:3000/#workflows
+"paste-len:799"
+13
+ ── console error sample (class check) ──
+[error] ./src/components/nexus/settings/whats-fixed.tsx:742:1
+[error] ./src/components/nexus/settings/whats-fixed.tsx:742:1
+[error] ./src/components/nexus/settings/whats-fixed.tsx:742:1

@@ -1,0 +1,9 @@
+── WITNESS 1: cortex_memory fake trio via real executor ──
+{"ok":false,"content":"Tool error: Cortex memory needs the Cortex Edge function or an Upstash Vector index (Settings → Cortex Edge → Semantic memory — the index must use an Upstash-hosted embedding model, e.g. hybrid text-embedding-3-small/BM25)\n(note: direct: fetch failed)","ms":8}
+── WITNESS 2: deep_scrape fake hbKey via real executor ──
+{"ok":true,"content":"[cortex fallback → read_url]\n(note: direct: hyperbrowser /web/fetch HTTP 401: {\"error\":\"NOT AUTHENTICATED\"})\nContent of https://example.com (text/html; charset=utf-8):\n\nExample Domain This domain is for use in documentation examples without needing permission. This is not a service; avoid relying on it for testing and monitoring purposes.","ms":273}
+── VERDICT-FLOW WATCH ──
+EvalEvent 44
+RunReport 15
+AutomationRun 1
+CapabilityCheck 5

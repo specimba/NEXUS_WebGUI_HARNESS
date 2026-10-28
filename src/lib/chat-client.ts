@@ -72,7 +72,14 @@ export interface RunAgentParams {
    * browser-direct engine. Never persisted server-side; absent = the
    * deep_scrape ladder degrades to its read_url/web_search fallback.
    */
-  cortex?: { url: string; key?: string; hbKey?: string };
+  /**
+   * r711: the FULL CortexConfig — the Upstash trio (vectorUrl / vectorToken /
+   * boxApiKey …) rides with it since the direct lanes exist. The old literal
+   * type ({url, key, hbKey}) was a type-level lie: runtime always passed the
+   * whole config object, but a future caller building a literal to THIS type
+   * would silently drop the trio and strand the direct lanes.
+   */
+  cortex?: import("./cortex-edge").CortexConfig;
   signal?: AbortSignal;
   /** Force the legacy server transport (used after a browser-direct CORS death). */
   forceServer?: boolean;
