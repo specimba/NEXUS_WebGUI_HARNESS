@@ -293,3 +293,23 @@ model StrategyItem {
 
   @@index([status, priority])
 }
+
+// r672 (Owner deep-dive ship, KICK corpus interaction_logs adaptation): the
+// durable RSI eval ledger — every gate outcome from workflow runs lands here
+// as a typed row, so the training corpus outlives the browser's trimmed
+// localStorage store. The browser lane POSTs best-effort on run finish
+// (never-throw, fire-and-forget); GET returns the census for the board chip.
+model EvalEvent {
+  id         String   @id @default(cuid())
+  runId      String
+  workflow   String
+  stepId     String?
+  kind       String // "gate-verdict" | "gate-uncertain" | "gate-no-judge" | "gate-judge-error"
+  verdict    String? // "PASS" | "FAIL" (verdicts only)
+  confidence Int? // 0-100
+  note       String // capped 500 by the extractor
+  createdAt  DateTime @default(now())
+
+  @@index([workflow, createdAt])
+  @@index([kind, createdAt])
+}

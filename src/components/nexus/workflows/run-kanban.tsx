@@ -860,6 +860,37 @@ export function RunKanban({
   }, [boardOpen, tick]);
 
   const columns = React.useMemo(() => groupRuns(workflows, serverRuns), [workflows, serverRuns]);
+  // r672: durable RSI ledger census (GET /api/evals) — the training corpus
+  // accumulating in SQLite (KICK corpus interaction_logs adaptation).
+  // Best-effort on mount; a muted corpus stays silent (no signal, no chip,
+  // the r648 doctrine). Unreachable ledger → no chip, never an error.
+  const [ledger, setLedger] = React.useState<{
+    total: number;
+    verdicts: number;
+    fails: number;
+  } | null>(null);
+  React.useEffect(() => {
+    let alive = true;
+    void fetch("/api/evals")
+      .then(async (res) => {
+        if (!res.ok) return;
+        const j = (await res.json()) as { total?: number; verdicts?: number; fails?: number };
+        if (
+          alive &&
+          typeof j.total === "number" &&
+          typeof j.verdicts === "number" &&
+          typeof j.fails === "number"
+        ) {
+          setLedger({ total: j.total, verdicts: j.verdicts, fails: j.fails });
+        }
+      })
+      .catch(() => {
+        /* the ledger census is best-effort — the board renders without it */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
   // Pipeline filter lives in the ui store (persisted): it survives layout
   // switches (grid <-> board) and reloads instead of resetting on unmount.
   const filter = useUiStore((s) => s.boardWorkflowFilter);
@@ -965,6 +996,21 @@ export function RunKanban({
             >
               ⚖ {boardGates.engaged} gate call{boardGates.engaged === 1 ? "" : "s"} · {boardGates.verdicts} verdict{boardGates.verdicts === 1 ? "" : "s"}
               {boardGates.failRuns > 0 ? ` · ${boardGates.failRuns} latest-FAIL` : ""}
+            </span>
+          ) : null}
+          {ledger !== null && ledger.total > 0 ? (
+            <span
+              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}. The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors",
+                ledger.fails > 0
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : ledger.verdicts > 0
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "border-border bg-muted/40 text-muted-foreground"
+              )}
+            >
+              ⧉ ledger {ledger.total}·{ledger.verdicts}
             </span>
           ) : null}
         </p>

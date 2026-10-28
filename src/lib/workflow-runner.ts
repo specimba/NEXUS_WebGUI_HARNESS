@@ -61,6 +61,7 @@ import {
 } from "@/lib/lane-rotation";
 import { resolveExplicitLlm, resolveLlm, type ResolvedLlm } from "@/lib/llm-config";
 import { decide, GATE_MIN_CHARS, SYSTEMONE_GATE_CONFIDENCE } from "@/lib/systemone";
+import { gateEventsOf } from "@/lib/gate-census";
 import {
   BLIND_REVIEW_QUESTION,
   buildBlindReviewInput,
@@ -1095,6 +1096,35 @@ export async function executeWorkflowRun(
       const st0 = useWorkflowsStore.getState();
       const run0 = st0.workflows.find((w) => w.id === wf.id)?.runs.find((r) => r.id === runId);
       if (run0 && run0.status !== "running") {
+        // r672 (RSI ledger slice): the run's gate outcomes land in the durable
+        // SQLite ledger (EvalEvent) — the KICK corpus's interaction_logs
+        // pattern, adapted: the training corpus outlives the browser's trimmed
+        // localStorage. Fire-and-forget, never-throw (same doctrine as the
+        // archive below); empty logs POST nothing.
+        try {
+          const gateEvts = gateEventsOf(run0.callLog);
+          if (gateEvts.length > 0) {
+            void fetch("/api/evals", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                runId: run0.id,
+                workflow: wf.name,
+                events: gateEvts.map((e) => ({
+                  ...(e.stepId != null ? { stepId: e.stepId } : {}),
+                  kind: e.kind,
+                  ...(e.verdict != null ? { verdict: e.verdict } : {}),
+                  ...(e.confidence != null ? { confidence: e.confidence } : {}),
+                  note: e.note,
+                })),
+              }),
+            }).catch(() => {
+              /* the ledger is best-effort — never affect run finalization */
+            });
+          }
+        } catch {
+          /* extraction itself is never-throw; belt and braces */
+        }
         const stepsPayload = run0.steps.map((st) => ({
           stepId: st.stepId,
           agentName: st.agentName,

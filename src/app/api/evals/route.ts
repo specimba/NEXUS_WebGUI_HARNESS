@@ -1,0 +1,120 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+// ─── r672: Durable RSI eval ledger (Owner deep-dive ship) ────────────────────
+// The KICK corpus's interaction_logs pattern, adapted (KB-1-a candidate #2):
+// every gate outcome from a finished workflow run lands here as a typed row
+// in SQLite — the training corpus outlives the browser's trimmed localStorage
+// store and becomes queryable history. The runner POSTs fire-and-forget on
+// run finalization (never-throw on both sides); the Runs board digest GETs
+// the census for its ledger chip.
+//
+// POST { runId, workflow, events: [{ stepId?, kind, verdict?, confidence?, note }] }
+//   → { ok, written } — tolerant row validation, capped batch (64), capped
+//     note (500), ledger hygiene keeps the newest 4000 rows.
+// GET → { total, verdicts, fails, latest: [...] } — the board census.
+
+const KINDS = new Set([
+  "gate-verdict",
+  "gate-uncertain",
+  "gate-no-judge",
+  "gate-judge-error",
+]);
+const MAX_BATCH = 64;
+const LEDGER_KEEP = 4000;
+
+interface IncomingEvent {
+  stepId?: string;
+  kind?: string;
+  verdict?: string;
+  confidence?: number;
+  note?: string;
+}
+
+export async function POST(req: Request): Promise<NextResponse> {
+  try {
+    const body = (await req.json()) as Record<string, unknown>;
+    const runId = typeof body.runId === "string" ? body.runId.slice(0, 64) : "";
+    const workflow = typeof body.workflow === "string" ? body.workflow.slice(0, 120) : "";
+    if (!runId || !workflow) {
+      return NextResponse.json({ error: "runId and workflow are required" }, { status: 400 });
+    }
+    const events: IncomingEvent[] = Array.isArray(body.events)
+      ? (body.events as IncomingEvent[]).slice(0, MAX_BATCH)
+      : [];
+    const rows: {
+      runId: string;
+      workflow: string;
+      stepId?: string;
+      kind: string;
+      verdict?: string;
+      confidence?: number;
+      note: string;
+    }[] = [];
+    for (const e of events) {
+      if (!e || typeof e !== "object") continue;
+      if (typeof e.kind !== "string" || !KINDS.has(e.kind)) continue;
+      if (typeof e.note !== "string" || e.note.length === 0) continue;
+      const row = {
+        runId,
+        workflow,
+        ...(typeof e.stepId === "string" && e.stepId.length > 0
+          ? { stepId: e.stepId.slice(0, 64) }
+          : {}),
+        kind: e.kind,
+        ...(((e.verdict === "PASS" || e.verdict === "FAIL") ? { verdict: e.verdict } : {})),
+        ...(typeof e.confidence === "number" && Number.isFinite(e.confidence)
+          ? { confidence: Math.min(100, Math.max(0, Math.round(e.confidence))) }
+          : {}),
+        note: e.note.slice(0, 500),
+      };
+      rows.push(row);
+    }
+    if (rows.length > 0) {
+      await db.evalEvent.createMany({ data: rows });
+      // Ledger hygiene (the corpus's own caps doctrine): keep the newest rows;
+      // a runaway loop can't balloon SQLite one run at a time forever.
+      const total = await db.evalEvent.count();
+      if (total > LEDGER_KEEP + 500) {
+        const stale = await db.evalEvent.findMany({
+          orderBy: { createdAt: "desc" },
+          skip: LEDGER_KEEP,
+          take: total - LEDGER_KEEP,
+          select: { id: true },
+        });
+        if (stale.length > 0) {
+          await db.evalEvent.deleteMany({ where: { id: { in: stale.map((s) => s.id) } } });
+        }
+      }
+    }
+    return NextResponse.json({ ok: true, written: rows.length });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "evals append failed" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(): Promise<NextResponse> {
+  try {
+    const [total, verdicts, fails, latest] = await Promise.all([
+      db.evalEvent.count(),
+      db.evalEvent.count({ where: { kind: "gate-verdict" } }),
+      db.evalEvent.count({ where: { kind: "gate-verdict", verdict: "FAIL" } }),
+      db.evalEvent.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { workflow: true, kind: true, verdict: true, confidence: true, createdAt: true },
+      }),
+    ]);
+    return NextResponse.json({ total, verdicts, fails, latest });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "evals census failed" },
+      { status: 500 }
+    );
+  }
+}

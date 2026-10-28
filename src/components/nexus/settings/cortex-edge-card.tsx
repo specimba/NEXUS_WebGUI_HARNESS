@@ -45,6 +45,14 @@ import {
   probeCortexEdge,
 } from "@/lib/cortex-edge";
 import type { CortexConfig, CortexProbeResult } from "@/lib/cortex-edge";
+import {
+  CORTEX_PROBE_FRESH_MS,
+  cortexCensusOf,
+  cortexStatusLabel,
+  persistCortexProbe,
+  readCortexProbe,
+  type CortexCensus,
+} from "@/lib/cortex-census";
 import { copyText, truncate } from "@/lib/helpers";
 import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -169,6 +177,12 @@ export function CortexEdgeCard() {
   const [guideOpen, setGuideOpen] = React.useState(false);
   const [probing, setProbing] = React.useState(false);
   const [probe, setProbe] = React.useState<CortexProbeResult | null>(null);
+  // r672: the probe verdict is now PERSISTED (cortex-census adapter) — the
+  // census survives reloads and renders on every mount, killing the card's
+  // ephemeral-probe staleness (KB-1-b finding: green badge while edge down).
+  const [census, setCensus] = React.useState<CortexCensus>(() =>
+    cortexCensusOf(readCortexProbe())
+  );
   const [copying, setCopying] = React.useState(false);
 
   /** Persist one field; an entirely empty config is stored as absent. */
@@ -211,15 +225,29 @@ export function CortexEdgeCard() {
     return cleaned;
   }
 
+  /** Record a probe verdict: component state + the persisted census, together. */
+  function recordProbe(result: CortexProbeResult) {
+    setProbe(result);
+    persistCortexProbe({
+      at: Date.now(),
+      ok: result.ok,
+      ms: result.ms,
+      ...(result.edgeRegion != null ? { edgeRegion: result.edgeRegion } : {}),
+      ...(result.lanes != null ? { lanes: result.lanes } : {}),
+      ...(result.error != null ? { error: result.error } : {}),
+    });
+    setCensus(cortexCensusOf(readCortexProbe()));
+  }
+
   async function handleProbe() {
     if (probing) return;
     const cfg = patchCortex({});
     setProbing(true);
     setProbe(null);
     try {
-      setProbe(await probeCortexEdge(cfg));
+      recordProbe(await probeCortexEdge(cfg));
     } catch (err) {
-      setProbe({
+      recordProbe({
         ok: false,
         ms: 0,
         error: err instanceof Error ? err.message : "probe failed",
@@ -258,6 +286,28 @@ export function CortexEdgeCard() {
     cortex.boxId?.trim()
   );
 
+  // r672: auto-probe on mount when ARMED and the persisted verdict is stale
+  // (or absent) — one honest fetch, never-throw; the census chip reflects it
+  // immediately from the persisted verdict either way.
+  const armedRef = React.useRef(laneArmed);
+  armedRef.current = laneArmed;
+  React.useEffect(() => {
+    if (!armedRef.current) return;
+    const p = readCortexProbe();
+    const c = cortexCensusOf(p);
+    setCensus(c);
+    if (!p || c.ageMs > CORTEX_PROBE_FRESH_MS) {
+      void (async () => {
+        try {
+          recordProbe(await probeCortexEdge(useSettingsStore.getState().settings.cortex ?? EMPTY_CORTEX));
+        } catch {
+          /* never-throw: the census keeps its previous honest verdict */
+        }
+      })();
+    }
+    // mount-only by design: the freshness window, not deps, drives re-probes
+  }, []);
+
   // Probe matrix — rendered only when the v2 function answered with lanes
   // (undefined on a v1 function / on probe failure → graceful v1 degrade).
   const lanes = probe?.lanes;
@@ -284,6 +334,32 @@ export function CortexEdgeCard() {
           >
             {laneArmed ? "lane armed" : "lane off"}
           </Badge>
+          {/* r672: the persisted-Verdict census chip — always-on liveness in the
+              KICK corpus's HUD vocabulary (`//` mono codes, CORTEX // ACTIVE),
+              tone per the house system: emerald online, amber armed-but-down,
+              muted unprobed. Survives reloads; refreshes via the Probe button
+              and the mount auto-probe. */}
+          <Badge
+            variant="outline"
+            aria-label={`Cortex liveness: ${cortexStatusLabel(census)}`}
+            title={`${cortexStatusLabel(census)} — the verdict is persisted locally and survives reloads; the mount auto-probe refreshes it when older than ${Math.round(CORTEX_PROBE_FRESH_MS / 60000)} minutes (armed configs only).`}
+            className={cn(
+              "font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+              probing
+                ? "animate-pulse border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                : census.tone === "online"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : census.tone === "offline"
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground"
+            )}
+          >
+            {probing
+              ? "CORTEX // PROBING"
+              : census.probed
+                ? `CORTEX // ${census.online ? "ONLINE" : "OFFLINE"} · ${census.lanesArmed}/${census.lanesTotal}`
+                : "CORTEX // UNPROBED"}
+          </Badge>
         </CardTitle>
         <CardDescription>
           Server-side deep-web + intelligence lanes for agents — Hyperbrowser at the edge, kickbot-proven
@@ -294,6 +370,27 @@ export function CortexEdgeCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* HUD status line — the full census verdict in the KICK corpus's
+            telemetry vocabulary; visible kinship, house palette. */}
+        <p
+          aria-label={`Cortex status: ${cortexStatusLabel(census)}`}
+          className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "inline-block size-1.5 shrink-0 rounded-full transition-colors",
+              probing
+                ? "animate-pulse bg-violet-500"
+                : census.tone === "online"
+                  ? "bg-emerald-500"
+                  : census.tone === "offline"
+                    ? "bg-amber-500"
+                    : "bg-muted-foreground/40"
+            )}
+          />
+          {cortexStatusLabel(census)}
+        </p>
         {/* Function URL */}
         <div className="space-y-1.5">
           <Label htmlFor="cortex-url" className="text-xs">

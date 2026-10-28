@@ -87,3 +87,90 @@ export function gateCensusOf(
     ? { engaged, verdicts, verdictLine, ...(verdictTone ? { verdictTone } : {}) }
     : { engaged, verdicts };
 }
+
+/**
+ * r672 (RSI ledger slice): typed events extracted from the same note
+ * vocabulary — the KICK corpus's interaction_logs pattern (KB-1-a candidate
+ * #2): a durable ledger row per gate outcome, so the training corpus grows
+ * from production verdicts instead of living only in the browser's trimmed
+ * localStorage store. The census counts; the events EXPLAIN.
+ */
+export type GateEventKind =
+  /** A confident judge verdict landed (PASS or FAIL, any family). */
+  | "gate-verdict"
+  /** The judge answered but below gate confidence — accepted unchanged. */
+  | "gate-uncertain"
+  /** The gate engaged; no judge rung answered (congestion / unarmed). */
+  | "gate-no-judge"
+  /** The judge dial itself errored — an infra stop, not a quality verdict. */
+  | "gate-judge-error";
+
+export interface GateEvent {
+  kind: GateEventKind;
+  /** PASS | FAIL — verdicts only. */
+  verdict?: "PASS" | "FAIL";
+  /** Judge confidence, 0-100 (verdicts and uncertains). */
+  confidence?: number;
+  /** Which rung answered, when the note names it (e.g. "fast-model"). */
+  via?: string;
+  /** The step the gate judged, when the callLog row carries it (r672 ledger). */
+  stepId?: string;
+  /** The note verbatim, capped at 500 chars (the export-cap doctrine). */
+  note: string;
+}
+
+const VERDICT_EVENT_RE = /^(?:System-One|Decision) gate (PASS|FAIL) (\d+)%(?: \(([^)]+)\))?/;
+const UNCERTAIN_RE = /^Decision gate uncertain (\d+)%(?: \(([^)]+)\))?/;
+
+/** Extract typed gate events from a call log (tolerant, note-head anchored). */
+export function gateEventsOf(
+  callLog?: { note?: string; stepId?: string }[] | null
+): GateEvent[] {
+  if (!callLog || callLog.length === 0) return [];
+  const out: GateEvent[] = [];
+  for (const c of callLog) {
+    const note = c?.note;
+    if (!note || typeof note !== "string") continue;
+    const stepId = typeof c.stepId === "string" ? c.stepId : undefined;
+    const withStep = (e: Omit<GateEvent, "stepId">): GateEvent =>
+      stepId != null ? { ...e, stepId } : e;
+    if (note.startsWith(GATE_VERDICT_PREFIX)) {
+      const m = VERDICT_EVENT_RE.exec(note);
+      if (m) {
+        out.push(withStep({
+          kind: "gate-verdict",
+          verdict: m[1] as "PASS" | "FAIL",
+          confidence: Number(m[2]),
+          ...(m[3] != null ? { via: m[3] } : {}),
+          note: note.slice(0, 500),
+        }));
+      }
+    } else if (note.startsWith(GATE_ENGAGE_PREFIX)) {
+      const u = UNCERTAIN_RE.exec(note);
+      if (u) {
+        out.push(withStep({
+          kind: "gate-uncertain",
+          confidence: Number(u[1]),
+          ...(u[2] != null ? { via: u[2] } : {}),
+          note: note.slice(0, 500),
+        }));
+      } else if (note.includes("no judge answered")) {
+        out.push(withStep({ kind: "gate-no-judge", note: note.slice(0, 500) }));
+      } else if (note.includes("judge errored")) {
+        out.push(withStep({ kind: "gate-judge-error", note: note.slice(0, 500) }));
+      } else {
+        const v = VERDICT_EVENT_RE.exec(note);
+        if (v) {
+          out.push(withStep({
+            kind: "gate-verdict",
+            verdict: v[1] as "PASS" | "FAIL",
+            confidence: Number(v[2]),
+            ...(v[3] != null ? { via: v[3] } : {}),
+            note: note.slice(0, 500),
+          }));
+        }
+      }
+    }
+  }
+  return out;
+}
