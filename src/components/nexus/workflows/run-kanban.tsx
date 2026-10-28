@@ -531,7 +531,7 @@ function RunCard({
                     : "border-border bg-muted/40 text-muted-foreground"
               )}
             >
-              ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}
+              ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}{census.uncertain > 0 ? ` · ${census.uncertain}u` : ""}{census.noJudge > 0 ? ` · ${census.noJudge}nj` : ""}
             </span>
           );
         })()}
@@ -1032,6 +1032,8 @@ export function RunKanban({
     let verdictRuns = 0;
     let verdicts = 0;
     let failRuns = 0;
+    let uncertain = 0;
+    let noJudge = 0;
     // r682: witness tally over the SAME visible set — the corpus ledger may
     // hold more (server-side finalization POSTs after the browser is gone);
     // the digest makes the visible-vs-corpus gap legible instead of silent.
@@ -1047,6 +1049,8 @@ export function RunKanban({
         if (census.engaged === 0 && census.verdicts === 0) return;
         engaged += 1;
         verdicts += census.verdicts;
+        uncertain += census.uncertain;
+        noJudge += census.noJudge;
         notes.push(...(c.run.callLog ?? []).map((row) => row?.note));
         if (typeof census.latestAt === "number") gateStamps.push(census.latestAt);
         if (census.verdicts > 0) {
@@ -1056,7 +1060,7 @@ export function RunKanban({
       })
     );
     const latestAt = gateStamps.length > 0 ? Math.max(...gateStamps) : undefined;
-    return { engaged, verdictRuns, verdicts, failRuns, witness: familyTallyOf(notes), latestAt };
+    return { engaged, verdictRuns, verdicts, failRuns, uncertain, noJudge, witness: familyTallyOf(notes), latestAt };
   }, [visible]);
   // r692: the ⚖ chip's own freshness — visible-run gate activity (callLog
   // `at`, read through the same ledger-freshness home) beside the corpus's
@@ -1104,7 +1108,7 @@ export function RunKanban({
       {boardHarness.runs > 0 ? (
         <p
           className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[10px] tabular-nums text-muted-foreground"
-          title="TraceTrial F3 (arXiv 2610.32285): runs that finished green while violating at least one harness criterion — success is not reliable. Judged separately from the task outcome. The ⚖ chip aggregates the Decision gate's call-log census across visible runs — amber when any run's latest verdict is a FAIL, emerald when verdicts landed clean, muted while judges stay unanswered. The ◈/◇ witness count covers the VISIBLE runs' call-log notes only; the ⧉ ledger chip's tally covers every archived event in SQLite — including runs whose client record never landed, because server-side finalization POSTs after the browser is gone (the corpus outlives the trimmed store)."
+          title="TraceTrial F3 (arXiv 2610.32285): runs that finished green while violating at least one harness criterion — success is not reliable. Judged separately from the task outcome. The ⚖ chip aggregates the Decision gate's call-log census across visible runs — amber when any run's latest verdict is a FAIL, emerald when verdicts landed clean, muted while judges stay unanswered. The u/nj suffixes decode the ungated side: u = the judge answered below confidence (uncertain), nj = no judge answered — that step ran ungated. The ◈/◇ witness count covers the VISIBLE runs' call-log notes only; the ⧉ ledger chip's tally covers every archived event in SQLite — including runs whose client record never landed, because server-side finalization POSTs after the browser is gone (the corpus outlives the trimmed store)."
         >
           <span>
             {boardHarness.runs} run{boardHarness.runs === 1 ? "" : "s"} on the board
@@ -1131,6 +1135,8 @@ export function RunKanban({
             >
               ⚖ {boardGates.engaged} gate call{boardGates.engaged === 1 ? "" : "s"} · {boardGates.verdicts} verdict{boardGates.verdicts === 1 ? "" : "s"}
               {boardGates.failRuns > 0 ? ` · ${boardGates.failRuns} latest-FAIL` : ""}
+              {boardGates.uncertain > 0 ? ` · ${boardGates.uncertain}u` : ""}
+              {boardGates.noJudge > 0 ? ` · ${boardGates.noJudge}nj` : ""}
               {boardGates.witness.cross > 0 ? (
                 <span className="ml-1 text-violet-600 dark:text-violet-400">◈{boardGates.witness.cross}</span>
               ) : null}

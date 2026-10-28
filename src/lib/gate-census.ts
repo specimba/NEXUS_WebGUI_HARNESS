@@ -41,6 +41,10 @@ export interface GateCensus {
   engaged: number;
   /** Confident verdicts: judges that answered with ≥threshold confidence. */
   verdicts: number;
+  /** r713: the judge answered below confidence — engaged but not confident. */
+  uncertain: number;
+  /** r713: no judge answered — the step ran ungated (the honest alarm). */
+  noJudge: number;
   /** LATEST verdict outcome found, e.g. "FAIL 95%" — for at-a-glance chips. */
   verdictLine?: string;
   /** Tone of the latest verdict: pass → emerald, fail → amber. */
@@ -50,7 +54,7 @@ export interface GateCensus {
   latestAt?: number;
 }
 
-const EMPTY: GateCensus = { engaged: 0, verdicts: 0 };
+const EMPTY: GateCensus = { engaged: 0, verdicts: 0, uncertain: 0, noJudge: 0 };
 
 /** Count gate engagements + verdicts from a run's call log (tolerant input).
  *  r692: rows may carry `at` (epoch ms, RunCallLogEntry) — the newest
@@ -62,6 +66,8 @@ export function gateCensusOf(
   if (!callLog || callLog.length === 0) return EMPTY;
   let engaged = 0;
   let verdicts = 0;
+  let uncertain = 0;
+  let noJudge = 0;
   let verdictLine: string | undefined;
   let latestAt: number | undefined;
   // r692: only rows the census COUNTS stamp freshness — an unrelated
@@ -87,6 +93,10 @@ export function gateCensusOf(
       if (/^Decision gate (?:PASS|FAIL) \d+%/.test(note)) {
         verdicts += 1;
         verdictLine = VERDICT_OUTCOME_RE.exec(note)?.[0] ?? verdictLine;
+      } else if (UNCERTAIN_RE.test(note)) {
+        uncertain += 1;
+      } else if (note.includes("no judge answered")) {
+        noJudge += 1;
       }
     }
   }
@@ -100,8 +110,8 @@ export function gateCensusOf(
       : undefined;
   const withStamp = latestAt !== undefined ? { latestAt } : {};
   return verdictLine
-    ? { engaged, verdicts, verdictLine, ...(verdictTone ? { verdictTone } : {}), ...withStamp }
-    : { engaged, verdicts, ...withStamp };
+    ? { engaged, verdicts, uncertain, noJudge, verdictLine, ...(verdictTone ? { verdictTone } : {}), ...withStamp }
+    : { engaged, verdicts, uncertain, noJudge, ...withStamp };
 }
 
 /**

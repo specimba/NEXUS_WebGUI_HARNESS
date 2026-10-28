@@ -1,0 +1,8 @@
+  http://localhost:3000/#settings
+"{\"r713first\":true,\"census\":true}"
+  http://localhost:3000/#radar
+"frontier-aria-clicked"
+  http://localhost:3000/#workflows
+"{\"chips\":[],\"paste\":\"paste-len:799\"}"
+  http://localhost:3000/#workflows
+"{\"gateChips\":[]}"
