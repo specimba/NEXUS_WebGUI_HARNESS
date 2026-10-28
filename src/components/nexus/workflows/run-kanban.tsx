@@ -1018,7 +1018,7 @@ export function RunKanban({
           ) : null}
           {ledger !== null && ledger.total > 0 ? (
             <span
-              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}. The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}`}
+              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
                 ledger.fails > 0
@@ -1033,6 +1033,13 @@ export function RunKanban({
               turns amber when a run's gate failed; the count itself now reads
               without opening the ledger or hovering. */}
               {ledger.fails > 0 ? <span className="ml-1 font-bold">✕{ledger.fails}</span> : null}
+              {/* r680: the honest-trace family completes the glance line —
+              engaged-without-a-confident-verdict (uncertain / no judge /
+              judge errored) is the r659/r660 doctrine's third outcome; the
+              muted ∅K keeps an unanswered gate from masquerading as health. */}
+              {ledger.total - ledger.verdicts > 0 ? (
+                <span className="ml-1 text-muted-foreground">∅{ledger.total - ledger.verdicts}</span>
+              ) : null}
               {/* r678: drift counts leave the tooltip — cross/same-family
               tallies read at a glance on the digest line itself. */}
               {ledger.family && ledger.family.cross > 0 ? (

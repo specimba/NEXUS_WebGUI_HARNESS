@@ -3030,3 +3030,26 @@ Round Handoff:
 Round ID: r680 -> next patrol (job 473388)
 Next recommended action: (1) P4 decisive diagnosis: run the golden QA once — the drift eval now returns radios (labels + aria-checked), ledger-ish span-title count, digest presence, and a dialog-open flag when the chip is absent; read that dump and fix the ONE blocker it reveals (panel-displacement -> close the panel before reading; board-not-open -> check setBoardOpen/aria-checked; fetch-null -> check the ledger GET in-context). (2) KB-1-a backlog: forensic-diagnosis fixtures deepened (#3) or poison-purge (#4). (3) Radar chips witness on the next registry finding. Driver notes: real toggle = workflows-view.tsx ~2001 aria-label "Runs board layout" (native button, role radio); chip render condition run-kanban.tsx ~1019 (ledger !== null && total > 0, inside the digest <p>); diagnostics live in the cdp-qa-golden-r673.mjs drift eval (r679 block); natural-run decision comment sits right above the pick block.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+---
+Task ID: r680
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 680 (job 473388) — follow r679 handoff: P4 decisive diagnosis via the armed diagnostics, then increment
+
+Work Log:
+- P4 IS GREEN (handoff #1 delivered): golden QA 4/4 PASS, console-errors 0. The diagnostic dump named it — boardMode "already", chip present on navigation with the full inline tally: ⧉ ledger 34·15✕6◈20, driftWitness true.
+- r679 mystery RESOLVED: the click HAD worked — the ui-store persisted workflowBoardOpen true, so r680's run entered through "already". The same-session chip absence was the cold /api/evals lazy-compile stall hitting the IN-PAGE fetch (the r676 failure mode, client side this time): ledger stayed null past the whole 8-poll window, then the route warmed. Harness poll hardened 8x1.3s -> 12x1.5s (~18s) with a comment; a cold compile can no longer flake P4.
+- Honest observation recorded: gateWitnessed 0 — no VISIBLE card's ⚖ tooltip carries a family-witness sentence even though the corpus holds 20 witnessed notes. The witnessed verdicts live in runs no longer among the visible cards (store trimming) — an honest zero, not a bug; noted for a future round (visible-card witness coverage).
+- Ledger auto-growth round 5: census 30 -> {total:34, verdicts:15, fails:6, family:{cross:20, same:0}} — the r679 QA pick's natural run landed (latest event kind gate-uncertain confidence 55).
+- KB-1-a anchor declared DEAD: nothing in docs/ matches (grep empty) — the handoff jargon pointed at no real backlog; the increment instead comes from witnessed QA data.
+- SHIP (user-facing + styling): the r659/r660 honest-trace family completes the ⧉ glance line — engaged-without-a-confident-verdict (uncertain / no judge / judge errored = total - verdicts, computed client-side, ZERO schema change) now reads as muted ∅K beside N·M ✕F ◈K, and the tooltip names the family ("never counted as a pass"). Today's latest ledger event is exactly that kind (gate-uncertain) — the glyph ships on real data. FixNote r680.
+- MultiEdit note (r677 lesson held): first attempt failed on a leading-space anchor mismatch and applied NOTHING (atomic this time) — state grepped before retry, no duplication.
+- GATES: tsc 0 · lint 0/33-exact · golden QA 4/4 PASS (P1 settings+relay, P2 radar+frontier, P3 palette+paste, P4 ledger-drift-witness) · console 0.
+
+Stage Summary:
+- The golden floor is 4/4 for the first time: P4 went green after two honest-red rounds, and the fix chain (r678 guess -> r679 label truth + diagnostics -> r680 confirmation) is itself the documented method.
+- The ⧉ glance line now reads the full gate outcome space: verdicts M, failures ✕F, unanswered ∅K, drift ◈K/◇M.
+
+Round Handoff:
+Round ID: r681 -> next patrol (job 473388)
+Next recommended action: (1) Golden floor maintenance: P4 now enters through "already" (persisted board-open) — if a future profile reset flips it to grid, the hardened 12x1.5s poll covers the cold-fetch path; no action unless P4 flakes. (2) Visible-card witness coverage: gateWitnessed 0 while corpus holds 20 witnessed notes — consider a digest-level "witnessed notes in visible runs" counter OR investigate whether store trimming hides the witnessed runs (honest zero vs blind spot). (3) Backlog anchors: the task template's TASK-101/102 and the handoff's KB-1-a are both dead strings — next round should pick increments from live QA data or the real TASKS.md rows (TraceTrial r656+ remaining, Looped FAIL-branch live-witness). (4) Radar chips witness on the next registry finding. Driver notes: ∅ glyph = run-kanban.tsx r680 block (~line 1036); harness poll = cdp-qa-golden-r673.mjs r680 hardening comment; kind vocabulary = evals route KINDS set (gate-verdict/uncertain/no-judge/judge-error) + gate-census.ts adapter.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.

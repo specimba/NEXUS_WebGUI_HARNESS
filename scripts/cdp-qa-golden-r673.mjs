@@ -135,8 +135,12 @@ try {
     return "no-toggle";
   })()`);
   await sleep(1400);
+  // r680 hardening: r679's post-click poll (8×1.3s) likely lost to the cold
+  // /api/evals lazy-compile (the r676 stall, this time on an in-page fetch —
+  // the click had already persisted board-open, proven by r680's "already").
+  // 12×1.5s ≈ 18s covers a cold compile.
   let drift = { found: false };
-  for (let attempt = 0; attempt < 8 && drift.found !== true; attempt++) {
+  for (let attempt = 0; attempt < 12 && drift.found !== true; attempt++) {
     drift = await evalJs(ws, `(() => {
     const chips = [...document.querySelectorAll("span[title]")];
     const led = chips.find((el) => (el.textContent ?? "").includes("⧉ ledger"));
