@@ -113,13 +113,64 @@ export function EgressCard() {
 
   const configured = !!status?.configured;
 
-  const refreshStatus = React.useCallback(async () => {
+  // r708: the mount-path freshness stamp (r707 finding, r672 cortex pattern).
+  // A card open used to re-dial Webshare via /api/egress/status whenever the
+  // server's 60s pool cache had expired — every refresh past a minute was a
+  // real upstream dial for data that moves slowly (30 proxies, stable
+  // countries). The last status now lives in sessionStorage with a 5-minute
+  // stamp: within the window the card renders the cached truth and the
+  // upstream is NOT dialed; past it, or on the explicit token save/clear
+  // paths (force), the fetch runs as before. Token preview + routing stay
+  // cheap local GETs — they never dial Webshare. sessionStorage scope: a
+  // fresh tab gets one honest dial; the stamp is per-session politeness,
+  // not a truth cache.
+  const EGRESS_STATUS_TTL_MS = 5 * 60 * 1000;
+  const readCachedStatus = (): EgressStatus | null => {
+    try {
+      const raw = sessionStorage.getItem("nexus-egress-status");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { at?: number; status?: EgressStatus };
+      if (!parsed?.at || Date.now() - parsed.at > EGRESS_STATUS_TTL_MS) return null;
+      return parsed.status?.ok ? parsed.status : null;
+    } catch {
+      return null; // quota/parse failure — the stamp is best-effort
+    }
+  };
+  const writeCachedStatus = (s: EgressStatus) => {
+    try {
+      sessionStorage.setItem("nexus-egress-status", JSON.stringify({ at: Date.now(), status: s }));
+    } catch {
+      /* quota — the stamp is best-effort */
+    }
+  };
+
+  const refreshStatus = React.useCallback(async (opts?: { force?: boolean }) => {
+    if (!opts?.force) {
+      const cached = readCachedStatus();
+      if (cached) {
+        setStatus(cached);
+        // the token preview is a cheap local GET (mask preview only, no
+        // upstream dial) — keep it fresh even on the cached path
+        try {
+          const t = await fetch("/api/egress/token", { cache: "no-store" }).then(
+            (r) => r.json() as Promise<TokenStatus>,
+          );
+          if (t.ok) setTokenPreview(t.tokenPreview ?? null);
+        } catch {
+          /* keep previous preview */
+        }
+        return;
+      }
+    }
     try {
       const [s, t] = await Promise.all([
         fetch("/api/egress/status", { cache: "no-store" }).then((r) => r.json() as Promise<EgressStatus>),
         fetch("/api/egress/token", { cache: "no-store" }).then((r) => r.json() as Promise<TokenStatus>),
       ]);
-      if (s.ok) setStatus(s);
+      if (s.ok) {
+        setStatus(s);
+        writeCachedStatus(s);
+      }
       if (t.ok) setTokenPreview(t.tokenPreview ?? null);
     } catch {
       /* status fetch failure → card shows its honest "unknown" state */
@@ -174,7 +225,7 @@ export function EgressCard() {
           description: res.probe?.error ?? "probe failed",
         });
       }
-      await refreshStatus();
+      await refreshStatus({ force: true });
     } catch {
       toast.error("Token save failed — network error");
     } finally {
@@ -197,7 +248,7 @@ export function EgressCard() {
       } else {
         toast.error("Token clear failed");
       }
-      await refreshStatus();
+      await refreshStatus({ force: true });
     } catch {
       toast.error("Token clear failed — network error");
     } finally {
