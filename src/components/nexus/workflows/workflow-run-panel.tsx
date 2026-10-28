@@ -1512,12 +1512,14 @@ export function WorkflowRunPanel({
                 if (!census || (census.engaged === 0 && census.verdicts === 0)) return null;
                 return (
                   <span
-                    title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the full tried-ladder trace lives in the call log below.`}
+                    title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the full tried-ladder trace lives in the call log below; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green.`}
                     className={cn(
                       "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums",
-                      census.verdicts > 0
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "border-border bg-muted/40 text-muted-foreground"
+                      census.verdictTone === "fail"
+                        ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : census.verdictTone === "pass"
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "border-border bg-muted/40 text-muted-foreground"
                     )}
                   >
                     ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}

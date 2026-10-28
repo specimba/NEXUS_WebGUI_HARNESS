@@ -2753,3 +2753,26 @@ Round ID: r670 -> next patrol (job 473388)
 Next recommended action: (1) Read the board after reload: expect FIVE ⚖ chips with truer counts (1·0, 2·2, 1·1, 1·1, 6·0), three in emerald, verdict lines visible ("FAIL 95%" / "PASS 95%") — verify the verdictLine render on BOTH board and panel-header chips (open c0c31b's run panel for the header chip). (2) A calm-window confident-verdict live witness is now OPTIONAL — the ledger already proves the ladder answers (3 runs, PASS+FAIL); prefer spending rounds on TASK-101 durable-step semantics or the Owner-witnessed vault restore. (3) Radar chips witness on the next registry finding. Driver notes: gate truth = localStorage nexus-workflows store, one eval, works headless; census reads BOTH verdict families now.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0 lint=0(33-warning baseline exact) console=0 page-errors=0; board-chip receipt live (see CHIPS in commit msg); note: the r669 ship first aborted on tsc rc=2 — the error was the round-2 recon script scripts/r669-read-runs.ts (better-sqlite3 import), NOT product code; dead script removed, gates re-run green.
+
+---
+Task ID: r670
+Agent: NEXUS patrol (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610281107)
+Task: Patrol round — panel-header verdictLine verification (handoff 1), golden QA, backlog triage, verdict-toned gate chips (the increment), fixture, gates, dual push.
+
+Work Log:
+- OPENING: server 200, HEAD=r669, clean tree. Handoff 1 CLOSED in one round: clicked the c0c31b card via its own chip text (1·2 · FAIL 95%), panel opened (Export button present), the 6th chip in the DOM was the PANEL-HEADER chip carrying the same verdict line — verdictLine renders on BOTH surfaces, console 0.
+- GOLDEN QA: paths 1+2 green (relay ladder + frontier tab + 900px scroll), console 0. A false alarm en route, honestly closed: the "Census parsed from freellm.sh" line is a TOOLTIP (title attr), not innerText — the r669 eval pattern was wrong, not the UI; badge renders with its teal/stone classes as designed. No regression.
+- BACKLOG TRIAGE: TASK-101/102 exist ONLY inside the cron-template paste block (docs/platform/cron-creation-criteria.md) — stale references; the real spec is docs/specs/harness-adapter-spec.md (fully shipped r580, 12-check fixture) and TASKS.md's open P1s are Owner-keyed (PAT rotation, Webshare token). Read the whole open-backlog: the convergent remaining item across TraceTrial/Looped/peer-blind rows is the live confident-verdict witness — which r669 proved in the LEDGER (3 runs, PASS+FAIL). So the increment pivoted to the honesty gap the live board receipt EXPOSED:
+- INCREMENT — verdict-toned gate chips: the r669 chips stayed EMERALD whenever any verdict landed, so "FAIL 95%" read as success. gate-census.ts now derives verdictLine from the LATEST verdict (rework-then-pass reads PASS — final gate state) + verdictTone (pass→emerald, fail→amber, engaged-only→muted) — the r659 note-family colors finally at chip level; both call sites (board + panel header) consume it, tooltips state the latest-verdict coloring.
+- FIXTURE: scripts/qa-gate-census.ts (the adapter's first, dial-free) — 25/25, and it caught a REAL never-throw violation en route: a junk callLog row (note: 123) crashed startsWith; gateCensusOf now skips non-string notes (r580 fixture-catches-registry precedent).
+- LIVE RECEIPT: board re-rendered post-ship — TONES eval shows amber/emerald/muted exactly per the latest verdict (see TONES in commit message).
+- GATES: tsc=RC lint=RC with WARN warnings (baseline 33); console=CERRS page-errors=PERRS. BUDGET: 10 rounds, no overrun (localStorage shortcut honored from round 1 as handed off).
+
+Stage Summary:
+- The gate chip family is now tone-honest end to end: PASS emerald, FAIL amber, engaged-only muted — board, panel header, and call-log notes all speak the same color language.
+- gate-census.ts: two verdict families counted, latest-outcome line, tone derivation, junk-proof reader, first fixture 25/25.
+
+Round Handoff:
+Round ID: r671 -> next patrol (job 473388)
+Next recommended action: (1) The r669 stale-reference cleanup: TASK-101/TASK-102 in docs/platform/cron-creation-criteria.md point at rows that no longer exist — reword that paste block to name real backlog anchors (harness-adapter-spec.md, TASKS.md open rows) so future rounds stop chasing ghosts; one doc edit, zero code risk. (2) Radar chips witness on the next registry finding. (3) Owner-witnessed vault restore happy path (unchanged). (4) If a calm window: a live crew-run peer-blind-score witness (TASKS.md P2 peer-blind row's remaining item). Driver notes: gate truth = localStorage nexus-workflows eval; chip tone = gateCensusOf(...).verdictTone, fixture scripts/qa-gate-census.ts is the regression pin.
+Blockers: none. Owner queue: none pending.
