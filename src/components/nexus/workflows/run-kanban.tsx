@@ -37,6 +37,7 @@ import { harnessChipForRun } from "@/lib/trace-trial";
 import { loopedOutcomeChip } from "@/lib/looped-outcome";
 import { GATE_MIN_CHARS } from "@/lib/systemone";
 import { gateCensusOf } from "@/lib/gate-census";
+import { familyTallyOf } from "@/lib/family-witness";
 
 /** v24: one server-lane AutomationRun row (from /api/automation/sync GET). */
 interface ServerRunRow {
@@ -500,10 +501,13 @@ function RunCard({
           // adapter (r649 doctrine) — same note prefixes, same shape, now also
           // read by the run panel's header. Data-layer truth, not rendered text.
           const census = gateCensusOf(run.callLog);
+          // r677: per-run drift witness — how many of this run's judge notes
+          // are family-disjoint (cross) vs same-family (same).
+          const fam = familyTallyOf((run.callLog ?? []).map((c) => c.note));
           if (census.engaged === 0 && census.verdicts === 0) return null;
           return (
             <span
-              title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).`}
+              title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
                 census.verdictTone === "fail"
@@ -868,20 +872,34 @@ export function RunKanban({
     total: number;
     verdicts: number;
     fails: number;
+    family?: { cross: number; same: number };
   } | null>(null);
   React.useEffect(() => {
     let alive = true;
     void fetch("/api/evals")
       .then(async (res) => {
         if (!res.ok) return;
-        const j = (await res.json()) as { total?: number; verdicts?: number; fails?: number };
+        const j = (await res.json()) as {
+          total?: number;
+          verdicts?: number;
+          fails?: number;
+          family?: { cross?: number; same?: number };
+        };
         if (
           alive &&
           typeof j.total === "number" &&
           typeof j.verdicts === "number" &&
           typeof j.fails === "number"
         ) {
-          setLedger({ total: j.total, verdicts: j.verdicts, fails: j.fails });
+          setLedger({
+            total: j.total,
+            verdicts: j.verdicts,
+            fails: j.fails,
+            family:
+              j.family && typeof j.family.cross === "number" && typeof j.family.same === "number"
+                ? { cross: j.family.cross, same: j.family.same }
+                : undefined,
+          });
         }
       })
       .catch(() => {
@@ -1000,7 +1018,7 @@ export function RunKanban({
           ) : null}
           {ledger !== null && ledger.total > 0 ? (
             <span
-              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}. The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).`}
+              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}. The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
                 ledger.fails > 0

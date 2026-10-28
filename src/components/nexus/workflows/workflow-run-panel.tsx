@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
+import { splitFamilyWitness } from "@/lib/family-witness";
 import { GATE_MIN_CHARS } from "@/lib/systemone";
 import { gateCensusOf } from "@/lib/gate-census";
 // r503: lane witness chip on run steps — short name + shared provider glyph.
@@ -260,13 +261,16 @@ function CallLogList({ log }: { log: RunCallLogEntry[] }) {
                       tone chip: violet ◈ when the judge rung is
                       family-DISJOINT from the generator, muted ◇ when it
                       shares the family. Un-witnessed notes render untouched. */}
+                      {/* r677: the witness regex lives in lib/family-witness.ts
+                      now — the panel chips it, the fixture freezes it, the
+                      ledger tally reuses it. One contract, one home. */}
                       {(() => {
-                        const m = c.note.match(/· (cross-family|same-family)/);
-                        if (!m || m.index === undefined) return c.note;
-                        const cross = m[1] === "cross-family";
+                        const m = splitFamilyWitness(c.note);
+                        if (!m) return c.note;
+                        const cross = m.witness === "cross";
                         return (
                           <>
-                            {c.note.slice(0, m.index)}
+                            {m.head}
                             <span
                               title={cross
                                 ? "Judge rung is family-disjoint from the generator dial — no narcissistic drift (KICK corpus RSI doctrine)"
@@ -275,7 +279,7 @@ function CallLogList({ log }: { log: RunCallLogEntry[] }) {
                             >
                               {cross ? "◈ cross-family" : "◇ same-family"}
                             </span>
-                            {c.note.slice(m.index + m[0].length)}
+                            {m.tail}
                           </>
                         );
                       })()}

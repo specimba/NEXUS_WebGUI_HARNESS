@@ -7,11 +7,11 @@
  * drops or reshapes the witness token, this fixture fails BEFORE the board
  * silently loses the drift witness.
  *
- * The regex here intentionally mirrors the run-panel's inline renderer
- * (workflow-run-panel.tsx r676 block) — keep both in sync until the helper
- * is lifted to a shared lib.
+ * The split under test IS the shipped helper — r677 lifted the regex to
+ * src/lib/family-witness.ts (panel + ledger tally import the same home).
  */
 import { crossFamilyTag } from "../src/lib/systemone";
+import { splitFamilyWitness } from "../src/lib/family-witness";
 
 let pass = 0;
 let fail = 0;
@@ -24,16 +24,7 @@ function check(name: string, got: unknown, want: unknown) {
   }
 }
 
-const WITNESS_RE = /· (cross-family|same-family)/;
-function split(note: string): { head: string; witness: "cross" | "same" | null; tail: string } {
-  const m = note.match(WITNESS_RE);
-  if (!m || m.index === undefined) return { head: note, witness: null, tail: "" };
-  return {
-    head: note.slice(0, m.index),
-    witness: m[1] === "cross-family" ? "cross" : "same",
-    tail: note.slice(m.index + m[0].length),
-  };
-}
+const split = splitFamilyWitness;
 
 // 1. Tag vocabulary — the runner composes notes as (via + tag)
 check("tag cross", crossFamilyTag({ judgeFamily: "zai", crossFamily: true }), " · cross-family");
@@ -67,13 +58,13 @@ const plain = [
   "Looped pass 1/2 delivered (tied block) — re-judging",
 ];
 for (const [i, note] of plain.entries()) {
-  check(`plain note ${i} no witness`, split(note).witness, null);
+  check(`plain note ${i} no witness`, split(note), null);
 }
 
 // 6. Census-compat: the suffix was frozen parseable in qa-cross-family — the
 // extractor anchors on note HEADS, so head text must be unchanged by split.
-const headed = `Decision gate FAIL 90% (fast-model${crossFamilyTag({ crossFamily: true })}) — output replaced`;
-check("head preserved for note-head anchoring", split(headed).head.startsWith("Decision gate FAIL 90% (fast-model"), true);
+const headed = `Decision gate FAIL 90% (fast-model${crossFamilyTag({ judgeFamily: "zai", crossFamily: true })}) — output replaced`;
+check("head preserved for note-head anchoring", (split(headed)?.head ?? "").startsWith("Decision gate FAIL 90% (fast-model"), true);
 
 // 7. First-match-wins: a pathological note mentioning both tokens keeps the
 // FIRST witness (renderer chips one, prose keeps the rest verbatim).
@@ -81,7 +72,7 @@ const both = "A · cross-family then B · same-family";
 check("first match wins", split(both), { head: "A ", witness: "cross", tail: " then B · same-family" });
 
 // 8. Junk safety: empty/whitespace notes pass through untouched.
-check("empty note", split(""), { head: "", witness: null, tail: "" });
+check("empty note", split(""), null);
 check("dot-only note", split("· cross-family"), { head: "", witness: "cross", tail: "" });
 
 function gateVia(hopKey: string): string {

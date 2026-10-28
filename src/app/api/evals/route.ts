@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { familyTallyOf } from "@/lib/family-witness";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +101,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
 export async function GET(): Promise<NextResponse> {
   try {
-    const [total, verdicts, fails, latest] = await Promise.all([
+    const [total, verdicts, fails, latest, notes] = await Promise.all([
       db.evalEvent.count(),
       db.evalEvent.count({ where: { kind: "gate-verdict" } }),
       db.evalEvent.count({ where: { kind: "gate-verdict", verdict: "FAIL" } }),
@@ -109,8 +110,13 @@ export async function GET(): Promise<NextResponse> {
         take: 5,
         select: { workflow: true, kind: true, verdict: true, confidence: true, createdAt: true },
       }),
+      // r677: drift-witness tally over the stored notes — the shared
+      // family-witness contract, applied server-side (never-throw: the
+      // tally skips unwitnessed/junk notes silently).
+      db.evalEvent.findMany({ select: { note: true } }),
     ]);
-    return NextResponse.json({ total, verdicts, fails, latest });
+    const family = familyTallyOf(notes.map((n) => n.note));
+    return NextResponse.json({ total, verdicts, fails, family, latest });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "evals census failed" },

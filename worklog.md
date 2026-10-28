@@ -2958,3 +2958,25 @@ Round Handoff:
 Round ID: r677 -> next patrol (job 473388)
 Next recommended action: (1) Ledger auto-growth witness: GET /api/evals past 11 on any natural run; board ⧉ chip mirrors. (2) Lift the witness-split regex to a shared lib (src/lib/family-witness.ts) imported by BOTH the run-panel chip and qa-family-witness — kills the intentional duplication. (3) Adaptation backlog: forensic-diagnosis fixtures deepened (KB-1-a #3) or poison-purge store hygiene (KB-1-a #4). (4) Radar chips witness on the next registry finding. Driver notes: witness chip = workflow-run-panel.tsx r676 IIFE block (regex /· (cross-family|same-family)/); harness evalReady + raw-CDP palette in scripts/cdp-qa-golden-r673.mjs; fixture = scripts/qa-family-witness.ts.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+
+---
+Task ID: r677
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 677 (job 473388) — follow r676 handoff: shared family-witness lib + drift tally at scan level
+
+Work Log:
+- HANDOFF #1 WITNESSED: ledger census auto-grew 11 -> {total:20, verdicts:9, fails:4} — a natural run ("Continuous Research & Evaluation", gate PASS 92) landed via the r676 QA harness's palette-picked workflow; the r672 fire-and-forget wiring confirmed end-to-end. The board ⧉ chip mirrors the growth.
+- Golden QA first: 3/3 PASS, console-errors 0 — no product bugs.
+- SHIP — family-witness lib + drift tally at scan level: (a) src/lib/family-witness.ts — splitFamilyWitness (the r676 regex lifted: non-strings/unwitnessed -> null, head/tail byte-preserving for note-head anchoring) + familyTallyOf (cross/same counter); the panel chip, both board chip tooltips, the ledger GET, and the fixture ALL import this one home — the r676 intentional duplication is dead. (b) /api/evals GET tallies cross vs same server-side over stored notes (never-throw) and returns family alongside the census. (c) Board: ⧉ ledger chip tooltip gains "Drift witness: ◈ N cross-family · ◇ M same-family judge note(s)"; every per-run ⚖ gate chip tooltip gains "Judge family witness: ◈ N · ◇ M" — drift health readable at scan level without opening any panel.
+- FixNote r677. GATES: tsc 0 · lint 0/33-exact · fixtures qa-family-witness 17/17, qa-cross-family 32/32, qa-gate-census 25/25, qa-gate-events 13/13, qa-cortex-census 16/16 · golden QA 3/3 PASS · console 0.
+- Gate self-catches (honest): tsc caught callLog-undefined (kanban fam tally) and a possibly-null .head (fixture) BEFORE ship — the r676 && guard fix held. Fixture's "head preserved" check was VACUOUSLY true under the old local split (unwitnessed note returned as head) — the lib exposed it; judgeFamily added, the check now asserts a real witnessed split.
+- MultiEdit quirk documented: a failed MultiEdit applied edits 1-4 before aborting at 5 (contrary to atomic expectations) — import got duplicated on retry; deduped. Census anchor needed cat -A to reveal the 10-space truth.
+
+Stage Summary:
+- The drift doctrine is now measurable AND visible at every zoom level: per-note chip (r676) -> per-run ⚖ tooltip -> whole-corpus ⧉ tooltip (r677), all fed by one shared contract with a fixture pinning it.
+- Ledger auto-growth: CONFIRMED (11 -> 20/9 via a natural run).
+
+Round Handoff:
+Round ID: r678 -> next patrol (job 473388)
+Next recommended action: (1) Verify the ⧉/⚖ drift-witness tooltips render on the live board (hover in golden QA — the harness can read the title attribute of the ⧉ chip and assert the family sentence appears now that 20 events exist). (2) KB-1-a backlog: forensic-diagnosis fixtures deepened (#3) or poison-purge store hygiene (#4). (3) The natural run's events landed with kind gate-no-judge mostly? Read the ledger's latest 5 — if the natural run produced verdicts, witness chips should already show on its ⚖ chip. (4) Radar chips witness on the next registry finding. Driver notes: lib = src/lib/family-witness.ts; tally sites = evals route GET + run-kanban (fam const ~506) + panel chip; fixture = scripts/qa-family-witness.ts (imports the lib directly).
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
