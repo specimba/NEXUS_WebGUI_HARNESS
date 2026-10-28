@@ -1029,6 +1029,10 @@ export function RunKanban({
               )}
             >
               ⧉ ledger {ledger.total}·{ledger.verdicts}
+              {/* r679: FAIL health joins the glance line — the chip already
+              turns amber when a run's gate failed; the count itself now reads
+              without opening the ledger or hovering. */}
+              {ledger.fails > 0 ? <span className="ml-1 font-bold">✕{ledger.fails}</span> : null}
               {/* r678: drift counts leave the tooltip — cross/same-family
               tallies read at a glance on the digest line itself. */}
               {ledger.family && ledger.family.cross > 0 ? (

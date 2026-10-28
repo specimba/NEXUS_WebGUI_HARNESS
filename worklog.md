@@ -3006,3 +3006,27 @@ Round Handoff:
 Round ID: r679 -> next patrol (job 473388)
 Next recommended action: (1) P4 green: the "Runs board" toggle is not a button — query `[aria-label="Runs board"]` (any tag) or `[role="radio"][aria-label="Runs board"]` in the harness's boardMode step; then P4 should pass (chip + "Drift witness" sentence + gateWitnessed counts). (2) The QA palette-pick keeps starting REAL runs (2 natural ledger growths so far) — consider a harness dry-run flag (pick a workflow but Escape before confirm) OR let it keep feeding the corpus deliberately (it is honest natural-run witness); decide explicitly next round. (3) KB-1-a backlog: forensic-diagnosis fixtures deepened (#3) or poison-purge (#4). (4) Radar chips witness on the next registry finding. Driver notes: inline glyphs = run-kanban.tsx r678 block (line ~1031); P4 = cdp-qa-golden-r673.mjs (boardMode + poll loop, patch script scripts/patch-r678-harness.py already applied); family lib = src/lib/family-witness.ts.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+---
+Task ID: r679
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 679 (job 473388) — follow r678 handoff: P4 green attempt + explicit natural-run decision + glance-line increment
+
+Work Log:
+- Ledger auto-growth witnessed AGAIN: census 27 -> {total:30, verdicts:13, fails:5, family:{cross:17, same:0}} — the r678 QA palette-pick started a third natural run; latest events are two gate-verdict PASS entries. Four consecutive rounds of auto-growth now (11->20->27->30).
+- Golden QA first: P1/P2/P3 PASS, console-errors 0 — no product bugs.
+- P4 INVESTIGATION (the round's main thread; honest: still NOT green):
+  1. r678's "not a native button" diagnosis was WRONG — a side-effect of the wrong label. The toggle IS a native <button type="button" role="radio" aria-label="Runs board layout"> (workflows-view.tsx ~2001); the handoff's bare "Runs board" was a guess that never matched, which is what made the toggle look un-findable.
+  2. Harness now queries the real label — boardMode flipped no-toggle -> "clicked". But drift.found stays false even after the click + 8x1.3s poll: the ⧉ chip does not appear in the headless DOM even with the (supposed) board open. Remaining theories: (a) a persisted run-panel displaces the digest on navigation (the r678 lesson, but possibly already-open pre-pick), (b) the digest <p> renders under a condition the harness browser does not meet, (c) ledger fetch null in that context. NOT guessed further this round.
+  3. Harness drift-eval upgraded with rich diagnostics (radios + aria-checked dump, ledger-ish span titles, digest presence, dialog-open flag) — next round's single QA run yields the decisive dump, no extra rounds needed.
+- DECISION (handoff #2, made explicit + recorded as a comment next to the pick block): the palette pick KEEPS starting real runs — no dry-run flag; four rounds of honest ledger auto-growth are the end-to-end witness of the r672 fire-and-forget wiring, and the corpus growth is training data, not pollution.
+- SHIP (user-facing + styling): the ⧉ ledger chip now renders its FAIL count inline — ⧉ ledger 30·13 ✕5 ◈17 (bold ✕N beside the violet ◈ drift tally); the chip already turned amber on failures, now the count reads without hover. FixNote r679 appended.
+- GATES: tsc 0 · lint 0/33-exact · golden QA P1-P3 PASS console 0 · P4 FAIL (documented, not hidden; diagnostics armed for r680).
+
+Stage Summary:
+- The r678 misdiagnosis is corrected in source: the toggle was always a findable native button with aria-label "Runs board layout" — label truth beats handoff guesswork.
+- Failure health joined drift health on the glance line: ✕F beside ◈K/◇M on the ⧉ chip.
+
+Round Handoff:
+Round ID: r680 -> next patrol (job 473388)
+Next recommended action: (1) P4 decisive diagnosis: run the golden QA once — the drift eval now returns radios (labels + aria-checked), ledger-ish span-title count, digest presence, and a dialog-open flag when the chip is absent; read that dump and fix the ONE blocker it reveals (panel-displacement -> close the panel before reading; board-not-open -> check setBoardOpen/aria-checked; fetch-null -> check the ledger GET in-context). (2) KB-1-a backlog: forensic-diagnosis fixtures deepened (#3) or poison-purge (#4). (3) Radar chips witness on the next registry finding. Driver notes: real toggle = workflows-view.tsx ~2001 aria-label "Runs board layout" (native button, role radio); chip render condition run-kanban.tsx ~1019 (ledger !== null && total > 0, inside the digest <p>); diagnostics live in the cdp-qa-golden-r673.mjs drift eval (r679 block); natural-run decision comment sits right above the pick block.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.

@@ -127,7 +127,10 @@ try {
   await sleep(600);
   const boardMode = await evalJs(ws, `(() => {
     if ([...document.querySelectorAll("span[title]")].some((el) => (el.textContent ?? "").includes("⧉ ledger"))) return "already";
-    const btn = [...document.querySelectorAll("button")].find((b) => (b.getAttribute("aria-label") ?? "") === "Runs board");
+    // r679 fix: the layout toggle is NOT a native <button> (r678 witness:
+    // role-based radio pattern), and its aria-label is "Runs board layout"
+    // (workflows-view.tsx) — the r678 handoff's bare "Runs board" was a guess.
+    const btn = document.querySelector('[aria-label="Runs board layout"]');
     if (btn) { btn.click(); return "clicked"; }
     return "no-toggle";
   })()`);
@@ -137,7 +140,15 @@ try {
     drift = await evalJs(ws, `(() => {
     const chips = [...document.querySelectorAll("span[title]")];
     const led = chips.find((el) => (el.textContent ?? "").includes("⧉ ledger"));
-    if (!led) return { found: false };
+    if (!led) return {
+      found: false,
+      // r679 diagnostics: what IS on the page when the chip is not — the
+      // next run's single dump should name the one real blocker.
+      radios: [...document.querySelectorAll('[role="radio"]')].map((el) => (el.getAttribute("aria-label") ?? "?") + "=" + (el.getAttribute("aria-checked") ?? "?")).join(" | "),
+      ledgerish: chips.filter((el) => /RSI eval ledger|gate event/.test(el.getAttribute("title") ?? "")).length,
+      digest: (document.body.textContent ?? "").includes("runs on the board"),
+      panelOpen: !!document.querySelector('[data-state="open"][role="dialog"]'),
+    };
     const t = led.getAttribute("title") ?? "";
     const gateWitnessed = chips
       .filter((el) => /⚖ gate/.test(el.textContent ?? ""))
@@ -180,6 +191,11 @@ try {
     return "palette";
   })()`);
   await sleep(900);
+  // r679 DECISION (handoff #2, made explicit): the palette pick starts a REAL
+  // run and we KEEP that — three consecutive rounds the natural run grew the
+  // durable ledger (11→20→27→30) and re-witnessed the r672 fire-and-forget
+  // wiring end-to-end. This is honest training-corpus growth, not pollution;
+  // no dry-run flag.
   const picked = await evalJs(ws, `(() => {
     const items = [...document.querySelectorAll("[cmdk-item], [role='option']")];
     const run = items.find((el) => (el.getAttribute("aria-label") ?? el.textContent ?? "").startsWith("Run workflow:"));
