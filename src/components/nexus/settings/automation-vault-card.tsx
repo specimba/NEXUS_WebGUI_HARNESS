@@ -342,11 +342,24 @@ export function AutomationVaultCard() {
   // copies silently — but it removes the re-paste friction entirely.
   const settings = useSettingsStore((s) => s.settings);
   const [mirroringProvider, setMirroringProvider] = React.useState<string | null>(null);
-  const mirrorCandidates = FREE_PROVIDERS.filter(
-    (p) =>
-      settings.providerKeys?.[p.id]?.key?.trim() &&
-      !slots.some((s) => s.provider === p.id),
-  );
+  const mirrorCandidates = [
+    ...FREE_PROVIDERS.filter(
+      (p) =>
+        settings.providerKeys?.[p.id]?.key?.trim() &&
+        !slots.some((s) => s.provider === p.id),
+    ).map((p) => ({ id: p.id, name: p.name })),
+    // r707: acquisition lanes join the mirror list (the Owner's ask — the
+    // Exa / Bright Data / Webshare tokens were server-only, and this
+    // machine's database has reverted twice; a browser copy in providerKeys
+    // (saveLane writes it below) means the lane survives a reset with one
+    // click — the SAME r337 bridge the LLM lanes have — and the r340 drift
+    // heal covers key rotation for these lanes too.
+    ...ACQUISITION_PROVIDERS.filter(
+      (p) =>
+        settings.providerKeys?.[p.id]?.key?.trim() &&
+        !slots.some((s) => s.provider === p.id),
+    ).map((p) => ({ id: p.id, name: p.label })),
+  ];
 
   // r340: KEY DRIFT — a mirrored slot whose provider ALSO has a browser-saved
   // key can silently fall behind: the user rotates the key in Providers,
@@ -499,6 +512,26 @@ export function AutomationVaultCard() {
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setLaneKey("");
       await load();
+      // r707: keep the browser-side copy too — acquisition keys were
+      // server-only, and a db reset took them twice (the rollback class this
+      // vault has witnessed). providerKeys is the mirror strip's source, so
+      // the lane comes back with one click after any reset. Best-effort: the
+      // server slot above already succeeded; a failed browser write must not
+      // fail the store toast.
+      try {
+        const cur = useSettingsStore.getState().settings;
+        useSettingsStore.getState().update({
+          providerKeys: {
+            ...cur.providerKeys,
+            [laneProvider]: {
+              ...(cur.providerKeys?.[laneProvider] ?? {}),
+              key: laneKey.trim(),
+            },
+          },
+        });
+      } catch {
+        /* browser copy is best-effort — the server slot is the source of truth */
+      }
       // r548 realignment heal (browser half): the fresh key must not inherit
       // the old key's lane-health/breaker stamps — clear THIS provider's
       // browser dial memory so it re-enters every wire immediately.
@@ -520,7 +553,7 @@ export function AutomationVaultCard() {
           description: acq
             ? acq.status === "dormant"
               ? "The guard resolves it today (fleet chip: key stored — dial pending); the lane lights up the moment the dialect lands. Local SQLite only, nothing leaves this machine."
-              : "Acquisition lanes are data probes — the executor never dials them as LLM steps. Local SQLite only, nothing leaves this machine."
+              : "Acquisition lanes are data probes — the executor never dials them as LLM steps. Local SQLite only, nothing leaves this machine. A browser copy is kept — the mirror strip (this card) restores the lane after any reset."
             : "Local SQLite only, nothing leaves this machine.",
         },
       );

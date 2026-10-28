@@ -11,6 +11,20 @@
 // through, LAN clients), not auth; deliberate exposure beyond localhost
 // must add real auth. Guard limits: a same-LAN client can still spoof
 // `Host` — documented, accepted, and re-documented on every consuming route.
+//
+// r707 Tier 2 — the preview-gateway pass: this sandbox serves the app to
+// the user's browser through a NON-LOCAL gateway host (the preview proxy),
+// and Tier 1's "non-local host" rejection refused exactly that traffic —
+// the user's own Backup/Restore/Test buttons 403'd on the one host they
+// actually use. Tier 2 admits a non-local caller only through the r321
+// browser double-gate (proven on /api/vault/consume since r321): a foreign
+// page cannot attach `x-nexus-csrf` without a CORS preflight this app
+// never grants, and `sec-fetch-site: cross-site` is rejected outright —
+// so the drive-by threat the guard exists for stays stopped cold. A
+// headerless non-browser caller gets NO Tier-2 pass (the CLI branch is a
+// localhost-machine trust): past the gateway, the caller must present the
+// full browser shape. Proxy-indicator checks stay Tier-1-only: the
+// gateway legitimately sets x-forwarded-for.
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
@@ -36,8 +50,35 @@ function isLoopbackIp(header: string): boolean {
   return first === "127.0.0.1" || first === "::1" || first === "::ffff:127.0.0.1";
 }
 
+// r321 double-gate, verbatim from /api/vault/consume — one definition now
+// (r378 doctrine): the consume route's copy is the reference; this is it.
+export function csrfGateOk(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  const origin = req.headers.get("origin");
+  if (site === null && origin === null) return true; // CLI / server-to-server
+  if (req.headers.get("x-nexus-csrf") !== "1") return false; // preflight gate
+  return site !== "cross-site";
+}
+
+// r707 Tier 2 gate — STRICTER than csrfGateOk on purpose: a non-local caller
+// gets NO headerless pass (the consume gate's CLI branch is a localhost-
+// machine trust that does not extend past the gateway — any curl that learns
+// the preview URL would otherwise read plaintext keys). The caller must
+// present the app-JS browser shape: the csrf header a foreign page cannot
+// attach without a never-granted preflight, AND a non-cross-site
+// sec-fetch-site. Residual (documented, r138 class): a non-browser client
+// that forges both headers is not stoppable without real auth — deliberate
+// exposure beyond localhost still means add real auth first.
+function gatewayPass(req: Request): boolean {
+  if (req.headers.get("x-nexus-csrf") !== "1") return false;
+  const site = req.headers.get("sec-fetch-site");
+  return site !== null && site !== "cross-site";
+}
+
 export function localGuard(req: Request): { ok: true } | { ok: false; reason: string } {
   if (!isLocalHost(req.headers.get("host"))) {
+    // r707 Tier 2: the preview gateway passes only the strict browser gate.
+    if (gatewayPass(req)) return { ok: true };
     return { ok: false, reason: `non-local host "${req.headers.get("host") ?? ""}"` };
   }
   const fwdHost = req.headers.get("x-forwarded-host");
