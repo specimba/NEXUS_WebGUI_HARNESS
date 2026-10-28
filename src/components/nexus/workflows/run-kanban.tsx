@@ -874,23 +874,34 @@ export function RunKanban({
     fails: number;
     family?: { cross: number; same: number };
   } | null>(null);
+  // r681: failed-census attempts — the honest silence marker below renders
+  // only after real, REPEATED fetch failures (never for an empty corpus).
+  const [ledgerMisses, setLedgerMisses] = React.useState(0);
   React.useEffect(() => {
     let alive = true;
-    void fetch("/api/evals")
-      .then(async (res) => {
-        if (!res.ok) return;
-        const j = (await res.json()) as {
-          total?: number;
-          verdicts?: number;
-          fails?: number;
-          family?: { cross?: number; same?: number };
-        };
-        if (
-          alive &&
-          typeof j.total === "number" &&
-          typeof j.verdicts === "number" &&
-          typeof j.fails === "number"
-        ) {
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const load = () => {
+      tries += 1;
+      void fetch("/api/evals")
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`ledger census HTTP ${res.status}`);
+          const j = (await res.json()) as {
+            total?: number;
+            verdicts?: number;
+            fails?: number;
+            family?: { cross?: number; same?: number };
+          };
+          if (
+            !(
+              typeof j.total === "number" &&
+              typeof j.verdicts === "number" &&
+              typeof j.fails === "number"
+            )
+          ) {
+            throw new Error("ledger census shape");
+          }
+          if (!alive) return;
           setLedger({
             total: j.total,
             verdicts: j.verdicts,
@@ -900,13 +911,23 @@ export function RunKanban({
                 ? { cross: j.family.cross, same: j.family.same }
                 : undefined,
           });
-        }
-      })
-      .catch(() => {
-        /* the ledger census is best-effort — the board renders without it */
-      });
+          setLedgerMisses(0);
+        })
+        .catch(() => {
+          /* the ledger census is best-effort — the board renders without it.
+             r681: but "without it" no longer means FOREVER — a cold compile
+             or a bundle-recompile window once silenced the chip for a whole
+             session (the r681 P4 witness). Retry inside the session window. */
+          if (alive) {
+            setLedgerMisses((m) => Math.max(m, tries));
+            if (tries < 6) timer = setTimeout(load, 3_000);
+          }
+        });
+    };
+    load();
     return () => {
       alive = false;
+      if (timer) clearTimeout(timer);
     };
   }, []);
   // Pipeline filter lives in the ui store (persisted): it survives layout
@@ -1048,6 +1069,14 @@ export function RunKanban({
               {ledger.family && ledger.family.same > 0 ? (
                 <span className="ml-1 text-muted-foreground">◇{ledger.family.same}</span>
               ) : null}
+            </span>
+          ) : null}
+          {ledger === null && ledgerMisses >= 2 ? (
+            <span
+              title={`RSI eval ledger census UNREACHABLE — ${ledgerMisses} fetch attempt${ledgerMisses === 1 ? "" : "s"} failed (best-effort, retried in-session). This is an honest silence marker, not a census: no chip is faked for an empty corpus (the r648 doctrine), and an unreachable ledger is never a verdict — the r659/r660 trace doctrine just refuses to let an infra failure vanish without a trace.`}
+              className="inline-flex cursor-help items-center rounded-full border border-dashed border-border bg-muted/40 px-1.5 py-px text-xs font-medium text-muted-foreground"
+            >
+              ⧉ ledger …
             </span>
           ) : null}
         </p>

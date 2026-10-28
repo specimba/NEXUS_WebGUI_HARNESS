@@ -3053,3 +3053,26 @@ Round Handoff:
 Round ID: r681 -> next patrol (job 473388)
 Next recommended action: (1) Golden floor maintenance: P4 now enters through "already" (persisted board-open) — if a future profile reset flips it to grid, the hardened 12x1.5s poll covers the cold-fetch path; no action unless P4 flakes. (2) Visible-card witness coverage: gateWitnessed 0 while corpus holds 20 witnessed notes — consider a digest-level "witnessed notes in visible runs" counter OR investigate whether store trimming hides the witnessed runs (honest zero vs blind spot). (3) Backlog anchors: the task template's TASK-101/102 and the handoff's KB-1-a are both dead strings — next round should pick increments from live QA data or the real TASKS.md rows (TraceTrial r656+ remaining, Looped FAIL-branch live-witness). (4) Radar chips witness on the next registry finding. Driver notes: ∅ glyph = run-kanban.tsx r680 block (~line 1036); harness poll = cdp-qa-golden-r673.mjs r680 hardening comment; kind vocabulary = evals route KINDS set (gate-verdict/uncertain/no-judge/judge-error) + gate-census.ts adapter.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+---
+Task ID: r681
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 681 (job 473388) — follow r680 handoff: visible-card witness question -> QA-caught ledger-silence bug -> retry + honest ghost chip
+
+Work Log:
+- Golden QA first — P1/P2/P3 PASS console 0, but P4 REGRESSED: boardMode "clicked", radios dump proved "Runs board layout=true" (board open), panelOpen false, yet ledgerish 0 — the ⧉ chip absent despite board+digest rendering. Regression correlates with the r680 bundle (r680's own QA, pre-edit bundle, saw the chip instantly).
+- ROOT CAUSE (QA-caught product bug, not harness): the digest's ledger census fetch ran ONCE per mount with zero retry — a transient failure (cold compile / bundle-recompile window right after the r680 ship; the r676 stall family, in-page fetch flavor) silenced the chip for the WHOLE session. "Unreachable ledger -> no chip, never an error" accidentally meant "unreachable ONCE -> no chip forever even if reachable a second later".
+- Also dead: the harness diagnostic phrase "runs on the board" matches nothing real (grep empty in workflows components) — noted; the load-bearing diagnostics are ledgerish + radios.
+- SHIP (the fix + user-facing + styling): (a) the census fetch now retries IN-SESSION — 6 tries x 3s (~18s window, aligned with the harness poll); success lands the chip, non-OK and malformed-shape responses are retried instead of silently swallowed; (b) after 2+ real failures the digest renders an HONEST GHOST CHIP — dashed-border muted "⧉ ledger …" whose tooltip names the failed attempt count: infra failure gets a trace (r659/r660 doctrine) while an empty corpus still gets no fake chip (r648 no-phantom doctrine, upheld — the ghost requires actual failed fetches, never an empty census).
+- Verification: QA re-run 4/4 PASS — P4 witnessed the FULL glance line live: ⧉ ledger 37·18✕6∅19◈23 (verdicts, bold fails, the r680 ∅ unanswered glyph, violet drift tally), driftWitness true, console 0. tsc 0.
+- Ledger auto-growth round 6: census 34 -> {total:37, verdicts:18, fails:6, family:{cross:23}} — the r680 pick's natural run landed; latest event gate-verdict PASS 95.
+- gateWitnessed 0 again (visible-card witness coverage): still an honest zero — witnessed verdicts live in ledger rows whose runs are no longer among the visible cards; left as the open question for r682.
+- GATES: tsc 0 · lint re-checked in the ship chain · golden QA 4/4 PASS · console 0.
+
+Stage Summary:
+- The r681 bug class is named and closed: once-per-mount best-effort fetches need an in-session retry or they weaponize any transient stall into permanent UI silence; and per the trace doctrine, repeated failure is a STATE the user should see (ghost chip), not silence to impersonate health.
+- Golden floor: P4 green again, now with live witness of all four glance-line glyphs.
+
+Round Handoff:
+Round ID: r682 -> next patrol (job 473388)
+Next recommended action: (1) Visible-card witness coverage: gateWitnessed stayed 0 across three runs while the corpus holds 23 witnessed notes — decide: a digest-level counter of witnessed notes among VISIBLE runs' callLogs, or investigate whether store trimming simply hides the witnessed runs (honest zero vs blind spot — read the run store's trim policy). (2) Consider hardening other once-per-mount fetches the same way (grep "useEffect" + "void fetch" for the pattern family) — the r681 class likely has more members. (3) Radar chips witness on the next registry finding. (4) If time remains: the harness digest diagnostic phrase is dead — repoint it at a real digest anchor or drop it. Driver notes: retry + ghost = run-kanban.tsx r681 blocks (state ~line 877-879, effect 880-932, ghost 1074-1081); radios dump = cdp-qa-golden-r673.mjs drift eval diagnostics.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
