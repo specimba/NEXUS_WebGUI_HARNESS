@@ -2017,7 +2017,18 @@ export function WorkflowRunPanel({
                           <span className="typing-dot h-1.5 w-1.5 rounded-full bg-violet-400" />
                         </div>
                       ) : step.status === "pending" ? (
-                        <p className="py-1.5 text-xs italic text-zinc-500">
+                        <p
+                          className={cn(
+                            "py-1.5 text-xs italic text-zinc-500",
+                            // r665: motion extends the r598 semantic split — a step
+                            // waiting for a PREVIOUS one breathes (something is alive
+                            // upstream); the opening step stays still (it waits for no
+                            // one). Witnessed live in witness attempt #9: six queued
+                            // rows rendered as one motionless wall during a multi-pass
+                            // run; the waiting rows now carry a quiet pulse instead.
+                            i !== 0 && "animate-pulse"
+                          )}
+                        >
                           {/* r598 QA probe (live): the old pending copy rendered for EVERY
                               pending step, including the FIRST one — which has no previous
                               step at all. Witnessed live: a keyless panel run (vault=[])

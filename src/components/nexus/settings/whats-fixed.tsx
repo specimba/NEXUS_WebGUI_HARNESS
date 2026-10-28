@@ -664,6 +664,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Run panel step headers: each finished step shows a length chip — violet 'gate floor met · N' once the output crosses 200 chars, muted 'below gate floor · N' under it; hover states exactly what the floor does and does not guarantee",
   },
+  {
+    round: "r665",
+    title: "Witness attempt #9 doubles as the gate-floor chip's live debut — and queued steps breathe while they wait",
+    detail:
+      "The r665 patrol ran a real 4-step looped research workflow through the palette route with a 770-char gate-worthy task: the r664 length chips rendered LIVE on real outputs across loop passes ('gate floor met · 1,135' on pass one, 'gate floor met · 1,821' on pass two — the chip follows the live pass output, exactly as designed), console stayed at 0 for the whole run, and the gate's verdict note was deliberately left to form as the run converged (the panel is never mutated mid-run — the r662 cleanup-race lesson). Same run exposed a smaller honesty gap: during the multi-pass stretch, six queued steps rendered as one motionless wall — 'Waiting for the previous step…' in flat italic for everyone. Motion now extends the r598 semantic split: a step that waits for a PREVIOUS one carries a quiet animate-pulse (something is alive upstream), while the opening step — which waits for no one — stays still.",
+    lookFor:
+      "Run panel during a multi-step run: queued steps other than the first breathe with a subtle pulse; the opening step's queue line stays still; finished steps wear violet 'gate floor met · N' chips when their outputs cross the 200-char floor",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

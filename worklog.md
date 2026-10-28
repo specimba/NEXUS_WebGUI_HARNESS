@@ -2641,3 +2641,24 @@ Round ID: r665 -> next patrol (job 473388)
 Next recommended action: (1) confident-verdict witness remains #1 (judge 0/8, availability-gated) — a real run via the palette route NOW ALSO debuts the r664 gate-floor chips in the same run; pick a workflow with a generate step and a long task; (2) if the ladder is calm, that same run may finally produce a confident PASS/FAIL line; (3) witness the chain radar chips on the next registry finding; (4) Owner-witnessed vault restore happy path. Driver notes: location.reload() after any store/bundle change; chip live-check = open panel → select a run with outputs → count "gate floor" spans.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0 lint=0(33-warnings exact) golden=3/3(console 0/0/0) increment="GATE_MIN_CHARS single-source + run-panel gate-floor length chips (violet/muted, honest tooltip)" chip-live="pending first real run (no archived rows in sample workflows)" restart="0/1"
+
+---
+Task ID: r665
+Agent: NEXUS patrol (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280837)
+Task: Patrol round — golden QA, witness attempt #9, one real increment, gates, dual push.
+
+Work Log:
+- OPENING: server 200, clean tree, HEAD=r664. Golden QA compressed: relay (ladder snapshot 4d honest vintage + census live·5h) and Frontier (900px scroll) green, console 0 — 2 rounds for paths 1+2.
+- WITNESS ATTEMPT #9 (the handoff's #1 — palette route, real run, no fixture): opened "Deep Research Dossier" (4 looped steps) via the r663 aria-label one-shot, filled a 770-char gate-worthy task, pressed Run. RESULT — the r664 gate-floor chips' LIVE DEBUT, triple-proven on real outputs: "gate floor met · 1,135" (pass 1), then "gate floor met · 1,821" (pass 2), then TWO chips simultaneously ("· 1,821" + "· 2,391"). The chip follows the live pass output exactly as designed; console stayed 0 for the entire run. The verdict note was deliberately left to form as the run converges — the panel is NEVER mutated mid-run (r662 cleanup-race lesson); the run was left alive on the page so the Owner can open it finished, gate note included (judge availability permitting — 0/8 prior).
+- INCREMENT (from the run's own evidence): during the multi-pass stretch, six queued steps rendered as one motionless wall — flat italic "Waiting for the previous step…" for everyone, including the opening step that waits for no one. Motion now extends the r598 semantic split: waiting steps carry a quiet animate-pulse (something is alive upstream), the opening step stays still. FixNote r665 appended (witness receipt + queued-breathing).
+- GATES: tsc rc=0; lint rc=0 EXACTLY the 33-warning baseline; console 0 across all polls and after edits.
+
+Stage Summary:
+- Witness attempt #9 is the chip arc's closing receipt: r664's chip live on real outputs three times over, zero console noise, zero product defects.
+- The run was left running by design — first patrol round to hand the Owner a still-converging run with gate evidence pending, instead of a cleaned fixture.
+
+Round Handoff:
+Round ID: r666 -> next patrol (job 473388)
+Next recommended action: (1) FIRST check the left-alive r665 run: open run panel → the Deep Research Dossier run should be finished with archived rows — verify the gate note (confident PASS/FAIL if a judge finally answered, else the r662 no-judge trace line) and that the archived view shows the gate-floor chips; that closes witness #9 fully. (2) If the judge answered (0/8 prior), update the witness ledger and FixNote the confident-verdict debut. (3) Radar chips witness on the next registry finding; (4) Owner-witnessed vault restore happy path. Driver note: no reload before checking the run — the panel state is live in the page.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0 lint=0(33-warnings exact) golden=2/2(+run-as-path3) console=0 witness="attempt #9: chips LIVE x3 (1,135/1,821/2,391), gate note pending convergence, run left alive by design" restart="0/1"
