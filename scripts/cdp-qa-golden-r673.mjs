@@ -43,6 +43,21 @@ async function evalJs(ws, expression) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// r676: cold-route lazy-compile blocks the main thread and Runtime.evaluate
+// times out (r676 P2 catch — first witness). Poll a trivial eval until the
+// page answers, then the real checks run against a live main thread.
+async function evalReady(ws, tries = 12) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      await evalJs(ws, `1`);
+      return true;
+    } catch {
+      await sleep(1500);
+    }
+  }
+  return false;
+}
+
 const errors = [];
 const onEvent = (msg) => {
   if (msg.method === "Runtime.consoleAPICalled" && ["error", "assert"].includes(msg.params.type)) {
@@ -61,12 +76,14 @@ await wsSend(ws, "Runtime.enable");
 await wsSend(ws, "Page.enable");
 await wsSend(ws, "Page.navigate", { url: `${BASE}/#/settings` });
 await sleep(3500);
+await evalReady(ws);
 
 let results = [];
 try {
   // ── P1 Settings → Model Relay ──
   await evalJs(ws, `location.hash = "#/settings"`);
   await sleep(1500);
+  await evalReady(ws);
   const p1 = await evalJs(ws, `(() => {
     const t = document.body.innerText;
     const btns = [...document.querySelectorAll("button, [role='tab'], a")];
@@ -81,6 +98,7 @@ try {
   // ── P2 Radar → Frontier tab + scroll ──
   await evalJs(ws, `location.hash = "#/radar"`);
   await sleep(1800);
+  await evalReady(ws); // r676: radar chunk lazy-compiles cold — this eval timed out once
   const p2 = await evalJs(ws, `(() => {
     const t = document.body.innerText;
     const tabs = [...document.querySelectorAll("button, [role='tab']")];
@@ -99,13 +117,31 @@ try {
   // ── P3 Workflows → palette → run panel → long paste ──
   await evalJs(ws, `location.hash = "#/workflows"`);
   await sleep(1800);
-  const openedPal = await evalJs(ws, `(() => {
+  await evalReady(ws);
+  const openedSyn = await evalJs(ws, `(() => {
     const ev = (mod) => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", bubbles: true, cancelable: true, ...mod }));
     ev({ metaKey: true });
     ev({ ctrlKey: true });
     return !!document.querySelector("[cmdk-input]");
   })()`);
-  await sleep(900);
+  await sleep(400);
+  // r676 handoff: raw CDP Input.dispatchKeyEvent — synthetic KeyboardEvent
+  // is filtered by cmdk (isTrusted gate); raw input pipeline events are
+  // trusted. Meta=4, Ctrl=2 in the CDP modifier bitmask.
+  let openedPal = openedSyn;
+  if (!openedPal) {
+    await wsSend(ws, "Input.dispatchKeyEvent", { type: "rawKeyDown", modifiers: 4, windowsVirtualKeyCode: 75, code: "KeyK", key: "k" });
+    await wsSend(ws, "Input.dispatchKeyEvent", { type: "keyUp", modifiers: 4, windowsVirtualKeyCode: 75, code: "KeyK", key: "k" });
+    await sleep(700);
+    openedPal = await evalJs(ws, `!!document.querySelector("[cmdk-input]")`);
+  }
+  if (!openedPal) {
+    await wsSend(ws, "Input.dispatchKeyEvent", { type: "rawKeyDown", modifiers: 2, windowsVirtualKeyCode: 75, code: "KeyK", key: "k" });
+    await wsSend(ws, "Input.dispatchKeyEvent", { type: "keyUp", modifiers: 2, windowsVirtualKeyCode: 75, code: "KeyK", key: "k" });
+    await sleep(700);
+    openedPal = await evalJs(ws, `!!document.querySelector("[cmdk-input]")`);
+  }
+  await sleep(500);
   const opened = await evalJs(ws, `(() => {
     const input = document.querySelector("[cmdk-input]");
     if (!input) return null;
@@ -136,7 +172,7 @@ try {
   await sleep(600);
   results.push(["P3 paste-mechanics+panel", (picked || openedPal) ? true : pasted >= 2300, `palette=${!!openedPal} picked=${picked ?? "-"} pasted=${pasted}`]);
 
-  console.log(JSON.stringify({ palette: opened, picked, pasted, p1, p2, results: results.map(([n, ok]) => `${ok ? "PASS" : "FAIL"} ${n}`) }, null, 1));
+  console.log(JSON.stringify({ palette: opened, paletteSyn: openedSyn, picked, pasted, p1, p2, results: results.map(([n, ok]) => `${ok ? "PASS" : "FAIL"} ${n}`) }, null, 1));
 } catch (e) {
   console.log(`CATCH: ${e?.stack ?? e}`);
   results.push(["caught-exception", false]);

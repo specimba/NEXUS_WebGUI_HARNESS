@@ -255,7 +255,30 @@ function CallLogList({ log }: { log: RunCallLogEntry[] }) {
                           : laneOfEntry(c) === "browser-direct"
                             ? "⊙ "
                             : "↻ "}
-                      {c.note}
+                      {/* r676: the family witness (r673/r674 note suffix) is
+                      no longer buried in prose — the tail token renders as a
+                      tone chip: violet ◈ when the judge rung is
+                      family-DISJOINT from the generator, muted ◇ when it
+                      shares the family. Un-witnessed notes render untouched. */}
+                      {(() => {
+                        const m = c.note.match(/· (cross-family|same-family)/);
+                        if (!m || m.index === undefined) return c.note;
+                        const cross = m[1] === "cross-family";
+                        return (
+                          <>
+                            {c.note.slice(0, m.index)}
+                            <span
+                              title={cross
+                                ? "Judge rung is family-disjoint from the generator dial — no narcissistic drift (KICK corpus RSI doctrine)"
+                                : "Judge rung shares the generator's provider family — honest degradation, no disjoint lane was available"}
+                              className={"mx-0.5 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide " + (cross ? "bg-violet-500/15 text-violet-300" : "bg-muted text-muted-foreground")}
+                            >
+                              {cross ? "◈ cross-family" : "◇ same-family"}
+                            </span>
+                            {c.note.slice(m.index + m[0].length)}
+                          </>
+                        );
+                      })()}
                     </span>
                   ) : null}
                 </li>
