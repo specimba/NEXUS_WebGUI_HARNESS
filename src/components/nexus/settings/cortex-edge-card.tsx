@@ -234,6 +234,7 @@ export function CortexEdgeCard() {
       ms: result.ms,
       ...(result.edgeRegion != null ? { edgeRegion: result.edgeRegion } : {}),
       ...(result.lanes != null ? { lanes: result.lanes } : {}),
+      ...(result.transports != null ? { transports: result.transports } : {}),
       ...(result.error != null ? { error: result.error } : {}),
     });
     setCensus(cortexCensusOf(readCortexProbe()));
@@ -357,7 +358,12 @@ export function CortexEdgeCard() {
             {probing
               ? "CORTEX // PROBING"
               : census.probed
-                ? `CORTEX // ${census.online ? "ONLINE" : "OFFLINE"} · ${census.lanesArmed}/${census.lanesTotal}`
+                ? !census.region &&
+                  (census.transports?.vector === "upstash-direct" ||
+                    census.transports?.qstash === "upstash-direct" ||
+                    census.transports?.box === "upstash-direct")
+                  ? `CORTEX // ${census.online ? "DIRECT" : "OFFLINE"} · ${census.lanesArmed}/3`
+                  : `CORTEX // ${census.online ? "ONLINE" : "OFFLINE"} · ${census.lanesArmed}/${census.lanesTotal}`
                 : "CORTEX // UNPROBED"}
           </Badge>
         </CardTitle>
@@ -408,7 +414,8 @@ export function CortexEdgeCard() {
           />
           <p className="text-xs text-muted-foreground">
             The deployed nexus-cortex-harness edge function URL (Supabase Dashboard → Edge Functions).
-            Empty = lane off.
+            Empty = the edge lane is off; configured Upstash lanes (Vector / QStash / Box) are then probed
+            directly by the app&apos;s own server (r709 local-fallback slice) and named UPSTASH in the census.
           </p>
         </div>
 

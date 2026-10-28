@@ -84,5 +84,41 @@ if (canStore) {
   console.log("NOTE: localStorage unwritable in this runtime — round-trip covered by browser QA");
 }
 
+// 8. r709: DIRECT transport — the edge-less Upstash dial named in the census
+const directOnline: PersistedCortexProbe = {
+  at: NOW - 60_000, ok: true, ms: 214,
+  lanes: { hyperbrowser: false, redis: false, vector: true, qstash: true, box: false, sharedSecretGate: false },
+  transports: { vector: "upstash-direct", qstash: "upstash-direct", box: "upstash-direct" },
+};
+const c3 = cortexCensusOf(directOnline, NOW);
+check("direct online: census counts trio", c3.online && c3.lanesArmed === 2 && c3.tone === "online");
+check(
+  "direct online line names transport",
+  cortexStatusLabel(c3, NOW) === "CORTEX // DIRECT · UPSTASH 2/3 · 214MS · 1m",
+);
+const directOff: PersistedCortexProbe = {
+  at: NOW - 30_000, ok: false, ms: 421,
+  transports: { vector: "upstash-direct", qstash: "upstash-direct", box: "upstash-direct" },
+};
+const c4 = cortexCensusOf(directOff, NOW);
+check(
+  "direct offline line names EDGE OFF + UPSTASH 0/3",
+  cortexStatusLabel(c4, NOW) === "CORTEX // OFFLINE · EDGE OFF · UPSTASH 0/3 · PROBED JUST NOW",
+);
+// edge verdicts with transports stay on the classic ONLINE line (no DIRECT leakage)
+const edgeWithT = { ...online, transports: { vector: "edge", qstash: "edge", box: "edge" } as const };
+check(
+  "edge transports keep classic line",
+  cortexStatusLabel(cortexCensusOf(edgeWithT, NOW), NOW) === "CORTEX // ONLINE · 6/6 LANES · FRA1 · 34MS · 1m",
+);
+if (canStore) {
+  persistCortexProbe(directOnline);
+  const back = readCortexProbe();
+  check(
+    "transports round-trip",
+    back?.transports?.vector === "upstash-direct" && back?.transports?.qstash === "upstash-direct",
+  );
+}
+
 console.log(`qa-cortex-census: ${pass}/${pass + fail}`);
 if (fail > 0) process.exit(1);

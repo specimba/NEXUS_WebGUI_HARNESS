@@ -1,0 +1,12 @@
+  http://localhost:3000/#settings
+"injected"
+  http://localhost:3000/#settings
+"WITNESS:{\"cortexLines\":[\"CORTEX // DIRECT · n/3 and the HUD line CORTEX // DIRECT · UPSTASH 2/3 · 214MS (or CORTEX // OFFLINE · EDGE OFF · UPSTASH 0/3 when nothing answered — no silent fallbacks, every lane names how it answered). The transports map persists with the census verdict, the fixture carries the direct-online / direct-offline / edge-classic cases, and the browser never CORS-fights Upstash or Box because the dials ride the same-origin server route (the doctrine's server-side lanes). Redis stays edge-secret-only; Hyperbrowser keeps edge-or-direct for the next slice.\",\"CORTEX // DIRECT (or OFFLINE · EDGE OFF) with UPSTASH n/3, and the HUD line names the transport; with no trio config the old honest 'No function URL configured' verdict stands.\",\"CORTEX // ONLINE · 6/6 LANES · FRA1 · 34MS — vocabulary, not palette); armed configs auto-probe on mount past a 15-min freshness window. Second ship: gate outcomes from finished runs now land in a durable SQLite ledger (EvalEvent via /api/evals, the corpus interaction_logs pattern) — the Runs board digest gains a ledger N·M chip fed by a live census GET. Fixtures: qa-cortex-census 16/16, qa-gate-events 13/13.\",\"CORTEX // chip beside the title + mono status line with tone dot; Runs board digest: the ledger chip once events accumulate.\"],\"fixChips\":[\"r709\",\"r708\",\"r707\",\"r706\",\"r705\",\"r704\"]}"
+  http://localhost:3000/#radar
+"frontier-not-found"
+  http://localhost:3000/#workflows
+"workflows-textareas:0"
+CONSOLE_TAIL:
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 388ms
+[log] [Fast Refresh] rebuilding

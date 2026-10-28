@@ -24,6 +24,18 @@ export const CORTEX_PROBE_STORE = "nexus.cortex-probe.v1";
 /** Freshness window: older than this and the card auto-probes on mount. */
 export const CORTEX_PROBE_FRESH_MS = 15 * 60 * 1000;
 
+/** r709: how a lane answered — the edge function, the app-server direct Upstash dial, or off. */
+export type CortexLaneTransport = "edge" | "upstash-direct" | "off";
+
+/** r709: per-lane transport map — census metadata only, never secrets. */
+export interface CortexTransports {
+  hyperbrowser?: CortexLaneTransport;
+  redis?: CortexLaneTransport;
+  vector?: CortexLaneTransport;
+  qstash?: CortexLaneTransport;
+  box?: CortexLaneTransport;
+}
+
 /** The persisted shape — everything the census needs, nothing it must not hold. */
 export interface PersistedCortexProbe {
   /** When the probe ran (epoch ms). */
@@ -40,6 +52,8 @@ export interface PersistedCortexProbe {
     box: boolean;
     sharedSecretGate: boolean;
   };
+  /** r709: WHICH transport answered, per lane (census truth, no silent fallbacks). */
+  transports?: CortexTransports;
   error?: string;
 }
 
@@ -55,6 +69,8 @@ export interface CortexCensus {
   ageMs: number;
   region?: string;
   ms?: number;
+  /** r709: transport truth carried from the probe (edge vs the direct Upstash dial). */
+  transports?: CortexTransports;
   error?: string;
   /** Tone for chips: emerald online, amber armed-but-offline, muted unprobed. */
   tone: "online" | "offline" | "unprobed";
@@ -64,6 +80,21 @@ export interface CortexCensus {
 export function cortexStatusLabel(c: CortexCensus, now = Date.now()): string {
   if (!c.probed) return "CORTEX // UNPROBED";
   const age = ageLabel(c.ageMs, now);
+  // r709: transport truth — when the edge is off but the direct Upstash dial
+  // was attempted, the line NAMES the transport (no-silent-fallback doctrine):
+  // CORTEX // DIRECT · UPSTASH n/3, or EDGE OFF · UPSTASH 0/3 when none answered.
+  const tr = c.transports;
+  const direct =
+    tr?.vector === "upstash-direct" || tr?.qstash === "upstash-direct" || tr?.box === "upstash-direct";
+  if (direct && !c.region) {
+    const n = c.lanesArmed;
+    if (c.online) {
+      return `CORTEX // DIRECT · UPSTASH ${n}/3${c.ms != null ? ` · ${c.ms}MS` : ""} · ${age}`;
+    }
+    return `CORTEX // OFFLINE · EDGE OFF · UPSTASH ${n}/3 · ${
+      age === "just now" ? "PROBED JUST NOW" : `PROBED ${age} AGO`
+    }`;
+  }
   const lanes = `${c.lanesArmed}/${c.lanesTotal} LANES`;
   const tail = c.online
     ? [lanes, c.region?.toUpperCase(), c.ms != null ? `${c.ms}MS` : null, age]
@@ -116,6 +147,23 @@ export function readCortexProbe(): PersistedCortexProbe | null {
         sharedSecretGate: l.sharedSecretGate === true,
       };
     }
+    if (v.transports && typeof v.transports === "object") {
+      const t = v.transports as Record<string, unknown>;
+      const pick = (x: unknown): CortexLaneTransport | undefined =>
+        x === "edge" || x === "upstash-direct" || x === "off" ? x : undefined;
+      const tr: CortexTransports = {};
+      const hb = pick(t.hyperbrowser);
+      const rd = pick(t.redis);
+      const ve = pick(t.vector);
+      const qs = pick(t.qstash);
+      const bx = pick(t.box);
+      if (hb) tr.hyperbrowser = hb;
+      if (rd) tr.redis = rd;
+      if (ve) tr.vector = ve;
+      if (qs) tr.qstash = qs;
+      if (bx) tr.box = bx;
+      if (Object.keys(tr).length > 0) out.transports = tr;
+    }
     return out;
   } catch {
     return null;
@@ -146,6 +194,7 @@ export function cortexCensusOf(p: PersistedCortexProbe | null, now = Date.now())
     ...(p.edgeRegion != null ? { region: p.edgeRegion } : {}),
     ...(p.ms != null ? { ms: p.ms } : {}),
     ...(p.error != null ? { error: p.error } : {}),
+    ...(p.transports != null ? { transports: p.transports } : {}),
     tone: p.ok ? "online" : "offline",
   };
 }

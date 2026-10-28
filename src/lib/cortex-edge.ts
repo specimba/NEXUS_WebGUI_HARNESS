@@ -36,6 +36,7 @@ import {
   CORTEX_PROBE_TIMEOUT_MS,
   CORTEX_TOOL_TIMEOUT_MS,
 } from "./cortex-edge-paste-pack";
+import type { CortexTransports } from "./cortex-census";
 
 /**
  * Cortex Edge configuration (Settings → Cortex Edge, persisted client-side).
@@ -180,6 +181,8 @@ export interface CortexProbeResult {
   rate?: { limited?: boolean; note?: string; day?: { count?: number }; hour?: Record<string, number> } | null;
   /** v2 vector index info (undefined on v1/failure/unconfigured). */
   vector?: { vectorCount?: number; dimension?: number; indexType?: string; embeddingModel?: string } | null;
+  /** r709: WHICH transport answered, per lane — census truth (no silent fallbacks). */
+  transports?: CortexTransports;
 }
 
 /** Mirror of the edge function's hourly caps — for the UI meter only. */
@@ -213,6 +216,72 @@ function byokKeys(cfg?: CortexConfig): Record<string, string> | undefined {
   return Object.keys(keys).length > 0 ? keys : undefined;
 }
 
+/** Budget for ONE direct Upstash lane dial (the trio dials in parallel). */
+const CORTEX_DIRECT_LANE_TIMEOUT_MS = 4_000;
+
+/** The r709 direct-dial verdict: trio lanes + wall time (booleans only — no secrets ride back). */
+export interface CortexDirectProbeResult {
+  ms: number;
+  lanes: { vector: boolean; qstash: boolean; box: boolean };
+}
+
+/**
+ * r709 (Cortex local-fallback, first slice): dial the Upstash trio's REST APIs
+ * DIRECTLY — no edge function anywhere in the path. Vector: POST ["INFO"] on
+ * the index URL; QStash: GET /v2/topics; Box: GET /2.0/users/me. Each dial is
+ * budgeted and never throws; a 401 means "reachable, credential rejected" —
+ * the lane reports false (it did not ANSWER with the given credential).
+ * Intended to run SERVER-SIDE via /api/cortex/probe-direct: the doctrine's
+ * Upstash lanes are server lanes, and the browser never CORS-fights Upstash/Box.
+ */
+export async function probeUpstashDirect(cfg: CortexConfig): Promise<CortexDirectProbeResult> {
+  const started = Date.now();
+  const vectorUrl = cfg?.vectorUrl?.trim() ?? "";
+  const vectorToken = cfg?.vectorToken?.trim() ?? "";
+  const qstashToken = cfg?.qstashToken?.trim() ?? "";
+  const boxApiKey = cfg?.boxApiKey?.trim() ?? "";
+  const lane = async (go: () => Promise<boolean>): Promise<boolean> => {
+    try {
+      return await go();
+    } catch {
+      return false;
+    }
+  };
+  const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
+  const [vector, qstash, box] = await Promise.all([
+    vectorUrl && vectorToken
+      ? lane(async () => {
+          const res = await fetch(vectorUrl, {
+            method: "POST",
+            headers: { ...bearer(vectorToken), "content-type": "application/json" },
+            body: JSON.stringify(["INFO"]),
+            signal: budgetSignal(CORTEX_DIRECT_LANE_TIMEOUT_MS),
+          });
+          return res.ok;
+        })
+      : Promise.resolve(false),
+    qstashToken
+      ? lane(async () => {
+          const res = await fetch("https://qstash.upstash.io/v2/topics", {
+            headers: bearer(qstashToken),
+            signal: budgetSignal(CORTEX_DIRECT_LANE_TIMEOUT_MS),
+          });
+          return res.ok;
+        })
+      : Promise.resolve(false),
+    boxApiKey
+      ? lane(async () => {
+          const res = await fetch("https://api.box.com/2.0/users/me", {
+            headers: bearer(boxApiKey),
+            signal: budgetSignal(CORTEX_DIRECT_LANE_TIMEOUT_MS),
+          });
+          return res.ok;
+        })
+      : Promise.resolve(false),
+  ]);
+  return { ms: Date.now() - started, lanes: { vector, qstash, box } };
+}
+
 /**
  * v2 probe: ① GET health (open by design, 8s budget) — parse service/edgeRegion;
  * ② POST action:"diagnostics" (~9s budget) with the shared-secret header (when
@@ -224,7 +293,54 @@ function byokKeys(cfg?: CortexConfig): Record<string, string> | undefined {
 export async function probeCortexEdge(cfg: CortexConfig): Promise<CortexProbeResult> {
   const started = Date.now();
   const url = (cfg?.url ?? "").trim();
-  if (!url) return { ok: false, ms: 0, error: "No function URL configured" };
+  if (!url) {
+    // r709 (Cortex local-fallback, first slice): an empty edge URL no longer
+    // short-circuits the whole probe. The Upstash trio is plain REST and the
+    // app's OWN server dials it directly (no Supabase deploy) — the probe asks
+    // the same-origin server route and NAMES the transport in the census
+    // (UPSTASH), per the no-silent-fallback doctrine. Still honest: with no
+    // trio config at all, the old verdict stands.
+    const anyTrio = !!(cfg?.vectorUrl?.trim() || cfg?.qstashToken?.trim() || cfg?.boxApiKey?.trim());
+    if (!anyTrio) return { ok: false, ms: 0, error: "No function URL configured" };
+    try {
+      const res = await fetch("/api/cortex/probe-direct", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // BYOK doctrine: only the trio fields ride, per-request, never persisted.
+        body: JSON.stringify({
+          vectorUrl: cfg?.vectorUrl ?? "",
+          vectorToken: cfg?.vectorToken ?? "",
+          qstashToken: cfg?.qstashToken ?? "",
+          boxApiKey: cfg?.boxApiKey ?? "",
+        }),
+        signal: budgetSignal(CORTEX_PROBE_TIMEOUT_MS),
+      });
+      const j = (await res.json().catch(() => null)) as
+        | (CortexDirectProbeResult & { error?: string })
+        | null;
+      if (!res.ok || !j) {
+        return { ok: false, ms: Date.now() - started, error: `direct probe HTTP ${res.status}` };
+      }
+      const lanes = {
+        hyperbrowser: false,
+        redis: false,
+        vector: !!j.lanes?.vector,
+        qstash: !!j.lanes?.qstash,
+        box: !!j.lanes?.box,
+        sharedSecretGate: false,
+      };
+      const answered = [lanes.vector, lanes.qstash, lanes.box].filter(Boolean).length;
+      return {
+        ok: answered > 0,
+        ms: typeof j.ms === "number" ? j.ms : Date.now() - started,
+        ...(answered > 0 ? {} : { error: "EDGE OFF (no function URL) · no Upstash lane answered directly" }),
+        lanes,
+        transports: { vector: "upstash-direct", qstash: "upstash-direct", box: "upstash-direct" },
+      };
+    } catch (e) {
+      return { ok: false, ms: Date.now() - started, error: `direct probe failed: ${errText(e)}` };
+    }
+  }
 
   // ① Health (open by design).
   let service: string | undefined;
@@ -302,6 +418,14 @@ export async function probeCortexEdge(cfg: CortexConfig): Promise<CortexProbeRes
       service,
       edgeRegion,
       lanes,
+      // r709: the edge path NAMES its transport too — every lane says "edge".
+      transports: {
+        hyperbrowser: "edge",
+        redis: "edge",
+        vector: "edge",
+        qstash: "edge",
+        box: "edge",
+      },
       ...(isObj(j.rate) ? { rate: j.rate as CortexProbeResult["rate"] } : {}),
       ...(isObj(j.vector) ? { vector: j.vector as CortexProbeResult["vector"] } : {}),
     };
