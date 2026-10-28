@@ -1070,7 +1070,20 @@ export function RunKanban({
   if (unfilteredTotal === 0) {
     return (
       <div className="flex min-h-48 items-center justify-center rounded-2xl border border-dashed text-center text-sm text-muted-foreground">
-        Nothing on the board yet — run a pipeline and its cards land here.
+        <div className="max-w-md space-y-1">
+          <p>Nothing on the board yet — run a pipeline and its cards land here.</p>
+          {/* r694: the r648 doctrine renders no census chip for an empty
+          corpus — the silence stays, but on a fresh database it now explains
+          itself in words on the empty-state surface the board already owns
+          (conditioned on the ledger actually reading zero, never guessed). */}
+          {ledger !== null && ledger.total === 0 ? (
+            <p className="text-xs opacity-80">
+              The eval ledger is empty so far — it grows as finished runs
+              finalize server-side, and the census chip appears with the first
+              archived gate event.
+            </p>
+          ) : null}
+        </div>
       </div>
     );
   }

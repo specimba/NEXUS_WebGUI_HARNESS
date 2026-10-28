@@ -16,6 +16,10 @@
  *      exclusion).
  *   3. Self-test — the checker demonstrably FAILS on synthetic bad chip
  *      blocks. A contract fixture that can never go red checks nothing.
+ *   4. r694 — comment-line-aware counting: the token counters strip
+ *      standalone comment lines first, so a run-kanban COMMENT carrying a
+ *      literal contract token can no longer inflate a pin (the r690 + r692
+ *      trap, fired twice, is now structural instead of conventional).
  * This is a source-contract fixture by design: the chips render only when
  * live data does (most runs carry no gate notes), so a DOM probe would
  * witness the contract only on lucky rounds — the source pins it always.
@@ -26,6 +30,24 @@ import { readFileSync } from "node:fs";
 const FILE = "src/components/nexus/workflows/run-kanban.tsx";
 const src = readFileSync(FILE, "utf8");
 const lines = src.split("\n");
+
+/**
+ * r694 — comment-line-aware counting: the pin counts SOURCE occurrences of
+ * contract tokens, and twice (r690, r692) a run-kanban COMMENT carrying a
+ * literal token inflated the raw count and the fixture caught its own
+ * author. The counters run over comment-stripped source — same line count
+ * (stripped lines become empty, never removed), so line numbers stay true.
+ * Standalone comment lines only (//, block openers and continuations);
+ * trailing inline comments still count — conservative, and the family's
+ * comment style is standalone lines.
+ */
+function stripCommentLines(text: string): string {
+  return text
+    .split("\n")
+    .map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? "" : l))
+    .join("\n");
+}
+const codeSrc = stripCommentLines(src);
 
 let pass = 0;
 let fail = 0;
@@ -71,11 +93,11 @@ function chipHasCursorHelp(block: string[], anchorIdx: number): boolean {
 }
 
 function lineOfIndex(index: number): number {
-  return src.slice(0, index).split("\n").length - 1;
+  return codeSrc.slice(0, index).split("\n").length - 1;
 }
 
 // ─── 1. focusable => named ────────────────────────────────────────────────────
-const tabLines = Array.from(src.matchAll(/tabIndex=\{0\}/g), (m) => lineOfIndex(m.index ?? 0));
+const tabLines = Array.from(codeSrc.matchAll(/tabIndex=\{0\}/g), (m) => lineOfIndex(m.index ?? 0));
 check(
   "focusable chip count pinned (5: digest ⧉+⚖, per-run ⚖+↻+harness)",
   tabLines.length === 5,
@@ -86,7 +108,7 @@ tabLines.forEach((ln, i) =>
 );
 
 // ─── 2. title-bearing => pointer-honest ───────────────────────────────────────
-const cursorLines = Array.from(src.matchAll(/cursor-help/g), (m) => lineOfIndex(m.index ?? 0));
+const cursorLines = Array.from(codeSrc.matchAll(/cursor-help/g), (m) => lineOfIndex(m.index ?? 0));
 check(
   "cursor-help count pinned (9 title-bearing chips)",
   cursorLines.length === 9,
@@ -121,6 +143,10 @@ const pointerChip = ["<span", '  title={"t"}', '  className={cn("cursor-help x")
 const bareChip = ["<span", '  title={"t"}', '  className={cn("x")}', ">", "  text"];
 check("self-test: pointer probe finds cursor-help", chipHasCursorHelp(pointerChip, 4) === true);
 check("self-test: pointer probe flags its absence", chipHasCursorHelp(bareChip, 4) === false);
+const commentTrap = ["<span", "  // the className below carries cursor-help", '  className={cn("x")}', ">"].join("\n");
+const realToken = ["<span", '  className={cn("cursor-help x")}', ">", "  // a comment mention is not a contract token"].join("\n");
+check("self-test: comment-carried token does not count", Array.from(stripCommentLines(commentTrap).matchAll(/cursor-help/g)).length === 0);
+check("self-test: code-carried token still counts", Array.from(stripCommentLines(realToken).matchAll(/cursor-help/g)).length === 1);
 
 console.log(`\nqa-chip-a11y-contract: ${pass} passed, ${fail} failed (${FILE})`);
 if (fail > 0) process.exit(1);

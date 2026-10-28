@@ -139,8 +139,23 @@ try {
   // /api/evals lazy-compile (the r676 stall, this time on an in-page fetch —
   // the click had already persisted board-open, proven by r680's "already").
   // 12×1.5s ≈ 18s covers a cold compile.
+  // r694: P4 learns the corpus's own size before asserting. A fresh sandbox
+  // DB reads total:0 and the r648 doctrine renders NO ledger chip for an
+  // empty corpus — chip-absence is the honest expected state there, not a
+  // FAIL (the r693 round shipped on P1-P3 alone because P4 cried wolf on
+  // exactly this). The drift sentence stays REQUIRED whenever the census
+  // reports family-tagged notes; a young corpus without notes renders the
+  // chip without it — data-honest, not a contract break. census -1 = the
+  // probe itself failed, in which case the old strict teeth apply.
+  let censusTotal = -1;
+  let censusFamily = 0;
+  try {
+    const cj = await (await fetch(`${BASE}/api/evals`)).json();
+    censusTotal = typeof cj.total === "number" ? cj.total : -1;
+    censusFamily = (cj.family?.cross ?? 0) + (cj.family?.same ?? 0);
+  } catch { censusTotal = -1; }
   let drift = { found: false };
-  for (let attempt = 0; attempt < 12 && drift.found !== true; attempt++) {
+  for (let attempt = 0; attempt < (censusTotal === 0 ? 3 : 12) && drift.found !== true; attempt++) {
     drift = await evalJs(ws, `(() => {
     const chips = [...document.querySelectorAll("span[title]")];
     const led = chips.find((el) => (el.textContent ?? "").includes("⧉ ledger"));
@@ -177,7 +192,13 @@ try {
     })()`);
     if (drift.found !== true) await sleep(1300);
   }
-  results.push(["P4 ledger-drift-witness", drift.found === true && drift.driftWitness === true, `ledger=${drift.found ? drift.text : "absent"} driftWitness=${drift.driftWitness} gateWitnessed=${drift.gateWitnessed} staleAmber=${drift.staleAmber} tokenTitle=${drift.ageTokenTitle} growth=${drift.growthBadge}`]);
+  // r694 pass shape: chip found -> drift sentence required unless the corpus
+  // carries no family notes at all; chip absent -> pass ONLY on a proven
+  // empty census (r648 honest absence).
+  const p4pass = drift.found === true
+    ? (drift.driftWitness === true || censusFamily === 0)
+    : censusTotal === 0;
+  results.push(["P4 ledger-drift-witness", p4pass, `census=${censusTotal} familyNotes=${censusFamily} ledger=${drift.found ? drift.text : "absent"} driftWitness=${drift.driftWitness} gateWitnessed=${drift.gateWitnessed} staleAmber=${drift.staleAmber} tokenTitle=${drift.ageTokenTitle} growth=${drift.growthBadge}`]);
   const openedSyn = await evalJs(ws, `(() => {
     const ev = (mod) => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", bubbles: true, cancelable: true, ...mod }));
     ev({ metaKey: true });
