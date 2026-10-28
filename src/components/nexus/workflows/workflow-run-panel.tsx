@@ -1520,7 +1520,7 @@ export function WorkflowRunPanel({
                         : "border-border bg-muted/40 text-muted-foreground"
                     )}
                   >
-                    ⚖ gate {census.engaged}·{census.verdicts}
+                    ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}
                   </span>
                 );
               })()}

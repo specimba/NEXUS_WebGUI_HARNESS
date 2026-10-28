@@ -26,6 +26,7 @@ interface FixNote {
 }
 
 const FIXES: FixNote[] = [
+  { round: "r669", title: "Gate census counts both verdict families — and shows the verdict at a glance", detail: "The r668 census adapter counted verdicts only from System-One gate notes; the runner also stamps Decision gate PASS/FAIL N% (fast-model) notes — real verdicts that rendered as engagement-only (runs showed 1·0 with a verdict inside). The census now recognizes both families (no-judge traces stay engagement-only) and extracts the outcome line (FAIL 95% / PASS 95%) onto the board and panel-header chips. Data receipt from the store: the ledger holds verdicts from three Novelty Lab runs, including a PASS 95% — the judge ladder answers outside congestion windows.", lookFor: "Runs board ⚖ chips end with the outcome when a verdict landed — e.g. ⚖ gate 2·2 · FAIL 95% in emerald; three runs gained their verdict dot." },
   // r242: the array stays CHRONOLOGICAL (oldest → newest, new receipts append
   // at the bottom) and the component renders it REVERSED, so the newest
   // receipt is what a returning user sees first.
