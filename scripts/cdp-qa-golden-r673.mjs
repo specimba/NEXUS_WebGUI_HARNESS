@@ -160,7 +160,9 @@ try {
     const gateWitnessed = chips
       .filter((el) => /⚖ gate/.test(el.textContent ?? ""))
       .filter((el) => /Judge family witness/.test(el.getAttribute("title") ?? "")).length;
-    return { found: true, text: (led.textContent ?? "").slice(0, 30), driftWitness: /Drift witness/.test(t), gateWitnessed,
+    return { found: true, text: (led.textContent ?? "").slice(0, 30), driftWitness: /Drift witness/.test(t),
+      // r685: the chip story is keyboard-reachable — the census chip is Tab-focusable.
+      focusable: led.getAttribute("tabindex") === "0", gateWitnessed,
       // r682: the digest ⚖ chip now carries its own visible-runs witness tally.
       gateChip: ((chips.find((el) => /gate call/.test(el.textContent ?? ""))?.textContent ?? "").replace(/\s+/g, " ").trim()).slice(0, 44) };
     })()`);

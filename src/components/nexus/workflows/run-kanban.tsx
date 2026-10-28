@@ -1068,8 +1068,10 @@ export function RunKanban({
           ) : null}
           {boardGates.engaged > 0 ? (
             <span
+              tabIndex={0}
+              title={`Visible runs' Decision gate census: ${boardGates.engaged} gate call${boardGates.engaged === 1 ? "" : "s"} · ${boardGates.verdicts} verdict${boardGates.verdicts === 1 ? "" : "s"}${boardGates.failRuns > 0 ? ` · ${boardGates.failRuns} latest-FAIL` : ""} — amber while a run's latest verdict is a FAIL, emerald when verdicts landed clean, muted while judges stay unanswered. Counts only what the browser's own run records still hold; the ⧉ ledger chip beside it covers the durable corpus (server-side finalization POSTs after the browser is gone — the visible-vs-corpus split).${boardGates.witness.cross + boardGates.witness.same > 0 ? ` Drift witness: ◈ ${boardGates.witness.cross} cross-family · ◇ ${boardGates.witness.same} same-family.` : ""}`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold transition-colors",
+                "inline-flex cursor-help items-center rounded-full border px-1.5 py-px font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 boardGates.failRuns > 0
                   ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : boardGates.verdictRuns > 0
@@ -1089,9 +1091,10 @@ export function RunKanban({
           ) : null}
           {ledger !== null && ledger.total > 0 ? (
             <span
-              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}.` : ""}`}
+              tabIndex={0}
+              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}.` : ""}`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 ledger.fails > 0
                   ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : ledger.verdicts > 0
