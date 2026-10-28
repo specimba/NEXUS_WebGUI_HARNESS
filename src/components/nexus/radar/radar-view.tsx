@@ -52,23 +52,23 @@ export function RadarView() {
       <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
         <div className="border-b px-4 pt-3 md:px-6">
           <TabsList aria-label="Trend radar sections">
-            <TabsTrigger value="models" className="gap-1.5">
+            <TabsTrigger value="models" aria-label="Radar tab: Models" className="gap-1.5">
               <Database className="h-3.5 w-3.5" aria-hidden />
               Models
             </TabsTrigger>
-            <TabsTrigger value="github" className="gap-1.5">
+            <TabsTrigger value="github" aria-label="Radar tab: GitHub Stars" className="gap-1.5">
               <Github className="h-3.5 w-3.5" aria-hidden />
               GitHub Stars
             </TabsTrigger>
-            <TabsTrigger value="hf" className="gap-1.5">
+            <TabsTrigger value="hf" aria-label="Radar tab: HF Trending" className="gap-1.5">
               <Boxes className="h-3.5 w-3.5" aria-hidden />
               HF Trending
             </TabsTrigger>
-            <TabsTrigger value="papers" className="gap-1.5">
+            <TabsTrigger value="papers" aria-label="Radar tab: Paper Radar" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" aria-hidden />
               Paper Radar
             </TabsTrigger>
-            <TabsTrigger value="frontier" className="gap-1.5">
+            <TabsTrigger value="frontier" aria-label="Radar tab: Frontier" className="gap-1.5">
               <Telescope className="h-3.5 w-3.5" aria-hidden />
               Frontier
             </TabsTrigger>

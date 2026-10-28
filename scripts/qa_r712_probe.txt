@@ -1,0 +1,13 @@
+  about:blank
+  http://localhost:3000/#radar
+── aria labels on radar ──
+"[\"Trend radar sections\"]"
+── frontier click attempt ──
+"frontier-clicked-by-text"
+── console count (fresh-ish) ──
+13
+── verdict breakdown ──
+('gate-uncertain', None, 25)
+('gate-verdict', 'PASS', 21)
+('gate-no-judge', None, 8)
+('gate-verdict', 'FAIL', 5)
