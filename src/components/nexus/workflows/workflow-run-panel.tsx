@@ -1514,7 +1514,7 @@ export function WorkflowRunPanel({
                   <span
                     title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the full tried-ladder trace lives in the call log below; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green.`}
                     className={cn(
-                      "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums",
+                      "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums transition-colors",
                       census.verdictTone === "fail"
                         ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                         : census.verdictTone === "pass"

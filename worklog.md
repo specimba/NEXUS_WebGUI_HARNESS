@@ -2776,3 +2776,25 @@ Round Handoff:
 Round ID: r671 -> next patrol (job 473388)
 Next recommended action: (1) The r669 stale-reference cleanup: TASK-101/TASK-102 in docs/platform/cron-creation-criteria.md point at rows that no longer exist — reword that paste block to name real backlog anchors (harness-adapter-spec.md, TASKS.md open rows) so future rounds stop chasing ghosts; one doc edit, zero code risk. (2) Radar chips witness on the next registry finding. (3) Owner-witnessed vault restore happy path (unchanged). (4) If a calm window: a live crew-run peer-blind-score witness (TASKS.md P2 peer-blind row's remaining item). Driver notes: gate truth = localStorage nexus-workflows eval; chip tone = gateCensusOf(...).verdictTone, fixture scripts/qa-gate-census.ts is the regression pin.
 Blockers: none. Owner queue: none pending.
+
+---
+Task ID: r671
+Agent: NEXUS patrol (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610281137)
+Task: Patrol round — golden QA (all three paths live), board-level gate aggregate (the increment), cron-doc stale-ref cleanup, gates, dual push.
+
+Work Log:
+- OPENING: server 200, HEAD=r670, clean tree. Golden QA paths 1+2 green (relay ladder copy, frontier tab + 900px scroll), console 0.
+- GOLDEN QA PATH 3 (full, live): Control+k palette opened, the r663 aria-label route clicked "Run workflow: Novelty Lab (sample) — 1 step", run panel opened, 2,220 chars pasted into the step textarea via native setter + input event, panel closed with Escape (no run launched, no store mutation — r662 doctrine). Console 0. Honest note: the first palette eval died on my own quoting (SyntaxError), retried clean one round later — app was never at fault; a stray textarea on the board view took the first paste attempt harmlessly.
+- INCREMENT — board-level gate health: the Runs board digest line now aggregates gateCensusOf across every visible card (new boardGates memo mirroring the r649 boardHarness shape): "⚖ N gate calls · N verdicts · N latest-FAIL", amber when any run's latest verdict is a FAIL, emerald when verdicts landed clean, muted while judges stay unanswered. LIVE on first render: "⚖ 5 gate calls · 4 verdicts · 2 latest-FAIL" — exactly the predicted aggregate over the five engaged runs (w10 no-judge, c0c31b 2·2 FAIL, a4bdb3 PASS, 2860e0 FAIL, dossier no-judge ×6).
+- STYLING POLISH: both ⚖ chips (board card + panel header) gained transition-colors — tone changes animate instead of snapping.
+- DOC CLEANUP (handoff 1): docs/platform/cron-creation-criteria.md line 49's stale TASK-101/102 clause reworded to the real anchors (TASKS.md open rows, harness-adapter-spec.md NEXT slices) with an explicit "do not chase" note. The LIVE z.ai cron payload still carries the old text — only the Owner can edit the job chat-side (never touched from here).
+- FixNote r671 appended. GATES: tsc=RC lint=RC (WARN warnings, baseline 33); fixture qa-gate-census 25/25 re-run as a gate; console=CERRS page-errors=PERRS. BUDGET: 7 rounds.
+
+Stage Summary:
+- Gate health is now readable at THREE zoom levels: call-log note colors (r659) → per-run chip tones (r669/r670) → board digest aggregate (r671), all fed by the ONE gate-census adapter.
+- The patrol template no longer points future rounds at ghost backlog rows (doc side; live cron payload is Owner-side).
+
+Round Handoff:
+Round ID: r672 -> next patrol (job 473388)
+Next recommended action: (1) Watch the digest ⚖ chip's tone flip live when the next verdict lands (any run with a fresh judge answer turns it emerald/amber — a free witness readout, no extra eval needed). (2) Radar chips witness on the next registry finding. (3) Owner-witnessed vault restore happy path (unchanged). (4) Optional calm-window: live crew-run peer-blind-score witness (TASKS.md P2 peer-blind row). Driver notes: digest aggregate = boardGates memo in run-kanban.tsx (mirrors boardHarness — if the columns/visible shape changes, review BOTH memos); adapter unchanged (fixture 25/25 is the pin).
+Blockers: none. Owner queue: the cron job 473388's message text still carries the stale TASK-101/102 clause — Owner-side edit whenever convenient; harmless until then.

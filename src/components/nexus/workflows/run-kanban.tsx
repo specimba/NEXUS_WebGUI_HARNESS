@@ -505,7 +505,7 @@ function RunCard({
             <span
               title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors",
                 census.verdictTone === "fail"
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : census.verdictTone === "pass"
@@ -891,6 +891,30 @@ export function RunKanban({
     );
     return { runs, debts };
   }, [visible]);
+  // r671: board-level gate health beside the F3 census — of the runs visible
+  // on the board, how many called the judge ladder, how many verdicts landed,
+  // and how many runs' LATEST verdict is a FAIL (amber at scan level — the
+  // same tone contract the r670 card chips carry, aggregated).
+  const boardGates = React.useMemo(() => {
+    let engaged = 0;
+    let verdictRuns = 0;
+    let verdicts = 0;
+    let failRuns = 0;
+    (Object.values(visible) as BoardCard[][]).forEach((cards) =>
+      cards.forEach((c) => {
+        if (!c.run) return;
+        const census = gateCensusOf(c.run.callLog);
+        if (census.engaged === 0 && census.verdicts === 0) return;
+        engaged += 1;
+        verdicts += census.verdicts;
+        if (census.verdicts > 0) {
+          verdictRuns += 1;
+          if (census.verdictTone === "fail") failRuns += 1;
+        }
+      })
+    );
+    return { engaged, verdictRuns, verdicts, failRuns };
+  }, [visible]);
   // Chip choices: every pipeline that currently has at least one card, busiest first.
   const filterChoices = React.useMemo(() => {
     const counts = new Map<string, { name: string; n: number }>();
@@ -918,7 +942,7 @@ export function RunKanban({
       {boardHarness.runs > 0 ? (
         <p
           className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[10px] tabular-nums text-muted-foreground"
-          title="TraceTrial F3 (arXiv 2610.32285): runs that finished green while violating at least one harness criterion — success is not reliable. Judged separately from the task outcome."
+          title="TraceTrial F3 (arXiv 2610.32285): runs that finished green while violating at least one harness criterion — success is not reliable. Judged separately from the task outcome. The ⚖ chip aggregates the Decision gate's call-log census across visible runs — amber when any run's latest verdict is a FAIL, emerald when verdicts landed clean, muted while judges stay unanswered."
         >
           <span>
             {boardHarness.runs} run{boardHarness.runs === 1 ? "" : "s"} on the board
@@ -926,6 +950,21 @@ export function RunKanban({
           {boardHarness.debts > 0 ? (
             <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-px font-semibold text-amber-600 dark:text-amber-400">
               {boardHarness.debts} harness debt{boardHarness.debts === 1 ? "" : "s"}
+            </span>
+          ) : null}
+          {boardGates.engaged > 0 ? (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold transition-colors",
+                boardGates.failRuns > 0
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : boardGates.verdictRuns > 0
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "border-border bg-muted/40 text-muted-foreground"
+              )}
+            >
+              ⚖ {boardGates.engaged} gate call{boardGates.engaged === 1 ? "" : "s"} · {boardGates.verdicts} verdict{boardGates.verdicts === 1 ? "" : "s"}
+              {boardGates.failRuns > 0 ? ` · ${boardGates.failRuns} latest-FAIL` : ""}
             </span>
           ) : null}
         </p>
