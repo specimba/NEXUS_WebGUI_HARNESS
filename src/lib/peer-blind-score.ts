@@ -10,7 +10,7 @@
 // wiring; this file owns the input shape, question, threshold and the
 // call-log note vocabulary ("Peer blind score …") the crew panel can count.
 
-import { SYSTEMONE_GATE_CONFIDENCE } from "./systemone";
+import { crossFamilyTag, SYSTEMONE_GATE_CONFIDENCE } from "./systemone";
 
 export const BLIND_REVIEW_QUESTION = {
   id: "peer-blind",
@@ -36,13 +36,15 @@ export function peerBlindNote(peer: {
   answer: string;
   confidence: number;
   via: string;
+  judgeFamily?: string;
+  crossFamily?: boolean;
 }): string {
   const pct = (peer.confidence * 100).toFixed(0);
   if (peer.answer === "yes" && peer.confidence >= SYSTEMONE_GATE_CONFIDENCE) {
-    return `Peer blind score PASS ${pct}% (${peer.via}) — independent reviewer concurs`;
+    return `Peer blind score PASS ${pct}% (${peer.via}${crossFamilyTag(peer)}) — independent reviewer concurs`;
   }
   if (peerBlindShouldRevise(peer)) {
-    return `Peer blind score FAIL ${pct}% (${peer.via}) — one blind-revise pass runs`;
+    return `Peer blind score FAIL ${pct}% (${peer.via}${crossFamilyTag(peer)}) — one blind-revise pass runs`;
   }
-  return `Peer blind score UNCERTAIN ${pct}% (${peer.via}) — output accepted unchanged`;
+  return `Peer blind score UNCERTAIN ${pct}% (${peer.via}${crossFamilyTag(peer)}) — output accepted unchanged`;
 }

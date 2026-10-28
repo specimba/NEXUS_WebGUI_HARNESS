@@ -2195,7 +2195,7 @@ export async function executeWorkflowRun(
         // Bounded loop: review → (rework previous → review again) → continue
         for (;;) {
           try {
-            const { content, ms } = await streamStep(step, step.agentId, baseSystem, context);
+            const { content, ms, generatorFamily: genFamily } = await streamStep(step, step.agentId, baseSystem, context);
             const verdict = parseReviewVerdict(content);
 
             if (verdict === "pass" || reworks >= REWORK_LIMIT) {
@@ -2209,6 +2209,7 @@ export async function executeWorkflowRun(
               prev.push({
                 label: step.label,
                 agentName: agentRow.name,
+                genFamily,
                 degraded: /^_The model ended/.test(content) || undefined,
                 output:
                   verdict === "pass"
@@ -2264,6 +2265,7 @@ export async function executeWorkflowRun(
             prev.push({
               label: reviewed.label,
               agentName: genAgent.name,
+              genFamily: gen.generatorFamily,
               degraded: /^_The model ended/.test(gen.content) || undefined,
               output: gen.content,
             });
@@ -2344,6 +2346,9 @@ export async function executeWorkflowRun(
           const gate = await decide({
             settings: settings.settings,
             signal,
+            // r674: the draft's generator family rides prev — the judge
+            // should not share it (no narcissistic drift on verification).
+            generatorFamily: prev[prev.length - 1]?.genFamily,
             state: `TASK:\n${task}\n\nDRAFT OUTPUT (the previous step's deliverable):\n${draft.slice(0, 6000)}`,
             question: {
               id: "verify-gate",
@@ -2379,7 +2384,7 @@ export async function executeWorkflowRun(
                 gate.via === "intern-systemone" ? "free Intern SystemOne" : gate.via === "jev" ? "Jev" : "fast judge"
               } — verification pass skipped`,
             });
-            prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(draft) || undefined, output: draft });
+            prev.push({ label: step.label, agentName: agentRow.name, genFamily: prev[prev.length - 1]?.genFamily, degraded: /^_The model ended/.test(draft) || undefined, output: draft });
             continue;
           }
           // r512: an actual FAIL verdict now leaves an honest callLog entry —
@@ -2614,6 +2619,9 @@ export async function executeWorkflowRun(
             const peer = await decide({
               settings: settings.settings,
               signal,
+              // r674: the blind peer also refuses family-cousins — the
+              // generator's family comes from this step's dialed lane.
+              generatorFamily: genFamily,
               state: buildBlindReviewInput(finalOutput),
               question: BLIND_REVIEW_QUESTION,
             });
@@ -2655,7 +2663,7 @@ export async function executeWorkflowRun(
             /* the peer NEVER blocks a run — judge errors fall through */
           }
         }
-        prev.push({ label: step.label, agentName: agentRow.name, degraded: /^_The model ended/.test(finalOutput) || undefined, output: finalOutput });
+        prev.push({ label: step.label, agentName: agentRow.name, genFamily, degraded: /^_The model ended/.test(finalOutput) || undefined, output: finalOutput });
       } catch (err) {
         if (isAbortError(err)) {
           if (stalledRuns.has(wf.id)) {

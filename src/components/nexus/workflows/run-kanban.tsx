@@ -505,7 +505,7 @@ function RunCard({
             <span
               title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).`}
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors",
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
                 census.verdictTone === "fail"
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                   : census.verdictTone === "pass"

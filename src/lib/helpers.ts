@@ -151,6 +151,11 @@ export function extractJsonArray(text: string): unknown[] | null {
 
 export interface PrevStepOutput {
   label: string;
+  /** r674: provider family of the dial that PRODUCED this output
+   * (laneFamilyKey of the generator's lane) — the crew verification gate and
+   * the peer blind-score use it to prefer a family-disjoint judge and to
+   * stamp the cross-family witness into their verdict notes. */
+  genFamily?: string;
   agentName: string;
   output: string;
   /** r29: the step ended on a tool-budget auto-digest (material is thin). */

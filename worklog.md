@@ -2893,3 +2893,24 @@ Round Handoff:
 Round ID: r674 -> next patrol (job 473388)
 Next recommended action: (1) Ledger auto-growth witness: read GET /api/evals — any natural run since r673 should push total past 11; the board ⧉ chip mirrors it. (2) Adaptation backlog: crew VERIFICATION gate (System-One family at ~2337) should also carry generatorFamily — prev entries need genFamily stamped at the prev.push sites (2139/2148/2202/2257/2375/2646); then peer-blind-score (2634 revise path). (3) P3 palette headless: try Input.dispatchKeyEvent (CDP raw) instead of synthetic KeyboardEvent — cmdk may filter synthetic events; or open the run panel by clicking a kanban card directly. (4) Radar chips witness on the next registry finding. Driver notes: family helpers live in systemone.ts (judgeFamilyOf/orderJudgeChain/crossFamilyTag); fixture = scripts/qa-cross-family.ts; golden QA = scripts/cdp-qa-golden-r673.mjs (P3 needs the raw-CDP key route).
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+
+---
+Task ID: r674
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 674 (job 473388) — follow r673 handoff: family witness fleet-wide (verification gate + peer blind score)
+
+Work Log:
+- Ledger census GET /api/evals still {total:11, verdicts:4, fails:3} — no natural run since r672's backfill; auto-growth witness remains pending (wiring extended this round so the NEXT run is fully family-witnessed across ALL three judges).
+- SHIP — the whole review fleet refuses family-cousins (KB-1-a #1, fleet-wide): PrevStepOutput gains genFamily (helpers.ts); every prev.push site stamps the producing dial's family — review loop (reviewer's own dial), rework gen (gen.generatorFamily), verification-passed draft (carried through), final output. The crew VERIFICATION gate and the PEER blind score now pass generatorFamily into decide() — family-disjoint rungs answer first there too. peerBlindNote joins the witness vocabulary: 'Peer blind score PASS 92% (fast-model · cross-family)' across all three note branches. Styling polish: ⚖ gate chips gain cursor-help (matching the ⧉ ledger chip). FixNote r674.
+- INCIDENT (honest): the dev server DIED mid-round — round-1 health check was 200, but by the QA step curl read HTTP 000 (instant refusal; the P1/P2/P3 FAILs + blank body were the dead server, NOT a product regression). ONE restart via scripts/dev-restart.sh per protocol → 200. Post-restart golden QA: P1 Settings→Model Relay PASS, P2 Radar→Frontier PASS, P3 paste-mechanics PASS, console-errors 0. QA 3/3 for the first time headless (the healthy workflows view now has a textarea; palette ⌘K headless still synthetic-event-proof — raw CDP Input.dispatchKeyEvent remains the open idea).
+- Gate self-catch (honest): lint counted 34 vs baseline 33 — the new warning was my own cdp-qa-golden-r673.mjs (ternary-as-statement in the RPC router); converted to if/else → 33-exact restored.
+- GATES: tsc 0 · lint 0/33-exact · fixtures qa-cross-family 32/32, qa-gate-census 25/25, qa-gate-events 13/13, qa-cortex-census 16/16 · golden QA 3/3 PASS · console 0.
+
+Stage Summary:
+- All three judges (generate Decision gate, crew verification System-One gate, peer blind score) now prefer family-disjoint rungs and witness cross/same-family in their notes — the KICK corpus's no-narcissistic-drift doctrine is fleet-wide.
+- Dev server death was infra, not code; restart budget used (1/1) — next round starts from a fresh daemon.
+
+Round Handoff:
+Round ID: r675 -> next patrol (job 473388)
+Next recommended action: (1) Ledger auto-growth witness: GET /api/evals should exceed 11 after any natural run; the board ⧉ chip mirrors it. (2) Small accuracy follow-up: the peer blind-REVISE pass (streamStep ~2634) produces a NEW output but finalOutput's genFamily still points at the original generator dial — stamp the revise dial's family when it replaces finalOutput. (3) P3 palette headless: try raw CDP Input.dispatchKeyEvent (keyEvent rawDown) for ⌘K — synthetic KeyboardEvent is filtered by cmdk. (4) Radar chips witness on the next registry finding. Driver notes: genFamily flows PrevStepOutput → verification/peer decide(); family helpers in systemone.ts; golden QA = scripts/cdp-qa-golden-r673.mjs.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
