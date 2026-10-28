@@ -23,16 +23,22 @@ const startRe = /^  \{ round: "r(\d+)"/;
 const blocks: { round: number; text: string }[] = [];
 const comments: string[] = [];
 let cur: string[] | null = null;
+let inBacktick = false;
 for (const line of lines) {
-  const opensBlock = startRe.test(line) || line.trim() === "{";
+  // Track template-literal state so `{`/`},` inside multi-line strings are
+  // never mistaken for structure (abort-guarded, so a wrong guess aborts).
+  const bt = (line.match(/\\?`/g) ?? []).length; // count backticks (crude: escaped ones pair up)
+  const wasInBacktick = inBacktick;
+  inBacktick = (Number(inBacktick) + bt) % 2 === 1;
+  const opensBlock = !wasInBacktick && !inBacktick && (startRe.test(line) || line.trim() === "{");
   if (opensBlock && cur === null) {
     cur = [line];
   } else if (cur !== null) {
     cur.push(line);
     const t = line.trim();
-    if (t.endsWith("},") || t === "}") {
-      const rm = cur.join("\n").match(/round: "r(\d+)"/);
-      if (!rm) throw new Error(`entry block without a round marker: ${cur[0].slice(0, 60)}`);
+    if (!inBacktick && (t.endsWith("},") || t === "}")) {
+      const rm = cur.join("\n").match(/round: "r(\d+)/); // leading number: range labels like "r187-r188" sort by their first round
+      if (!rm) throw new Error(`entry block without a round marker: FIRST 400 CHARS: ${cur.join("\n").slice(0, 400)}`);
       blocks.push({ round: Number(rm[1]), text: cur.join("\n") });
       cur = null;
     }
