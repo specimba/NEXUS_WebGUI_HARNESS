@@ -8,9 +8,10 @@
  *      chip without a spoken name fails HERE, not in front of a
  *      screen-reader user (native titles are not reliably read by AT).
  *   2. title-bearing => pointer-honest — every title-bearing chip in the
- *      family carries cursor-help (6 sites: the five above + the
+ *      family carries cursor-help (7 sites: the five above + the
  *      hover-only ⌈floor gate-floor chip, whose r686 named exclusion from
- *      the tab order stands).
+ *      the tab order stands + the r690 ⧉ freshness token, likewise
+ *      hover-only — its parent ⧉ chip is the focusable surface).
  *   3. Self-test — the checker demonstrably FAILS on synthetic bad chip
  *      blocks. A contract fixture that can never go red checks nothing.
  * This is a source-contract fixture by design: the chips render only when
@@ -85,8 +86,8 @@ tabLines.forEach((ln, i) =>
 // ─── 2. title-bearing => pointer-honest ───────────────────────────────────────
 const cursorLines = Array.from(src.matchAll(/cursor-help/g), (m) => lineOfIndex(m.index ?? 0));
 check(
-  "cursor-help count pinned (6 title-bearing chips)",
-  cursorLines.length === 6,
+  "cursor-help count pinned (7 title-bearing chips)",
+  cursorLines.length === 7,
   `got ${cursorLines.length} — a title-bearing chip joined the family without the pointer affordance`,
 );
 const anchors: Array<[string, RegExp]> = [
@@ -96,6 +97,7 @@ const anchors: Array<[string, RegExp]> = [
   ["harness n/n chip", /Harness reliability/],
   ["digest ⚖ gate census chip", /\{boardGates\.engaged\} gate call/],
   ["digest ⧉ ledger chip", /⧉ ledger \{ledger\.total\}/],
+  ["⧉ freshness token", /· \{ledgerAge\}/],
 ];
 anchors.forEach(([name, re]) => {
   const ln = lines.findIndex((l) => re.test(l));

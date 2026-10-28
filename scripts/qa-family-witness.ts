@@ -9,9 +9,11 @@
  *
  * The split under test IS the shipped helper — r677 lifted the regex to
  * src/lib/family-witness.ts (panel + ledger tally import the same home).
+ * r690: familyTallyOf (the tally half) joins the freeze — the last helper
+ * the r688 audit named uncovered.
  */
 import { crossFamilyTag } from "../src/lib/systemone";
-import { splitFamilyWitness } from "../src/lib/family-witness";
+import { familyTallyOf, splitFamilyWitness } from "../src/lib/family-witness";
 
 let pass = 0;
 let fail = 0;
@@ -74,6 +76,20 @@ check("first match wins", split(both), { head: "A ", witness: "cross", tail: " t
 // 8. Junk safety: empty/whitespace notes pass through untouched.
 check("empty note", split(""), null);
 check("dot-only note", split("· cross-family"), { head: "", witness: "cross", tail: "" });
+
+// 9. familyTallyOf — the census counter (r677 lib; call sites: the per-run
+// ⚖ chip, the ledger GET, the digest ⚖). Unwitnessed notes skip silently;
+// each counted note contributes its FIRST-match witness (split's
+// first-match-wins parity — a note mentioning both tokens counts once).
+check("tally empty", familyTallyOf([]), { cross: 0, same: 0 });
+check("tally junk skipped", familyTallyOf([null, undefined, 42 as unknown as string, "plain rework note"]), { cross: 0, same: 0 });
+check("tally empty strings", familyTallyOf(["", ""]), { cross: 0, same: 0 });
+const crossNote = `Decision gate PASS 95% (fast-model${crossFamilyTag({ judgeFamily: "typesafe", crossFamily: true })})`;
+const sameNote = `Decision gate PASS 88% (zai${crossFamilyTag({ judgeFamily: "zai", crossFamily: false })})`;
+check("tally single cross", familyTallyOf([crossNote]), { cross: 1, same: 0 });
+check("tally single same", familyTallyOf([sameNote]), { cross: 0, same: 1 });
+check("tally mixed + unwitnessed", familyTallyOf([crossNote, sameNote, crossNote, "plain", null]), { cross: 2, same: 1 });
+check("tally first-match-wins parity", familyTallyOf(["A · cross-family then B · same-family"]), { cross: 1, same: 0 });
 
 function gateVia(hopKey: string): string {
   // mirrors the runner's via rendering: the hop's display name

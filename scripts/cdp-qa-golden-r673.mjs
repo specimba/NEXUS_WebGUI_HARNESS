@@ -167,12 +167,16 @@ try {
       focusableChips: document.querySelectorAll('span[tabindex="0"]').length,
       // r687: focusable chips carry spoken names — the AT-legibility count board-wide.
       namedChips: document.querySelectorAll('span[tabindex="0"][aria-label]').length, gateWitnessed,
+      // r690: the amber staleness witness — does the age token carry the
+      // amber tone class? Consistency probe vs the parsed age (1h+ ⇔ amber);
+      // null when the token is absent (honest: no timestamp, no claim).
+      staleAmber: (() => { const tok = [...led.querySelectorAll("span")].find((el) => /^· /.test((el.textContent ?? "").trim())); return tok ? /text-amber/.test(tok.getAttribute("class") ?? "") : null; })(),
       // r682: the digest ⚖ chip now carries its own visible-runs witness tally.
       gateChip: ((chips.find((el) => /gate call/.test(el.textContent ?? ""))?.textContent ?? "").replace(/\s+/g, " ").trim()).slice(0, 44) };
     })()`);
     if (drift.found !== true) await sleep(1300);
   }
-  results.push(["P4 ledger-drift-witness", drift.found === true && drift.driftWitness === true, `ledger=${drift.found ? drift.text : "absent"} driftWitness=${drift.driftWitness} gateWitnessed=${drift.gateWitnessed}`]);
+  results.push(["P4 ledger-drift-witness", drift.found === true && drift.driftWitness === true, `ledger=${drift.found ? drift.text : "absent"} driftWitness=${drift.driftWitness} gateWitnessed=${drift.gateWitnessed} staleAmber=${drift.staleAmber}`]);
   const openedSyn = await evalJs(ws, `(() => {
     const ev = (mod) => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "k", code: "KeyK", bubbles: true, cancelable: true, ...mod }));
     ev({ metaKey: true });

@@ -1093,8 +1093,8 @@ export function RunKanban({
           {ledger !== null && ledger.total > 0 ? (
             <span
               tabIndex={0}
-              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}.` : ""}`}
-              aria-label={`Eval ledger, durable corpus: ${ledger.total} archived gate events, ${ledger.verdicts} verdicts, ${ledger.fails} failures, ${ledger.total - ledger.verdicts} engaged without a confident verdict${ledger.family ? `, drift ${ledger.family.cross} cross-family, ${ledger.family.same} same-family` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? `. Latest event ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""}, ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}` : ""}`}
+              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? " — corpus quiet for over an hour (amber staleness signal)" : ""}.` : ""}`}
+              aria-label={`Eval ledger, durable corpus: ${ledger.total} archived gate events, ${ledger.verdicts} verdicts, ${ledger.fails} failures, ${ledger.total - ledger.verdicts} engaged without a confident verdict${ledger.family ? `, drift ${ledger.family.cross} cross-family, ${ledger.family.same} same-family` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? `. Latest event ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""}, ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? ", corpus quiet for over an hour" : ""}` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 ledger.fails > 0
@@ -1124,10 +1124,20 @@ export function RunKanban({
               {ledger.family && ledger.family.same > 0 ? (
                 <span className="ml-1 text-muted-foreground">◇{ledger.family.same}</span>
               ) : null}
-              {/* r684: freshness at a glance — the corpus outlives the browser;
-              the age token says whether it is still breathing, no hover. */}
+              {/* r684/r690: freshness at a glance — the corpus outlives the
+              browser; the age token says whether it is still breathing, no
+              hover. r690 makes staleness multi-channel: amber tone (r689),
+              the token's own hover doctrine, a spoken sentence in the chip's
+              aria-label, and a transition so the shift fades rather than
+              snaps. The token stays hover-only (the parent ⧉ chip is the
+              focusable surface) and pointer-honest per the family contract. */}
               {ledgerAge ? (
-                <span className={cn("ml-1 font-normal opacity-70", ledgerStale && "text-amber-600 dark:text-amber-400")}>· {ledgerAge}</span>
+                <span
+                  title={`Newest corpus event is ${ledgerAge === "now" ? "moments" : ledgerAge} old${ledgerStale ? " — quiet for over an hour (amber): a stalled-runner signal; investigate the runner (free-ladder congestion / judge availability), not the chip. Missing timestamps never alarm, and clock skew clamps to now." : " — still breathing; the token turns amber past one hour."}`}
+                  className={cn("ml-1 cursor-help font-normal opacity-70 transition-colors duration-500", ledgerStale && "text-amber-600 dark:text-amber-400")}
+                >
+                  · {ledgerAge}
+                </span>
               ) : null}
             </span>
           ) : null}
