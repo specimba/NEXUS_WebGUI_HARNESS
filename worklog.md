@@ -2684,3 +2684,25 @@ Round ID: r667 -> next patrol (job 473388)
 Next recommended action: (1) the confident-verdict witness now has a PRECISE precondition: a workflow whose steps dial the generate kind (research-loop chains never will — kind is the gate's kind check at runner line ~2388). Pick a writing-style workflow from the palette and run it with a long task; the board's new ⌈floor chip predicts readiness before the run. (2) Witness the chain radar chips on the next registry finding. (3) Owner-witnessed vault restore happy path. Driver notes: chips render only on output-bearing steps; the panel chip is per-pass, the board chip is per-run.
 Blockers: none. Owner queue: none pending.
 - GATES: tsc=0 lint=0(33-warnings exact) console=0 witness="#9 closed: 7/7 chips live, no gate note (non-generate kinds, by design, tooltips honest); ledger 0/8" board-chips="13 live incl ⌈floor 7/7" restart="0/1"
+
+---
+Task ID: r667
+Agent: NEXUS patrol (cron 473388, trace 1a16fd73410fd6b1-cron-agent-loop-202610280937)
+Task: Patrol round — verify r666 attribution, witness ledger correction, one real increment, gates, dual push.
+
+Work Log:
+- OPENING: server 200, HEAD=r666, clean tree.
+- R666 ATTRIBUTION CORRECTED (the round's core work): the runner stamps kind:"generate" on deep passes AND the synthetic verification step, so "non-generate kinds" could not explain the missing note. Reading the ARCHIVE DATA LAYER (nexus-workflows → wf.runs[0].callLog) instead of rendered text: the dossier run carried SIX "Decision gate engaged but no judge answered (tried: …)" notes — the gate ENGAGED 6 times, the no-judge line's 4th live firing, r659-r667 window ledger 0/14. The notes were invisible in r666 only because they live in the COLLAPSIBLE call log. LESSON: search the data layer before attributing silence (extends r663's "count the DOM" lesson to the store).
+- LEDGER REWRITE (bigger than the correction): the new board census immediately exposed "⚖ gate 2·1" on a history run — Novelty Lab (sample), status done, note: "System-One gate FAIL 95% — rework → full verification pass runs". A CONFIDENT VERDICT HAS LANDED BEFORE: the fastJudge rung answers outside congestion windows. The "judge 0/N, availability-gated" story is now precise: engagements in the r659+ observation window went unanswered, but the ladder is not dead — one 95%-confidence FAIL exists in the ledger, with the amber rework semantics r659 shipped.
+- INCREMENT (riding the lesson): board cards carry "⚖ gate engaged·verdicts" — a census chip computed from the same callLog notes the panel colors (Decision-gate prefix = engagement, System-One prefix = confident verdict), muted at zero verdicts, emerald when one lands. LIVE-PROVEN: 4 chips rendered ("1·0", "6·0" on the dossier, "2·1" on Novelty Lab, "1·0"). FixNote r667 records the correction WITH its receipt.
+- GATE MISFIRE CAUGHT BY THE GATE ITSELF: first tsc run rc=2 (TS18048 'c.note' possibly undefined in the verdict count) — fixed with optional chaining, re-run green. Never shipped on a failed gate.
+
+Stage Summary:
+- The gate's silence story is now fully honest: engagements are real and note-bearing (6× no-judge on the dossier), verdicts are possible (1× historic 95% FAIL), and both facts are board-visible without expanding anything.
+- r666's FixNote stands as written (a wrong-attribution round, corrected one round later by its successor — the worklog chain self-heals).
+
+Round Handoff:
+Round ID: r668 -> next patrol (job 473388)
+Next recommended action: (1) confident-verdict witness: the precondition is now OBSERVED, not inferred — Novelty Lab (sample) answered at 95% FAIL once; a short run on it (or any generate-kind chain) during a calm window is the cheapest attempt yet; the board ⚖ chip gives instant post-run readout (any verdicts>0 = witness complete). (2) Optionally verify the panel renders the historic FAIL note with its amber styling when the Novelty Lab run is opened (note styling family check). (3) Radar chips witness on the next registry finding; (4) Owner-witnessed vault restore happy path. Driver notes: read gate truth from callLog in the store, not rendered text; ⚖ chip = engaged·verdicts.
+Blockers: none. Owner queue: none pending.
+- GATES: tsc=0(after 1 caught misfire, optional-chaining fix) lint=0(33-warnings exact) console=0 witness="dossier run: gate engaged 6x, no-judge x6 (ledger 0/14 window); HISTORIC VERDICT FOUND: Novelty Lab FAIL 95% — ladder can answer" board-chips="4 live incl 6·0 and 2·1" restart="0/1"

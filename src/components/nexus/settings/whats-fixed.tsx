@@ -680,6 +680,14 @@ const FIXES: FixNote[] = [
     lookFor:
       "Runs board cards: output-bearing runs carry '⌈floor N/M' — violet when every output reaches the 200-char floor (the r665 dossier run reads ⌈floor 7/7), muted when some fall short; hover states exactly what the floor does and does not guarantee",
   },
+  {
+    round: "r667",
+    title: "Correction with a receipt: the gate DID engage 6 times on the dossier run — its silence was hidden in the collapsible call log, so gate activity now reads on the board card",
+    detail:
+      "The r666 round misattributed the converged dossier run's missing gate note to non-generate step kinds. Reading the archive directly (callLog, not the panel), the truth is better: the gate ENGAGED six times on that run — six 'Decision gate engaged but no judge answered (tried: intern-systemone — not armed; fast-judge AIHubMix · qwen3.8-m…; jev — not armed)' notes, the no-judge line's fourth live firing, judge ledger now 0/14 — but every note lived inside the collapsible call log the patrol never expanded, and the r666 UI search looked only at rendered text. Lesson recorded: search the data layer before attributing silence. Productized: every board card now carries a '⚖ gate engaged·verdicts' census chip computed from the same callLog notes the panel colors (Decision-gate prefix = engagement, System-One prefix = confident verdict) — muted when verdicts are zero, emerald when one lands — so the next congested run is legible at board scale without expanding anything.",
+    lookFor:
+      "Runs board cards: the converged dossier run now reads '⚖ gate 6·0' next to '⌈floor 7/7' — engaged six times, zero verdicts, muted; a run with a confident PASS/FAIL would show an emerald chip with a non-zero verdict count",
+  },
 ];
 
 // r294: the covered range is DERIVED from FIXES (first → last entry) instead

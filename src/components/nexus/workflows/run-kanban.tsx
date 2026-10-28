@@ -494,6 +494,34 @@ function RunCard({
             </span>
           );
         })()}
+        {(() => {
+          // r667: gate activity at board scale — the r666 patrol misattributed a
+          // silent gate because the verdict notes live in the COLLAPSIBLE call
+          // log (6 no-judge notes sat unseen inside the converged dossier run).
+          // This census chip reads the same callLog notes the panel colors:
+          // 'Decision gate …' prefixes are engagements, 'System-One gate …'
+          // prefixes are confident verdicts. engaged·verdicts, honest zero.
+          const gateRows = (run.callLog ?? []).filter(
+            (c) =>
+              c.note &&
+              (c.note.startsWith("Decision gate") || c.note.startsWith("System-One gate"))
+          );
+          if (gateRows.length === 0) return null;
+          const verdicts = gateRows.filter((c) => c.note?.startsWith("System-One gate")).length;
+          return (
+            <span
+              title={`Decision gate engaged ${gateRows.length} time(s) on this run; ${verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log).`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums",
+                verdicts > 0
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "border-border bg-muted/40 text-muted-foreground"
+              )}
+            >
+              ⚖ gate {gateRows.length}·{verdicts}
+            </span>
+          );
+        })()}
         {harnessChip ? (
           <span
             title={harnessChip.tooltip}
