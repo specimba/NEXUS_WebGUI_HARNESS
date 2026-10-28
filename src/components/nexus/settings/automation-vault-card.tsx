@@ -1051,7 +1051,7 @@ export function AutomationVaultCard() {
                       className="mt-0.5 h-3 w-3 shrink-0 text-cyan-500 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
                       aria-hidden
                     />
-                    <span className="text-[10px] leading-relaxed text-muted-foreground/80">
+                    <span className="text-[10px] leading-relaxed text-muted-foreground/80 transition-colors duration-500 group-hover:text-muted-foreground">
                       <strong className="font-medium text-muted-foreground">
                         Browser-saved
                       </strong>{" "}
@@ -1068,7 +1068,7 @@ export function AutomationVaultCard() {
                       className="mt-0.5 h-3 w-3 shrink-0 text-amber-500 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
                       aria-hidden
                     />
-                    <span className="text-[10px] leading-relaxed text-muted-foreground/80">
+                    <span className="text-[10px] leading-relaxed text-muted-foreground/80 transition-colors duration-500 group-hover:text-muted-foreground">
                       <strong className="font-medium text-muted-foreground">
                         Stored here
                       </strong>{" "}
@@ -1085,7 +1085,7 @@ export function AutomationVaultCard() {
                       className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
                       aria-hidden
                     />
-                    <span className="text-[10px] leading-relaxed text-muted-foreground/80">
+                    <span className="text-[10px] leading-relaxed text-muted-foreground/80 transition-colors duration-500 group-hover:text-muted-foreground">
                       <strong className="font-medium text-muted-foreground">
                         Backup file
                       </strong>{" "}
