@@ -24,8 +24,8 @@ export const CORTEX_PROBE_STORE = "nexus.cortex-probe.v1";
 /** Freshness window: older than this and the card auto-probes on mount. */
 export const CORTEX_PROBE_FRESH_MS = 15 * 60 * 1000;
 
-/** r709: how a lane answered — the edge function, the app-server direct Upstash dial, or off. */
-export type CortexLaneTransport = "edge" | "upstash-direct" | "off";
+/** r709: how a lane answered — the edge function, the app-server direct dial (Upstash REST or Hyperbrowser), or off. r710: "direct" = the Hyperbrowser key's own auth verdict. */
+export type CortexLaneTransport = "edge" | "direct" | "upstash-direct" | "off";
 
 /** r709: per-lane transport map — census metadata only, never secrets. */
 export interface CortexTransports {
@@ -71,6 +71,8 @@ export interface CortexCensus {
   ms?: number;
   /** r709: transport truth carried from the probe (edge vs the direct Upstash dial). */
   transports?: CortexTransports;
+  /** r710: per-lane booleans pass through so the HUD line can name HB ✓/✗. */
+  lanes?: PersistedCortexProbe["lanes"];
   error?: string;
   /** Tone for chips: emerald online, amber armed-but-offline, muted unprobed. */
   tone: "online" | "offline" | "unprobed";
@@ -87,11 +89,18 @@ export function cortexStatusLabel(c: CortexCensus, now = Date.now()): string {
   const direct =
     tr?.vector === "upstash-direct" || tr?.qstash === "upstash-direct" || tr?.box === "upstash-direct";
   if (direct && !c.region) {
-    const n = c.lanesArmed;
+    // r710: the Hyperbrowser direct auth verdict joins the line; the UPSTASH
+    // count stays trio-only (lanesArmed includes HB when it answered).
+    const hbTag =
+      tr?.hyperbrowser === "direct"
+        ? ` · HB ${c.lanes?.hyperbrowser ? "✓" : "✗"}`
+        : "";
+    const hbArmed = !!c.lanes?.hyperbrowser && tr?.hyperbrowser === "direct";
+    const trio = Math.max(0, c.lanesArmed - (hbArmed ? 1 : 0));
     if (c.online) {
-      return `CORTEX // DIRECT · UPSTASH ${n}/3${c.ms != null ? ` · ${c.ms}MS` : ""} · ${age}`;
+      return `CORTEX // DIRECT · UPSTASH ${trio}/3${hbTag}${c.ms != null ? ` · ${c.ms}MS` : ""} · ${age}`;
     }
-    return `CORTEX // OFFLINE · EDGE OFF · UPSTASH ${n}/3 · ${
+    return `CORTEX // OFFLINE · EDGE OFF · UPSTASH ${trio}/3${hbTag} · ${
       age === "just now" ? "PROBED JUST NOW" : `PROBED ${age} AGO`
     }`;
   }
@@ -195,6 +204,7 @@ export function cortexCensusOf(p: PersistedCortexProbe | null, now = Date.now())
     ...(p.ms != null ? { ms: p.ms } : {}),
     ...(p.error != null ? { error: p.error } : {}),
     ...(p.transports != null ? { transports: p.transports } : {}),
+    ...(p.lanes != null ? { lanes: p.lanes } : {}),
     tone: p.ok ? "online" : "offline",
   };
 }

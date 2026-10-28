@@ -1,0 +1,11 @@
+  http://localhost:3000/#settings
+"injected"
+  http://localhost:3000/#settings
+"WITNESS:{\"cortexLines\":[\"CORTEX // DIRECT · UPSTASH 2/3 · HB ✓ · 512MS (or HB ✗ when the key was rejected; the UPSTASH count stays trio-only because lanesArmed includes HB). Every armed lane in the probe matrix now wears a transport pill — violet 'direct' (the server dialed it with your BYOK key) or zinc 'edge' (the edge function's secret answered) — so the matrix can never again imply an edge answer where a direct one came. The probe's ok-badge is transport-honest too ('Direct online (server lanes)' when no edge function was involved). Fixtures 23/23: the HB-online and HB-offline line shapes are pinned exact.\",\"CORTEX // DIRECT · n/3 and the HUD line CORTEX // DIRECT · UPSTASH 2/3 · 214MS (or CORTEX // OFFLINE · EDGE OFF · UPSTASH 0/3 when nothing answered — no silent fallbacks, every lane names how it answered). The transports map persists with the census verdict, the fixture carries the direct-online / direct-offline / edge-classic cases, and the browser never CORS-fights Upstash or Box because the dials ride the same-origin server route (the doctrine's server-side lanes). Redis stays edge-secret-only; Hyperbrowser keeps edge-or-direct for the next slice.\",\"CORTEX // DIRECT (or OFFLINE · EDGE OFF) with UPSTASH n/3, and the HUD line names the transport; with no trio config the old honest 'No function URL configured' verdict stands.\"],\"fixChips\":[\"r710\",\"r709\",\"r708\",\"r707\",\"r706\",\"r705\"],\"relay\":true,\"censusText\":true}"
+  http://localhost:3000/#radar
+"frontier-clicked"
+"frontier-scrolled:true"
+  http://localhost:3000/#workflows
+"workflows-textareas:0"
+{}
+CONSOLE_ERRS:14

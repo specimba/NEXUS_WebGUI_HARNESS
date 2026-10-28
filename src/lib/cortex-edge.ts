@@ -219,10 +219,10 @@ function byokKeys(cfg?: CortexConfig): Record<string, string> | undefined {
 /** Budget for ONE direct Upstash lane dial (the trio dials in parallel). */
 const CORTEX_DIRECT_LANE_TIMEOUT_MS = 4_000;
 
-/** The r709 direct-dial verdict: trio lanes + wall time (booleans only — no secrets ride back). */
+/** The r709 direct-dial verdict (r710: + the Hyperbrowser auth verdict) — booleans only, no secrets ride back. */
 export interface CortexDirectProbeResult {
   ms: number;
-  lanes: { vector: boolean; qstash: boolean; box: boolean };
+  lanes: { vector: boolean; qstash: boolean; box: boolean; hyperbrowser: boolean };
 }
 
 /**
@@ -240,6 +240,7 @@ export async function probeUpstashDirect(cfg: CortexConfig): Promise<CortexDirec
   const vectorToken = cfg?.vectorToken?.trim() ?? "";
   const qstashToken = cfg?.qstashToken?.trim() ?? "";
   const boxApiKey = cfg?.boxApiKey?.trim() ?? "";
+  const hbKey = cfg?.hbKey?.trim() ?? "";
   const lane = async (go: () => Promise<boolean>): Promise<boolean> => {
     try {
       return await go();
@@ -248,7 +249,7 @@ export async function probeUpstashDirect(cfg: CortexConfig): Promise<CortexDirec
     }
   };
   const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
-  const [vector, qstash, box] = await Promise.all([
+  const [vector, qstash, box, hyperbrowser] = await Promise.all([
     vectorUrl && vectorToken
       ? lane(async () => {
           const res = await fetch(vectorUrl, {
@@ -278,8 +279,21 @@ export async function probeUpstashDirect(cfg: CortexConfig): Promise<CortexDirec
           return res.ok;
         })
       : Promise.resolve(false),
+    hbKey
+      ? lane(async () => {
+          // r710: the Hyperbrowser direct lane's cheap auth verdict —
+          // /api/user/credits 401s with a junk key AND with no key (verified
+          // live), so res.ok means the credential was ACCEPTED; reading
+          // credits consumes no scrape/search quota.
+          const res = await fetch(`${HB_BASE}/user/credits`, {
+            headers: { "x-api-key": hbKey },
+            signal: budgetSignal(CORTEX_DIRECT_LANE_TIMEOUT_MS),
+          });
+          return res.ok;
+        })
+      : Promise.resolve(false),
   ]);
-  return { ms: Date.now() - started, lanes: { vector, qstash, box } };
+  return { ms: Date.now() - started, lanes: { vector, qstash, box, hyperbrowser } };
 }
 
 /**
@@ -300,7 +314,12 @@ export async function probeCortexEdge(cfg: CortexConfig): Promise<CortexProbeRes
     // the same-origin server route and NAMES the transport in the census
     // (UPSTASH), per the no-silent-fallback doctrine. Still honest: with no
     // trio config at all, the old verdict stands.
-    const anyTrio = !!(cfg?.vectorUrl?.trim() || cfg?.qstashToken?.trim() || cfg?.boxApiKey?.trim());
+    const anyTrio = !!(
+      cfg?.vectorUrl?.trim() ||
+      cfg?.qstashToken?.trim() ||
+      cfg?.boxApiKey?.trim() ||
+      cfg?.hbKey?.trim()
+    );
     if (!anyTrio) return { ok: false, ms: 0, error: "No function URL configured" };
     try {
       const res = await fetch("/api/cortex/probe-direct", {
@@ -312,6 +331,7 @@ export async function probeCortexEdge(cfg: CortexConfig): Promise<CortexProbeRes
           vectorToken: cfg?.vectorToken ?? "",
           qstashToken: cfg?.qstashToken ?? "",
           boxApiKey: cfg?.boxApiKey ?? "",
+          hbKey: cfg?.hbKey ?? "",
         }),
         signal: budgetSignal(CORTEX_PROBE_TIMEOUT_MS),
       });
@@ -322,7 +342,7 @@ export async function probeCortexEdge(cfg: CortexConfig): Promise<CortexProbeRes
         return { ok: false, ms: Date.now() - started, error: `direct probe HTTP ${res.status}` };
       }
       const lanes = {
-        hyperbrowser: false,
+        hyperbrowser: !!j.lanes?.hyperbrowser,
         redis: false,
         vector: !!j.lanes?.vector,
         qstash: !!j.lanes?.qstash,
@@ -335,7 +355,14 @@ export async function probeCortexEdge(cfg: CortexConfig): Promise<CortexProbeRes
         ms: typeof j.ms === "number" ? j.ms : Date.now() - started,
         ...(answered > 0 ? {} : { error: "EDGE OFF (no function URL) · no Upstash lane answered directly" }),
         lanes,
-        transports: { vector: "upstash-direct", qstash: "upstash-direct", box: "upstash-direct" },
+        transports: {
+          vector: "upstash-direct",
+          qstash: "upstash-direct",
+          box: "upstash-direct",
+          // r710: when an HB key is configured the direct auth verdict was
+          // dialed — name the transport even when it rejected the key.
+          ...(cfg?.hbKey?.trim() ? { hyperbrowser: "direct" as const } : {}),
+        },
       };
     } catch (e) {
       return { ok: false, ms: Date.now() - started, error: `direct probe failed: ${errText(e)}` };

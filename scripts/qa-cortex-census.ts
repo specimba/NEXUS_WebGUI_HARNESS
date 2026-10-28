@@ -120,5 +120,27 @@ if (canStore) {
   );
 }
 
+// 9. r710: the Hyperbrowser direct auth verdict joins the census line
+const directHbOnline: PersistedCortexProbe = {
+  at: NOW - 60_000, ok: true, ms: 512,
+  lanes: { hyperbrowser: true, redis: false, vector: true, qstash: false, box: false, sharedSecretGate: false },
+  transports: { vector: "upstash-direct", qstash: "upstash-direct", box: "upstash-direct", hyperbrowser: "direct" },
+};
+const c5 = cortexCensusOf(directHbOnline, NOW);
+check("direct+hb: census counts 2 (1 trio + hb)", c5.lanesArmed === 2 && c5.online);
+check(
+  "direct+hb online line: UPSTASH trio-only + HB tag",
+  cortexStatusLabel(c5, NOW) === "CORTEX // DIRECT · UPSTASH 1/3 · HB ✓ · 512MS · 1m",
+);
+const directHbOff: PersistedCortexProbe = {
+  at: NOW - 30_000, ok: false, ms: 800,
+  transports: { vector: "upstash-direct", qstash: "upstash-direct", box: "upstash-direct", hyperbrowser: "direct" },
+};
+const c6 = cortexCensusOf(directHbOff, NOW);
+check(
+  "direct+hb offline line names HB ✗",
+  cortexStatusLabel(c6, NOW) === "CORTEX // OFFLINE · EDGE OFF · UPSTASH 0/3 · HB ✗ · PROBED JUST NOW",
+);
+
 console.log(`qa-cortex-census: ${pass}/${pass + fail}`);
 if (fail > 0) process.exit(1);

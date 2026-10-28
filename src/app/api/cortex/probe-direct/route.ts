@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     ...(str(body?.vectorToken) ? { vectorToken: str(body?.vectorToken) } : {}),
     ...(str(body?.qstashToken) ? { qstashToken: str(body?.qstashToken) } : {}),
     ...(str(body?.boxApiKey) ? { boxApiKey: str(body?.boxApiKey) } : {}),
+    ...(str(body?.hbKey) ? { hbKey: str(body?.hbKey) } : {}),
   };
   const out = await probeUpstashDirect(cfg);
   return NextResponse.json(out, { headers: { "cache-control": "no-store" } });
