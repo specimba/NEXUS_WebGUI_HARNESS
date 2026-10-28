@@ -877,6 +877,11 @@ export function RunKanban({
   // r681: failed-census attempts — the honest silence marker below renders
   // only after real, REPEATED fetch failures (never for an empty corpus).
   const [ledgerMisses, setLedgerMisses] = React.useState(0);
+  // r683: the ghost chip is clickable — bumping this nonce re-arms the whole
+  // 6×3s retry loop without a remount (the r681 marker gets a recovery path;
+  // before this, exhausted tries silenced the chip until a coincidental
+  // navigation remounted the board).
+  const [ledgerRetry, setLedgerRetry] = React.useState(0);
   React.useEffect(() => {
     let alive = true;
     let tries = 0;
@@ -929,7 +934,7 @@ export function RunKanban({
       alive = false;
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [ledgerRetry]);
   // Pipeline filter lives in the ui store (persisted): it survives layout
   // switches (grid <-> board) and reloads instead of resetting on unmount.
   const filter = useUiStore((s) => s.boardWorkflowFilter);
@@ -1083,12 +1088,20 @@ export function RunKanban({
             </span>
           ) : null}
           {ledger === null && ledgerMisses >= 2 ? (
-            <span
-              title={`RSI eval ledger census UNREACHABLE — ${ledgerMisses} fetch attempt${ledgerMisses === 1 ? "" : "s"} failed (best-effort, retried in-session). This is an honest silence marker, not a census: no chip is faked for an empty corpus (the r648 doctrine), and an unreachable ledger is never a verdict — the r659/r660 trace doctrine just refuses to let an infra failure vanish without a trace.`}
-              className="inline-flex cursor-help items-center rounded-full border border-dashed border-border bg-muted/40 px-1.5 py-px text-xs font-medium text-muted-foreground"
+            <button
+              type="button"
+              onClick={() => {
+                // r683: a retry is not a failure — the ghost honestly steps
+                // aside while the fresh loop runs; it returns only if the
+                // new attempts keep missing too (misses re-accumulate).
+                setLedgerMisses(0);
+                setLedgerRetry((n) => n + 1);
+              }}
+              title={`RSI eval ledger census UNREACHABLE — ${ledgerMisses} fetch attempt${ledgerMisses === 1 ? "" : "s"} failed (best-effort, retried in-session). Click to re-arm the retry loop now. This is an honest silence marker, not a census: no chip is faked for an empty corpus (the r648 doctrine), and an unreachable ledger is never a verdict — the r659/r660 trace doctrine just refuses to let an infra failure vanish without a trace.`}
+              className="inline-flex items-center rounded-full border border-dashed border-border bg-muted/40 px-1.5 py-px text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               ⧉ ledger …
-            </span>
+            </button>
           ) : null}
         </p>
       ) : null}

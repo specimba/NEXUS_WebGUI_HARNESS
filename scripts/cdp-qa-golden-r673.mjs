@@ -150,7 +150,10 @@ try {
       // next run's single dump should name the one real blocker.
       radios: [...document.querySelectorAll('[role="radio"]')].map((el) => (el.getAttribute("aria-label") ?? "?") + "=" + (el.getAttribute("aria-checked") ?? "?")).join(" | "),
       ledgerish: chips.filter((el) => /RSI eval ledger|gate event/.test(el.getAttribute("title") ?? "")).length,
-      digest: (document.body.textContent ?? "").includes("runs on the board"),
+      // r683: plural-agnostic — the real digest renders "1 run on the board"
+      // at exactly one run, so the literal "runs on the board" check read
+      // false there (the r681 "dead phrase" note).
+      digest: /\bruns? on the board/.test(document.body.textContent ?? ""),
       panelOpen: !!document.querySelector('[data-state="open"][role="dialog"]'),
     };
     const t = led.getAttribute("title") ?? "";

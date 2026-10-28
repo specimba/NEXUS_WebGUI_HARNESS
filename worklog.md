@@ -3098,3 +3098,25 @@ Round Handoff:
 Round ID: r683 -> next patrol (job 473388)
 Next recommended action: (1) The client-vs-server record split is the live data story: if the Owner wants gate health visible for SERVER-finalized runs, the board would need to read the ledger per-run (a /api/evals?runId= query) — a bigger slice, Owner-adjacent decision, propose before building. (2) Small alternative: the dead "runs on the board" harness diagnostic phrase — repoint to "run(s) on the board" (the real digest text) or drop it. (3) Radar chips witness on the next registry finding. (4) If a natural run lands while a browser STAYS OPEN (long-lived profile), the client record may land — watch gateChip turn non-empty in a future QA JSON. Driver notes: digest witness = run-kanban.tsx boardGates memo (r682 comment ~line 973) + chip block (~1043); gateChip diagnostic = cdp-qa-golden-r673.mjs drift eval found-branch; trim policy = stores.ts MAX_RUNS_PER_WF 60.
 Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download.
+---
+Task ID: r683
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 683 (job 473388) — follow r682 handoff: ghost-chip recovery + dead-diagnostic repoint + per-run ledger proposal
+
+Work Log:
+- Golden QA first: 4/4 PASS, console 0 — ledger auto-growth round 8 witnessed on entry: census 41 -> {total:45, verdicts:23, fails:7, family:{cross:30}} (the r682 pick's natural run landed server-side). gateChip still "" — consistent with the r682 measured client-vs-server split.
+- SHIP (user-facing + styling): the r681 ghost chip had NO recovery path — once the 6 in-session tries exhausted, the effect never re-ran; the chip stayed dead until a coincidental remount. The ghost is now a real <button>: click resets the miss counter (the ghost honestly steps aside while a retry is in flight — a retry is not a failure) and re-arms the full 6x3s loop via a ledgerRetry nonce in the effect deps (no remount); hover border/text + focus-visible ring affordances added; the tooltip now says "Click to re-arm the retry loop now." The ghost still requires 2+ REAL failed fetches (r648 no-phantom doctrine untouched).
+- Harness (handoff #2 delivered): the "dead" digest diagnostic was plural-FRAGILE, not dead — the real digest renders "1 run on the board" at exactly one run (run-kanban ~1023), so the literal "runs on the board" check read false there; it now matches /\bruns? on the board/.
+- Honest limit: the click-to-retry path is NOT QA-witnessed — forcing a real census failure headlessly would be mocking, not testing; the healthy-state P4 run after the ship proves the reworked block renders and the eval parses. The path is three state writes and a deps bump (tsc-verified).
+- PROPOSAL (handoff #1, NOT built — Owner-adjacent per r682): a per-run ledger read via /api/evals?runId= would make gate health visible for server-finalized runs whose client records never landed; needs an API filter + a per-card read policy. Proposed here, awaiting Owner direction.
+- Radar chips witness: no registry finding landed this round — stays pending.
+- GATES: tsc 0 · lint 0/33-exact · golden QA 4/4 PASS · console 0.
+
+Stage Summary:
+- The r681 honest-trace story is complete: failure is visible (ghost), counted (attempt tally), and now actionable (click to re-arm) — the trace doctrine's final leg: a state the user can ACT on, not just see.
+- Diagnostic debt repaid: the last handoff's dead phrase was actually a pluralization edge — grep-verified truth again beats handoff phrasing.
+
+Round Handoff:
+Round ID: r684 -> next patrol (job 473388)
+Next recommended action: (1) PROPOSAL awaiting Owner: /api/evals?runId= per-run ledger read (server-finalized gate health on the board) — do not build without Owner direction; if no direction arrives, pick the increment from live QA data again. (2) Watch gateChip: if a natural run's client record ever lands WITH callLogs (a browser-completed gate run), the r682 digest witness lights up — check the QA JSON's gateChip field each round. (3) Ledger auto-growth: the r683 QA pick's run should land as round 9 (~45 -> ~49); confirm the census rise on entry. (4) Radar chips witness on the next registry finding. Driver notes: ghost button + nonce = run-kanban.tsx r683 blocks (state ~880-884, deps ~937, button ~1090-1105); harness digest regex = cdp-qa-golden-r673.mjs ~153-156; FixNote r683 = whats-fixed.tsx newest-first block.
+Blockers: none. Owner queue: KICK widget URL fix (widget-side); optional v29c-f re-download; NEW: per-run ledger read proposal (r683 handoff #1).
