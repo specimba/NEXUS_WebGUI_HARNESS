@@ -1,0 +1,19 @@
+== r745 close (recovery round) ==
+--- seedwrite non-interactive probe (r746 handoff data) ---
+seedwrite_probe: prisma:query PRAGMA journal_mode=WAL;
+prisma:query SELECT `main`.`AutomationVault`.`id`, `main`.`AutomationVault`.`provider`, `main`.`AutomationVault`.`key`, `main`.`AutomationVault`.`label`, `main`.`AutomationVault`.`createdAt`, `main`.`AutomationVault`.`updatedAt` FROM `main`.`AutomationVault` WHERE 1=1 ORDER BY `main`.`AutomationVault`.`provider` ASC LIMIT ? OFFSET ?
+vault -> seed: 0 slot(s) exported as plaintext (localhost backup) -> db/vault-seed.json
+--- server state ---
+server:000curl-DEAD
+--- strip check (timeout-wrapped browser) ---
+strip: "{\"strip\":false,\"wfChips\":0,\"empty\":false}"
+--- gates (timeout-wrapped; results RECORDED not gated — QA red round, no ship) ---
+tsc_exit:0
+lint_exit:0 ✖ 33 problems (0 errors, 33 warnings)
+gate-census: qa-gate-census: 48/48
+cortex: qa-cortex-census: 23/23
+--- DB-level snapshot (durability increment) ---
+snapshot: snapshotted 64 rows at 2026-10-29T16-01-17
+census: {"total": 64, "runs": 20, "verdict": 21, "uncertain": 15, "nj": 28, "wf": 0}
+worklog appended
+--- commit + push ---

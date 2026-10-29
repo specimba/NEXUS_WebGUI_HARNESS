@@ -1,0 +1,20 @@
+r745: RECOVERY round — sandbox rolled back to the 10-28 snapshot (r724 era)
+between the 23:07 and 23:37 slots: worklog tail r724, git top 58c565474,
+EvalEvent 0 rows — the SECOND recycle wipe (r725 first). Recovered from
+remote truth: origin/main verified at 6708180d7 (r744 sweep), git reset
+--hard origin/main, corpus restored from latest.json = 64 rows (20 runs ·
+verdict 21 PASS 17/FAIL 4 · uncertain 15 · nj 28; the post-snapshot tail of
+19 rows is lost from the DB — disclosed; worklog/git retain the record).
+App restoration INCOMPLETE: AutomationWorkflow/Run/Vault all 0 — board strip
+does not mount (strip:false ×3, evo-inbox-empty + six lane-unregistered
+chips), golden QA RED, so ZERO code delta shipped per the no-ship-on-red
+rule; seed attempts timed out twice (R10/R11 tool-call timeouts disclosed;
+seedwrite non-interactive probe recorded in the close log for r746).
+INCREMENT (durability, DB-level): scripts/snapshot-corpus.py — EvalEvent
+dump to db/corpus-snapshots/ in the corpus-restore.ts shape, to be called by
+every future close so recycles lose at most one slot (the stale 19:14
+snapshotter cost 19 rows this time). Gates recorded: tsc/lint/censuses in
+scripts/qa_r745_*.txt. Close-chain restructure: sweep runs inside the script
+post-tee (no separate sweep round; new template). r746: finish app
+restoration FIRST (seed workflows, verify strip, full QA), then standard
+watch; platform report upgraded to urgent (two wipes + snapshot disposition).
