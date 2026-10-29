@@ -2,3 +2,14 @@ chip: "{\"chip\":true,\"text\":\"⧉ 24 in corpus\",\"amber\":false}"
 nj click: "clicked"
 legend: "{\"legend\":true,\"spans\":15,\"label\":\"lanes tried (46 no-judge)intern-systemone×46fast-judge AIHubMix · qwen3.8-flash-\"}"
 worklog appended
+[main 2152581d3] r751: legend per-lane counts - the distress driver is measurable, not just nameable. The r750 legend carried deduped lane names only; laneCountsOf (same verbatim tried-trace scan as laneDistressOf - same regex, same noJudge gate - tallying instead of deduping) puts an xN badge on every legend chip (rounded-full amber-tinted tabular-nums, per-chip + panel titles stating the honest semantics: counts are trace entries, a step that tried several lanes counts each, so the sum can exceed the no-judge step count). TIMELY: intern-systemone dial failures (witnessed at source r750) now read as a number on-page. Gates: tsc 0, lint 0E/33W; golden QA GREEN (settings census/relay + radar frontier + 799-char paste, console 0 errors; seven lanes re-verified - no eighth); chip probe gated/tone-recorded; legend probe gated (round ship). Snapshot discipline seventh close; the fifth witness leg now carries magnitude.
+ 8 files changed, 234 insertions(+), 1 deletion(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T18-45-31.json
+ create mode 100644 scripts/qa_r751.txt
+ create mode 100644 scripts/qa_r751_close.txt
+ create mode 100644 scripts/r751_close.sh
+ create mode 100644 scripts/r751_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   a3416cf77..2152581d3  main -> main
+To https://github.com/specimba/PraisonAI.git
+   a3416cf77..2152581d3  main -> main
