@@ -50,3 +50,22 @@ gate-census: qa-gate-census: 48/48
 cortex: qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main f17b41c49] r730: durable step keys reach the corpus panel; provenance badge closed honestly; nj 15->18 disclosed
+ 11 files changed, 493 insertions(+), 3 deletions(-)
+ rename db/corpus-snapshots/{corpus-2026-10-29T06-19-20.json => corpus-2026-10-29T08-15-26.json} (60%)
+ create mode 100644 scripts/qa_r730.txt
+ create mode 100644 scripts/qa_r730_evals.json
+ create mode 100644 scripts/qa_r730_lint.txt
+ create mode 100644 scripts/qa_r730_tsc.txt
+ create mode 100644 scripts/r730_close.sh
+ create mode 100644 scripts/r730_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   82af2f384..f17b41c49  main -> main
+To https://github.com/specimba/PraisonAI.git
+   82af2f384..f17b41c49  main -> main
+--- verification ---
+f17b41c49 r730: durable step keys reach the corpus panel; provenance badge closed honestly; nj 15->18 disclosed
+origin/main..HEAD: 0
+ M scripts/qa_r730.txt
+=== r730 close end ===
+--- sweep (tee artifact: git output silenced after staging so the tree ends clean) ---
