@@ -396,6 +396,7 @@ export function AutomationVaultCard() {
   // copies silently — but it removes the re-paste friction entirely.
   const settings = useSettingsStore((s) => s.settings);
   const [mirroringProvider, setMirroringProvider] = React.useState<string | null>(null);
+  const [mirroringAll, setMirroringAll] = React.useState(false);
   const mirrorCandidates = [
     ...FREE_PROVIDERS.filter(
       (p) =>
@@ -686,6 +687,23 @@ export function AutomationVaultCard() {
       });
     } finally {
       setMirroringProvider(null);
+    }
+  }
+
+  // r720: the third wipe's recovery road. The r719 handoff's instruction was
+  // "click the 17 waiting Mirror buttons" — with more than a handful of
+  // candidates that is N clicks of a mechanical loop. Mirror all (n) runs the
+  // SAME mirrorProvider seam sequentially — same toasts, same drift heal,
+  // same single write path — so the bulk action introduces no second mapping.
+  async function mirrorAllCandidates() {
+    if (mirroringAll || mirroringProvider) return;
+    setMirroringAll(true);
+    try {
+      for (const c of mirrorCandidates) {
+        await mirrorProvider(c.id);
+      }
+    } finally {
+      setMirroringAll(false);
     }
   }
 
@@ -1084,6 +1102,8 @@ export function AutomationVaultCard() {
               busy state (shared with the drift re-mirror buttons below). */}
           <MirrorCandidatesStrip
             candidates={mirrorCandidates}
+            bulkBusy={mirroringAll}
+            onMirrorAll={() => void mirrorAllCandidates()}
             busy={mirroringProvider}
             onMirror={mirrorProvider}
           />
@@ -1105,8 +1125,14 @@ export function AutomationVaultCard() {
               onRemove={removeSlot}
             />
           )}
-          {!loading && !loadFailed && slots.length === 0 ? (
+          {/* r720: the container mounts in BOTH vault states — the
+              backup road used to vanish exactly when keys existed. */}
+          {!loading && !loadFailed ? (
             <div className="mt-1.5 space-y-1.5">
+              {/* r720: empty-vault prose + durability ledger stay
+                  empty-only — they explain a vault with nothing in it. */}
+              {slots.length === 0 ? (
+                <>
               <p className="text-[10px] leading-relaxed text-muted-foreground/70">
                 Empty vault — restore a backup file made by the Backup button, or key a lane
                 from the acquisition lanes below. The executor dials only with a key stored
@@ -1208,6 +1234,28 @@ export function AutomationVaultCard() {
                   not — the backup file is the bridge for keys.
                 </p>
               </div>
+                </>
+              ) : null}
+              {/* r720: the populated-state twin of the ledger's r705 row —
+                  both open the ONE askBackup confirm; no second mapping. */}
+              <div className="flex items-center justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="vault-backup-populated"
+                  className="h-5 gap-1 px-1.5 text-[10px] font-medium text-emerald-600 transition-colors duration-500 hover:bg-emerald-500/15 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-300"
+                  onClick={() => setAskBackup(true)}
+                  disabled={backingUp || restoring}
+                  title="Back up now — an in-app confirm, then the plaintext JSON as a file download AND a copyable dialog (the preview panel can silently block file downloads — the dialog always shows the text to copy). Keep the text outside the sandbox."
+                >
+                  {backingUp ? (
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  ) : (
+                    <FileDown className="h-3 w-3" aria-hidden />
+                  )}
+                  Back up now
+                </Button>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -1286,6 +1334,7 @@ export function AutomationVaultCard() {
                   </DialogHeader>
                   <Textarea
                     readOnly
+                    data-testid="export-plaintext"
                     aria-label="Vault backup JSON"
                     className="max-h-72 min-h-[120px] font-mono text-[10.5px]"
                     value={backupText ?? ""}

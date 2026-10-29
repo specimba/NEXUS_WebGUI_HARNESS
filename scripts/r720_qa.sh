@@ -49,7 +49,7 @@ agent-browser eval "(() => { const b=[...document.querySelectorAll('button')].fi
 sleep 0.5
 # paste-restore the SAME captured text (idempotent upsert)
 agent-browser eval "(() => { const t=document.querySelector('textarea[aria-label=\"Paste a backup JSON to restore\"]'); if(!t) return 'pasteBox-MISS'; const v=window.__r720backup||''; if(!v) return 'no-captured-backup'; const setter=Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set; setter.call(t,v); t.dispatchEvent(new Event('input',{bubbles:true})); return 'paste-len:'+v.length; })()" || true
-agent-browser eval "(() => { const b=[...document.querySelectorAll('button')].find(x=>/restore/i.test(x.textContent||'') && !x.disabled); if(!b) return 'restore-btn-MISS'; b.click(); return 'restore-btn-clicked'; })()" || true
+agent-browser eval "(() => { const b=[...document.querySelectorAll('button')].find(x=>/Restore from pasted text/.test(x.textContent||'') && !x.disabled); if(!b) return 'restore-btn-MISS'; b.click(); return 'restore-btn-clicked'; })()" || true
 sleep 2.5
 agent-browser eval "(() => { const toasts=[...document.querySelectorAll('[data-sonner-toast],li')].map(t=>t.textContent||'').join(' | '); const m=toasts.match(/restored|Restore failed|vault restored/i); return m ? 'restore-toast:'+m[0] : 'restore-toast:not-seen'; })()" || true
 agent-browser eval "(() => { const el=document.querySelector('[data-testid=\"vault-readiness-strip\"]'); return el ? el.getAttribute('aria-label') : 'readiness-MISS'; })()" || true
