@@ -1,0 +1,8 @@
+chip: "{\"chip\":true,\"text\":\"⧉ 28 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":33,\"label\":\"lanes tried (64 no-judge)intern-systemone×6422 runs· 10-29-> 22:09Zfast-judge×6422 runs· 10-29-> 22:09Zjev (pa\"}"
+wave strip: "{\"strip\":true,\"text\":\"no-judge rows by 15-min UTC bucket: 10-29 17:15 ×2 (5 lanes) · 10-29 18:15 ×1 (5 lanes) · 10-29 20:15 ×3 (5 lanes) · 10-29 21:00 ×4 (7 lanes) · 10-29 21:15 ×7 (5 lanes) ·\"}"
+divergence: "{\"divBadges\":4}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
+worklog appended

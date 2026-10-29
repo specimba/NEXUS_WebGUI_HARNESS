@@ -379,11 +379,12 @@ function laneLastSeenOf(corpus: { rows: { note: string; createdAt?: string | nul
  * corpus-wide no-judge rows bucketed into 15-minute UTC slots. At the
  * current burst cadence (waves at 20:16, ~21:0x, ~21:28 UTC on 10-29)
  * 15-minute slots resolve each wave separately where hour buckets would
- * merge the last two. Under the full-ladder shape every no-judge row
- * names every lane, so per-lane bucket profiles coincide with the corpus
- * strip; a lane whose profile DIVERGES is the partial-ladder signal.
+ * merge the last two. r759 SHAPE NOTE: rows name a 5-lane chain whose
+ * middle tier alternates routes (qwen free pair vs glm-5.3 pair), so
+ * per-lane bucket profiles DIVERGE when the route preference shifts -
+ * the laneSpread figure below makes the composition visible on-page.
  * Same newest-400-rows window bound, disclosed in the strip title. */
-function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null }[] }[]): { lanes: Record<string, Record<string, number>>; corpusRows: Record<string, number> } {
+function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null }[] }[]): { lanes: Record<string, Record<string, number>>; corpusRows: Record<string, number>; laneSpread: Record<string, number> } {
   const lanes: Record<string, Record<string, number>> = {};
   const corpusRows: Record<string, number> = {};
   for (const entry of corpus) {
@@ -408,17 +409,21 @@ function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null
       }
     }
   }
-  return { lanes, corpusRows };
+  const laneSpread: Record<string, number> = {};
+  for (const key of Object.keys(corpusRows)) {
+    laneSpread[key] = Object.values(lanes).filter((lb) => (lb[key] ?? 0) > 0).length;
+  }
+  return { lanes, corpusRows, laneSpread };
 }
 
 /** r758: the divergence auto-highlight - compares each lane 15-min
  * bucket profile against the corpus strip over the LAST 3 buckets.
- * Under the full-ladder shape every no-judge row names every lane, so
- * per-lane bucket counts equal the corpus counts; a lane whose count
- * LAGS in a recent bucket is the partial-ladder signal (that bucket
- * found an answering judge on some steps while the rest still dialed
- * the whole ladder). Ships pre-armed in a steady slot: an instrument
- * must exist before the wave it watches for. */
+ * r759 SEMANTICS (post the wave-2/4 trace diff): every row names a
+ * 5-lane chain whose middle tier ALTERNATES routes (the qwen free pair
+ * vs the glm-5.3 pair), so a lag fires on route-preference shifts as
+ * well as on genuine partial ladders - check the laggard lanes before
+ * interpreting. Ships pre-armed in a steady slot: an instrument must
+ * exist before the wave it watches for. */
 function laneDivergenceOf(buckets: { lanes: Record<string, Record<string, number>>; corpusRows: Record<string, number> }): Record<string, string> {
   const keys = Object.keys(buckets.corpusRows).sort().slice(-3);
   const out: Record<string, string> = {};
@@ -1709,9 +1714,9 @@ export function RunKanban({
   const waveStrip = React.useMemo(() => {
     const src = laneFilter ? laneBuckets.lanes[laneFilter] : laneBuckets.corpusRows;
     const keys = Object.keys(src).sort();
-    return { src, shown: keys.slice(-6), total: keys.length };
+    return { src, shown: keys.slice(-6), total: keys.length, spread: laneBuckets.laneSpread };
   }, [laneBuckets, laneFilter]);
-  // r758: divergence auto-highlight per lane - the partial-ladder
+  // r758: divergence auto-highlight per lane - the recent-bucket lag
   // signal, amber-flagged on the chips; ships pre-armed (steady slot).
   const laneDivergence = React.useMemo(() => laneDivergenceOf(laneBuckets), [laneBuckets]);
   const visibleCorpus = React.useMemo(() => {
@@ -2249,7 +2254,7 @@ export function RunKanban({
             <div
               id="corpus-lane-legend"
               data-testid="corpus-lane-legend"
-              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each chip's title. The divergence diamond (r758) ambers a lane whose last-3-bucket profile lags the corpus strip - the partial-ladder signal, auto-highlighted on the chip face."
+              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each chip's title. The divergence diamond (r758) ambers a lane whose last-3-bucket profile lags the corpus strip, auto-highlighted on the chip face; r759 semantics: a lag fires on middle-tier route shifts too (the chain's middle tier alternates the qwen free pair and the glm-5.3 pair) - check the laggard lanes before interpreting."
               className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-2"
             >
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2282,7 +2287,7 @@ export function RunKanban({
                       ? " — by 15-min UTC bucket: " + Object.keys(laneBuckets.lanes[lane]).sort().map((k) => k + " ×" + laneBuckets.lanes[lane][k]).join(" · ")
                       : "") +
                     (laneDivergence[lane]
-                      ? " — DIVERGES from the corpus strip in: " + laneDivergence[lane] + " (partial-ladder signal: those recent buckets found an answering judge on some steps)"
+                      ? " — DIVERGES from the corpus strip in: " + laneDivergence[lane] + " (recent-bucket lag: route-preference shift or partial ladder - check the laggards before interpreting)"
                       : "")
                   }
                 >
@@ -2309,7 +2314,7 @@ export function RunKanban({
                     <span
                       data-div="1"
                       aria-label="Lane diverges from the corpus bucket profile"
-                      title={"Divergence (r758): this lane's last-3-bucket profile lags the corpus strip — " + laneDivergence[lane] + " — the partial-ladder signal: those buckets found an answering judge on some steps."}
+                      title={"Divergence (r758): this lane's last-3-bucket profile lags the corpus strip — " + laneDivergence[lane] + " — a recent-bucket lag: with the r759 route-alternation finding this fires on middle-tier route shifts too; check the laggards before interpreting."}
                       className="ml-0.5 rounded bg-amber-500/15 px-1 text-[9px] font-semibold leading-4 text-amber-700 dark:text-amber-400"
                     >
                       ∆
@@ -2322,11 +2327,11 @@ export function RunKanban({
           {waveStrip.total > 0 ? (
             <div
               data-testid="corpus-wave-strip"
-              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Under the full-ladder shape every no-judge row names every lane, so a lane whose bucket profile diverges from the corpus strip is the partial-ladder signal. Bounded by the newest-400-rows corpus fetch window (same as first/last-seen)."}
+              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Bounded by the newest-400-rows corpus fetch window (same as first/last-seen). The (N lanes) figure is the distinct lanes named per bucket - a mixed-tier bucket shows more (r759: the middle tier alternates the qwen free pair and the glm-5.3 pair, so a 7-lane bucket is a both-routes bucket)."}
               className="mb-2 text-[11px] leading-4 tabular-nums text-muted-foreground/70"
             >
               {laneFilter ? "dials for " + laneFilter + " by 15-min UTC bucket: " : "no-judge rows by 15-min UTC bucket: "}
-              {waveStrip.shown.map((k) => k + " ×" + waveStrip.src[k]).join(" · ")}
+              {waveStrip.shown.map((k) => k + " ×" + waveStrip.src[k] + (laneFilter ? "" : " (" + (waveStrip.spread[k] ?? 0) + " lanes)")).join(" · ")}
               {waveStrip.total > waveStrip.shown.length ? " (+" + (waveStrip.total - waveStrip.shown.length) + " older)" : ""}
             </div>
           ) : null}
