@@ -1,2 +1,13 @@
 chip: "{\"chip\":true,\"text\":\"⧉ 22 in corpus\"}"
 worklog appended
+[main bfac100e1] r748: corpus-glance chip on the card grid - the r747 handoff candidate shipped. The default view (where a wiped profile lands) had zero corpus signal; the chip surfaces the eval corpus as a muted family-contract pill beside the layout switch (one best-effort GET /api/evals on mount, distinct runIds - the same data the board strip summarizes; click opens the Runs board; unreachable ledger stays silent per the r648 doctrine). Styling polish: strip tally separators ml-1 -> mx-1. Gates: tsc 0, lint 0E/33W; golden QA GREEN (deep-linked board strip + LD seven-lane re-verify + settings census/relay + radar frontier + 799-char paste, console 0 errors); chip probe gated in the close. Census and probes in the close log. Snapshot discipline fourth close; witness now three-legged and profile-wipe-proof.
+ 9 files changed, 231 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T17-12-09.json
+ create mode 100644 scripts/qa_r748.txt
+ create mode 100644 scripts/qa_r748_close.txt
+ create mode 100644 scripts/r748_close.sh
+ create mode 100644 scripts/r748_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   974fbe652..bfac100e1  main -> main
+To https://github.com/specimba/PraisonAI.git
+   974fbe652..bfac100e1  main -> main
