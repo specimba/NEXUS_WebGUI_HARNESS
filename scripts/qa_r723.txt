@@ -33,3 +33,20 @@ gate-census: qa-gate-census: 48/48
 cortex: qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main 4f994d381] r723: corpus-only runs strip — the durable corpus becomes visible on the board (attempt #16 witness)
+ 8 files changed, 418 insertions(+)
+ create mode 100644 scripts/qa_r723.txt
+ create mode 100644 scripts/qa_r723_evals.json
+ create mode 100644 scripts/qa_r723_lint.txt
+ create mode 100644 scripts/qa_r723_tsc.txt
+ create mode 100644 scripts/r723_close.sh
+ create mode 100644 scripts/r723_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   32b9c2762..4f994d381  main -> main
+To https://github.com/specimba/PraisonAI.git
+   32b9c2762..4f994d381  main -> main
+--- verification ---
+4f994d381 r723: corpus-only runs strip — the durable corpus becomes visible on the board (attempt #16 witness)
+origin/main..HEAD: 0
+ M scripts/qa_r723.txt
+=== r723 close end ===
