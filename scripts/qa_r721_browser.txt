@@ -1,0 +1,47 @@
+=== r721 QA 2026-10-29T03:39:24+00:00 ===
+server: 200 after wait
+--- settings leg + r720 regression ---
+✓ 🔄 App updated — old code running
+  http://localhost:3000/#settings
+"{\"census\":true,\"relay\":true}"
+"{\"backupBtn\":true,\"pasteBox\":true,\"readiness\":\"Vault loop readiness: 3 lanes stored, dials Vyce AI first, acquisition 0/3 keyed\",\"mirrorStripGone\":true}"
+--- radar leg ---
+✓ 🔄 App updated — old code running
+  http://localhost:3000/#radar
+"frontier-aria-clicked"
+--- workflows leg: attempt #14 + long paste ---
+✓ 🔄 App updated — old code running
+  http://localhost:3000/#workflows
+"{\"amberU\":[],\"njTon\":[],\"scaleGlyphs\":1}"
+"4 runs on the board"
+"paste-len:799"
+--- cron chip ---
+"1/1"
+--- console ---
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 307ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 278ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 108ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 182ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 239ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 215ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 218ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 288ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 206ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 767ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 242ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 250ms
+[log] [Fast Refresh] rebuilding
+--- page errors ---
+=== r721 QA end ===

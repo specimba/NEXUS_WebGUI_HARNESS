@@ -1236,6 +1236,15 @@ export function AutomationVaultCard() {
               </div>
                 </>
               ) : null}
+              {/* r721: the always-mounted cluster gained its name — r720 made
+                  it visible in both vault states but it floated unlabeled
+                  between the slot list and the CLI note. */}
+              <div className="flex items-center gap-2 pt-0.5">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
+                  Backup &amp; restore
+                </span>
+                <span className="h-px flex-1 bg-border/60" aria-hidden />
+              </div>
               {/* r720: the populated-state twin of the ledger's r705 row —
                   both open the ONE askBackup confirm; no second mapping. */}
               <div className="flex items-center justify-end">
