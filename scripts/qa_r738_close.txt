@@ -1,0 +1,13 @@
+== r738 close ==
+--- gates ---
+tsc_exit:0
+lint_exit:0 ✖ 33 problems (0 errors, 33 warnings)
+gate-census: qa-gate-census: 48/48
+cortex: qa-cortex-census: 23/23
+--- fresh cache-busted board + LD witness ---
+board-fresh: "{\"tally\":\"23 runs · 72 ev · 22 verdicts· 15u· 35nj\",\"hasNewRun\":true}"
+fld: "{\"ld\":true,\"count\":\"35\",\"hasIntern\":true,\"hasFast\":true,\"hasPaid\":true,\"lanes\":\"intern-systemone; fast-judge Z.ai · glm-5.3 (glm-5.3); fast-judge Intern TokenPlan · glm-5.3 (glm-5.3); fast-judge; jev (paid rung); fast-judge AIHubMix · qwen3.8-flash-free (qwen3.8-flash-free); fast-judge AIHubMix · qwen3.8-max-free (qwen3.8-max-free)\"}"
+census: {"total": 72, "runs": 23, "verdict": 22, "uncertain": 15, "nj": 35}
+--- worklog append ---
+worklog appended
+--- commit + push ---

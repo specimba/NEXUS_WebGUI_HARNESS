@@ -1,0 +1,16 @@
+r738: watch round — judge-lane rotation STEADY-STATE on the same six dead
+rungs (no eighth lane; intern-systemone + fast-judge Z.ai/TokenPlan/
+AIHubMix-flash/max + bare fast-judge + jev paid rung); corpus 69 (+3, one
+manual test run whose workflow name carries an unbalanced quote — red
+herring), nj 33 (+3), verdict 21 flat, uncertain 15 flat. FALSE ALARM
+disclosed + root-caused: the warm persistent browser session's SPA hash-nav
+served a STALE board witness (66-ev state) — disambiguated in one round via
+API truth (69/22, target run served fine) + cache-busted document reload
+re-witnessing three-way agreement (API==DB==board 69/22/33, hasNewRun true).
+Tooling lesson recorded: board witnesses must open with a unique ?r=r7XX
+query param. Golden QA green (settings census/relay, radar frontier,
+paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors /
+33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO
+code delta — clean watch disposition per r737 handoff (named evaluation =
+three-way agreement + fresh LD title witness, scripts/qa_r738.txt).
+Post-close tee sweep baked into the close chain (r722..r737 precedent).
