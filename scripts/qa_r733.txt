@@ -65,3 +65,22 @@ gate-census: qa-gate-census: 48/48
 cortex: qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main 7f30b43b0] r733: copy-VISIBLE-run-ids beside the filter chip (subset keys takeable); triage loop end-to-end; nj steady 20 but fresh rows JUDGED (+1 PASS) — possible early vault sign, watch
+ 10 files changed, 621 insertions(+), 2 deletions(-)
+ rename db/corpus-snapshots/{corpus-2026-10-29T06-43-15.json => corpus-2026-10-29T09-42-53.json} (60%)
+ create mode 100644 scripts/qa_r733.txt
+ create mode 100644 scripts/qa_r733_evals.json
+ create mode 100644 scripts/qa_r733_lint.txt
+ create mode 100644 scripts/qa_r733_tsc.txt
+ create mode 100644 scripts/r733_close.sh
+ create mode 100644 scripts/r733_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   1c25b389c..7f30b43b0  main -> main
+To https://github.com/specimba/PraisonAI.git
+   1c25b389c..7f30b43b0  main -> main
+--- verification ---
+7f30b43b0 r733: copy-VISIBLE-run-ids beside the filter chip (subset keys takeable); triage loop end-to-end; nj steady 20 but fresh rows JUDGED (+1 PASS) — possible early vault sign, watch
+origin/main..HEAD: 0
+ M scripts/qa_r733.txt
+=== r733 close end ===
+--- sweep (tee artifact: git output silenced after staging so the tree ends clean) ---
