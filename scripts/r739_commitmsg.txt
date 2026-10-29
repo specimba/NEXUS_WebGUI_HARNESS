@@ -1,0 +1,14 @@
+r739: watch round — ledger FROZEN at the r738 close state (72 rows · 23 runs ·
+verdict 22 PASS 18/FAIL 4 · uncertain 15 · nj 35; zero new rows this slot);
+lane set unchanged at six entries — no eighth lane; the r738 close +1
+verdict resolves as a PASS@94% on run_5cf7c40ff106 beside TWO nj rows on
+the SAME run — mixed partial-answering continues (intern lane intermittent,
+not cured; consistent with a flaky dial, not a re-store landing). The r738
+tooling lesson proved out: ?r=739 cache-busted opener matched the DB census
+BYTE-FOR-BYTE on the first eval (three-way agreement, zero scare rounds).
+Golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1,
+console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline,
+qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean
+watch disposition per r738 handoff (named evaluation = first-try three-way
+agreement + fresh LD title witness, scripts/qa_r739.txt). Post-close tee
+sweep baked into the close chain (r722..r738 precedent).
