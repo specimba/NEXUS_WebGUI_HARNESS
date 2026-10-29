@@ -4,3 +4,14 @@ legend: "{\"legend\":true,\"spans\":15,\"label\":\"lanes tried (46 no-judge)inte
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 791fb0969] r754: pure watch round - census steady (82 rows / 24 runs / 21 verdicts / 15u / 46nj, third consecutive steady slot); no code changes, full golden QA as the named evaluation (r707). Carried the r753 interpretation correction into the worklog: the legend's equal per-lane counts are the FULL-LADDER FAILURE shape (every no-judge step tries every lane - the distress is total, not intern-specific; intern reads first as the first rung). Probe gating per the handoff: chip gated/tone recorded; legend + lane-filter recorded (untouched); the fixed tally assertion stays gated. Cadence record: growth r749->r750 and r750->r751, then three steady slots - waves come in bursts. Snapshot discipline tenth close.
+ 7 files changed, 206 insertions(+), 1 deletion(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T20-10-14.json
+ create mode 100644 scripts/qa_r754.txt
+ create mode 100644 scripts/qa_r754_close.txt
+ create mode 100644 scripts/r754_close.sh
+ create mode 100644 scripts/r754_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   5ab604c48..791fb0969  main -> main
+To https://github.com/specimba/PraisonAI.git
+   5ab604c48..791fb0969  main -> main
