@@ -1,0 +1,76 @@
+=== r735 close 2026-10-29T10:45:18+00:00 ===
+server: 200
+--- evals payload (corpus intact check) ---
+evals-total:58 runs-rows:58 distinct:18
+evals-ids:run_02ad78119e14,run_14a887b12e58,run_15bdaa5552a3,run_1dd667e858a7,run_3a0b2f188520,run_3ce26a7dc9a8,run_3fd1a36a18d3,run_4cd79700c4e5,run_4e1d5e0d4097,run_5125af84dac7,run_58be95ad8c39,run_5c98b87879cc
+evals-corpus-ok
+--- corpus snapshot (durable road, pre-commit) ---
+snapshot: 58 rows -> db/corpus-snapshots/latest.json (+9 kept)
+--- board witness: digest split + strip tally (fresh load) ---
+✓ 🔄 App updated — old code running
+  http://localhost:3000/#workflows
+"reloaded"
+"radio-ok"
+witness: "{\"strip\":true,\"split\":true,\"dt\":\"⧉ ledger 58·21✕4 · 14u · 23nj◈31· 26m\",\"tallyOk\":true,\"tally\":\"18 runs · 58 ev · 21 verdicts· 14u· 23nj\",\"chips\":18}" || retry: "{\"strip\":true,\"split\":true,\"dt\":\"⧉ ledger 58·21✕4 · 14u · 23nj◈31· 26m\",\"tallyOk\":true,\"tally\":\"18 runs · 58 ev · 21 verdicts· 14u· 23nj\",\"chips\":18}"
+--- click-through regression witness (r726 ship) ---
+click: "{\"ct\":true,\"label\":\"⚖ gate 4·1 · PASS 79% · 1u · 2njrun_58be95ad8c394 ev\"}"
+panel: "{\"panel\":true,\"expandedOk\":true,\"rows\":4,\"ladder\":true,\"dialTitle\":true,\"role\":\"region\",\"head\":\"run_58be95ad8c394 events · engaged 4 · 1 verdict · 1u · 2nj◈ 2 cross-family · ◇ 0 same-fam\"}"
+--- keyboard regression witness (r727 ship) ---
+arrows: "{\"kb\":true,\"moved\":true}"
+open-for-esc: "{\"open\":true}"
+escape: "{\"esc\":true}"
+closed: "{\"closed\":true,\"openAfter\":0}"
+--- copy regression witness: panel header copy-run-id (r728 ship, clipboard stubbed) ---
+cp-open: "{\"cpOpen\":true}"
+cp-click: "{\"cpClick\":true}"
+cp-check: "{\"copiedOk\":true,\"clipOk\":true,\"want\":\"run_58be95ad8c39\",\"toast\":\"Run id copied\"}"
+--- copy-all witness: digest run-id comma list (r729 ship, clipboard stubbed) ---
+ca-click: "{\"ca\":true}"
+ca-check: "{\"ok\":true,\"checkSwap\":true,\"n\":18,\"distinct\":18,\"same\":true,\"head\":\"run_58be95ad8c39,run_3a0b2f188520,run_4cd79700c4e5\",\"toast\":\"18 run ids copied\"}"
+--- ladder witness: panel decision ladder as text (r731 ship, clipboard stubbed) ---
+cl-open: "{\"clOpen\":true,\"why\":\"already\"}"
+cl-click: "{\"clClick\":true}"
+cl-check: "{\"clOk\":true,\"checkSwap\":true,\"lines\":5,\"rows\":4,\"headOk\":true,\"labelOk\":true,\"head\":\"run_58be95ad8c39 · 4 events · engaged 4 · 1 verdicts · 1u · 2nj\",\"toast\":\"Run ladder copied\"}"
+--- filter witness: run-id type-to-find on the strip (r732 ship) ---
+fl-type: "{\"fl\":true,\"q\":\"run_58be95ad\",\"before\":18}"
+fl-shrunk: "{\"flOk\":true,\"after\":1,\"chip\":\"1 of 18 shown\",\"pillId\":\"run_58be95ad8c39\"}"
+fl-garbage: "{\"flGhost\":true}"
+fl-ghost: "{\"ghostOk\":true,\"residual\":0}"
+fl-clear: "{\"cleared\":true}"
+fl-restored: "{\"restored\":true,\"after\":18}"
+--- clear-chip witness: the matching-state exit (r735 ship) ---
+xb-type: "{\"xb\":true}"
+xb-chip: "{\"xbBtn\":true,\"chip\":true,\"pills\":1}"
+xb-restored: "{\"xbOk\":true,\"after\":18}"
+--- ghost-clear-button witness: the dead end is one click (r734 ship) ---
+gc-type: "{\"gc\":true}"
+gc-btn: "{\"gcBtn\":true,\"ghost\":true,\"hiddenCount\":18,\"label\":\"Clear filter\"}"
+gc-click: "{\"gcClick\":true}"
+gc-restored: "{\"gcOk\":true,\"after\":18}"
+--- visible-copy witness: subset keys while filtered (r733 ship, clipboard stubbed) ---
+fv-type: "{\"fv\":true}"
+fv-click: "{\"fvClick\":true}"
+fv-check: "{\"fvOk\":true,\"checkSwap\":true,\"n\":1,\"pills\":1,\"head\":\"run_58be95ad8c39\",\"toast\":\"1 visible run id copied\"}"
+fv-clear: "{\"cleared\":true}"
+fv-scoped: "{\"scopedOk\":true,\"after\":18}"
+--- golden legs ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#settings
+settings: "{\"census\":true,\"relay\":true}"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#radar
+radar: "frontier-aria-clicked"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#workflows
+paste: "paste-len:799"
+cron chip: "1/1"
+--- console tail ---
+--- page errors ---
+
+--- gates ---
+tsc_exit:0
+lint_exit:0 ✖ 33 problems (0 errors, 33 warnings)
+gate-census: qa-gate-census: 48/48
+cortex: qa-cortex-census: 23/23
+--- worklog append ---
+worklog appended

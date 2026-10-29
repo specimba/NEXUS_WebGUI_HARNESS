@@ -1,0 +1,31 @@
+r735: ✕ clear chip for the filter's matching state (dead end already had r734's ghost button); ledger survived its first integrity audit; nj RESUMED 21→23
+
+- SHIP (run-kanban.tsx): with a filter active AND matches showing,
+  clearing demanded refocus + select-all + delete (Escape needs input
+  focus; the r734 ghost button only renders at 0 matches). A ✕ chip now
+  sits beside the count chip: onClick setPillFilter("") — the SAME one
+  mechanism as Escape; rendered only while pillQuery is active AND the
+  visible set is non-empty, mutually exclusive by state with the ghost
+  button (matches -> chip, dead end -> ghost button), so the clear
+  vocabulary never doubles. Chip vocabulary styling (h-5 w-5 mono,
+  violet hover, CHIP_FOCUS_RING).
+- FALSE ALARM CLOSED BY FORENSICS: the open-round evals diff "4 dup
+  ids" was my own artifact — /api/evals runs rows carry NO id field, so
+  an id-keyed diff collapses to {None}. DB-level audit on db/custom.db:
+  58 rows, 0 duplicate-id groups; single writer POST /api/evals
+  (validated, capped, keep-newest-4000 hygiene). Ledger sound; the +4
+  rows are live. Lesson: diff on (runId, note, createdAt) tuples.
+- JUDGE-LANE: corpus 54->58, verdict 21 (PASS 17 / FAIL 4), uncertain
+  14, nj 23 (+2) — the distress RESUMED after the mixed r734 slot;
+  partial answering continues (judged +2 alongside), vault still 0
+  lanes; cure stays Owner-side (r720 re-store + Cortex v2 deploy).
+- witness: clear-chip DOM-probed (type -> chip+count present ->
+  click -> chip/count/ghost gone, pills restored). Full regression set
+  green (r734 ghost, r733 copy-visible, r732 filter, r731 ladder,
+  r729 copy-all, r728 panel copy, r727 keyboard, r726 click-through).
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census
+  48/48 · qa-cortex-census 23/23.
+- budget: 11 rounds, one under the cap. Post-close tee sweep baked into
+  the close chain (git output silenced after staging; r722..r734 precedent).

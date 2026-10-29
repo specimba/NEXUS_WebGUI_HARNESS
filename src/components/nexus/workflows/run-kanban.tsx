@@ -1966,6 +1966,26 @@ export function RunKanban({
                 {visibleCorpus.length} of {corpusOnly.length} shown
               </span>
             ) : null}
+            {/* r735: the matching-state exit — with the filter active AND pills
+                showing, clearing used to demand refocus + select-all + delete;
+                the r734 ghost button only covers the no-match dead end. Same one
+                mechanism as Escape (setPillFilter("")); the two affordances are
+                mutually exclusive by state (matches → this chip, dead end → the
+                ghost's Clear button), so the vocabulary never doubles. */}
+            {pillQuery && visibleCorpus.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setPillFilter("")}
+                aria-label="Clear the corpus run filter"
+                title="Clear the filter and restore every corpus pill — the mouse path beside Escape (the ghost's Clear button covers the no-match dead end)."
+                className={
+                  "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background font-mono text-[10px] leading-none text-foreground/70 transition-colors hover:border-violet-400/60 hover:text-foreground " +
+                  CHIP_FOCUS_RING
+                }
+              >
+                ✕
+              </button>
+            ) : null}
             {pillQuery && visibleCorpus.length > 0 ? (
               <CopyVisibleRunIdsButton ids={visibleCorpus.map((c) => c.runId)} />
             ) : null}
