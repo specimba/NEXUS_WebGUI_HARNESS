@@ -2014,8 +2014,24 @@ export function RunKanban({
             ))}
           </div>
           {visibleCorpus.length === 0 && pillQuery ? (
-            <p className="mt-2 text-[10px] text-muted-foreground">
-              No corpus runs match "{pillFilter.trim()}" — clear the filter to restore all {corpusOnly.length}.
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+              <span>
+                No corpus runs match "{pillFilter.trim()}" — all {corpusOnly.length} corpus runs are hidden by this filter.
+              </span>
+              {/* r734: the ghost used to only INSTRUCT clearing (Escape works solely while the
+                  input holds focus) — the affordance now exists where the dead end is. Same one
+                  mechanism as Escape (setPillFilter("")), no rival vocabulary. */}
+              <button
+                type="button"
+                onClick={() => setPillFilter("")}
+                aria-label="Clear the corpus run filter and show all corpus run pills"
+                className={
+                  "inline-flex h-5 shrink-0 items-center rounded-md border border-border/60 bg-background px-2 font-mono text-[10px] text-foreground/80 transition-colors hover:border-violet-400/60 hover:text-foreground " +
+                  CHIP_FOCUS_RING
+                }
+              >
+                Clear filter
+              </button>
             </p>
           ) : null}
           {detailRun ? (

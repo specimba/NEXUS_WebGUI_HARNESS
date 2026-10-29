@@ -1,0 +1,31 @@
+r734: ghost dead-end gets its exit — Clear-filter button in the r648 ghost (one click, same mechanism as Escape); judge-lane MIXED (judged +2 AND nj +1)
+
+- SHIP (run-kanban.tsx): the r648 ghost used to only INSTRUCT clearing
+  ("clear the filter to restore all N") while the affordance existed
+  nowhere — Escape works solely while the input holds focus, so a mouse
+  user in the dead end had no clickable path out. The ghost now carries
+  a real Clear-filter button: onClick setPillFilter("") (the SAME state
+  change Escape performs — one mechanism, two entry points, no rival
+  vocabulary), ghost text upgraded from instruction to honest statement
+  ("all N corpus runs are hidden by this filter"), chip vocabulary
+  styling (h-5 mono, violet hover, CHIP_FOCUS_RING). Renders only in
+  the dead end; vanishes with the ghost (witnessed by absence).
+- JUDGE-LANE WATCH: corpus 51->54, verdict 19->20 (PASS 16 steady /
+  FAIL 3->4), uncertain 12->13, nj 20->21 — MIXED slot: judged families
+  grew +2 (a judge convicted a fresh FAIL; one answered
+  below-confidence) while nj resumed climbing too (+1). Neither the
+  clean flatten (vault re-store) nor the pure r733-luck resume —
+  partial: some fresh rows meet an answering judge, others still dial
+  into the emptied vault. Cure stays Owner-side; ladders are the
+  evidence road.
+- witness: ghost-clear DOM-probed (garbage filter -> ghost + button
+  present with honest hidden-count text -> click -> button/ghost/chip
+  GONE, pills restored). Full regression set green (r733 copy-visible,
+  r732 filter four-leg, r731 ladder, r729 copy-all, r728 panel copy,
+  r727 keyboard, r726 click-through) on the 54-row corpus.
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census
+  48/48 · qa-cortex-census 23/23.
+- budget: 10 rounds, two under the cap. Post-close tee sweep baked into
+  the close chain (git output silenced after staging; r722..r733 precedent).
