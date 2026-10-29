@@ -2375,11 +2375,21 @@ export function RunKanban({
           {waveStrip.total > 0 ? (
             <div
               data-testid="corpus-wave-strip"
-              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Bounded by the newest-400-rows corpus fetch window (same as first/last-seen). The (N lanes) figure is the distinct lanes named per bucket - a mixed-tier bucket shows more (r759: the middle tier alternates the qwen free pair and the glm-5.3 pair, so a 7-lane bucket is a both-routes bucket)."}
+              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Bounded by the newest-400-rows corpus fetch window (same as first/last-seen). The (N lanes) figure is the distinct lanes named per bucket - a mixed-tier bucket shows more (r759: the middle tier alternates the qwen free pair and the glm-5.3 pair, so a 7-lane bucket is a both-routes bucket). The mini-bar (r761) scales with the row count (2px per row, 16px cap); an amber bar marks a mixed-tier (both-routes) bucket, muted bars are single-tier - the route watch reads the bar color at a glance."}
               className="mb-2 text-[11px] leading-4 tabular-nums text-muted-foreground/70"
             >
               {laneFilter ? "dials for " + laneFilter + " by 15-min UTC bucket: " : "no-judge rows by 15-min UTC bucket: "}
-              {waveStrip.shown.map((k) => k + " ×" + waveStrip.src[k] + (laneFilter ? "" : " (" + (waveStrip.spread[k] ?? 0) + " lanes)")).join(" · ")}
+              {waveStrip.shown.map((k, i) => (
+                <span key={k} className="inline-flex items-end gap-1 whitespace-nowrap">
+                  <span
+                    aria-hidden
+                    className={"inline-block w-1.5 rounded-sm " + (!laneFilter && (waveStrip.spread[k] ?? 0) > 5 ? "bg-amber-500/40" : "bg-muted-foreground/30")}
+                    style={{ height: Math.max(2, Math.min(16, waveStrip.src[k] * 2)) + "px" }}
+                  />
+                  <span>{k + " ×" + waveStrip.src[k] + (laneFilter ? "" : " (" + (waveStrip.spread[k] ?? 0) + " lanes)")}</span>
+                  {i < waveStrip.shown.length - 1 ? <span aria-hidden className="text-muted-foreground/40"> · </span> : null}
+                </span>
+              ))}
               {waveStrip.total > waveStrip.shown.length ? " (+" + (waveStrip.total - waveStrip.shown.length) + " older)" : ""}
             </div>
           ) : null}
