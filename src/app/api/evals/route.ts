@@ -24,6 +24,8 @@ export const dynamic = "force-dynamic";
 //   r691: the drift tally pre-filters to witness-bearing notes (a
 //   case-insensitive superset of the regex) — the scan no longer carries
 //   every stored note on every poll; familyTallyOf stays the exact counter.
+//   r730: runs rows also carry stepId (nullable) — the durable STEP key
+//   reaches the board's corpus panel (the triage join, at step granularity).
 
 const KINDS = new Set([
   "gate-verdict",
@@ -137,13 +139,14 @@ export async function GET(): Promise<NextResponse> {
       db.evalEvent.findMany({
         orderBy: { createdAt: "desc" },
         take: 400,
-        select: { runId: true, note: true, createdAt: true },
+        select: { runId: true, note: true, createdAt: true, stepId: true },
       }),
     ]);
     const family = familyTallyOf(notes.map((n) => n.note));
     const runs = runsRaw.map((r) => ({
       runId: r.runId,
       note: r.note,
+      stepId: r.stepId,
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : null,
     }));
     return NextResponse.json({ total, verdicts, fails, family, latest, runs });

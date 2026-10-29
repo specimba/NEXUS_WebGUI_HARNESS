@@ -280,6 +280,17 @@ function CorpusEventRow({ row }: { row: LedgerRunRow }) {
       <div className="flex items-baseline gap-2">
         <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{fmtEventAt(row.createdAt)}</span>
         <span className={cn("text-[10px] font-semibold uppercase tracking-wide", tone)}>{label}</span>
+        {/* r730: the durable step key — the step-level join for triage SQL
+        (EvalEvent.stepId). Honest absence when the runner posted none
+        (r648: no token is faked); truncates, never wraps the row. */}
+        {row.stepId ? (
+          <code
+            className="ml-auto min-w-0 truncate font-mono text-[9px] text-muted-foreground/80"
+            title="Durable step key — the join key for triage SQL against the corpus (EvalEvent.stepId). Absent on rows the runner posted without a step."
+          >
+            {row.stepId}
+          </code>
+        ) : null}
       </div>
       <p className="mt-1 break-words text-[10px] leading-relaxed text-muted-foreground">{row.note}</p>
     </li>
@@ -394,6 +405,10 @@ interface LedgerRunRow {
   runId: string;
   note: string;
   createdAt?: string | null;
+  /** r730: the durable step key when the runner posted one (nullable —
+   * uncertain rows often carry none); the panel renders it as the
+   * step-level triage join (EvalEvent.stepId). */
+  stepId?: string | null;
 }
 
 /** r723: the durable per-run chip for runs this board holds NO card for —
