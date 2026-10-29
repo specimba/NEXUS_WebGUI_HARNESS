@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":4}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main b40eb1d63] r760: route-tier grouping ships + wave 5 returns. The opening census read 109/30/73 vs the r759 baseline 100/28/21/15/64 - +9 ev / +2 runs / +9 no-judge rows, newest 23:07:15 UTC (~58 min after wave 4), the fifth wave returning after one steady slot; verdict/uncertain flat. Increment (r759-handoff named candidate): laneTierOf rung classifier (name-heuristic: entry / paid / verify / middle-qwen / middle-glm - an eighth lane still classifies as unrouted), laneTiers memo with per-route ACTIVE/silent state against the newest corpus bucket, a corpus-tier-state line in the legend header (route-shift witness on-page), and a per-chip rung tag; legend title documents the semantics. While glm holds the tier the qwen diamonds stay expected; a qwen silent->ACTIVE flip = the free routes returning. Snapshot discipline sixteenth close.
+ 9 files changed, 406 insertions(+), 2 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T23-19-40.json
+ create mode 100644 scripts/qa_r760.txt
+ create mode 100644 scripts/qa_r760_close.txt
+ create mode 100644 scripts/r760_close.sh
+ create mode 100644 scripts/r760_prose.py
+ create mode 100644 scripts/r760_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   389ecfe92..b40eb1d63  main -> main
+To https://github.com/specimba/PraisonAI.git
+   389ecfe92..b40eb1d63  main -> main
