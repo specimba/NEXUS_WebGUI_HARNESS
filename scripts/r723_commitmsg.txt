@@ -1,0 +1,21 @@
+r723: corpus-only runs strip — the durable corpus becomes visible on the board (attempt #16 witness)
+
+- FIXNOTE: r722's two-renderer theory corrected — workflows-view mounts
+  RunKanban itself for the board radio; ONE renderer. The real gap, proven
+  with page-level evidence: sync-runs 0 + this store holds only sample
+  runs, so NO card exists whose runId matches the durable rows — the
+  corpus needed a surface, not a mount condition.
+- SHIP: "In the corpus, not on this board" strip — per-run durable chips
+  (CorpusRunChip, same gateCensusOf adapter + tonal system + hover
+  promise) for runIds the board holds no card for, beside short run ids
+  and event counts. Zero-gate runs render nothing (r648 kept).
+- attempt #16 witness LANDED: strip chips with u/nj tokens fed by durable
+  rows, named runIds, fresh-load DOM-proven.
+- golden QA: settings census/relay · radar frontier · paste-799 · cron 1/1 ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census 48/48 ·
+  qa-cortex-census 23/23.
+- budget: 13 rounds (one over the <=12 cap, disclosed: the first close run
+  tripped its own new witness guard on the CLI's JSON-escaped quotes — the
+  r722 lesson un-applied to the new guard; regex fixed, nothing committed
+  on a failed guard; guarded close chain, scripts/r723_close.sh).

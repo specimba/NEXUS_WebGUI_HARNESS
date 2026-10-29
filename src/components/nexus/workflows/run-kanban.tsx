@@ -244,6 +244,39 @@ interface LedgerRunRow {
   createdAt?: string | null;
 }
 
+/** r723: the durable per-run chip for runs this board holds NO card for —
+ * the "corpus-only" strip's chip (attempt #16's witness surface). Same
+ * gateCensusOf adapter, same tonal system; the title names the honest
+ * source: the corpus outlives the store. Zero gate rows render nothing
+ * (the r648 doctrine — no chip is faked for an empty corpus). */
+function CorpusRunChip({ rows }: { rows: LedgerRunRow[] }) {
+  const mapped = rows.map((r) => {
+    const at = r.createdAt ? Date.parse(r.createdAt) : NaN;
+    return { note: r.note, ...(Number.isFinite(at) ? { at } : {}) };
+  });
+  const census = gateCensusOf(mapped);
+  if (census.engaged === 0 && census.verdicts === 0) return null;
+  const fam = familyTallyOf(rows.map((r) => r.note));
+  return (
+    <span
+      tabIndex={0}
+      title={`Decision gate census counted from the DURABLE ledger — this board holds no card for this run (the run row lives only in the browser that ran it; the server lane carries no AutomationRun row for it). The corpus outlives the store, so it renders here instead of vanishing. Engaged ${census.engaged} time(s), ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored).${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
+      aria-label={`Durable gate census for a corpus-only run: engaged ${census.engaged}, ${census.verdicts} confident verdicts landed`}
+      className={cn(
+        "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
+        CHIP_FOCUS_RING,
+        census.verdictTone === "fail"
+          ? "border-amber-500/30 bg-amber-500/10 text-amber-600 hover:border-amber-500/60 dark:text-amber-400"
+          : census.verdictTone === "pass"
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:border-emerald-500/60 dark:text-emerald-400"
+            : "border-border bg-muted/40 text-muted-foreground hover:border-muted-foreground/40"
+      )}
+    >
+      ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}<GateSuffix census={census} />
+    </span>
+  );
+}
+
 function RunCard({
   card,
   onSelect,
@@ -1068,6 +1101,30 @@ export function RunKanban({
       if (timer) clearTimeout(timer);
     };
   }, [ledgerRetry]);
+  // r723: corpus-only runs — durable ledger rows whose runId matches NO card
+  // on this board (neither the workflows store's runs nor the server lane).
+  // The r722 diag proved the gap is REAL: Owner runs POST their gate events
+  // to the ledger but exist as run rows ONLY in the browser that ran them
+  // (sync-runs: 0; this store holds sample runs) — the corpus outlives the
+  // store, so the board now RENDERS what it cannot see, per run, instead of
+  // silently dropping it. Zero-gate runs still render nothing (r648 kept:
+  // CorpusRunChip returns null for an empty census).
+  const cardRunIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const r of serverRuns) ids.add(r.id);
+    for (const wf of workflows) for (const r of wf.runs) ids.add(r.id);
+    return ids;
+  }, [serverRuns, workflows]);
+  const corpusOnly = React.useMemo(() => {
+    const byRun = new Map<string, LedgerRunRow[]>();
+    for (const r of ledger?.runs ?? []) {
+      if (cardRunIds.has(r.runId)) continue;
+      const list = byRun.get(r.runId) ?? [];
+      list.push(r);
+      byRun.set(r.runId, list);
+    }
+    return [...byRun.entries()].map(([runId, rows]) => ({ runId, rows }));
+  }, [ledger, cardRunIds]);
   // r684 corpus freshness, r689 lifted to src/lib/ledger-freshness.ts —
   // one contract, one home (the r677 family-witness precedent); the chip
   // imports the same helper the fixture freezes. Compact age token for the
@@ -1451,6 +1508,31 @@ export function RunKanban({
       })}
       </div>
       )}
+      {corpusOnly.length > 0 ? (
+        <div
+          data-testid="corpus-only-runs"
+          className="mb-4 rounded-xl border border-border/60 bg-muted/20 p-3"
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              ⧉ In the corpus, not on this board
+            </span>
+            <span className="h-px flex-1 bg-border/60" aria-hidden />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {corpusOnly.map(({ runId, rows }) => (
+              <span
+                key={runId}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+              >
+                <CorpusRunChip rows={rows} />
+                <code className="font-mono">{runId.length > 20 ? `${runId.slice(0, 20)}…` : runId}</code>
+                <span className="tabular-nums">{rows.length} ev</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {serverDetail ? (
         <ServerRunDrawer
           // r454: the drawer used to render the row snapshot captured at
