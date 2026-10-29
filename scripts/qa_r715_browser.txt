@@ -1,0 +1,17 @@
+== R715 GOLDEN QA ==
+--- legA settings census ---
+"{\"census\":true,\"relay\":true,\"fixnoteR714\":true,\"censusLines\":[\"The census's new tones are pinned in the fixture — and the per-run tooltips decode what the board already explains\",\"The r713 u/nj suffixes shipped with the adapter untested (the guard-verified edit was the only pin — honest but thin). The gate-census fixture (the r670 dial-free doctrine) now pins the full tone surface: uncertain rows count as engaged-but-not-verdict, no-judge rows as ungated, both stay 0 on clean and empty censuses, junk rows stay tolerant, and the fast-model verdict family is unaffected. Same round, tooltip completion: the per-run ⚖ chips (card + panel) gained the same u/nj decode the board tooltip already carries — one vocabulary, three surfaces. Watch note: uncertain grew 25→30 in the hour after the tones became visible — the corpus is talking; no-judge held at 8.\",\"On the board: Workflows: hover a run's ⚖ gate chip — the tooltip decodes u (judge answered below confidence) and nj (no judge answered, step ungated); scripts/qa-gate-census.ts prints the extended count green.\"]}"
+--- legB radar frontier aria ---
+frontier-aria-clicked
+--- legC workflows paste ---
+"paste-len:799"
+--- legD u/nj chip witness ---
+"{\"gate\":0,\"u\":0,\"nj\":0}"
+--- console (class over count, r712 doctrine) ---
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 1568ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 600ms
+--- page errors ---

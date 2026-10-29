@@ -1113,6 +1113,9 @@ export function RunKanban({
           <span>
             {boardHarness.runs} run{boardHarness.runs === 1 ? "" : "s"} on the board
           </span>
+          <span className="text-muted-foreground/60">
+            · ⚖ legend: verdict = confident judge call · u = judge answered below confidence · nj = no judge answered — that step ran ungated
+          </span>
           {boardHarness.debts > 0 ? (
             <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-px font-semibold text-amber-600 dark:text-amber-400">
               {boardHarness.debts} harness debt{boardHarness.debts === 1 ? "" : "s"}
