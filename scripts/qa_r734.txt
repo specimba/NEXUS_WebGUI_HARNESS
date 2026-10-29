@@ -70,3 +70,22 @@ gate-census: qa-gate-census: 48/48
 cortex: qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main 5a457078b] r734: ghost dead-end gets its exit — Clear-filter button in the r648 ghost (one click, same mechanism as Escape); judge-lane MIXED (judged +2 AND nj +1)
+ 10 files changed, 614 insertions(+), 4 deletions(-)
+ rename db/corpus-snapshots/{corpus-2026-10-29T06-44-24.json => corpus-2026-10-29T10-15-18.json} (59%)
+ create mode 100644 scripts/qa_r734.txt
+ create mode 100644 scripts/qa_r734_evals.json
+ create mode 100644 scripts/qa_r734_lint.txt
+ create mode 100644 scripts/qa_r734_tsc.txt
+ create mode 100644 scripts/r734_close.sh
+ create mode 100644 scripts/r734_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   d153db403..5a457078b  main -> main
+To https://github.com/specimba/PraisonAI.git
+   d153db403..5a457078b  main -> main
+--- verification ---
+5a457078b r734: ghost dead-end gets its exit — Clear-filter button in the r648 ghost (one click, same mechanism as Escape); judge-lane MIXED (judged +2 AND nj +1)
+origin/main..HEAD: 0
+ M scripts/qa_r734.txt
+=== r734 close end ===
+--- sweep (tee artifact: git output silenced after staging so the tree ends clean) ---
