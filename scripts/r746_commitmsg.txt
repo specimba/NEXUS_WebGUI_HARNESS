@@ -1,0 +1,21 @@
+r746: app-restoration round — corpus wiped AGAIN between slots (eval 0 at open,
+the THIRD wipe; DB-only, tree intact at the r745 sweep) — restored from the
+committed snapshot with ZERO rows lost (latest.json was the full 64-row
+close state; corpus-restore 64/20 runs/verdict 21/nj 28): the r745 snapshot
+discipline proved itself under fire. Server restarted once (was DEAD;
+page 200). Seeder myth busted: seedwrite.ts is the r527 vault bridge, not a
+workflow seeder (runs in seconds wrapped — the r745 timeouts were the
+unwrapped downstream steps; timeout hygiene held all round, zero tool
+timeouts). Strip root-cause narrowed hard: data plane fully healthy in-page
+(api/evals 64 rows → 20 deduped runs; /api/automation/sync runs [] ;
+AutomationRun 0; LS overlap 0) yet line 1935 never renders — the JSX parent
+branch (evo-inbox-empty path) excludes the board subtree when the workflows
+store holds no runs (drained by the recycle chain; r723-era sample runs
+gone). LS-surgery attempt honestly missed (store keys differ from assumed
+shape; reverted-in-effect, nothing committed). QA board leg RED → ZERO code
+delta per the no-ship-on-red rule; gates recorded (tsc 0, lint 0E/33W,
+48/48, 23/23); snapshot discipline second close running it. r747 increment
+named: hoist the corpus strip above the empty-state branch in run-kanban.tsx
+— an empty board with a non-empty corpus is the strongest post-recycle
+distress signal. Platform report URGENT: three wipes (r725, r745, r745/r746
+DB-only).

@@ -1,0 +1,11 @@
+== r746 close ==
+--- gates (timeout-wrapped) ---
+tsc_exit:0
+lint_exit:0 ✖ 33 problems (0 errors, 33 warnings)
+gate-census: qa-gate-census: 48/48
+cortex: qa-cortex-census: 23/23
+--- DB snapshot (durability discipline) ---
+snapshot: snapshotted 67 rows at 2026-10-29T16-19-24
+census: {"total": 67, "runs": 21, "verdict": 21, "uncertain": 15, "nj": 31, "wf": 4, "ar": 0}
+worklog appended
+--- commit + push ---
