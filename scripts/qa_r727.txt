@@ -43,3 +43,23 @@ gate-census: qa-gate-census: 48/48
 cortex: qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main be9b612ae] r727: keyboard-complete corpus strip — arrow traversal + Escape close; vault-lane census names the nj root cause
+ 12 files changed, 422 insertions(+), 2 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T06-41-59.json
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T06-43-15.json
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T06-44-24.json
+ create mode 100644 scripts/qa_r727.txt
+ create mode 100644 scripts/qa_r727_evals.json
+ create mode 100644 scripts/qa_r727_lint.txt
+ create mode 100644 scripts/qa_r727_tsc.txt
+ create mode 100644 scripts/r727_close.sh
+ create mode 100644 scripts/r727_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   05764bbd0..be9b612ae  main -> main
+To https://github.com/specimba/PraisonAI.git
+   05764bbd0..be9b612ae  main -> main
+--- verification ---
+be9b612ae r727: keyboard-complete corpus strip — arrow traversal + Escape close; vault-lane census names the nj root cause
+origin/main..HEAD: 0
+ M scripts/qa_r727.txt
+=== r727 close end ===
