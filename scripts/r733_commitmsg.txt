@@ -1,0 +1,30 @@
+r733: copy-VISIBLE-run-ids beside the filter chip (subset keys takeable); triage loop end-to-end; nj steady 20 but fresh rows JUDGED (+1 PASS) — possible early vault sign, watch
+
+- SHIP (run-kanban.tsx): CopyVisibleRunIdsButton beside the filter
+  count chip — one click copies exactly the runs the r732 filter is
+  showing as a comma list (the visible subset's key set for triage
+  scripts; the count chip states the same truth). Rendered ONLY while
+  a filter is active AND at least one pill is visible — unfiltered,
+  r729 copy-all owns the whole-corpus job; an empty set has nothing to
+  copy (r648: no fake affordances). Copy->Check + toast with honest
+  singular/plural; honest error toasts; the button VANISHES when the
+  filter clears (scoping witnessed by absence, not assumed).
+- JUDGE-LANE WATCH: corpus 49->51, verdict 18->19 (PASS 15->16),
+  uncertain 11->12, nj 20 STEADY — the first slot since the climb
+  began where the fresh rows landed in JUDGED families (+1 PASS,
+  +1 uncertain): possible early sign a judge lane is answering again
+  (vault re-store?). Inconclusive from counts alone; the panel ladders
+  carry the tried-trace. Flatten-or-resume resolves next slots.
+- witness: visible-copy DOM-probed (page-level writeText stub records
+  the payload, disclosed) — filter set to a 12-char id prefix, button
+  appears beside the count chip, payload n == visible pills ==
+  distinct, head starts with run_, check-swap + toast fired; filter
+  cleared -> button GONE. Full regression set green (r732 filter
+  four-leg, r731 ladder, r729 copy-all, r728 panel copy, r727
+  keyboard, r726 click-through).
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census
+  48/48 · qa-cortex-census 23/23.
+- budget: 6 rounds, six under the cap. Post-close tee sweep baked into
+  the close chain (git output silenced after staging; r722..r732 precedent).

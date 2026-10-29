@@ -481,6 +481,59 @@ function CopyLadderButton({
   );
 }
 
+/** r733: copy-VISIBLE-run-ids beside the filter count chip — the r732
+ * filter made a SUBSET real, so the subset's key set is now takeable:
+ * one click copies exactly the runs the filter is showing (the count chip
+ * states the same truth). Rendered ONLY while a filter is active and at
+ * least one pill is visible — unfiltered, r729's copy-all already owns
+ * the whole-corpus job, and an empty visible set has nothing to copy
+ * (r648: no fake affordances). Same Copy→Check + toast vocabulary;
+ * honest error toasts — never a fake success. */
+function CopyVisibleRunIdsButton({ ids }: { ids: string[] }) {
+  const [copied, setCopied] = React.useState(false);
+  const timer = React.useRef<number | null>(null);
+  React.useEffect(
+    () => () => {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    },
+    []
+  );
+  const onCopy = () => {
+    const done = () => {
+      setCopied(true);
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(false), 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(ids.join(","))
+        .then(() => {
+          done();
+          toast.success(ids.length + (ids.length === 1 ? " visible run id copied" : " visible run ids copied"));
+        })
+        .catch(() => toast.error("Clipboard refused the visible id list — copy them from the pill headers"));
+    } else {
+      toast.error("Clipboard unavailable in this browser");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      aria-label={"Copy the visible " + ids.length + (ids.length === 1 ? " run id" : " run ids") + " to the clipboard as a comma list"}
+      title="Copy exactly the runs the filter is showing as a comma list — the visible subset's key set for triage scripts. Only offered while a filter is active; the unfiltered corpus has its own copy-all."
+      className={cn(
+        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "hover:bg-muted hover:text-foreground",
+        CHIP_FOCUS_RING,
+        copied && "text-emerald-600 dark:text-emerald-400"
+      )}
+    >
+      {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
+    </button>
+  );
+}
+
 /** r722: one durable ledger row shaped for the per-run gate chip (the r683 read). */
 interface LedgerRunRow {
   runId: string;
@@ -1912,6 +1965,9 @@ export function RunKanban({
               >
                 {visibleCorpus.length} of {corpusOnly.length} shown
               </span>
+            ) : null}
+            {pillQuery && visibleCorpus.length > 0 ? (
+              <CopyVisibleRunIdsButton ids={visibleCorpus.map((c) => c.runId)} />
             ) : null}
             <span className="h-px flex-1 bg-border/60" aria-hidden />
           </div>

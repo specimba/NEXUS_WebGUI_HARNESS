@@ -1,0 +1,103 @@
+$ eslint .
+
+/home/z/my-project/scripts/cdp-probe-n1a.mjs
+  22:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-probe.mjs
+  21:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-probe2.mjs
+  4:320  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-agent-delete-references.mjs
+  59:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-agent-form-validation.mjs
+  62:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-agent-import-restore.mjs
+  60:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-agents-a11y.mjs
+  75:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-autopilot-poll.mjs
+  63:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-bridge-resync.mjs
+  59:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-chat-esc-stop.mjs
+  65:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-chat-list-truth.mjs
+  58:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-chat-timestamps.mjs
+  57:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-composer-attachment-twins.mjs
+  59:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-editor-autoplan.mjs
+  57:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-editor-kbd.mjs
+  57:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-editor-save-truth.mjs
+  53:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-kanban-cap-truth.mjs
+  57:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-lane-true.mjs
+  59:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-radar-hf-proxy.mjs
+  67:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-radar-mount.mjs
+  63:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-radar-stale.mjs
+  53:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-run-panel-follow-recovery.mjs
+  71:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-search-match-truth.mjs
+  66:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-sidebar-timestamps.mjs
+  55:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-ticker-perf.mjs
+  69:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-ticker-retry.mjs
+  60:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-vault-chip.mjs
+  55:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-vault-guard.mjs
+  101:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-vault-slot-affordances.mjs
+  64:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-vault-slot-residue.mjs
+  57:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-vault-test.mjs
+  56:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa-workflows-mount.mjs
+  58:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/home/z/my-project/scripts/cdp-qa.mjs
+  52:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+✖ 33 problems (0 errors, 33 warnings)
+
