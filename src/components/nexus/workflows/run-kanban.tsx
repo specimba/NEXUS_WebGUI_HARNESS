@@ -271,6 +271,29 @@ function eventLabelOf(c: ReturnType<typeof gateCensusOf>): string {
         : "gate event";
 }
 
+/** r736: WHICH lanes are failing — from the ledger's own verbatim
+ * tried-trace notes ("tried: LANE — no answer (...); LANE2 — ..."),
+ * classified through the same gateCensusOf adapter (r649: one
+ * vocabulary), surfaced as the nj token's title so the judge-lane
+ * distress is glanceable without opening ladders one by one. */
+function laneDistressOf(corpus: { rows: { note: string }[] }[]): string {
+  const lanes: string[] = [];
+  for (const entry of corpus) {
+    for (const row of entry.rows) {
+      const c = gateCensusOf([{ note: row.note }]);
+      if (c.noJudge <= 0) continue;
+      const re = /(?:tried:|;)\s*([^—;]+?)\s*—/g;
+      let m: RegExpExecArray | null = re.exec(row.note || "");
+      while (m) {
+        const lane = m[1].trim();
+        if (lane && lanes.indexOf(lane) === -1) lanes.push(lane);
+        m = re.exec(row.note || "");
+      }
+    }
+  }
+  return lanes.join("; ");
+}
+
 function CorpusEventRow({ row }: { row: LedgerRunRow }) {
   const c = gateCensusOf([{ note: row.note }]);
   const label = eventLabelOf(c);
@@ -1487,6 +1510,8 @@ export function RunKanban({
   // the WHOLE corpus while an "n of N shown" chip states the filter truth.
   const [pillFilter, setPillFilter] = React.useState("");
   const pillQuery = pillFilter.trim().toLowerCase();
+  // r736: the failing lanes named on the nj token's title (see laneDistressOf).
+  const laneDistress = React.useMemo(() => laneDistressOf(corpusOnly), [corpusOnly]);
   const visibleCorpus = React.useMemo(() => {
     if (!pillQuery) return corpusOnly;
     return corpusOnly.filter((c) => c.runId.toLowerCase().includes(pillQuery));
@@ -1932,7 +1957,16 @@ export function RunKanban({
                 <span className="ml-1 text-amber-600 dark:text-amber-400">· {stripCensus.uncertain}u</span>
               ) : null}
               {stripCensus.noJudge > 0 ? (
-                <span className="ml-1">· {stripCensus.noJudge}nj</span>
+                <span
+                  className="ml-1"
+                  title={
+                    laneDistress
+                      ? "Lanes tried in these " + stripCensus.noJudge + " no-judge failures (the ledger's verbatim tried-trace, deduped): " + laneDistress
+                      : undefined
+                  }
+                >
+                  · {stripCensus.noJudge}nj
+                </span>
               ) : null}
             </span>
             {/* r732: type-to-find — shrink the pill set to a run-id substring;
