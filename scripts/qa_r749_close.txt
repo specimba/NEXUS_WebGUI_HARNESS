@@ -1,2 +1,9 @@
 chip: "{\"chip\":true,\"text\":\"⧉ 23 in corpus\",\"amber\":false}"
 worklog appended
+[main 71348e75e] r749: corpus-distress tone on the chip - the r745 lesson rendered. Backlog triage disclosed: TASK-101/102 IDs are stale (cron-creation-criteria.md:49); every open TASKS.md P1 row is Owner-blocked (GitHub PAT, Webshare token) or key-blocked (NEXUS_BOT live-wire proofs, vault empty); harness-adapter HTTP route needs an Owner nod. Increment: when the corpus holds runs but the pipeline store holds zero runs (the exact post-wipe shape that cost r745-r746 three diagnostic rounds), the card-grid chip renders amber with a board-empty suffix and a distress title; muted otherwise; hidden while the board is open (strip dedup); aria-label carries the state. Gates: tsc 0, lint 0E/33W; golden QA GREEN (board strip + LD seven-lane re-verify - corpus GREW to 23 runs / 81 ev / nj 45 between slots, no eighth lane - settings census/relay + radar frontier + 799-char paste, console 0 errors); chip probe gated in the close. Census and probes in the close log. Snapshot discipline fifth close; witness now four-legged.
+ 5 files changed, 32 insertions(+), 4 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T17-43-16.json
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   525fc7014..71348e75e  main -> main
+To https://github.com/specimba/PraisonAI.git
+   525fc7014..71348e75e  main -> main
