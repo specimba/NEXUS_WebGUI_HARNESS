@@ -1,1 +1,12 @@
 worklog appended
+[main 1087c7aed] r747: board deep-link (#/workflows/board) - strip outage root-caused and closed. The two-round outage was a misdiagnosis: the Runs-board layout bit (nexus-ui.workflowBoardOpen, LS-persisted, default false) was reset by the wipe, so QA probed the card grid where RunKanban and the corpus-only-runs strip witness structurally never mount - r746's evo-inbox render-branch theory corrected (sibling card, not a gate). Fix: sub-path deep-link forces the board layout deterministically (page.tsx applyHashRoute + route docs); QA board/paste legs navigate it, LS-independent. First app-side ship since the wipe era. Gates: tsc 0, lint 0E/33W; golden QA GREEN (deep-linked board strip + LD lanes + settings census/relay + radar frontier + 799-char paste, console 0 errors); census and probes in the close log. Snapshot discipline third close; witness hygiene resumes with the corrected doctrine: never trust the persisted layout bit in QA.
+ 8 files changed, 184 insertions(+), 1 deletion(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T16-48-18.json
+ create mode 100644 scripts/qa_r747.txt
+ create mode 100644 scripts/qa_r747_close.txt
+ create mode 100644 scripts/r747_close.sh
+ create mode 100644 scripts/r747_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   0ce8cbdd1..1087c7aed  main -> main
+To https://github.com/specimba/PraisonAI.git
+   0ce8cbdd1..1087c7aed  main -> main
