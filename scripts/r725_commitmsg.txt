@@ -1,0 +1,29 @@
+r725: corpus wipe caught + answered — 31/43 rows recovered from git witness; durable snapshot road ships
+
+- DATA-LOSS EVENT at open: sandbox recycle at the 13:37 slot boundary wiped
+  runtime tables (EvalEvent 43->0, AutomationVault 3->0; seed tables
+  survived — snapshot-restore pattern). WAL byte-scan: zero residue;
+  dev.log truncated by the recycle boot; the /api/evals POST prune path
+  read line-by-line and proven innocent (fires only above 4000 rows).
+  Root cause is platform-level; the patrol fixes what the sandbox cannot
+  take: git.
+- RECOVERY: scripts/corpus-recover-r725.ts restores from the committed
+  r722/r723/r724 QA payloads (verbatim note heads -> kind/verdict/
+  confidence; 7/9 workflow names from worklog witnesses; deterministic
+  rec-sha1 ids, idempotent). 31/43 rows restored — the 12-row gap is the
+  runs[] payload's no-id/no-stepId dedupe collapse, DISCLOSED, nothing
+  fabricated (r648). Server confirms total 31 / verdicts 12 / fails 3 /
+  9 runIds.
+- SHIP: scripts/corpus-snapshot.ts (full-fidelity JSON, AutomationVault
+  excluded by design — keys never enter git) + scripts/corpus-restore.ts
+  (INSERT OR IGNORE by id). Snapshot step wired into the close chain:
+  every patrol now commits a fresh corpus snapshot.
+- board witness: digest split + strip tally render again on the recovered
+  corpus (fresh-load DOM probe, scripts/qa_r725.txt).
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census 48/48 ·
+  qa-cortex-census 23/23.
+- budget: 10 rounds, two under the cap. The queued UI click-through hands
+  to r726; the vault lanes (3->0) need an Owner-side re-store (keys stay
+  out of git by design).
