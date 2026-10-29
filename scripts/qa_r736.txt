@@ -76,3 +76,22 @@ gate-census: qa-gate-census: 48/48
 cortex: qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main d3dbe245f] r736: the nj token names the failing lanes (laneDistressOf — tried-trace lifted to the tally title); judge-lane ACCELERATED (nj 23→28, both lanes dead in fresh notes)
+ 11 files changed, 666 insertions(+), 4 deletions(-)
+ rename db/corpus-snapshots/{corpus-2026-10-29T07-51-31.json => corpus-2026-10-29T11-14-54.json} (61%)
+ create mode 100644 scripts/qa_r736.txt
+ create mode 100644 scripts/qa_r736_evals.json
+ create mode 100644 scripts/qa_r736_lint.txt
+ rename prisma/custom.db => scripts/qa_r736_tsc.txt (100%)
+ create mode 100644 scripts/r736_close.sh
+ create mode 100644 scripts/r736_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   2df9edbda..d3dbe245f  main -> main
+To https://github.com/specimba/PraisonAI.git
+   2df9edbda..d3dbe245f  main -> main
+--- verification ---
+d3dbe245f r736: the nj token names the failing lanes (laneDistressOf — tried-trace lifted to the tally title); judge-lane ACCELERATED (nj 23→28, both lanes dead in fresh notes)
+origin/main..HEAD: 0
+ M scripts/qa_r736.txt
+=== r736 close end ===
+--- sweep (tee artifact: git output silenced after staging so the tree ends clean) ---
