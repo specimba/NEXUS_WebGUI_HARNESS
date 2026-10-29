@@ -4,3 +4,14 @@ legend: "{\"legend\":true,\"spans\":8,\"label\":\"lanes tried (46 no-judge)inter
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":false}"
 worklog appended
+[main 85f36165c] r752: lane-filter on the legend chips - the magnitude instrument answers WHERE. The r751 xN badges say how often each lane failed; clicking a legend chip now isolates the strip pills to the runs whose ledger rows name that lane (row-level note scan; the pill filter matches runId substrings only). Honest filters: the shown-count chip renders for either filter; a removable amber reminder chip keeps an active lane filter visible and clearable when the legend is closed (no invisible filtering); the r734 no-match ghost now covers lane-only empty results and its Clear clears both filters. Legend chips are real toggle buttons (aria-pressed, active = amber family, xN badge kept). Gates: tsc 0, lint 0E/33W; golden QA GREEN (census + seven lanes re-verified - no eighth; settings census/relay + radar frontier + 799-char paste, console 0 errors); chip + legend + lane-filter probes in the close (all gated). Snapshot discipline eighth close.
+ 8 files changed, 265 insertions(+), 17 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T19-15-38.json
+ create mode 100644 scripts/qa_r752.txt
+ create mode 100644 scripts/qa_r752_close.txt
+ create mode 100644 scripts/r752_close.sh
+ create mode 100644 scripts/r752_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   b6ac74cd8..85f36165c  main -> main
+To https://github.com/specimba/PraisonAI.git
+   b6ac74cd8..85f36165c  main -> main
