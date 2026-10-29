@@ -416,6 +416,23 @@ function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null
   return { lanes, corpusRows, laneSpread };
 }
 
+/** r760: the route-tier classifier - every lane in the verbatim
+ * tried-trace belongs to a rung of the dial ladder (r759 finding: the
+ * chain is 5 lanes wide with a middle tier that ALTERNATES routes,
+ * qwen free pair vs glm-5.3 pair, never all four). Name-heuristic on
+ * purpose, not a hardcoded lane list: an eighth lane still classifies
+ * (as "unrouted"), which keeps the eighth-lane watch honest. The
+ * legend groups the middle tier by route and shows per-route state
+ * (ACTIVE = the route answered in the newest corpus bucket). */
+function laneTierOf(lane: string): string {
+  if (lane === "intern-systemone") return "entry";
+  if (/paid rung/.test(lane)) return "paid";
+  if (/^fast-judge$/.test(lane)) return "verify";
+  if (/qwen/.test(lane)) return "middle · qwen route";
+  if (/glm/.test(lane)) return "middle · glm route";
+  return "unrouted";
+}
+
 /** r758: the divergence auto-highlight - compares each lane 15-min
  * bucket profile against the corpus strip over the LAST 3 buckets.
  * r759 SEMANTICS (post the wave-2/4 trace diff): every row names a
@@ -1719,6 +1736,22 @@ export function RunKanban({
   // r758: divergence auto-highlight per lane - the recent-bucket lag
   // signal, amber-flagged on the chips; ships pre-armed (steady slot).
   const laneDivergence = React.useMemo(() => laneDivergenceOf(laneBuckets), [laneBuckets]);
+  // r760: per-route state for the middle tier - which routes answered in
+  // the newest corpus bucket. Derived from laneBuckets alone (its lane set
+  // is the same scan as laneCounts), so the dependency stays single.
+  const laneTiers = React.useMemo(() => {
+    const keys = Object.keys(laneBuckets.corpusRows).sort();
+    const lastKey = keys[keys.length - 1] ?? "";
+    const routes: Record<string, { lanes: string[]; active: string[] }> = {};
+    for (const lane of Object.keys(laneBuckets.lanes)) {
+      const tier = laneTierOf(lane);
+      if (!tier.startsWith("middle")) continue;
+      if (!routes[tier]) routes[tier] = { lanes: [], active: [] };
+      routes[tier].lanes.push(lane);
+      if (lastKey && (laneBuckets.lanes[lane]?.[lastKey] ?? 0) > 0) routes[tier].active.push(lane);
+    }
+    return { lastKey, routes };
+  }, [laneBuckets]);
   const visibleCorpus = React.useMemo(() => {
     let out = corpusOnly;
     if (pillQuery) out = out.filter((c) => c.runId.toLowerCase().includes(pillQuery));
@@ -2254,12 +2287,21 @@ export function RunKanban({
             <div
               id="corpus-lane-legend"
               data-testid="corpus-lane-legend"
-              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each chip's title. The divergence diamond (r758) ambers a lane whose last-3-bucket profile lags the corpus strip, auto-highlighted on the chip face; r759 semantics: a lag fires on middle-tier route shifts too (the chain's middle tier alternates the qwen free pair and the glm-5.3 pair) - check the laggard lanes before interpreting."
+              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each chip's title. The divergence diamond (r758) ambers a lane whose last-3-bucket profile lags the corpus strip, auto-highlighted on the chip face; r759 semantics: a lag fires on middle-tier route shifts too (the chain's middle tier alternates the qwen free pair and the glm-5.3 pair) - check the laggard lanes before interpreting. The tier-state line (r760) groups the middle tier by route: ACTIVE = the route answered in the newest corpus bucket; silent = the route is currently unpicked (the route-shift witness standing watch both ways - a silent->ACTIVE flip on the qwen routes = the free routes returning)."
               className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-2"
             >
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 lanes tried ({stripCensus.noJudge} no-judge)
               </span>
+              {Object.keys(laneTiers.routes).length ? (
+                <span
+                  data-testid="corpus-tier-state"
+                  className="mr-1 text-[10px] tabular-nums text-muted-foreground/70"
+                  title={"Route-state (r760): the middle tier grouped by route against the newest corpus bucket (" + laneTiers.lastKey + ") - " + Object.entries(laneTiers.routes).map(([tier, r]) => tier + ": " + r.lanes.length + " lane(s), " + (r.active.length ? "ACTIVE" : "none answered")).join(" · ") + ". ACTIVE = the route answered in the newest corpus bucket; silent = the route is unpicked (route-shift witness, r759 finding)."}
+                >
+                  {Object.entries(laneTiers.routes).map(([tier, r]) => tier.replace("middle · ", "mid·") + " " + (r.active.length ? "ACTIVE" : "silent") + " (" + r.active.length + "/" + r.lanes.length + ")").join(" · ")}
+                </span>
+              ) : null}
               {[...laneDistress.split("; ")].sort((a, b) => (laneCounts[b] ?? 0) - (laneCounts[a] ?? 0)).map((lane, i) => (
                 <button
                   key={i}
@@ -2291,6 +2333,12 @@ export function RunKanban({
                       : "")
                   }
                 >
+                  <span
+                    className="mr-0.5 rounded bg-muted px-0.5 text-[9px] uppercase leading-4 tracking-wide text-muted-foreground/60"
+                    title={"Rung (r760): " + laneTierOf(lane) + " — the dial-ladder rung this lane serves (r759: the chain is 5 lanes wide; the middle tier alternates routes)."}
+                  >
+                    {laneTierOf(lane).replace("middle · ", "mid·")}
+                  </span>
                   {lane}
                   <span className="ml-1 rounded-full bg-amber-500/10 px-1 font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                     ×{laneCounts[lane] ?? 0}
