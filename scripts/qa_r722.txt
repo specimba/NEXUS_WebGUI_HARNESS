@@ -65,3 +65,20 @@ cortex: NOTE: localStorage unwritable in this runtime — round-trip covered by 
 qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main d30fa45c6] r722: per-run durable gate chip lands on server-lane cards (attempt #15 witness)
+ 9 files changed, 514 insertions(+), 7 deletions(-)
+ create mode 100644 scripts/qa_r722.txt
+ create mode 100644 scripts/qa_r722_evals.json
+ create mode 100644 scripts/qa_r722_lint.txt
+ create mode 100644 scripts/qa_r722_tsc.txt
+ create mode 100644 scripts/r722_close.sh
+ create mode 100644 scripts/r722_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   d7259612d..d30fa45c6  main -> main
+To https://github.com/specimba/PraisonAI.git
+   d7259612d..d30fa45c6  main -> main
+--- verification ---
+d30fa45c6 r722: per-run durable gate chip lands on server-lane cards (attempt #15 witness)
+origin/main..HEAD: 0
+ M scripts/qa_r722.txt
+=== r722 close end ===
