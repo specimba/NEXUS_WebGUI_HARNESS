@@ -336,6 +336,59 @@ function CopyRunIdButton({ runId }: { runId: string }) {
   );
 }
 
+/** r729: copy-all-run-ids beside the ⧉ digest chip — the digest census is
+ * glanceable, but its KEYS weren't takeable: triage scripts (SQLite IN(...)
+ * queries, Cortex batches) want the corpus's whole id list at once. One
+ * click puts the DISTINCT run ids on the clipboard as a comma list; same
+ * Copy→Check + toast vocabulary as the r728 panel button (one id at a
+ * time there, the full key set here). Honest error toasts — never a fake
+ * success. The caller gates rendering on corpus coverage (the r724
+ * honesty bound): a partial census payload never poses as the full set. */
+function CopyAllRunIdsButton({ ids }: { ids: string[] }) {
+  const [copied, setCopied] = React.useState(false);
+  const timer = React.useRef<number | null>(null);
+  React.useEffect(
+    () => () => {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    },
+    []
+  );
+  const onCopy = () => {
+    const done = () => {
+      setCopied(true);
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(false), 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(ids.join(","))
+        .then(() => {
+          done();
+          toast.success(ids.length + " run ids copied");
+        })
+        .catch(() => toast.error("Clipboard refused the run id list — copy them from the strip headers"));
+    } else {
+      toast.error("Clipboard unavailable in this browser");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      aria-label={"Copy all " + ids.length + " corpus run ids to the clipboard as a comma list"}
+      title="Copy every distinct run id in the durable corpus as a comma list — the key set for triage scripts (SQLite IN(...) queries, Cortex batches). Sits beside the ⧉ digest chip; the panel header's copy button carries one id at a time."
+      className={cn(
+        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "hover:bg-muted hover:text-foreground",
+        CHIP_FOCUS_RING,
+        copied && "text-emerald-600 dark:text-emerald-400"
+      )}
+    >
+      {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
+    </button>
+  );
+}
+
 /** r722: one durable ledger row shaped for the per-run gate chip (the r683 read). */
 interface LedgerRunRow {
   runId: string;
@@ -1254,6 +1307,15 @@ export function RunKanban({
     corpusCovered &&
     corpusCensus.uncertain + corpusCensus.noJudge > 0 &&
     corpusCensus.uncertain + corpusCensus.noJudge >= (ledger?.total ?? 0) - (ledger?.verdicts ?? 0);
+  // r729: the digest copy-all button's key set — DISTINCT run ids in
+  // payload order (newest first). Rendered only when corpusCovered gates
+  // it (the r724 honesty bound): a partial census payload never poses as
+  // the full key set.
+  const corpusRunIds = React.useMemo(() => {
+    const seen: string[] = [];
+    for (const r of ledger?.runs ?? []) if (!seen.includes(r.runId)) seen.push(r.runId);
+    return seen;
+  }, [ledger]);
   // r724: the corpus strip's own glance tally — runs · events · verdicts
   // · u/nj, aggregated over the strip's rows through the same adapter, so
   // the judge-lane signal (nj) reads without scanning per-run chips.
@@ -1548,6 +1610,15 @@ export function RunKanban({
                 </span>
               ) : null}
             </span>
+          ) : null}
+          {/* r729: copy-all-run-ids beside the ⧉ digest chip — the census is
+          glanceable but its KEYS weren't takeable; triage scripts (SQLite
+          IN(...) queries, Cortex batches) want the whole id list at once.
+          HONESTY BOUND: renders only when the census payload covers the
+          whole corpus (the r724 bound) — a partial sample never poses as
+          the full key set; nothing renders for an empty corpus (r648). */}
+          {corpusCovered && corpusRunIds.length > 0 ? (
+            <CopyAllRunIdsButton ids={corpusRunIds} />
           ) : null}
           {ledger === null && ledgerMisses >= 2 ? (
             <button

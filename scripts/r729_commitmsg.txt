@@ -1,0 +1,30 @@
+r729: copy-all-run-ids affordance beside the digest chip; nj climb disclosed (8->10->13->15, vault 0 lanes)
+
+- SHIP (run-kanban.tsx): CopyAllRunIdsButton beside the ⧉ digest chip —
+  one click puts the corpus's DISTINCT run ids on the clipboard as a
+  comma list (the key set for triage scripts: SQLite IN(...) queries,
+  Cortex batches). Copy->Check icon swap (emerald, reverts 1.6s, timer
+  cleaned on unmount) + "N run ids copied" toast; honest error toasts
+  on denial or missing API. Renders only when the census payload covers
+  the whole corpus (the r724 bound) — a partial sample never poses as
+  the full key set; nothing renders for an empty corpus (r648).
+- JUDGE-LANE WATCH: corpus 38->42, nj 13->15 (+2 LIVE; trend
+  8->10->13->15 across four slots) through the emptied vault
+  (AutomationVault 0 lanes) — Owner-side cure stands (r720 re-store +
+  Cortex P1 v2).
+- witness: comma-list clipboard contract DOM-probed with a page-level
+  writeText stub recording the payload (headless has no clipboard
+  grant, disclosed) — the stub received the full distinct id list
+  (n == distinct, dedupe honest), check-swap verified, toast fired;
+  r728 panel copy + r727 keyboard + r726 click-through regressions
+  green on the grown corpus.
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census
+  48/48 · qa-cortex-census 23/23.
+- budget: 11 rounds, one under the cap; one guard abort disclosed pre-commit
+  (the copy-all witness regex could not match a two-digit distinct count —
+  the app payload it rejected was fully green: n=12, distinct=12,
+  same=true, check-swap + toast fired). Post-close tee sweep baked into
+  the close chain (git output silenced after staging; r722/r724/r726/
+  r727/r728 precedent).
