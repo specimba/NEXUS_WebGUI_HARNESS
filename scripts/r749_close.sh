@@ -17,6 +17,10 @@ QLD=$(grep '^ld: ' scripts/qa_r749.txt | tail -1)
 # so which tone shows depends on live store state, not on correctness.
 timeout 60 agent-browser open "http://localhost:3000/?r=749c#workflows" >/dev/null 2>&1 || true
 sleep 4
+# never trust the persisted layout bit (the r747 doctrine): the QA board leg
+# just persisted boardOpen:true — force the card grid before probing the chip.
+timeout 30 agent-browser eval "(() => { const r=document.querySelector('[aria-label=\"Card grid layout\"]'); if (r) r.click(); return 'grid-clicked'; })()" >/dev/null 2>&1 || true
+sleep 2
 CHIP=$(timeout 30 agent-browser eval "(() => { const b=[...document.querySelectorAll('button')].find(x=>/in corpus/.test(x.textContent||'')); return b ? JSON.stringify({chip:true, text:b.textContent.trim(), amber:b.className.indexOf('amber-500')>-1}) : JSON.stringify({chip:false}); })()" 2>&1 | tail -1)
 echo "chip: $CHIP"
 echo "$CHIP" | grep -Eq 'chip\\?":true' || { echo 'GUARD chip probe'; exit 1; }
@@ -54,7 +58,7 @@ L.append('- R1 open probes: r748 closed by this same lineage (bfac100e1 + sweep 
 L.append('- R2 backlog triage + template: r749_qa.sh via the DUAL sed pattern (s/r=748/r=749/g + s/r748/r749/g) - 6 substitutions, zero r748 remnants; TASKS.md / cron-creation-criteria.md / harness-adapter-spec.md read - all open rows blocked on Owner input or keys (sources above).')
 L.append('- R3 increment: workflows-view - storeRunCount memo + corpusDistress const (corpus non-empty AND store zero runs); the chip now renders amber (border-amber-500/40 bg-amber-500/10 text-amber-600 - the r718 u/uncertain family tone) with a "board empty" suffix + distress title when the shape holds, muted otherwise; chip hidden while the board is open (the strip already lives there - dedup, not removal); aria-label gained the distress clause for screen readers.')
 L.append('- R4 gates + QA: tsc 0, lint 0 errors / 33 warnings (baseline); r749 golden QA GREEN. NOTED: the corpus GREW between slots - tally 23 runs / 81 ev / nj 45 (was 22/79/43 at the r748 close): gate activity resumed; the seven-lane set re-verified unchanged, no EIGHTH lane.')
-L.append('- R5 this close: chip probe (presence gated, tone recorded) + snapshot + worklog + commit + dual push.')
+L.append('- R5 this close: chip probe (presence gated, tone recorded) + snapshot + worklog + commit + dual push. FIRST ATTEMPT GUARD-TRIPPED (disclosed): chip:false - the QA board leg had just persisted boardOpen:true via the deep-link (the r747 design: bare #/workflows honors the persisted bit), so the card grid was not showing and the chip (correctly hidden while the board is open) was absent. The guard aborted BEFORE any commit - it did its job. The probe now clicks the Card-grid radio first (the same never-trust-the-persisted-bit doctrine the deep-link taught), then re-probes.')
 L.append('- QA PROBES (this close):')
 L.append('  ' + os.environ.get('R749_QW','(missing)'))
 L.append('  ' + os.environ.get('R749_QLD','(missing)'))

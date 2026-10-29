@@ -1,2 +1,2 @@
-chip: "{\"chip\":false}"
-GUARD chip probe
+chip: "{\"chip\":true,\"text\":\"⧉ 23 in corpus\",\"amber\":false}"
+worklog appended
