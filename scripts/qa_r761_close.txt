@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":4}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main bf51262c7] r761: mini-bar wave strip ships + wave 6 returns. The opening census read 118/31/82 vs the r760 baseline 109/30/21/15/73 - +9 ev / +1 run / +9 no-judge rows, newest 23:20:39 UTC, only ~13 min after wave 5 (intervals w4->w5 ~58, w5->w6 ~13 - erratic, re-accelerating); verdict/uncertain flat, all growth no-judge rows. Increment (r760-handoff styling-polish candidate): per-bucket mini-bars in the wave strip - height 2px per row (16px cap), amber bar = mixed-tier both-routes bucket (>5 lanes), muted = single-tier; the exact text line (labels + counts + (N lanes)) kept as siblings so the recorded probe format is unchanged; strip title documents scale + color semantics. Every wave since r759 glm-only - the tier-state line and diamonds keep watching both ways. Snapshot discipline seventeenth close.
+ 9 files changed, 340 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T23-41-36.json
+ create mode 100644 scripts/qa_r761.txt
+ create mode 100644 scripts/qa_r761_close.txt
+ create mode 100644 scripts/r761_close.sh
+ create mode 100644 scripts/r761_prose.py
+ create mode 100644 scripts/r761_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   577e6e608..bf51262c7  main -> main
+To https://github.com/specimba/PraisonAI.git
+   577e6e608..bf51262c7  main -> main
