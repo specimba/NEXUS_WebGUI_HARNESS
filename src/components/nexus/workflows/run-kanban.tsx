@@ -319,6 +319,34 @@ function laneCountsOf(corpus: { rows: { note: string }[] }[]): Record<string, nu
   return counts;
 }
 
+/** r753: HOW MANY RUNS each lane touched - the same verbatim
+ * tried-trace scan as laneCountsOf, but tallying DISTINCT run ids per
+ * lane (a run with several no-judge events on one lane counts once):
+ * dial attempts (xN) and runs affected answer different questions -
+ * one lane may dominate dials while touching few runs. */
+function laneRunCountsOf(corpus: { runId: string; rows: { note: string }[] }[]): Record<string, number> {
+  const perLane: Record<string, Set<string>> = {};
+  for (const entry of corpus) {
+    for (const row of entry.rows) {
+      const c = gateCensusOf([{ note: row.note }]);
+      if (c.noJudge <= 0) continue;
+      const re = /(?:tried:|;)\s*([^—;]+?)\s*—/g;
+      let m: RegExpExecArray | null = re.exec(row.note || "");
+      while (m) {
+        const lane = m[1].trim();
+        if (lane) {
+          if (!perLane[lane]) perLane[lane] = new Set();
+          perLane[lane].add(entry.runId);
+        }
+        m = re.exec(row.note || "");
+      }
+    }
+  }
+  const out: Record<string, number> = {};
+  for (const k of Object.keys(perLane)) out[k] = perLane[k].size;
+  return out;
+}
+
 function CorpusEventRow({ row }: { row: LedgerRunRow }) {
   const c = gateCensusOf([{ note: row.note }]);
   const label = eventLabelOf(c);
@@ -1552,6 +1580,9 @@ export function RunKanban({
   // r751: per-lane dial-attempt counts for the legend chips - the same
   // scan as laneDistressOf, tallying instead of deduping (laneCountsOf).
   const laneCounts = React.useMemo(() => laneCountsOf(corpusOnly), [corpusOnly]);
+  // r753: distinct runs affected per lane - the driver-first sort and
+  // the runs figure ride this same corpus re-aggregation.
+  const laneRunCounts = React.useMemo(() => laneRunCountsOf(corpusOnly), [corpusOnly]);
   const visibleCorpus = React.useMemo(() => {
     let out = corpusOnly;
     if (pillQuery) out = out.filter((c) => c.runId.toLowerCase().includes(pillQuery));
@@ -2093,7 +2124,7 @@ export function RunKanban({
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 lanes tried ({stripCensus.noJudge} no-judge)
               </span>
-              {laneDistress.split("; ").map((lane, i) => (
+              {[...laneDistress.split("; ")].sort((a, b) => (laneCounts[b] ?? 0) - (laneCounts[a] ?? 0)).map((lane, i) => (
                 <button
                   key={i}
                   type="button"
@@ -2109,12 +2140,15 @@ export function RunKanban({
                     (laneFilter === lane
                       ? "Active filter — click to clear it and restore every corpus pill"
                       : "Click to show only the runs whose ledger rows name this lane") +
-                    " — " + lane
+                    " — " + lane + " — " + (laneCounts[lane] ?? 0) + " dial attempt(s) across " + (laneRunCounts[lane] ?? 0) + " run(s) affected"
                   }
                 >
                   {lane}
                   <span className="ml-1 rounded-full bg-amber-500/10 px-1 font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                     ×{laneCounts[lane] ?? 0}
+                  </span>
+                  <span className="ml-0.5 tabular-nums text-muted-foreground/70">
+                    {laneRunCounts[lane] ?? 0} run{(laneRunCounts[lane] ?? 0) === 1 ? "" : "s"}
                   </span>
                 </button>
               ))}
