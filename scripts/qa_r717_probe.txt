@@ -1,0 +1,19 @@
+AutomationRun: 0
+AutomationState: 1
+AutomationVault: 0
+AutomationWorkflow: 4
+AutonomyLog: 8
+CapabilityCheck: 2
+EvalEvent: 7
+NextMove: 1
+PlatformSetting: 2
+Post: 0
+ResearchQueue: 0
+RunReport: 2
+StrategyItem: 0
+TrackedModel: 1373
+TrackerEvent: 0
+TrackerMeta: 7
+User: 0
+custom.db mtime: 2026-10-29T01:25:32.445Z · size: 757760 bytes
+db/ dir: custom.db-wal, custom.db, custom.db-shm, gateway-pulse.json, .corrupt-backup-r639

@@ -1,0 +1,61 @@
+== R717 GOLDEN QA ==
+--- legA settings census ---
+"{\"census\":true,\"relay\":true}"
+--- legB radar frontier aria ---
+frontier-aria-clicked
+--- legC workflows paste ---
+"paste-len:799"
+--- legD board glyphs ---
+"{\"gate\":0,\"u\":0,\"nj\":0,\"legend\":0}"
+--- legE launcher recon (interactive elements) ---
+- button "New Chat" [ref=e7]
+- navigation "Primary" [ref=e8]
+  - button "Chat Talk to agents & workflows" [ref=e17]
+  - button "Agents Create & manage AI agents" [ref=e18]
+  - button "Workflows" [ref=e19]
+  - button "Radar GitHub stars, HF trending & arXiv papers" [ref=e20]
+  - button "Settings Provider, profile & data" [ref=e21]
+- button "Toggle theme" [ref=e9]
+- button "Cron fleet 1 of 1 agentTurns armed" [ref=e10]
+- heading "Workflows" [level=2, ref=e11]
+- button "Open command palette" [ref=e12]
+- generic "Vyce AI" [ref=e13] clickable [cursor:pointer]
+- button "Toggle theme" [ref=e14]
+- region "Model tracker ticker" [ref=e4]
+  - button "Open model tracker panel — 0 new, 64 free models" [expanded=false, ref=e15]
+- heading "Workflow Studio" [level=1, ref=e22]
+- radio "Card grid layout" [checked=true, ref=e62]
+- radio "Runs board layout" [checked=false, ref=e63]
+- radio "Run archive" [checked=false, ref=e64]
+- button "Create a pipeline from a pasted plan" [ref=e23]
+- button "Import workflows" [ref=e24]
+- button "Export workflows" [expanded=false, ref=e25]
+- button "New Workflow" [ref=e26]
+- button "Gateway pulse: last rate limit 12h ago, 8 in the last 24 hours. Click to refresh." [ref=e27]
+- region "Server autopilot" [ref=e28]
+  - button "CAPABILITY RADAR 2 findings · 2m ago" [ref=e74]
+  - heading "Server autopilot" [level=3, ref=e65]
+  - button "Headless lane key status" [ref=e66]
+  - button "Refresh" [ref=e67]
+  - button "Run on server" [ref=e80]
+  - button "Run on server" [ref=e81]
+  - button "Run on server" [ref=e82]
+  - button "Run on server" [ref=e83]
+  - heading "Capability radar" [level=4, ref=e75]
+  - button "Check now" [ref=e76]
+  - button "copy" [ref=e87]
+  - button "AUTONOMOUS IMPROVEMENT ENGINE" [expanded=true, ref=e77]
+    - heading "AUTONOMOUS IMPROVEMENT ENGINE" [level=4, ref=e84]
+  - button "Execute top move" [ref=e78]
+  - textbox "Research queue import URLs" [ref=e85]: r717-paste xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+--- console ---
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 128ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 199ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 233ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 340ms
+[log] [Fast Refresh] rebuilding
+--- page errors ---
