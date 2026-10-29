@@ -1566,6 +1566,16 @@ export function WorkflowsView() {
     };
   }, []);
 
+  // r749: distress tone — the r745 incident shape (corpus non-empty while the
+  // pipeline store holds zero runs) deserves a VISIBLE signal on the default
+  // view, not a three-round diagnosis. Amber = the u/uncertain family tone
+  // (the r718 contract); the muted tone means routine, amber means distress.
+  const storeRunCount = React.useMemo(
+    () => workflows.reduce((n, w) => n + w.runs.length, 0),
+    [workflows]
+  );
+  const corpusDistress = corpusRuns !== null && corpusRuns > 0 && storeRunCount === 0;
+
   const agentById = React.useMemo(
     () => new Map(agents.map((a) => [a.id, a])),
     [agents]
@@ -2001,21 +2011,36 @@ export function WorkflowsView() {
             {liveRunCount} running
           </span>
         )}
-        {corpusRuns !== null && corpusRuns > 0 && (
+        {corpusRuns !== null && corpusRuns > 0 && !boardOpen && (
           <button
             type="button"
             onClick={() => {
               setBoardOpen(true);
               setArchiveOpen(false);
             }}
-            title={
+            aria-label={
+              "Corpus: " +
               corpusRuns +
               (corpusRuns === 1 ? " run" : " runs") +
-              " in the training corpus (GET /api/evals). The Runs board's strip breaks this down per run — click to open the board."
+              (corpusDistress ? ", board empty — distress" : "") +
+              ". Open the Runs board."
             }
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground transition-colors hover:text-foreground"
+            title={
+              corpusDistress
+                ? corpusRuns +
+                  " runs in the training corpus, but the pipeline store holds no runs — the post-wipe distress shape (r745). The Runs board's corpus-only strip has the per-run breakdown — click to open it."
+                : corpusRuns +
+                  (corpusRuns === 1 ? " run" : " runs") +
+                  " in the training corpus (GET /api/evals). The Runs board's strip breaks this down per run — click to open the board."
+            }
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium tabular-nums transition-colors",
+              corpusDistress
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
+                : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
+            )}
           >
-            ⧉ {corpusRuns} in corpus
+            ⧉ {corpusRuns} in corpus{corpusDistress ? " · board empty" : ""}
           </button>
         )}
         <div
