@@ -4,3 +4,16 @@ legend: "{\"legend\":true,\"spans\":29,\"label\":\"lanes tried (53 no-judge)inte
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main a821de161] r756: mid-round wave pivot - R2 read steady (85/25/21/15/49) but the R3 QA caught a fresh wave live (89 ev / 26 runs / 53nj at ~21:0x UTC, second consecutive growth slot); shipped the per-lane LAST-SEEN sibling per the increment queue: laneLastSeenOf (latest row naming each lane), chip-face last-seen span (time-of-day same-day / date otherwise / hidden identical), full last-seen UTC timestamp in chip titles, panel-title bracket semantics (a lagging last-seen = partial-ladder signal). Legend probe GATED this round (chips touched - doctrine honored). The dials-over-time mini-strip stays queued. Forward correction carried: r755 said ~20:56 UTC, actual 20:16:04 UTC. Snapshot discipline twelfth close.
+ 10 files changed, 412 insertions(+), 2 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T21-18-45.json
+ create mode 100644 scripts/qa_r756.txt
+ create mode 100644 scripts/qa_r756_close.txt
+ create mode 100644 scripts/r756_close.sh
+ create mode 100644 scripts/r756_prose.py
+ create mode 100644 scripts/r756_prose2.py
+ create mode 100644 scripts/r756_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   2d562ddc4..a821de161  main -> main
+To https://github.com/specimba/PraisonAI.git
+   2d562ddc4..a821de161  main -> main
