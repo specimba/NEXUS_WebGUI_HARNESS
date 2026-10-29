@@ -1426,6 +1426,18 @@ export function RunKanban({
   // verbatim — the judge dial trace included — each classified per row
   // through the SAME gateCensusOf adapter (the r649 doctrine).
   const [openCorpusRun, setOpenCorpusRun] = React.useState<string | null>(null);
+  // r732: type-to-find on the corpus strip — the corpus grew +2-3 LIVE rows
+  // per patrol slot (14 runs and climbing), and the copy roads (r728/r729/
+  // r731) hand over ids and ladder text that want an instant way to ISOLATE
+  // one run. Substring match on the run id; an honest ghost when nothing
+  // matches (r648 — never a fake empty success); the tally keeps describing
+  // the WHOLE corpus while an "n of N shown" chip states the filter truth.
+  const [pillFilter, setPillFilter] = React.useState("");
+  const pillQuery = pillFilter.trim().toLowerCase();
+  const visibleCorpus = React.useMemo(() => {
+    if (!pillQuery) return corpusOnly;
+    return corpusOnly.filter((c) => c.runId.toLowerCase().includes(pillQuery));
+  }, [corpusOnly, pillQuery]);
   const detailRun = openCorpusRun
     ? corpusOnly.find((c) => c.runId === openCorpusRun) ?? null
     : null;
@@ -1870,10 +1882,41 @@ export function RunKanban({
                 <span className="ml-1">· {stripCensus.noJudge}nj</span>
               ) : null}
             </span>
+            {/* r732: type-to-find — shrink the pill set to a run-id substring;
+            Escape clears. The tally keeps describing the whole corpus; the
+            count chip (while filtering) states the visible truth honestly. */}
+            <input
+              type="text"
+              value={pillFilter}
+              onChange={(e) => setPillFilter(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.stopPropagation();
+                  setPillFilter("");
+                }
+              }}
+              placeholder="filter run ids…"
+              aria-label="Filter corpus run pills by run id substring"
+              title="Type a run-id substring to shrink the pill set — pairs with the copy roads: paste a copied run id or ladder key here to isolate its run. Escape clears."
+              spellCheck={false}
+              className={cn(
+                "h-6 w-36 shrink-0 rounded-md border border-border/60 bg-background/60 px-2 font-mono text-[10px] text-foreground placeholder:text-muted-foreground/60",
+                "focus:border-violet-500/50 focus:outline-none",
+                CHIP_FOCUS_RING
+              )}
+            />
+            {pillQuery ? (
+              <span
+                className="text-[10px] tabular-nums text-muted-foreground"
+                title="Visible pills vs the whole corpus while the filter is active — the tally keeps describing the full corpus."
+              >
+                {visibleCorpus.length} of {corpusOnly.length} shown
+              </span>
+            ) : null}
             <span className="h-px flex-1 bg-border/60" aria-hidden />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {corpusOnly.map(({ runId, rows }) => (
+            {visibleCorpus.map(({ runId, rows }) => (
               <button
                 key={runId}
                 type="button"
@@ -1914,6 +1957,11 @@ export function RunKanban({
               </button>
             ))}
           </div>
+          {visibleCorpus.length === 0 && pillQuery ? (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              No corpus runs match "{pillFilter.trim()}" — clear the filter to restore all {corpusOnly.length}.
+            </p>
+          ) : null}
           {detailRun ? (
             <div
               id={"corpus-detail-" + detailRun.runId}

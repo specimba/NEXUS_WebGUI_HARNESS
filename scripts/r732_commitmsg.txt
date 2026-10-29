@@ -1,0 +1,30 @@
+r732: run-id filter on the corpus strip (type-to-find); queued copy candidates value-checked and closed; nj steady 20 (first quiet slot)
+
+- VALUE-CHECK: the queued visible-set copy would duplicate r729
+  copy-all while the census covers the strip (pills uncapped, 14==14);
+  only one strip exists — both closed honestly, pivoted to the real
+  gap: finding one run in a corpus growing +2-3 LIVE rows per slot.
+- SHIP (run-kanban.tsx): run-id FILTER on the strip header — substring
+  match (pillFilter state + visibleCorpus memo); honest "n of N shown"
+  chip while filtering (the tally keeps describing the WHOLE corpus —
+  no double vocabulary); r648 ghost when nothing matches ("No corpus
+  runs match ..."); Escape clears with focus kept. Board vocabulary:
+  h-6 mono input, violet focus border, CHIP_FOCUS_RING. Completes the
+  triage loop: copy an id (r728) or ladder (r731) -> paste -> isolate.
+- JUDGE-LANE WATCH: corpus steady 49, nj 20 (no LIVE growth since r731
+  — the climb's first quiet slot; trend stands 8->10->13->15->18->20
+  across six slots). Quiet is luck, not cure: vault remains 0 lanes,
+  Owner-side road stands (r720 re-store + Cortex P1 v2).
+- witness: filter DOM-probed four-leg re-render-aware — type a 12-char
+  id prefix from the first pill -> pills shrink, chip "1 of 14 shown",
+  remaining pill carries the typed id; garbage query -> 0 pills +
+  honest ghost + chip truthful "0 of 14"; clear -> pills restored,
+  chip and ghost gone; r731 ladder + r729 copy-all + r728 panel copy +
+  r727 keyboard + r726 click-through regressions green.
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census
+  48/48 · qa-cortex-census 23/23.
+- budget: 7 rounds planned, five under the cap. Post-close tee sweep
+  baked into the close chain (git output silenced after staging;
+  r722..r731 precedent).
