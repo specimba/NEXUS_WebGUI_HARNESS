@@ -1,3 +1,4 @@
 chip: "{\"chip\":true,\"text\":\"⧉ 23 in corpus\",\"amber\":false}"
 nj click: "clicked"
-GUARD legend nj-button
+legend: "{\"legend\":true,\"spans\":8,\"label\":\"lanes tried (45 no-judge)intern-systemonefast-ju\"}"
+worklog appended

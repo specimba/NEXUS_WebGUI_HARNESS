@@ -25,7 +25,8 @@ timeout 60 agent-browser open "http://localhost:3000/?r=750b#workflows/board" >/
 sleep 4
 NJCLICK=$(timeout 30 agent-browser eval "(() => { const b=document.querySelector('[aria-controls=\"corpus-lane-legend\"]'); if(!b) return 'nj-button-missing'; b.click(); return 'clicked'; })()" 2>&1 | tail -1)
 echo "nj click: $NJCLICK"
-[ "$NJCLICK" = "clicked" ] || { echo 'GUARD legend nj-button'; exit 1; }
+# escaped-quote-tolerant (the known agent-browser quirk: eval output is JSON-encoded)
+echo "$NJCLICK" | grep -q 'clicked' || { echo 'GUARD legend nj-button'; exit 1; }
 sleep 1
 LEG=$(timeout 30 agent-browser eval "(() => { const p=document.querySelector('[data-testid=\"corpus-lane-legend\"]'); return p ? JSON.stringify({legend:true, spans:p.querySelectorAll('span').length, label:p.textContent.trim().slice(0,48)}) : JSON.stringify({legend:false, note:'panel-missing-after-click'}); })()" 2>&1 | tail -1)
 echo "legend: $LEG"
@@ -64,7 +65,7 @@ L.append('- R1 open probes: r749 closed by this same lineage (71348e75e + sweep 
 L.append('- R2 template + anchors: r750_qa.sh via the DUAL sed pattern (s/r=749/r=750/g + s/r749/r750/g) - 6 substitutions, zero r749 remnants; run-kanban strip structure read (tally span close :1971, header close :2027, pills div :2028).')
 L.append('- R3 increment (run-kanban.tsx, three edits): lanesOpen state beside serverDetail (:1317); the nj tally span -> a real BUTTON (aria-expanded, aria-controls, dotted-underline family styling, title gained the click hint) toggling the legend; the legend panel renders between the strip header and the pill row (data-testid corpus-lane-legend, id for aria-controls, "lanes tried (N no-judge)" label + one chip per deduped lane via split("; ")).')
 L.append('- R4 gates + QA: tsc 0, lint 0 errors / 33 warnings (baseline); r750 golden QA GREEN - tally STEADY at 23 runs / 81 ev / nj 45 (the between-slot activity paused this slot); seven-lane set re-verified, no EIGHTH lane.')
-L.append('- R5 this close: chip probe (cards view, grid-click first) + lane-legend probe (board view, click-verified, GATED - it is the round ship) + snapshot + worklog + commit + dual push.')
+L.append('- R5 this close: chip probe (cards view, grid-click first) + lane-legend probe (board view, click-verified, GATED - it is the round ship) + snapshot + worklog + commit + dual push. FIRST ATTEMPT GUARD-TRIPPED (disclosed): the nj click had landed but the guard compared the raw eval output against bare "clicked" - the known agent-browser quirk (eval output is JSON-ENCODED, so it arrives as "clicked" with quotes) broke the strict compare. Fixed to the escaped-quote-tolerant grep the other guards already use; the guard aborted pre-commit and did its job.')
 L.append('- QA PROBES (this close):')
 L.append('  ' + os.environ.get('R750_QW','(missing)'))
 L.append('  ' + os.environ.get('R750_QLD','(missing)'))
