@@ -1,0 +1,75 @@
+=== r720 QA 2026-10-29T03:07:04+00:00 ===
+server: 200 after wait
+--- settings leg: mirror census + mirror click ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#settings
+"{\"census\":true,\"relay\":true}"
+"Vault loop readiness: 0 lanes stored, acquisition 0/3 keyed"
+"mirror-count:3 waiting"
+"mirror-btns:0"
+"mirror-toast:not-seen"
+"Vault loop readiness: 0 lanes stored, acquisition 0/3 keyed"
+--- backup round trip WITH DATA (r719 road, armed) ---
+"backup-btn-clicked"
+"{\"confirmDialog\":true}"
+"export-btn-clicked"
+"export-plaintext-MISS"
+"close-clicked"
+"no-captured-backup"
+"restore-btn-clicked"
+"restore-toast:not-seen"
+"Vault loop readiness: 0 lanes stored, acquisition 0/3 keyed"
+--- radar leg (r712 stable aria name) ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#radar
+"frontier-aria-clicked"
+--- workflows leg: long paste + U/NJ amber witness (attempt #13) ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#workflows
+"{\"amberU\":[],\"njTon\":[]}"
+"paste-len:799"
+--- cron chip (sidebar footer) ---
+"1/1"
+--- console ---
+[log] [Fast Refresh] done in 207ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 196ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 231ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 239ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 184ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 126ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 135ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 144ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 105ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 232ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 212ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 202ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 294ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 113ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 196ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 175ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 146ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 539ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 313ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 185ms
+[log] [Fast Refresh] rebuilding
+--- page errors ---
+=== r720 QA end ===

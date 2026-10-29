@@ -1,0 +1,33 @@
+=== r720 leg2 2026-10-29T03:08:40+00:00 ===
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#settings
+"Vault loop readiness: 0 lanes stored, acquisition 0/3 keyed"
+"mirror-count:3 waiting"
+"[{\"t\":\"Mirror Vyce AI\",\"a\":null,\"d\":false},{\"t\":\"Mirror AIHubMix\",\"a\":null,\"d\":false},{\"t\":\"Mirror Pollinations\",\"a\":null,\"d\":false},{\"t\":\"\",\"a\":\"Enable Supabase mirror\",\"d\":false}]"
+"mirror-click: clicked [0/4]"
+"mirror-toast:mirrored to the server lane"
+"Vault loop readiness: 1 lanes stored, dials Vyce AI first, acquisition 0/3 keyed"
+--- backup round trip (vault now has lanes if mirror landed) ---
+"backup-btn-MISS"
+"{\"confirmDialog\":false,\"emptyWarn\":true}"
+"export-btn-MISS"
+"export-plaintext-MISS"
+"close-clicked"
+"pasteBox-MISS"
+"restore-btn-clicked"
+"restore-toast:not-seen"
+"Vault loop readiness: 1 lanes stored, dials Vyce AI first, acquisition 0/3 keyed"
+--- console tail ---
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 287ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 288ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 205ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 134ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 182ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 151ms
+=== r720 leg2 end ===
