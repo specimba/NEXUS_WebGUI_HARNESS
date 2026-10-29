@@ -294,6 +294,31 @@ function laneDistressOf(corpus: { rows: { note: string }[] }[]): string {
   return lanes.join("; ");
 }
 
+/** r751: HOW OFTEN each lane failed - the same verbatim tried-trace
+ * scan as laneDistressOf (same regex, same noJudge gate), but
+ * tallying every match instead of deduping: the legend chips carry a
+ * per-lane dial-attempt count so the distress driver is measurable,
+ * not just nameable. Counts are trace ENTRIES - a step that tried
+ * three lanes contributes three - so the sum can exceed the no-judge
+ * step count; the legend title states that, it is not hidden. */
+function laneCountsOf(corpus: { rows: { note: string }[] }[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const entry of corpus) {
+    for (const row of entry.rows) {
+      const c = gateCensusOf([{ note: row.note }]);
+      if (c.noJudge <= 0) continue;
+      const re = /(?:tried:|;)\s*([^—;]+?)\s*—/g;
+      let m: RegExpExecArray | null = re.exec(row.note || "");
+      while (m) {
+        const lane = m[1].trim();
+        if (lane) counts[lane] = (counts[lane] || 0) + 1;
+        m = re.exec(row.note || "");
+      }
+    }
+  }
+  return counts;
+}
+
 function CorpusEventRow({ row }: { row: LedgerRunRow }) {
   const c = gateCensusOf([{ note: row.note }]);
   const label = eventLabelOf(c);
@@ -1516,6 +1541,9 @@ export function RunKanban({
   const pillQuery = pillFilter.trim().toLowerCase();
   // r736: the failing lanes named on the nj token's title (see laneDistressOf).
   const laneDistress = React.useMemo(() => laneDistressOf(corpusOnly), [corpusOnly]);
+  // r751: per-lane dial-attempt counts for the legend chips - the same
+  // scan as laneDistressOf, tallying instead of deduping (laneCountsOf).
+  const laneCounts = React.useMemo(() => laneCountsOf(corpusOnly), [corpusOnly]);
   const visibleCorpus = React.useMemo(() => {
     if (!pillQuery) return corpusOnly;
     return corpusOnly.filter((c) => c.runId.toLowerCase().includes(pillQuery));
@@ -2037,6 +2065,7 @@ export function RunKanban({
             <div
               id="corpus-lane-legend"
               data-testid="corpus-lane-legend"
+              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count."
               className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-2"
             >
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2048,6 +2077,12 @@ export function RunKanban({
                   className="rounded border border-border bg-background/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
                 >
                   {lane}
+                  <span
+                    className="ml-1 rounded-full bg-amber-500/10 px-1 font-semibold tabular-nums text-amber-700 dark:text-amber-400"
+                    title={(laneCounts[lane] ?? 0) + " dial attempt(s) in the ledger's tried-trace (trace entries: a step that tried several lanes counts each)"}
+                  >
+                    ×{laneCounts[lane] ?? 0}
+                  </span>
                 </span>
               ))}
             </div>
