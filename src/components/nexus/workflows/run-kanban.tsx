@@ -1125,6 +1125,34 @@ export function RunKanban({
     }
     return [...byRun.entries()].map(([runId, rows]) => ({ runId, rows }));
   }, [ledger, cardRunIds]);
+  // r724: the ⧉ chip's u/nj split — the durable corpus classified through
+  // the SAME gateCensusOf adapter (one classifier, a third source: card
+  // callLog, server lane, digest-level ledger rows — the r649 doctrine).
+  // HONESTY BOUND: /api/evals ships the newest 400 rows, so the split
+  // renders only when the payload covers the whole corpus (runs.length
+  // >= total) AND the split fully accounts for the honest ∅ lump — a
+  // partial sample never masquerades as a full census.
+  const corpusCensus = React.useMemo(() => {
+    const rows = (ledger?.runs ?? []).map((r) => {
+      const at = r.createdAt ? Date.parse(r.createdAt) : NaN;
+      return { note: r.note, ...(Number.isFinite(at) ? { at } : {}) };
+    });
+    return gateCensusOf(rows);
+  }, [ledger]);
+  const corpusCovered =
+    (ledger?.runs?.length ?? 0) >= (ledger?.total ?? 0) && (ledger?.total ?? 0) > 0;
+  const corpusSplitHonest =
+    corpusCovered &&
+    corpusCensus.uncertain + corpusCensus.noJudge > 0 &&
+    corpusCensus.uncertain + corpusCensus.noJudge >= (ledger?.total ?? 0) - (ledger?.verdicts ?? 0);
+  // r724: the corpus strip's own glance tally — runs · events · verdicts
+  // · u/nj, aggregated over the strip's rows through the same adapter, so
+  // the judge-lane signal (nj) reads without scanning per-run chips.
+  const stripCensus = React.useMemo(
+    () => gateCensusOf(corpusOnly.flatMap((c) => c.rows)),
+    [corpusOnly]
+  );
+  const stripEvents = corpusOnly.reduce((n, c) => n + c.rows.length, 0);
   // r684 corpus freshness, r689 lifted to src/lib/ledger-freshness.ts —
   // one contract, one home (the r677 family-witness precedent); the chip
   // imports the same helper the fixture freezes. Compact age token for the
@@ -1314,8 +1342,8 @@ export function RunKanban({
           {ledger !== null && ledger.total > 0 ? (
             <span
               tabIndex={0}
-              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The chip reads amber while a FAIL verdict sits in the corpus (the bold ✕F beside the tally), emerald once verdicts have landed clean, muted before the first confident verdict. The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? " — corpus quiet for over an hour (amber staleness signal)" : ""}.` : ""}`}
-              aria-label={`Eval ledger, durable corpus: ${ledger.total} archived gate events, ${ledger.verdicts} verdicts, ${ledger.fails} failures, ${ledger.total - ledger.verdicts} engaged without a confident verdict, chip ${ledger.fails > 0 ? "amber, a FAIL verdict sits in the corpus" : ledger.verdicts > 0 ? "emerald, verdicts landed clean" : "muted, no confident verdict yet"}${ledger.family ? `, drift ${ledger.family.cross} cross-family, ${ledger.family.same} same-family` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? `. Latest event ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""}, ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? ", corpus quiet for over an hour" : ""}` : ""}`}
+              title={`RSI eval ledger (durable SQLite): ${ledger.total} gate event${ledger.total === 1 ? "" : "s"} archived from finished runs — ${ledger.verdicts} verdict${ledger.verdicts === 1 ? "" : "s"}, ${ledger.fails} FAIL${ledger.fails === 1 ? "" : "s"}, ${ledger.total - ledger.verdicts} engaged without a confident verdict (uncertain / no judge answered / judge errored — the r659/r660 honest-trace family, never counted as a pass). The chip reads amber while a FAIL verdict sits in the corpus (the bold ✕F beside the tally), emerald once verdicts have landed clean, muted before the first confident verdict. The training corpus outlives the browser's trimmed localStorage store (the KICK corpus's interaction_logs pattern, adapted).${ledger.family && ledger.family.cross + ledger.family.same > 0 ? ` Drift witness: ◈ ${ledger.family.cross} cross-family · ◇ ${ledger.family.same} same-family judge note(s) — narcissistic-drift avoidance, self-reported by the corpus.` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? ` Latest event: ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.confidence === "number" ? ` ${ledgerLatest.confidence}%` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""} — ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? " — corpus quiet for over an hour (amber staleness signal)" : ""}.` : ""}${corpusCovered ? ` The u/nj split classifies the archived gate notes through the shared census adapter — one classifier, a third source: card callLog, server lane, digest rows.` : ` The u/nj split stays hidden — the census payload (newest 400 rows) does not yet cover the whole corpus, so the honest ∅ lump remains.`}`}
+              aria-label={`Eval ledger, durable corpus: ${ledger.total} archived gate events, ${ledger.verdicts} verdicts, ${ledger.fails} failures, ${ledger.total - ledger.verdicts} engaged without a confident verdict, chip ${ledger.fails > 0 ? "amber, a FAIL verdict sits in the corpus" : ledger.verdicts > 0 ? "emerald, verdicts landed clean" : "muted, no confident verdict yet"}${ledger.family ? `, drift ${ledger.family.cross} cross-family, ${ledger.family.same} same-family` : ""}${typeof ledgerLatest?.kind === "string" && ledgerAge !== null ? `. Latest event ${ledgerLatest.kind}${typeof ledgerLatest.verdict === "string" && ledgerLatest.verdict ? ` ${ledgerLatest.verdict}` : ""}${typeof ledgerLatest.workflow === "string" && ledgerLatest.workflow ? ` on ${ledgerLatest.workflow}` : ""}, ${ledgerAge === "now" ? "just now" : `${ledgerAge} ago`}${ledgerStale ? ", corpus quiet for over an hour" : ""}` : ""}${corpusCovered ? " The tally splits into uncertain and no-judge through the shared census adapter." : " The u/nj split stays hidden until the census payload covers the whole corpus."}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
                 CHIP_FOCUS_RING,
@@ -1334,8 +1362,14 @@ export function RunKanban({
               {/* r680: the honest-trace family completes the glance line —
               engaged-without-a-confident-verdict (uncertain / no judge /
               judge errored) is the r659/r660 doctrine's third outcome; the
-              muted ∅K keeps an unanswered gate from masquerading as health. */}
-              {ledger.total - ledger.verdicts > 0 ? (
+              muted ∅K keeps an unanswered gate from masquerading as health.
+              r724: when the census payload covers the whole corpus and the
+              split fully accounts for the lump, ∅ gives way to the shared
+              u/nj tokens (GateSuffix — the same component as every ⚖ chip,
+              the r649 render doctrine); otherwise the honest lump stays. */}
+              {corpusSplitHonest ? (
+                <GateSuffix census={corpusCensus} />
+              ) : ledger.total - ledger.verdicts > 0 ? (
                 <span className="ml-1 text-muted-foreground">∅{ledger.total - ledger.verdicts}</span>
               ) : null}
               {/* r678: drift counts leave the tooltip — cross/same-family
@@ -1516,6 +1550,22 @@ export function RunKanban({
           <div className="mb-2 flex items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               ⧉ In the corpus, not on this board
+            </span>
+            {/* r724: the strip's aggregate glance tally — the per-run chips
+            stay, but the header now sums them (runs · ev · verdicts · u/nj)
+            through the same gateCensusOf adapter; tones follow the r718
+            family contract (u amber, nj muted), never a rival vocabulary. */}
+            <span
+              className="text-[10px] tabular-nums text-muted-foreground"
+              title={`The strip's aggregate census: ${corpusOnly.length} run${corpusOnly.length === 1 ? "" : "s"} · ${stripEvents} archived gate event${stripEvents === 1 ? "" : "s"} · ${stripCensus.verdicts} confident verdict${stripCensus.verdicts === 1 ? "" : "s"}${stripCensus.uncertain > 0 ? ` · ${stripCensus.uncertain} uncertain (the judge answered below confidence)` : ""}${stripCensus.noJudge > 0 ? ` · ${stripCensus.noJudge} step${stripCensus.noJudge === 1 ? "" : "s"} no judge answered — the judge-lane distress signal; check relay health` : ""}. Classified through the same gateCensusOf adapter as every chip on this board (the r649 doctrine).`}
+            >
+              {corpusOnly.length} run{corpusOnly.length === 1 ? "" : "s"} · {stripEvents} ev · {stripCensus.verdicts} verdict{stripCensus.verdicts === 1 ? "" : "s"}
+              {stripCensus.uncertain > 0 ? (
+                <span className="ml-1 text-amber-600 dark:text-amber-400">· {stripCensus.uncertain}u</span>
+              ) : null}
+              {stripCensus.noJudge > 0 ? (
+                <span className="ml-1">· {stripCensus.noJudge}nj</span>
+              ) : null}
             </span>
             <span className="h-px flex-1 bg-border/60" aria-hidden />
           </div>

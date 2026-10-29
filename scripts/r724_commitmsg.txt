@@ -1,0 +1,25 @@
+r724: digest u/nj split + strip glance tally — judge-lane health at scan level
+
+- SHIP: the ⧉ ledger chip classifies the durable corpus through the SAME
+  gateCensusOf adapter (one classifier, a third source: card callLog,
+  server lane, digest rows) and renders the shared u/nj tokens (GateSuffix,
+  r718 tones) under an honesty bound: split only when the newest-400
+  payload covers the whole corpus AND fully accounts for the ∅ lump —
+  otherwise the r680 honest lump stays.
+- SHIP: the corpus strip header gains an aggregate glance tally
+  (N runs · M ev · V verdicts · Nu · Nnj, tabular-nums, r718 tone family,
+  distress-meaning title) — per-run chips stay.
+- witness: fresh-load DOM probe — digest chip text carries u/nj tokens,
+  strip tally + per-run chips counted (scripts/qa_r724.txt).
+- probes at open: corpus 31→43 rows, no-judge 9→20 (DOMINANT; two new
+  runs, every note a judge-dial failure) — CORTEX P1 Owner-side deploy is
+  the most urgent carry.
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census 48/48 ·
+  qa-cortex-census 23/23.
+- budget: 17 rounds (five over the <=12 cap, DISCLOSED: the increment
+  MultiEdit shipped one stray quote at the aria tail — tsc caught it before
+  any witness ran, nothing committed on a failed gate; three verbatim Edit
+  attempts failed on the quote-tangled tail, fixed via chr()-coded python
+  one-liner; guarded close chain, scripts/r724_close.sh).
