@@ -6,3 +6,15 @@ divergence: "{\"divBadges\":4}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 3455b7bc6] r758: mid-round wave pivot - the divergence instrument debuts into a live fourth wave. R2 read steady (96/27/21/15/60, exactly the r757 baseline, newest 21:28:47 UTC) but the R5 QA board probe caught wave 4 live (100 ev / 28 runs / 64nj; run_918b2b94af40 22:09:21 UTC, ~1 min after the read) - the FOURTH consecutive growth slot, extending the record burst to four waves (+3/+4/+7/+4); the r756 census-latency lesson repeated verbatim. Shipped pre-armed per the r757 handoff: laneDivergenceOf (each lane last-3-bucket profile vs the corpus strip; a lag = the partial-ladder signal), amber divergence diamonds on chip faces (data-div=1, aria-labeled, bucket detail in titles + legend doc). Zero diamonds = the correct muted state under the full-ladder shape. Divergence probe RECORDED-only (amber-tone doctrine). Snapshot discipline fourteenth close.
+ 9 files changed, 376 insertions(+), 2 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T22-13-57.json
+ create mode 100644 scripts/qa_r758.txt
+ create mode 100644 scripts/qa_r758_close.txt
+ create mode 100644 scripts/r758_close.sh
+ create mode 100644 scripts/r758_prose.py
+ create mode 100644 scripts/r758_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   6bdbb3f61..3455b7bc6  main -> main
+To https://github.com/specimba/PraisonAI.git
+   6bdbb3f61..3455b7bc6  main -> main
