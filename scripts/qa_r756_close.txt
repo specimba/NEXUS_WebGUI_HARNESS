@@ -1,0 +1,6 @@
+chip: "{\"chip\":true,\"text\":\"⧉ 26 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":29,\"label\":\"lanes tried (53 no-judge)intern-systemone×5320 runs· 10-29-> 21:12Zfast-judge×5320 runs· 10-29-> 21:12Zjev (pa\"}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
+worklog appended
