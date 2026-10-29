@@ -411,6 +411,27 @@ function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null
   return { lanes, corpusRows };
 }
 
+/** r758: the divergence auto-highlight - compares each lane 15-min
+ * bucket profile against the corpus strip over the LAST 3 buckets.
+ * Under the full-ladder shape every no-judge row names every lane, so
+ * per-lane bucket counts equal the corpus counts; a lane whose count
+ * LAGS in a recent bucket is the partial-ladder signal (that bucket
+ * found an answering judge on some steps while the rest still dialed
+ * the whole ladder). Ships pre-armed in a steady slot: an instrument
+ * must exist before the wave it watches for. */
+function laneDivergenceOf(buckets: { lanes: Record<string, Record<string, number>>; corpusRows: Record<string, number> }): Record<string, string> {
+  const keys = Object.keys(buckets.corpusRows).sort().slice(-3);
+  const out: Record<string, string> = {};
+  for (const lane of Object.keys(buckets.lanes)) {
+    const laneB = buckets.lanes[lane];
+    const lags = keys.filter((k) => (laneB[k] ?? 0) < (buckets.corpusRows[k] ?? 0));
+    if (lags.length) {
+      out[lane] = lags.map((k) => k + " (×" + (laneB[k] ?? 0) + " of ×" + buckets.corpusRows[k] + ")").join(", ");
+    }
+  }
+  return out;
+}
+
 /** r753: HOW MANY RUNS each lane touched - the same verbatim
  * tried-trace scan as laneCountsOf, but tallying DISTINCT run ids per
  * lane (a run with several no-judge events on one lane counts once):
@@ -1690,6 +1711,9 @@ export function RunKanban({
     const keys = Object.keys(src).sort();
     return { src, shown: keys.slice(-6), total: keys.length };
   }, [laneBuckets, laneFilter]);
+  // r758: divergence auto-highlight per lane - the partial-ladder
+  // signal, amber-flagged on the chips; ships pre-armed (steady slot).
+  const laneDivergence = React.useMemo(() => laneDivergenceOf(laneBuckets), [laneBuckets]);
   const visibleCorpus = React.useMemo(() => {
     let out = corpusOnly;
     if (pillQuery) out = out.filter((c) => c.runId.toLowerCase().includes(pillQuery));
@@ -2225,7 +2249,7 @@ export function RunKanban({
             <div
               id="corpus-lane-legend"
               data-testid="corpus-lane-legend"
-              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each chip's title."
+              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each chip's title. The divergence diamond (r758) ambers a lane whose last-3-bucket profile lags the corpus strip - the partial-ladder signal, auto-highlighted on the chip face."
               className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-2"
             >
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2256,6 +2280,9 @@ export function RunKanban({
                       : "") +
                     (laneBuckets.lanes[lane] !== undefined
                       ? " — by 15-min UTC bucket: " + Object.keys(laneBuckets.lanes[lane]).sort().map((k) => k + " ×" + laneBuckets.lanes[lane][k]).join(" · ")
+                      : "") +
+                    (laneDivergence[lane]
+                      ? " — DIVERGES from the corpus strip in: " + laneDivergence[lane] + " (partial-ladder signal: those recent buckets found an answering judge on some steps)"
                       : "")
                   }
                 >
@@ -2276,6 +2303,16 @@ export function RunKanban({
                       {"-> " + (new Date(laneLastSeen[lane]).toISOString().slice(5, 10) === new Date(laneFirstSeen[lane]).toISOString().slice(5, 10)
                         ? new Date(laneLastSeen[lane]).toISOString().slice(11, 16) + "Z"
                         : new Date(laneLastSeen[lane]).toISOString().slice(5, 10))}
+                    </span>
+                  ) : null}
+                  {laneDivergence[lane] ? (
+                    <span
+                      data-div="1"
+                      aria-label="Lane diverges from the corpus bucket profile"
+                      title={"Divergence (r758): this lane's last-3-bucket profile lags the corpus strip — " + laneDivergence[lane] + " — the partial-ladder signal: those buckets found an answering judge on some steps."}
+                      className="ml-0.5 rounded bg-amber-500/15 px-1 text-[9px] font-semibold leading-4 text-amber-700 dark:text-amber-400"
+                    >
+                      ∆
                     </span>
                   ) : null}
                 </button>
