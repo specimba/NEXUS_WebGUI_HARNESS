@@ -1311,6 +1311,10 @@ export function RunKanban({
   const serverRuns = useServerRuns(boardOpen);
   // v25: which server-lane run's detail drawer is open (null = closed).
   const [serverDetail, setServerDetail] = React.useState<ServerRunRow | null>(null);
+  // r750: the lane legend — the LD lane trace lived in a hover-only title
+  // (invisible on touch); the judge-lane distress instrument deserves a
+  // click. Toggled by the nj tally button in the strip header.
+  const [lanesOpen, setLanesOpen] = React.useState(false);
   // Keep countdowns honest
   const [, tick] = React.useReducer((n: number) => n + 1, 0);
   React.useEffect(() => {
@@ -1957,16 +1961,20 @@ export function RunKanban({
                 <span className="mx-1 text-amber-600 dark:text-amber-400">· {stripCensus.uncertain}u</span>
               ) : null}
               {stripCensus.noJudge > 0 ? (
-                <span
-                  className="mx-1"
+                <button
+                  type="button"
+                  onClick={() => setLanesOpen((v) => !v)}
+                  aria-expanded={lanesOpen}
+                  aria-controls="corpus-lane-legend"
+                  className="mx-1 text-[10px] tabular-nums text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
                   title={
                     laneDistress
-                      ? "Lanes tried in these " + stripCensus.noJudge + " no-judge failures (the ledger's verbatim tried-trace, deduped): " + laneDistress
+                      ? "Lanes tried in these " + stripCensus.noJudge + " no-judge failures (the ledger's verbatim tried-trace, deduped): " + laneDistress + " — click for the on-page legend."
                       : undefined
                   }
                 >
                   · {stripCensus.noJudge}nj
-                </span>
+                </button>
               ) : null}
             </span>
             {/* r732: type-to-find — shrink the pill set to a run-id substring;
@@ -2025,6 +2033,25 @@ export function RunKanban({
             ) : null}
             <span className="h-px flex-1 bg-border/60" aria-hidden />
           </div>
+          {lanesOpen && laneDistress ? (
+            <div
+              id="corpus-lane-legend"
+              data-testid="corpus-lane-legend"
+              className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-2"
+            >
+              <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                lanes tried ({stripCensus.noJudge} no-judge)
+              </span>
+              {laneDistress.split("; ").map((lane, i) => (
+                <span
+                  key={i}
+                  className="rounded border border-border bg-background/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  {lane}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             {visibleCorpus.map(({ runId, rows }) => (
               <button
