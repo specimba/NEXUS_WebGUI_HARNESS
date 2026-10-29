@@ -35,3 +35,27 @@ gate-census: qa-gate-census: 48/48
 cortex: qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main ba7931a47] r725: corpus wipe caught + answered — 31/43 rows recovered from git witness; durable snapshot road ships
+ 14 files changed, 566 insertions(+)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T05-45-47.json
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T05-48-35.json
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T05-50-10.json
+ create mode 100644 db/corpus-snapshots/latest.json
+ create mode 100644 scripts/corpus-recover-r725.ts
+ create mode 100644 scripts/corpus-restore.ts
+ create mode 100644 scripts/corpus-snapshot.ts
+ create mode 100644 scripts/qa_r725.txt
+ create mode 100644 scripts/qa_r725_evals.json
+ create mode 100644 scripts/qa_r725_lint.txt
+ create mode 100644 scripts/qa_r725_tsc.txt
+ create mode 100644 scripts/r725_close.sh
+ create mode 100644 scripts/r725_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   58c565474..ba7931a47  main -> main
+To https://github.com/specimba/PraisonAI.git
+   58c565474..ba7931a47  main -> main
+--- verification ---
+ba7931a47 r725: corpus wipe caught + answered — 31/43 rows recovered from git witness; durable snapshot road ships
+origin/main..HEAD: 0
+ M scripts/qa_r725.txt
+=== r725 close end ===
