@@ -1,0 +1,10 @@
+── fixture ──
+qa-gate-census: 38/38
+── tsc ──
+tsc_exit=0
+── lint ──
+✖ 33 problems (0 errors, 33 warnings)
+
+── cortex fixtures ──
+NOTE: localStorage unwritable in this runtime — round-trip covered by browser QA
+qa-cortex-census: 23/23

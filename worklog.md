@@ -3782,3 +3782,25 @@ Round Handoff:
 Round ID: r714 -> next patrol (job 473388)
 Next recommended action: (1) DB-HEALTH PROBE standing at open (db/custom.db — prisma/dev.db is an empty shell). (2) CORTEX P1 REMAINING (witnesses, not code): the real-key UPSTASH 3/3 + HB ✓ DOM witness when the Owner next probes with live keys; MIRROR-STRIP witness on the next acquisition key store (armed since r707, still unobserved). (3) VERDICT-FLOW WATCH: baseline now gate-verdict 30 (PASS/FAIL split re-read at open) + 25 uncertain + 8 no-judge — if no-judge grows, the free-ladder quotas are the first suspect (r713 handoff note). (4) NJ/U CHIP WITNESS: the chips render only when nonzero — the DOM witness needs a run with an ungated step; if the corpus holds none, the fixture-level pin (adapter unit shapes) is the honest substitute. (5) Owner queue (r693 carry, unchanged): sibling-sandbox push history + .archive-snapshot-1028/ disposition; per-run ledger read proposal (r683); vault re-key BACKUP-FIRST; KICK widget URL fix (no definition found in-repo as of r712 — needs the Owner's original context); optional v29c-f re-download.
 Blockers: none. Standing constraint (r707): mechanism or named evaluation every round — held (the census adapter extension is mechanism, not polish).
+
+---
+Task ID: r714
+Agent: NEXUS patrol (main agent)
+Task: Patrol round 714 (job 473388) — the r713 tone surface PINNED in the gate-census fixture (dial-free, the r670 doctrine) and the per-run chip tooltips learn the same u/nj decode the board already carries; the watch shows uncertain growing (25→30), no-judge stable
+
+Work Log:
+- DB-HEALTH PROBE (standing): quick_check ok on db/custom.db · root 200 at open · tree clean at r713 (d3d463816).
+- VERDICT-FLOW WATCH (re-read at open): gate-verdict 30 → 31, gate-uncertain 25 → 30 (+5 in ~30 min — the corpus is talking), gate-no-judge 8 stable. The r713 handoff's alarm condition was no-judge GROWTH (free-ladder quotas); uncertain growth is a different signal — judges ANSWERING but below confidence — noted, not alarmed.
+- DESIGN READ (before code): scripts/qa-gate-census.ts (the r670/r692 fixture) pinned engaged/verdicts/verdictLine/verdictTone/latestAt but predated the r713 tones — the new fields shipped guard-verified only. The per-run chips (kanban + panel) carried rich tooltips that predate u/nj: the kanban one already said "no judge answered or judge errored" in prose but never decoded the suffix letters.
+- SHIP: (1) fixture extension — 9 new checks: mixed-run sums (verdicts confident-only=1, engaged=3, uncertain=1, noJudge=1, last-verdict-wins tone), empty-shape zeros, uncertain-alone / no-judge-alone are NOT verdicts, junk-row tolerance with the new patterns; (2) per-run tooltip decode (both surfaces): "The u suffix counts judges that answered below confidence (uncertain); nj counts steps no judge answered — the step ran ungated" — one vocabulary, three surfaces (card chip, panel chip, board chip); (3) FixNote r714.
+- GATES: ── fixture ── qa-gate-census: 38/38 ── tsc ── tsc_exit=0 ── lint ── ✖ 33 problems (0 errors, 33 warnings) ── cortex fixtures ── NOTE: localStorage unwritable in this runtime — round-trip covered by browser QA qa-cortex-census: 23/23
+- GOLDEN QA: http://localhost:3000/#settings "{\"r714first\":false,\"census\":true}" http://localhost:3000/#radar "frontier-aria-clicked" http://localhost:3000/#workflows "paste-len:799"
+- BUDGET: ~7 rounds — a fixture variable collision (my inserted const mixed vs the r670 pre-existing one at line 111) was caught by tsc and renamed scoped to the inserted block; PIPESTATUS capture added so a piped tsc can never mask a failure again — the persisted-scripts pipeline held.
+
+Stage Summary:
+- The r713 mechanism is now regression-pinned and its vocabulary decoded everywhere it renders. The watch has a new sub-signal to track: UNCERTAIN growth (judges answering below confidence) vs NO-JUDGE growth (quota-dead ladders) — different failure classes, different first suspects.
+
+Round Handoff:
+Round ID: r715 -> next patrol (job 473388)
+Next recommended action: (1) DB-HEALTH PROBE standing at open (db/custom.db — prisma/dev.db is an empty shell). (2) CORTEX P1 REMAINING (witnesses, not code): the real-key UPSTASH 3/3 + HB ✓ DOM witness when the Owner next probes with live keys; MIRROR-STRIP witness on the next acquisition key store (armed since r707, still unobserved). (3) VERDICT-FLOW WATCH: baseline gate-verdict 31 · uncertain 30 (GROWING — if it keeps climbing, inspect WHAT the judges answer below confidence on: the fast-ladder's threshold or the step difficulty mix; different fix class than quota) · no-judge 8. (4) Owner queue (r693 carry, unchanged): sibling-sandbox push history + .archive-snapshot-1028/ disposition; per-run ledger read proposal (r683); vault re-key BACKUP-FIRST; KICK widget URL fix (no definition in-repo — needs the Owner's r693 context); optional v29c-f re-download.
+Blockers: none. Standing constraint (r707): mechanism or named evaluation every round — held (fixture pin + tooltip completion are the r713 mechanism's own hardening, not hover polish).

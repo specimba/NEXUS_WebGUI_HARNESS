@@ -105,5 +105,23 @@ check("latestAt: junk at skipped", gateCensusOf([{ note: "Decision gate engaged"
 check("latestAt: NaN skipped", gateCensusOf([{ note: "System-One gate PASS 90%", at: Number.NaN }]).latestAt === undefined);
 check("latestAt: absent on empty census", empty.latestAt === undefined);
 
+// 15. r713/r714: the u/nj tone surface — uncertain counts as engaged-but-
+// not-verdict, no-judge as ungated; both stay 0 on clean censuses; the
+// verdict math (confident-only) is untouched by either.
+const toned = gateCensusOf([
+  { note: "System-One gate PASS 90% — verified" },
+  { note: "Decision gate uncertain 40% (fast-model)" },
+  { note: "Decision gate — no judge answered (ladder quota-dead)" },
+]);
+check("toned: verdicts confident-only", toned.verdicts === 1);
+check("toned: engaged = Decision-gate rows (System-One is verdict-only)", toned.engaged === 2);
+check("toned: uncertain 1", toned.uncertain === 1);
+check("toned: noJudge 1", toned.noJudge === 1);
+check("toned: tone pass (last verdict wins)", toned.verdictTone === "pass");
+check("empty: uncertain 0", empty.uncertain === 0 && empty.noJudge === 0);
+check("uncertain alone: not a verdict", gateCensusOf([{ note: "Decision gate uncertain 55%" }]).verdicts === 0);
+check("no-judge alone: not a verdict", gateCensusOf([{ note: "Decision gate skipped — no judge answered" }]).verdicts === 0);
+check("junk rows: tolerant with new tones", gateCensusOf([{ note: 123 as unknown as string }, { note: "Decision gate uncertain 30%" }]).uncertain === 1);
+
 console.log(`qa-gate-census: ${pass}/${pass + fail}`);
 if (fail > 0) process.exit(1);

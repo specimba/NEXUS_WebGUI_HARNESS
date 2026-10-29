@@ -519,7 +519,7 @@ function RunCard({
           return (
             <span
               tabIndex={0}
-              title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
+              title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green). The u suffix counts judges that answered below confidence (uncertain); nj counts steps no judge answered — the step ran ungated.${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
               aria-label={`Decision gate on this run: engaged ${census.engaged} ${census.engaged === 1 ? "time" : "times"}, ${census.verdicts} confident ${census.verdicts === 1 ? "verdict" : "verdicts"} landed${fam.cross + fam.same > 0 ? `, drift ${fam.cross} cross-family, ${fam.same} same-family` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",

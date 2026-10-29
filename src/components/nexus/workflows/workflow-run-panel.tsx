@@ -1539,7 +1539,7 @@ export function WorkflowRunPanel({
                 if (!census || (census.engaged === 0 && census.verdicts === 0)) return null;
                 return (
                   <span
-                    title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the full tried-ladder trace lives in the call log below; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green.`}
+                    title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the full tried-ladder trace lives in the call log below; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green. The u suffix counts judges that answered below confidence (uncertain); nj counts steps no judge answered — the step ran ungated.`}
                     className={cn(
                       "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums transition-colors",
                       census.verdictTone === "fail"
