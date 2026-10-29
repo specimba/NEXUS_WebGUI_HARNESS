@@ -1,0 +1,40 @@
+=== r726 close 2026-10-29T06:22:54+00:00 ===
+server: 200
+--- evals payload (corpus intact check) ---
+evals-total:35 runs-rows:35 distinct:10
+evals-ids:run_14a887b12e58,run_1dd667e858a7,run_3ce26a7dc9a8,run_4e1d5e0d4097,run_5125af84dac7,run_5c98b87879cc,run_9a5495f732ea,run_caf98e5426e6,run_f1e88e5c514e,run_fd8fd1f21c89
+evals-corpus-ok
+--- corpus snapshot (durable road, pre-commit) ---
+snapshot: 35 rows -> db/corpus-snapshots/latest.json (+5 kept)
+--- board witness: digest split + strip tally (fresh load) ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#workflows
+"reloaded"
+"radio-ok"
+witness: "{\"strip\":true,\"split\":true,\"dt\":\"⧉ ledger 35·14✕3 · 11u · 10nj◈22· 1m\",\"tallyOk\":true,\"tally\":\"10 runs · 35 ev · 14 verdicts· 11u· 10nj\",\"chips\":10}" || retry: "{\"strip\":true,\"split\":true,\"dt\":\"⧉ ledger 35·14✕3 · 11u · 10nj◈22· 1m\",\"tallyOk\":true,\"tally\":\"10 runs · 35 ev · 14 verdicts· 11u· 10nj\",\"chips\":10}"
+--- click-through witness: strip pill -> per-run detail panel (r726 ship) ---
+click: "{\"ct\":true,\"label\":\"⚖ gate 4·2 · PASS 92% · 2njrun_9a5495f732ea4 ev\"}"
+panel: "{\"panel\":true,\"expandedOk\":true,\"rows\":4,\"ladder\":true,\"dialTitle\":true,\"role\":\"region\",\"head\":\"run_9a5495f732ea4 events · engaged 4 · 2 verdicts · 2nj◈ 2 cross-family · ◇ 0 same-family0\"}"
+--- golden legs ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#settings
+settings: "{\"census\":true,\"relay\":true}"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#radar
+radar: "frontier-aria-clicked"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#workflows
+paste: "paste-len:799"
+cron chip: "1/1"
+--- console tail ---
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+--- page errors ---
+
+--- gates ---
+tsc_exit:0
+lint_exit:0 ✖ 33 problems (0 errors, 33 warnings)
+gate-census: qa-gate-census: 48/48
+cortex: qa-cortex-census: 23/23
+--- worklog append ---
+worklog appended

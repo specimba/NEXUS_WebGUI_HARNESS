@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Ban,
   Check,
+  ChevronDown,
   Clock,
   Copy,
   Hourglass,
@@ -237,6 +238,54 @@ function groupRuns(workflows: Workflow[], serverRuns: ServerRunRow[]): Record<Co
   return cards;
 }
 
+/** r726: parse a ledger createdAt (epoch-ms number/string or ISO) to ms; 0 when absent or unreadable — an honest zero, never a fake time. */
+function evAtMs(v?: string | number | null): number {
+  if (v == null || v === "") return 0;
+  const asNum = typeof v === "number" ? v : Number(v);
+  const n = Number.isFinite(asNum) && asNum > 0 ? asNum : Date.parse(String(v));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** r726: compact HH:MM:SS wall clock for a ledger event; an honest dash when the row carries no readable time. */
+function fmtEventAt(v?: string | number | null): string {
+  const n = evAtMs(v);
+  return n > 0 ? new Date(n).toLocaleTimeString([], { hour12: false }) : "—";
+}
+
+/** r726: one durable event row in the corpus detail panel — tone and label
+ * come from the SAME gateCensusOf classifier (the r649 doctrine: card
+ * callLog, server lane, digest rows, now per-row panels — never a rival
+ * vocabulary), and the note renders VERBATIM, so the judge dial trace
+ * ("tried: intern-systemone — no answer; fast-judge …") rides inside it. */
+function CorpusEventRow({ row }: { row: LedgerRunRow }) {
+  const c = gateCensusOf([{ note: row.note }]);
+  const label =
+    c.verdicts > 0
+      ? c.verdictTone === "fail"
+        ? "verdict · FAIL"
+        : "verdict · PASS"
+      : c.uncertain > 0
+        ? "uncertain"
+        : c.noJudge > 0
+          ? "no judge"
+          : "gate event";
+  const tone =
+    c.verdictTone === "fail" || c.uncertain > 0
+      ? "text-amber-600 dark:text-amber-400"
+      : c.verdictTone === "pass"
+        ? "text-emerald-600 dark:text-emerald-400"
+        : "text-muted-foreground";
+  return (
+    <li className="rounded-md border border-border/40 bg-background/60 px-2 py-1.5">
+      <div className="flex items-baseline gap-2">
+        <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{fmtEventAt(row.createdAt)}</span>
+        <span className={cn("text-[10px] font-semibold uppercase tracking-wide", tone)}>{label}</span>
+      </div>
+      <p className="mt-1 break-words text-[10px] leading-relaxed text-muted-foreground">{row.note}</p>
+    </li>
+  );
+}
+
 /** r722: one durable ledger row shaped for the per-run gate chip (the r683 read). */
 interface LedgerRunRow {
   runId: string;
@@ -249,7 +298,7 @@ interface LedgerRunRow {
  * gateCensusOf adapter, same tonal system; the title names the honest
  * source: the corpus outlives the store. Zero gate rows render nothing
  * (the r648 doctrine — no chip is faked for an empty corpus). */
-function CorpusRunChip({ rows }: { rows: LedgerRunRow[] }) {
+function CorpusRunChip({ rows, tabbable = true }: { rows: LedgerRunRow[]; tabbable?: boolean }) {
   const mapped = rows.map((r) => {
     const at = r.createdAt ? Date.parse(r.createdAt) : NaN;
     return { note: r.note, ...(Number.isFinite(at) ? { at } : {}) };
@@ -257,14 +306,24 @@ function CorpusRunChip({ rows }: { rows: LedgerRunRow[] }) {
   const census = gateCensusOf(mapped);
   if (census.engaged === 0 && census.verdicts === 0) return null;
   const fam = familyTallyOf(rows.map((r) => r.note));
+  // r726: the tried-ladder trace surfaces in the chip title — the judge
+  // dial failures (the nj distress) become readable on hover, per run,
+  // without opening anything. Bounded to 220 chars; an honest absence
+  // when no row ever failed to dial (a healthy lane shows nothing).
+  const triedNote = rows.map((r) => r.note).find((n) => n.includes("tried:")) ?? "";
+  const triedAt = triedNote.indexOf("tried:");
+  const dialTrace =
+    triedAt >= 0
+      ? " First judge dial trace: " + triedNote.slice(triedAt, triedAt + 220) + (triedNote.length > triedAt + 220 ? "…" : "")
+      : "";
   return (
     <span
-      tabIndex={0}
-      title={`Decision gate census counted from the DURABLE ledger — this board holds no card for this run (the run row lives only in the browser that ran it; the server lane carries no AutomationRun row for it). The corpus outlives the store, so it renders here instead of vanishing. Engaged ${census.engaged} time(s), ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored).${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
+      tabIndex={tabbable ? 0 : undefined}
+      title={`Decision gate census counted from the DURABLE ledger — this board holds no card for this run (the run row lives only in the browser that ran it; the server lane carries no AutomationRun row for it). The corpus outlives the store, so it renders here instead of vanishing. Engaged ${census.engaged} time(s), ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored).${dialTrace}${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
       aria-label={`Durable gate census for a corpus-only run: engaged ${census.engaged}, ${census.verdicts} confident verdicts landed`}
       className={cn(
         "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
-        CHIP_FOCUS_RING,
+        tabbable && CHIP_FOCUS_RING,
         census.verdictTone === "fail"
           ? "border-amber-500/30 bg-amber-500/10 text-amber-600 hover:border-amber-500/60 dark:text-amber-400"
           : census.verdictTone === "pass"
@@ -1153,6 +1212,30 @@ export function RunKanban({
     [corpusOnly]
   );
   const stripEvents = corpusOnly.reduce((n, c) => n + c.rows.length, 0);
+  // r726: corpus click-through — the strip pills become buttons (focus
+  // ring + aria-expanded) opening a per-run detail panel built from the
+  // durable ledger rows ALONE (no card, no store): every event note
+  // verbatim — the judge dial trace included — each classified per row
+  // through the SAME gateCensusOf adapter (the r649 doctrine).
+  const [openCorpusRun, setOpenCorpusRun] = React.useState<string | null>(null);
+  const detailRun = openCorpusRun
+    ? corpusOnly.find((c) => c.runId === openCorpusRun) ?? null
+    : null;
+  const detailRows = React.useMemo(
+    () => (detailRun ? [...detailRun.rows].sort((a, b) => evAtMs(a.createdAt) - evAtMs(b.createdAt)) : []),
+    [detailRun]
+  );
+  const detailCensus = React.useMemo(
+    () =>
+      gateCensusOf(
+        detailRows.map((r) => {
+          const at = evAtMs(r.createdAt);
+          return { note: r.note, ...(at > 0 ? { at } : {}) };
+        })
+      ),
+    [detailRows]
+  );
+  const detailFam = React.useMemo(() => familyTallyOf(detailRows.map((r) => r.note)), [detailRows]);
   // r684 corpus freshness, r689 lifted to src/lib/ledger-freshness.ts —
   // one contract, one home (the r677 family-witness precedent); the chip
   // imports the same helper the fixture freezes. Compact age token for the
@@ -1571,16 +1654,61 @@ export function RunKanban({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {corpusOnly.map(({ runId, rows }) => (
-              <span
+              <button
                 key={runId}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                type="button"
+                onClick={() => setOpenCorpusRun((cur) => (cur === runId ? null : runId))}
+                aria-expanded={openCorpusRun === runId}
+                aria-controls={openCorpusRun === runId ? "corpus-detail-" + runId : undefined}
+                title="Per-run gate detail from the durable ledger rows alone — every event note verbatim, the judge dial trace included when the judge never answered. Click to expand or collapse."
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border bg-card/60 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors",
+                  "hover:border-violet-500/40 hover:text-foreground",
+                  CHIP_FOCUS_RING,
+                  openCorpusRun === runId && "border-violet-500/50 bg-violet-500/10 text-foreground"
+                )}
               >
-                <CorpusRunChip rows={rows} />
-                <code className="font-mono">{runId.length > 20 ? `${runId.slice(0, 20)}…` : runId}</code>
+                <CorpusRunChip rows={rows} tabbable={false} />
+                <code className="font-mono">{runId.length > 20 ? runId.slice(0, 20) + "…" : runId}</code>
                 <span className="tabular-nums">{rows.length} ev</span>
-              </span>
+                <ChevronDown
+                  className={cn("h-3 w-3 shrink-0 transition-transform", openCorpusRun === runId && "rotate-180")}
+                  aria-hidden
+                />
+              </button>
             ))}
           </div>
+          {detailRun ? (
+            <div
+              id={"corpus-detail-" + detailRun.runId}
+              data-testid="corpus-run-detail"
+              role="region"
+              aria-label={"Gate event detail for " + detailRun.runId + " — built from the durable ledger rows alone"}
+              className="mt-2 rounded-lg border border-border/60 bg-card/50 p-3 text-[11px]"
+            >
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <code className="font-mono text-foreground">{detailRun.runId}</code>
+                <span className="tabular-nums text-muted-foreground">
+                  {detailRows.length} event{detailRows.length === 1 ? "" : "s"} · engaged {detailCensus.engaged} · {detailCensus.verdicts} verdict{detailCensus.verdicts === 1 ? "" : "s"}
+                  <GateSuffix census={detailCensus} />
+                </span>
+                {detailFam.cross + detailFam.same > 0 ? (
+                  <span className="text-muted-foreground">
+                    ◈ {detailFam.cross} cross-family · ◇ {detailFam.same} same-family
+                  </span>
+                ) : null}
+              </div>
+              {detailRows.length > 0 ? (
+                <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto pr-1">
+                  {detailRows.map((row, i) => (
+                    <CorpusEventRow key={detailRun.runId + "-" + i} row={row} />
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-muted-foreground">No durable events for this run in the current payload.</p>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {serverDetail ? (

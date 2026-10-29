@@ -1,0 +1,23 @@
+r726: corpus click-through — strip pills open per-run detail panels from ledger rows alone; tried-ladder on hover
+
+- SHIP (run-kanban.tsx): strip pills span->button (aria-expanded +
+  aria-controls, CHIP_FOCUS_RING parity, violet hover/open tint, rotating
+  chevron); the embedded chip drops its own tabIndex when hosted — no
+  nested-interactive DOM. Detail panel (data-testid=corpus-run-detail,
+  role=region) builds from durable ledger rows ALONE: run id, per-run
+  census with the shared GateSuffix u/nj tokens, family tally, every
+  event note VERBATIM with per-row tone from the SAME gateCensusOf
+  adapter (the r649 doctrine, now per-row). Chip titles gained the
+  bounded (220-char) judge dial trace — nj distress readable on hover.
+- corpus probe at open: 31 rows HELD — the r725 recovery survived the
+  14:07 slot; the snapshot road stood armed and idle (snapshot refreshed
+  pre-commit per the r725 standing step).
+- click-through witness: click->expand DOM probe on the fresh bundle
+  (aria-expanded true, panel rows counted, tried-ladder present,
+  dial-title guarded) — scripts/qa_r726.txt.
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census
+  48/48 · qa-cortex-census 23/23.
+- budget: 10 rounds, two under the cap (R9 was a clean guard abort — a
+  witness-timing bug, disclosed; nothing committed on it).
