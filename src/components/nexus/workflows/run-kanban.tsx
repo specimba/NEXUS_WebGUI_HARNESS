@@ -237,14 +237,24 @@ function groupRuns(workflows: Workflow[], serverRuns: ServerRunRow[]): Record<Co
   return cards;
 }
 
+/** r722: one durable ledger row shaped for the per-run gate chip (the r683 read). */
+interface LedgerRunRow {
+  runId: string;
+  note: string;
+  createdAt?: string | null;
+}
+
 function RunCard({
   card,
   onSelect,
   onOpenServer,
+  ledgerRuns,
 }: {
   card: BoardCard;
   onSelect: (workflowId: string, runId?: string) => void;
   onOpenServer?: (row: ServerRunRow) => void;
+  /** r722: durable gate rows for the server-lane per-run chip (r683 landed). */
+  ledgerRuns?: LedgerRunRow[];
 }) {
   const highlightId = useUiStore((s) => s.highlightWorkflowId);
   const spotlighted = highlightId === card.workflowId;
@@ -346,6 +356,45 @@ function RunCard({
             })()
           ) : null}
           <span>· {s.trigger === "manual" ? "manual" : "schedule"}</span>
+          {(() => {
+            // r722 — attempt #15 LANDED: the per-run ⚖ gate chip finally mounts
+            // on server-lane cards. The local-run chip (below) reads
+            // run.callLog, but a server-lane card carries NO client call log
+            // (ServerRunRow is stepsJson only) — the r713→r721 witness debt
+            // was exactly this: Owner-launched headless runs could never mount
+            // the chip, however alive their durable corpus. The r683 per-run
+            // ledger read now feeds the SAME gateCensusOf adapter from the
+            // durable rows for this runId (one classifier, two sources — the
+            // r649 doctrine). Zero census renders nothing (r648: no chip is
+            // faked for an empty corpus).
+            const rows = (ledgerRuns ?? [])
+              .filter((r) => r.runId === s.id)
+              .map((r) => {
+                const at = r.createdAt ? Date.parse(r.createdAt) : NaN;
+                return { note: r.note, ...(Number.isFinite(at) ? { at } : {}) };
+              });
+            const census = gateCensusOf(rows);
+            if (census.engaged === 0 && census.verdicts === 0) return null;
+            const fam = familyTallyOf(rows.map((r) => r.note));
+            return (
+              <span
+                tabIndex={0}
+                title={`Decision gate on this server-lane run, counted from the DURABLE ledger (the card carries no client call log; the runner POSTs gate outcomes to SQLite at finalization): engaged ${census.engaged} time(s), ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log). The u suffix counts judges that answered below confidence (uncertain); nj counts steps no judge answered — the step ran ungated.${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
+                aria-label={`Decision gate on this server-lane run, from the durable ledger: engaged ${census.engaged} ${census.engaged === 1 ? "time" : "times"}, ${census.verdicts} confident ${census.verdicts === 1 ? "verdict" : "verdicts"} landed${fam.cross + fam.same > 0 ? `, drift ${fam.cross} cross-family, ${fam.same} same-family` : ""}`}
+                className={cn(
+                  "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
+                  CHIP_FOCUS_RING,
+                  census.verdictTone === "fail"
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-600 hover:border-amber-500/60 dark:text-amber-400"
+                    : census.verdictTone === "pass"
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:border-emerald-500/60 dark:text-emerald-400"
+                      : "border-border bg-muted/40 text-muted-foreground hover:border-muted-foreground/40"
+                )}
+              >
+                ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}<GateSuffix census={census} />
+              </span>
+            );
+          })()}
         </div>
         {s.error ? (
           <p className="mt-1 line-clamp-2 break-words font-mono text-[10px] text-red-400">{s.error}</p>
@@ -512,15 +561,38 @@ function RunCard({
           // r668: the r667 board census promoted to the shared gate-census
           // adapter (r649 doctrine) — same note prefixes, same shape, now also
           // read by the run panel's header. Data-layer truth, not rendered text.
-          const census = gateCensusOf(run.callLog);
+          let census = gateCensusOf(run.callLog);
+          // r722: durable fallback — the r713→r721 debt ran DEEPER than the
+          // server-lane branch: runs landed from the server lane into the
+          // local archive (archiveServerLaneRun) keep row.id but carry NO
+          // callLog (ServerRunRow is stepsJson only), so the client census
+          // above reads zero for them however alive their durable corpus.
+          // The r683 per-run read fills exactly that hole — same adapter,
+          // durable rows for run.id, and ONLY when the client census is
+          // empty (the client log stays the first source; the ledger never
+          // overwrites a live census).
+          const durableRows = (ledgerRuns ?? [])
+            .filter((r) => r.runId === run.id)
+            .map((r) => {
+              const at = r.createdAt ? Date.parse(r.createdAt) : NaN;
+              return { note: r.note, ...(Number.isFinite(at) ? { at } : {}) };
+            });
+          const usedDurable = census.engaged === 0 && census.verdicts === 0 && durableRows.length > 0;
+          if (usedDurable) census = gateCensusOf(durableRows);
           // r677: per-run drift witness — how many of this run's judge notes
-          // are family-disjoint (cross) vs same-family (same).
-          const fam = familyTallyOf((run.callLog ?? []).map((c) => c.note));
+          // are family-disjoint (cross) vs same-family (same). r722: the
+          // durable rows contribute their notes when the census rode the
+          // ledger (the witness describes the counted rows).
+          const fam = familyTallyOf(
+            usedDurable
+              ? [...(run.callLog ?? []).map((c) => c.note ?? ""), ...durableRows.map((r) => r.note)]
+              : (run.callLog ?? []).map((c) => c.note)
+          );
           if (census.engaged === 0 && census.verdicts === 0) return null;
           return (
             <span
               tabIndex={0}
-              title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green). The u suffix counts judges that answered below confidence (uncertain); nj counts steps no judge answered — the step ran ungated.${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
+              title={`Decision gate engaged ${census.engaged} time(s) on this run; ${census.verdicts} confident verdict(s) landed — the rest fell through (no judge answered or judge errored; the full tried-ladder trace lives in the run's call log; the chip takes the LATEST verdict's color — emerald PASS, amber FAIL — so a failed gate never reads green).${usedDurable ? " Counted from the DURABLE ledger — this run landed from the server lane without a client call log." : ""} The u suffix counts judges that answered below confidence (uncertain); nj counts steps no judge answered — the step ran ungated.${fam.cross + fam.same > 0 ? ` Judge family witness: ◈ ${fam.cross} cross-family · ◇ ${fam.same} same-family.` : ""}`}
               aria-label={`Decision gate on this run: engaged ${census.engaged} ${census.engaged === 1 ? "time" : "times"}, ${census.verdicts} confident ${census.verdicts === 1 ? "verdict" : "verdicts"} landed${fam.cross + fam.same > 0 ? `, drift ${fam.cross} cross-family, ${fam.same} same-family` : ""}`}
               className={cn(
                 "inline-flex items-center rounded-full border px-1.5 py-px font-semibold tabular-nums transition-colors cursor-help",
@@ -899,6 +971,10 @@ export function RunKanban({
       confidence?: number | null;
       createdAt?: string;
     }>;
+    // r722: the per-run ledger read (r683 landed) — newest 400 rows'
+    // { runId, note, createdAt }; server-lane cards classify their runId's
+    // rows through gateCensusOf for the per-run ⚖ chip.
+    runs?: LedgerRunRow[];
   } | null>(null);
   // r681: failed-census attempts — the honest silence marker below renders
   // only after real, REPEATED fetch failures (never for an empty corpus).
@@ -936,6 +1012,7 @@ export function RunKanban({
               confidence?: number | null;
               createdAt?: string;
             }>;
+            runs?: Array<{ runId?: string; note?: string; createdAt?: string | null }>;
           };
           if (
             !(
@@ -960,6 +1037,17 @@ export function RunKanban({
             // r684: defensive — a junk row renders as nothing (the r670
             // fixture lesson), never as a fake fresh event.
             latest: Array.isArray(j.latest) ? j.latest.slice(0, 3) : undefined,
+            // r722: defensive — rows without a string runId or note are
+            // skipped (tolerant input, the never-throw doctrine).
+            runs: Array.isArray(j.runs)
+              ? (j.runs as LedgerRunRow[]).filter(
+                  (r) =>
+                    r &&
+                    typeof r === "object" &&
+                    typeof r.runId === "string" &&
+                    typeof r.note === "string"
+                )
+              : undefined,
           });
           setLedgerMisses(0);
         })
@@ -1341,6 +1429,7 @@ export function RunKanban({
                   card={c}
                   onSelect={onSelect}
                   onOpenServer={setServerDetail}
+                  ledgerRuns={ledger?.runs}
                 />
               ))}
               {older > 0 ? (

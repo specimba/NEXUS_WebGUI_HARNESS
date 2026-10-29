@@ -15,7 +15,12 @@ export const dynamic = "force-dynamic";
 // POST { runId, workflow, events: [{ stepId?, kind, verdict?, confidence?, note }] }
 //   → { ok, written } — tolerant row validation, capped batch (64), capped
 //     note (500), ledger hygiene keeps the newest 4000 rows.
-// GET → { total, verdicts, fails, family, latest: [...] } — the board census.
+// GET → { total, verdicts, fails, family, latest: [...], runs: [...] } — the
+//   board census. r722: runs carries the newest 400 gate rows' { runId, note,
+//   createdAt } — the per-run ledger read (the r683 proposal landed): the
+//   board's SERVER-lane cards hold no client callLog, so their per-run ⚖ gate
+//   chips classify these verbatim notes through the same shared gate-census
+//   adapter the client-side chips use (one classifier, two sources).
 //   r691: the drift tally pre-filters to witness-bearing notes (a
 //   case-insensitive superset of the regex) — the scan no longer carries
 //   every stored note on every poll; familyTallyOf stays the exact counter.
@@ -104,7 +109,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
 export async function GET(): Promise<NextResponse> {
   try {
-    const [total, verdicts, fails, latest, notes] = await Promise.all([
+    const [total, verdicts, fails, latest, notes, runsRaw] = await Promise.all([
       db.evalEvent.count(),
       db.evalEvent.count({ where: { kind: "gate-verdict" } }),
       db.evalEvent.count({ where: { kind: "gate-verdict", verdict: "FAIL" } }),
@@ -124,9 +129,24 @@ export async function GET(): Promise<NextResponse> {
         where: { OR: [{ note: { contains: "· cross-family" } }, { note: { contains: "· same-family" } }] },
         select: { note: true },
       }),
+      // r722: the per-run ledger read (r683 proposal) — newest 400 rows with
+      // runId + verbatim note; the board's server-lane cards classify their
+      // own runId's rows through gateCensusOf (same adapter, one truth).
+      // Capped: the ledger itself keeps 4000 (LEDGER_KEEP); 400 recent rows
+      // bound the payload while covering every live run's window.
+      db.evalEvent.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 400,
+        select: { runId: true, note: true, createdAt: true },
+      }),
     ]);
     const family = familyTallyOf(notes.map((n) => n.note));
-    return NextResponse.json({ total, verdicts, fails, family, latest });
+    const runs = runsRaw.map((r) => ({
+      runId: r.runId,
+      note: r.note,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : null,
+    }));
+    return NextResponse.json({ total, verdicts, fails, family, latest, runs });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "evals census failed" },

@@ -1,0 +1,24 @@
+r722: per-run durable gate chip lands on server-lane cards (attempt #15 witness)
+
+- /api/evals GET now ships runs[] (newest 400 gate rows: runId + note +
+  createdAt) — the r683 per-run ledger read, landed; one classifier,
+  two sources (the shared gateCensusOf adapter classifies both).
+- run-kanban: server-lane cards (no client callLog by construction —
+  ServerRunRow is stepsJson only) now mount the SAME gate chip from the
+  durable rows of their runId; zero census renders nothing (r648). The
+  r713-r721 witness debt (Owner headless runs could never mount the
+  chip) is closed at the root, not patched over.
+- styling: the r700 pointer promise (hover border brighten) on the new
+  chip surface; CHIP_FOCUS_RING focus parity with the local chip.
+- golden QA: settings census/relay · radar frontier · workflows
+  paste-799 · board witness R722CHIPS>=1 from the live corpus.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) ·
+  qa-gate-census 48/48 · qa-cortex-census 23/23.
+- budget: 18 rounds (six over the <=12 cap, disclosed in the worklog:
+  four guarded aborts — stale bundle; local-branch discovery; the
+  two-renderer split; a CLI-output-quoting guard mismatch — every guard
+  held, nothing shipped unproven, no app regression in any attempt).
+- OPEN: attempt #15 DOM witness — the Runs board layout radio renders
+  workflows-view.tsx own board (not run-kanban RunCard); r723 mounts the
+  same durable-fed chip there. Shipped code is tsc-clean; the payload
+  read is witnessed server-side (20 rows / 5 runIds).

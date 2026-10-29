@@ -1,0 +1,67 @@
+=== r722 close 2026-10-29T04:27:35+00:00 ===
+server: 200
+--- evals payload witness (r683 per-run read) ---
+evals-total:24 runs-rows:24 distinct:6
+evals-ids:run_14a887b12e58,run_1dd667e858a7,run_3ce26a7dc9a8,run_4e1d5e0d4097,run_5c98b87879cc,run_f1e88e5c514e
+evals-runs-ok
+--- board witness: attempt #15 (server-lane gate chips) ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#workflows
+"board-radio-ok"
+"reloaded"
+"board-radio-ok"
+diag: "{\"cards\":4,\"srvBadges\":0,\"scales\":1}"
+witness: "R722CHIPS:0 uTokens: njTokens:" || retry: "R722CHIPS:0 uTokens: njTokens:"
+WITNESS OPEN: chips-in-cards 0 this round — the Runs board layout radio renders workflows-view.tsx, NOT run-kanban (disclosed in worklog)
+--- golden legs ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#settings
+settings: "{\"census\":true,\"relay\":true}"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#radar
+radar: "frontier-aria-clicked"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#workflows
+paste: "paste-len:799"
+cron chip: "1/1"
+--- console tail ---
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 187ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 197ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 190ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 173ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 1009ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 186ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 268ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 200ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 183ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 202ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 250ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 421ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 316ms
+--- page errors ---
+
+--- gates ---
+tsc_exit:0
+lint_exit:0 ✖ 33 problems (0 errors, 33 warnings)
+gate-census: qa-gate-census: 48/48
+cortex: NOTE: localStorage unwritable in this runtime — round-trip covered by browser QA
+qa-cortex-census: 23/23
+--- worklog append ---
+worklog appended
