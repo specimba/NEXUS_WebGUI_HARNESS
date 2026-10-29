@@ -1,0 +1,17 @@
+== R716 GOLDEN QA ==
+--- legA settings census ---
+"{\"census\":true,\"relay\":true,\"legend\":false}"
+--- legB radar frontier aria ---
+frontier-aria-clicked
+--- legC workflows paste ---
+"paste-len:799"
+--- legD u/nj chip witness ---
+"{\"gate\":0,\"u\":0,\"nj\":0,\"legend\":0}"
+--- console ---
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 244ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 348ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 254ms
+--- page errors ---

@@ -200,3 +200,14 @@ export function gateEventsOf(
   }
   return out;
 }
+
+// r716: the chip-suffix vocabulary rendered by every per-run/board chip — ONE
+// template (the r649 doctrine completed for the render layer; the literal lived
+// copy-pasted in three chips). Zero census -> byte-identical empty string (the
+// r713 nonzero-only doctrine); shapes pinned in scripts/qa-gate-census.ts.
+export function censusChipSuffix(census: Pick<GateCensus, "uncertain" | "noJudge">): string {
+  return (
+    (census.uncertain > 0 ? ` · ${census.uncertain}u` : "") +
+    (census.noJudge > 0 ? ` · ${census.noJudge}nj` : "")
+  );
+}

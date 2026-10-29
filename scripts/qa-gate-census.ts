@@ -3,7 +3,7 @@
  * Pins the r669 two-family verdict counting AND the r670 last-verdict-wins
  * verdictLine + verdictTone semantics (a FAIL verdict must never read green).
  */
-import { gateCensusOf } from "../src/lib/gate-census";
+import { censusChipSuffix, gateCensusOf } from "../src/lib/gate-census";
 
 let pass = 0;
 let fail = 0;
@@ -122,6 +122,14 @@ check("empty: uncertain 0", empty.uncertain === 0 && empty.noJudge === 0);
 check("uncertain alone: not a verdict", gateCensusOf([{ note: "Decision gate uncertain 55%" }]).verdicts === 0);
 check("no-judge alone: not a verdict", gateCensusOf([{ note: "Decision gate skipped — no judge answered" }]).verdicts === 0);
 check("junk rows: tolerant with new tones", gateCensusOf([{ note: 123 as unknown as string }, { note: "Decision gate uncertain 30%" }]).uncertain === 1);
+
+// 16. r716: the suffix vocabulary is ONE function now (the r649 render-layer
+// completion) — pinned here so a chip can never drift from the adapter.
+check("suffix: zero census -> empty string", censusChipSuffix({ uncertain: 0, noJudge: 0 }) === "");
+check("suffix: uncertain only", censusChipSuffix({ uncertain: 2, noJudge: 0 }) === " · 2u");
+check("suffix: no-judge only", censusChipSuffix({ uncertain: 0, noJudge: 3 }) === " · 3nj");
+check("suffix: both tones", censusChipSuffix({ uncertain: 2, noJudge: 3 }) === " · 2u · 3nj");
+check("suffix: wired to the toned adapter shape", censusChipSuffix(toned) === " · 1u · 1nj");
 
 console.log(`qa-gate-census: ${pass}/${pass + fail}`);
 if (fail > 0) process.exit(1);

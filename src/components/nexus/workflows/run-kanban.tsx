@@ -37,7 +37,7 @@ import { harnessChipForRun } from "@/lib/trace-trial";
 // as the run panel (single mapping, second honest call site, r649 doctrine).
 import { loopedOutcomeChip } from "@/lib/looped-outcome";
 import { GATE_MIN_CHARS } from "@/lib/systemone";
-import { gateCensusOf } from "@/lib/gate-census";
+import { gateCensusOf, censusChipSuffix } from "@/lib/gate-census";
 import { familyTallyOf } from "@/lib/family-witness";
 
 // r695: one focus-ring home for the board's focusable chip family — the
@@ -531,7 +531,7 @@ function RunCard({
                     : "border-border bg-muted/40 text-muted-foreground"
               )}
             >
-              ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}{census.uncertain > 0 ? ` · ${census.uncertain}u` : ""}{census.noJudge > 0 ? ` · ${census.noJudge}nj` : ""}
+              ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}{censusChipSuffix(census)}
             </span>
           );
         })()}
@@ -1138,8 +1138,7 @@ export function RunKanban({
             >
               ⚖ {boardGates.engaged} gate call{boardGates.engaged === 1 ? "" : "s"} · {boardGates.verdicts} verdict{boardGates.verdicts === 1 ? "" : "s"}
               {boardGates.failRuns > 0 ? ` · ${boardGates.failRuns} latest-FAIL` : ""}
-              {boardGates.uncertain > 0 ? ` · ${boardGates.uncertain}u` : ""}
-              {boardGates.noJudge > 0 ? ` · ${boardGates.noJudge}nj` : ""}
+              {censusChipSuffix(boardGates)}
               {boardGates.witness.cross > 0 ? (
                 <span className="ml-1 text-violet-600 dark:text-violet-400">◈{boardGates.witness.cross}</span>
               ) : null}

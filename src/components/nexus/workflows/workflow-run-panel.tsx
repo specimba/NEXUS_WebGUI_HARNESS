@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { buildEvidenceLedger, formatCiters } from "@/lib/evidence-ledger";
 import { splitFamilyWitness } from "@/lib/family-witness";
 import { GATE_MIN_CHARS } from "@/lib/systemone";
-import { gateCensusOf } from "@/lib/gate-census";
+import { gateCensusOf, censusChipSuffix } from "@/lib/gate-census";
 // r503: lane witness chip on run steps — short name + shared provider glyph.
 import { laneShortName } from "@/lib/lane-catalog";
 import { laneOfEntry } from "@/lib/call-log-lane";
@@ -1549,7 +1549,7 @@ export function WorkflowRunPanel({
                           : "border-border bg-muted/40 text-muted-foreground"
                     )}
                   >
-                    ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}{census.uncertain > 0 ? ` · ${census.uncertain}u` : ""}{census.noJudge > 0 ? ` · ${census.noJudge}nj` : ""}
+                    ⚖ gate {census.engaged}·{census.verdicts}{census.verdictLine ? ` · ${census.verdictLine}` : ""}{censusChipSuffix(census)}
                   </span>
                 );
               })()}

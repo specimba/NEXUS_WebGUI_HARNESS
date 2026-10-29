@@ -1,0 +1,10 @@
+quick_check: [{"quick_check":"ok"}]
+EvalEvent cols: id,runId,workflow,stepId,kind,verdict,confidence,note,createdAt
+EvalEvent rows: 4
+gate-bearing col: kind (4 rows)
+prefix histogram: [{"p":"gate-verdict","c":2},{"p":"gate-uncertain","c":2}]
+WATCH: verdict=1 (PASS 1 / FAIL 0) · uncertain=2 · nojudge=0   [baseline 31 / 30 / 8]
+--- last UNCERTAIN rows (what do judges answer below confidence ON?) ---
+{"rid":3,"id":"cmvsts52s0002q9vx8g8mubnx","runId":"run_1dd667e858a7","workflow":"test run \"Continuous Research & Evaluation","stepId":"step_c93e4f485007","kind":"gate-uncertain","verdict":null,"confidence":36,"note":"Decision gate uncertain 36% (intern-systemone · cross-family) — no confident verdict; output accepted unchanged","createdA
+{"rid":2,"id":"cmvsts52s0001q9vxk6kjamso","runId":"run_1dd667e858a7","workflow":"test run \"Continuous Research & Evaluation","stepId":"deep_9bdc073c8e4a","kind":"gate-uncertain","verdict":null,"confidence":72,"note":"Decision gate uncertain 72% (intern-systemone · cross-family) — no confident verdict; output accepted unchanged","createdA
+--- last NO-JUDGE rows ---
