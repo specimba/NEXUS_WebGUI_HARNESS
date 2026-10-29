@@ -8,3 +8,17 @@ census: {"total": 66, "runs": 21, "verdict": 21, "uncertain": 15, "nj": 30}
 --- worklog append ---
 worklog appended
 --- commit + push ---
+[main 2b3845e23] r737: watch round — the nj title caught the outage BROADENING (3→7 tried-lane entries: fast-judge rotation Z.ai/TokenPlan/AIHubMix flash+max, bare fast-judge, jev paid rung, intern-systemone — all failing); corpus 66 (+2), nj 30 (+2), verdict 21 flat, uncertain 15 flat; board tally == DB census (byte-for-byte); golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean watch disposition per r736 handoff (no manufactured increments; named evaluation = seven-lane title witness + board/ledger agreement, scripts/qa_r737.txt). Disclosures: radio-MISS on fresh load (board renders by default — no defect); "jev (paid rung)" verbatim in title (faithful lift, not a parser artifact). Post-close tee sweep baked into the close chain (r722..r736 precedent).
+ 8 files changed, 305 insertions(+)
+ create mode 100644 scripts/qa_r737.txt
+ create mode 100644 scripts/qa_r737_close.txt
+ create mode 100644 scripts/qa_r737_lint.txt
+ create mode 100644 scripts/qa_r737_tsc.txt
+ create mode 100644 scripts/r737_close.sh
+ create mode 100644 scripts/r737_commitmsg.txt
+ create mode 100644 scripts/r737_qa.sh
+--- verify ---
+2b3845e23 r737: watch round — the nj title caught the outage BROADENING (3→7 tried-lane entries: fast-judge rotation Z.ai/TokenPlan/AIHubMix flash+max, bare fast-judge, jev paid rung, intern-systemone — all failing); corpus 66 (+2), nj 30 (+2), verdict 21 flat, uncertain 15 flat; board tally == DB census (byte-for-byte); golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean watch disposition per r736 handoff (no manufactured increments; named evaluation = seven-lane title witness + board/ledger agreement, scripts/qa_r737.txt). Disclosures: radio-MISS on fresh load (board renders by default — no defect); "jev (paid rung)" verbatim in title (faithful lift, not a parser artifact). Post-close tee sweep baked into the close chain (r722..r736 precedent).
+9784c5816 r736: sweep — tee artifact (close log captures its own post-commit status line; r722..r735 precedent)
+ M scripts/qa_r737_close.txt
+== r737 CLOSED ==
