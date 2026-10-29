@@ -1538,6 +1538,14 @@ export function RunKanban({
   // matches (r648 — never a fake empty success); the tally keeps describing
   // the WHOLE corpus while an "n of N shown" chip states the filter truth.
   const [pillFilter, setPillFilter] = React.useState("");
+  // r752: lane-filter on the legend chips - the r751 magnitude answers
+  // "how often"; this answers "WHERE": clicking a lane chip isolates the
+  // runs whose ledger rows name that lane (row-level scan, since the
+  // pill filter matches runId substrings only). The strip tally keeps
+  // describing the WHOLE corpus; the shown-count chip states the filter
+  // truth, and an active filter stays visible and clearable even when
+  // the legend is closed.
+  const [laneFilter, setLaneFilter] = React.useState<string | null>(null);
   const pillQuery = pillFilter.trim().toLowerCase();
   // r736: the failing lanes named on the nj token's title (see laneDistressOf).
   const laneDistress = React.useMemo(() => laneDistressOf(corpusOnly), [corpusOnly]);
@@ -1545,9 +1553,11 @@ export function RunKanban({
   // scan as laneDistressOf, tallying instead of deduping (laneCountsOf).
   const laneCounts = React.useMemo(() => laneCountsOf(corpusOnly), [corpusOnly]);
   const visibleCorpus = React.useMemo(() => {
-    if (!pillQuery) return corpusOnly;
-    return corpusOnly.filter((c) => c.runId.toLowerCase().includes(pillQuery));
-  }, [corpusOnly, pillQuery]);
+    let out = corpusOnly;
+    if (pillQuery) out = out.filter((c) => c.runId.toLowerCase().includes(pillQuery));
+    if (laneFilter) out = out.filter((c) => c.rows.some((r) => (r.note || "").includes(laneFilter)));
+    return out;
+  }, [corpusOnly, pillQuery, laneFilter]);
   const detailRun = openCorpusRun
     ? corpusOnly.find((c) => c.runId === openCorpusRun) ?? null
     : null;
@@ -2028,13 +2038,25 @@ export function RunKanban({
                 CHIP_FOCUS_RING
               )}
             />
-            {pillQuery ? (
+            {pillQuery || laneFilter ? (
               <span
                 className="text-[10px] tabular-nums text-muted-foreground"
-                title="Visible pills vs the whole corpus while the filter is active — the tally keeps describing the full corpus."
+                title="Visible pills vs the whole corpus while a filter is active — the tally keeps describing the full corpus."
               >
                 {visibleCorpus.length} of {corpusOnly.length} shown
               </span>
+            ) : null}
+            {laneFilter && !(lanesOpen && laneDistress) ? (
+              <button
+                type="button"
+                onClick={() => setLaneFilter(null)}
+                aria-label={"Clear the lane filter: " + laneFilter}
+                title="A lane filter is active but the legend is closed — this chip keeps it visible and clearable. Click to clear."
+                className="inline-flex max-w-44 items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400"
+              >
+                <span className="truncate">lane: {laneFilter}</span>
+                <span aria-hidden>✕</span>
+              </button>
             ) : null}
             {/* r735: the matching-state exit — with the filter active AND pills
                 showing, clearing used to demand refocus + select-all + delete;
@@ -2072,18 +2094,29 @@ export function RunKanban({
                 lanes tried ({stripCensus.noJudge} no-judge)
               </span>
               {laneDistress.split("; ").map((lane, i) => (
-                <span
+                <button
                   key={i}
-                  className="rounded border border-border bg-background/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                  type="button"
+                  aria-pressed={laneFilter === lane}
+                  onClick={() => setLaneFilter((cur) => (cur === lane ? null : lane))}
+                  className={cn(
+                    "rounded border bg-background/60 px-1.5 py-0.5 text-[10px]",
+                    laneFilter === lane
+                      ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                  title={
+                    (laneFilter === lane
+                      ? "Active filter — click to clear it and restore every corpus pill"
+                      : "Click to show only the runs whose ledger rows name this lane") +
+                    " — " + lane
+                  }
                 >
                   {lane}
-                  <span
-                    className="ml-1 rounded-full bg-amber-500/10 px-1 font-semibold tabular-nums text-amber-700 dark:text-amber-400"
-                    title={(laneCounts[lane] ?? 0) + " dial attempt(s) in the ledger's tried-trace (trace entries: a step that tried several lanes counts each)"}
-                  >
+                  <span className="ml-1 rounded-full bg-amber-500/10 px-1 font-semibold tabular-nums text-amber-700 dark:text-amber-400">
                     ×{laneCounts[lane] ?? 0}
                   </span>
-                </span>
+                </button>
               ))}
             </div>
           ) : null}
@@ -2129,18 +2162,25 @@ export function RunKanban({
               </button>
             ))}
           </div>
-          {visibleCorpus.length === 0 && pillQuery ? (
+          {visibleCorpus.length === 0 && (pillQuery || laneFilter) ? (
             <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
               <span>
-                No corpus runs match "{pillFilter.trim()}" — all {corpusOnly.length} corpus runs are hidden by this filter.
+                No corpus runs match{" "}
+                {[pillQuery ? '"' + pillFilter.trim() + '"' : "", laneFilter ? "the lane filter (" + laneFilter + ")" : ""]
+                  .filter(Boolean)
+                  .join(" + ") || "the active filters"}{" "}
+                — all {corpusOnly.length} corpus runs are hidden by the active filter{pillQuery && laneFilter ? "s" : ""}.
               </span>
               {/* r734: the ghost used to only INSTRUCT clearing (Escape works solely while the
                   input holds focus) — the affordance now exists where the dead end is. Same one
                   mechanism as Escape (setPillFilter("")), no rival vocabulary. */}
               <button
                 type="button"
-                onClick={() => setPillFilter("")}
-                aria-label="Clear the corpus run filter and show all corpus run pills"
+                onClick={() => {
+                  setPillFilter("");
+                  setLaneFilter(null);
+                }}
+                aria-label="Clear the active filters and show all corpus run pills"
                 className={
                   "inline-flex h-5 shrink-0 items-center rounded-md border border-border/60 bg-background px-2 font-mono text-[10px] text-foreground/80 transition-colors hover:border-violet-400/60 hover:text-foreground " +
                   CHIP_FOCUS_RING

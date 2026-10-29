@@ -1,0 +1,6 @@
+chip: "{\"chip\":true,\"text\":\"⧉ 24 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":8,\"label\":\"lanes tried (46 no-judge)intern-systemone×46fast-judge AIHubMix · qwen3.8-flash-free (qwen3.8-flash-\"}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":false}"
+worklog appended
