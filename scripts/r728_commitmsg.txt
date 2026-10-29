@@ -1,0 +1,20 @@
+r728: copy-run-id affordance on the corpus panel header; nj climb disclosed (8->10->13, vault 0 lanes)
+
+- SHIP (run-kanban.tsx): CopyRunIdButton beside the run id — one click
+  puts the full id on the clipboard (the corpus panel's only key);
+  Copy->Check icon swap (emerald, reverts 1.6s, timer cleaned on
+  unmount) + "Run id copied" toast; honest error toasts on denial or
+  missing API. Focus ring + hover tone per the board vocabulary.
+- JUDGE-LANE WATCH: corpus 35->38, nj 10->13 (+3 LIVE; trend 8->10->13
+  across three slots) through the emptied vault (AutomationVault 0
+  lanes) — Owner-side cure stands (r720 re-store + Cortex P1 v2).
+- witness: clipboard contract DOM-probed with a page-level writeText
+  stub recording the payload (headless has no clipboard grant,
+  disclosed) — the stub received the EXACT panel run id, check-swap
+  verified, toast fired; keyboard (r727) + click-through (r726)
+  regressions green on the grown corpus.
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census
+  48/48 · qa-cortex-census 23/23.
+- budget: 5 rounds, seven under the cap.

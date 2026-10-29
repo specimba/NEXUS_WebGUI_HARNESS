@@ -286,6 +286,56 @@ function CorpusEventRow({ row }: { row: LedgerRunRow }) {
   );
 }
 
+/** r728: copy-run-id affordance on the corpus detail panel header — the
+ * panel is built from ledger rows alone, so the full id is the only key a
+ * follow-up (DB query, Cortex triage) can act on. One click puts it on the
+ * clipboard; the icon swaps to a check and reverts (honest, no permanent
+ * state), with a toast as the second signal. Errors toast, never lie. */
+function CopyRunIdButton({ runId }: { runId: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const timer = React.useRef<number | null>(null);
+  React.useEffect(
+    () => () => {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    },
+    []
+  );
+  const onCopy = () => {
+    const done = () => {
+      setCopied(true);
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(false), 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(runId)
+        .then(() => {
+          done();
+          toast.success("Run id copied");
+        })
+        .catch(() => toast.error("Clipboard refused the run id — copy it from the panel header"));
+    } else {
+      toast.error("Clipboard unavailable in this browser");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      aria-label={"Copy run id " + runId + " to the clipboard"}
+      title="Copy the full run id — this panel is built from ledger rows alone, so the id is the key for any follow-up."
+      className={cn(
+        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "hover:bg-muted hover:text-foreground",
+        CHIP_FOCUS_RING,
+        copied && "text-emerald-600 dark:text-emerald-400"
+      )}
+    >
+      {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
+    </button>
+  );
+}
+
 /** r722: one durable ledger row shaped for the per-run gate chip (the r683 read). */
 interface LedgerRunRow {
   runId: string;
@@ -1706,7 +1756,10 @@ export function RunKanban({
               className="mt-2 rounded-lg border border-border/60 bg-card/50 p-3 text-[11px]"
             >
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <code className="font-mono text-foreground">{detailRun.runId}</code>
+                <span className="inline-flex items-center gap-1">
+                  <code className="font-mono text-foreground">{detailRun.runId}</code>
+                  <CopyRunIdButton runId={detailRun.runId} />
+                </span>
                 <span className="tabular-nums text-muted-foreground">
                   {detailRows.length} event{detailRows.length === 1 ? "" : "s"} · engaged {detailCensus.engaged} · {detailCensus.verdicts} verdict{detailCensus.verdicts === 1 ? "" : "s"}
                   <GateSuffix census={detailCensus} />
