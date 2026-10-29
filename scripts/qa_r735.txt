@@ -74,3 +74,23 @@ gate-census: qa-gate-census: 48/48
 cortex: qa-cortex-census: 23/23
 --- worklog append ---
 worklog appended
+[main 8b9d20627] r735: ✕ clear chip for the filter's matching state (dead end already had r734's ghost button); ledger survived its first integrity audit; nj RESUMED 21→23
+ 11 files changed, 642 insertions(+), 2 deletions(-)
+ rename db/corpus-snapshots/{corpus-2026-10-29T07-13-47.json => corpus-2026-10-29T10-45-19.json} (62%)
+ create mode 100644 prisma/custom.db
+ create mode 100644 scripts/qa_r735.txt
+ create mode 100644 scripts/qa_r735_evals.json
+ create mode 100644 scripts/qa_r735_lint.txt
+ create mode 100644 scripts/qa_r735_tsc.txt
+ create mode 100644 scripts/r735_close.sh
+ create mode 100644 scripts/r735_commitmsg.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   ea3528fb7..8b9d20627  main -> main
+To https://github.com/specimba/PraisonAI.git
+   ea3528fb7..8b9d20627  main -> main
+--- verification ---
+8b9d20627 r735: ✕ clear chip for the filter's matching state (dead end already had r734's ghost button); ledger survived its first integrity audit; nj RESUMED 21→23
+origin/main..HEAD: 0
+ M scripts/qa_r735.txt
+=== r735 close end ===
+--- sweep (tee artifact: git output silenced after staging so the tree ends clean) ---
