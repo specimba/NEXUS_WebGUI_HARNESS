@@ -205,9 +205,29 @@ export function gateEventsOf(
 // template (the r649 doctrine completed for the render layer; the literal lived
 // copy-pasted in three chips). Zero census -> byte-identical empty string (the
 // r713 nonzero-only doctrine); shapes pinned in scripts/qa-gate-census.ts.
+// r718: the suffix became TONAL — a plain "· 4u" tail inside an emerald PASS
+// chip inherits the chip's healthy color and masquerades as clean health (the
+// r670 false-alarm doctrine at token level). The parts expose each token with
+// its tone for the render sites; censusChipSuffix() stays as the string form,
+// now DERIVED from the parts, so the two shapes cannot drift.
+export type CensusSuffixTone = "uncertain" | "nojudge";
+export interface CensusSuffixPart {
+  text: string;
+  tone: CensusSuffixTone;
+}
+export function censusChipSuffixParts(
+  census: Pick<GateCensus, "uncertain" | "noJudge">
+): CensusSuffixPart[] {
+  const parts: CensusSuffixPart[] = [];
+  if (census.uncertain > 0)
+    parts.push({ text: ` · ${census.uncertain}u`, tone: "uncertain" });
+  if (census.noJudge > 0)
+    parts.push({ text: ` · ${census.noJudge}nj`, tone: "nojudge" });
+  return parts;
+}
+
 export function censusChipSuffix(census: Pick<GateCensus, "uncertain" | "noJudge">): string {
-  return (
-    (census.uncertain > 0 ? ` · ${census.uncertain}u` : "") +
-    (census.noJudge > 0 ? ` · ${census.noJudge}nj` : "")
-  );
+  return censusChipSuffixParts(census)
+    .map((p) => p.text)
+    .join("");
 }

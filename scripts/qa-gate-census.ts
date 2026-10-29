@@ -3,7 +3,7 @@
  * Pins the r669 two-family verdict counting AND the r670 last-verdict-wins
  * verdictLine + verdictTone semantics (a FAIL verdict must never read green).
  */
-import { censusChipSuffix, gateCensusOf } from "../src/lib/gate-census";
+import { censusChipSuffix, censusChipSuffixParts, gateCensusOf } from "../src/lib/gate-census";
 
 let pass = 0;
 let fail = 0;
@@ -130,6 +130,15 @@ check("suffix: uncertain only", censusChipSuffix({ uncertain: 2, noJudge: 0 }) =
 check("suffix: no-judge only", censusChipSuffix({ uncertain: 0, noJudge: 3 }) === " · 3nj");
 check("suffix: both tones", censusChipSuffix({ uncertain: 2, noJudge: 3 }) === " · 2u · 3nj");
 check("suffix: wired to the toned adapter shape", censusChipSuffix(toned) === " · 1u · 1nj");
+
+// 17. r718: the suffix became TONAL — parts expose each token so the render
+// sites can color them (u amber, nj muted); the string form is DERIVED from
+// the parts, so the vocabulary cannot drift (one mapping, two shapes).
+check("parts: zero census -> empty array", censusChipSuffixParts({ uncertain: 0, noJudge: 0 }).length === 0);
+check("parts: u-only shape+tone", (() => { const p = censusChipSuffixParts({ uncertain: 2, noJudge: 0 }); return p.length === 1 && p[0].text === " · 2u" && p[0].tone === "uncertain"; })());
+check("parts: nj-only shape+tone", (() => { const p = censusChipSuffixParts({ uncertain: 0, noJudge: 3 }); return p.length === 1 && p[0].text === " · 3nj" && p[0].tone === "nojudge"; })());
+check("parts: both tones ordered u-then-nj", (() => { const p = censusChipSuffixParts({ uncertain: 2, noJudge: 3 }); return p.length === 2 && p[0].tone === "uncertain" && p[1].tone === "nojudge"; })());
+check("string form derived from parts", censusChipSuffix({ uncertain: 2, noJudge: 3 }) === censusChipSuffixParts({ uncertain: 2, noJudge: 3 }).map((p) => p.text).join(""));
 
 console.log(`qa-gate-census: ${pass}/${pass + fail}`);
 if (fail > 0) process.exit(1);

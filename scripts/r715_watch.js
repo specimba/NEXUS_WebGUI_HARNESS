@@ -30,10 +30,14 @@ for (const r of rows) {
   const t = rowText(r);
   if (/no judge answered/i.test(t)) { nj += 1; if (njRows.length < 5) njRows.push(r); }
   else if (/Decision gate uncertain/i.test(t)) { unc += 1; if (uncRows.length < 12) uncRows.push(r); }
-  else if (/Decision gate PASS/i.test(t)) pass += 1;
-  else if (/Decision gate FAIL/i.test(t)) fail += 1;
+  // r718: BOTH verdict-note families count — the "System-One gate FAIL 4% —
+  // rework" rows fell through the Decision-gate-only patterns into NO class
+  // and printed a false FAIL 0 (two such rows predate r717's read; the r712
+  // real-mapping doctrine applied to the watch itself, again).
+  else if (/\b(?:Decision|System-One) gate PASS\b/i.test(t)) pass += 1;
+  else if (/\b(?:Decision|System-One) gate FAIL\b/i.test(t)) fail += 1;
 }
-console.log(`WATCH: verdict=${pass + fail} (PASS ${pass} / FAIL ${fail}) · uncertain=${unc} · nojudge=${nj}   [remapped durable baseline · r716 read 1/2/0 — pre-remap 31/30/8 provenance closed r717]`);
+console.log(`WATCH: verdict=${pass + fail} (PASS ${pass} / FAIL ${fail}) · uncertain=${unc} · nojudge=${nj}   [durable baseline · r717 printed FAIL 0 — a classifier false zero, both verdict-note families counted since r718]`);
 console.log("--- last UNCERTAIN rows (what do judges answer below confidence ON?) ---");
 for (const r of uncRows) console.log(JSON.stringify(r).slice(0, 340));
 console.log("--- last NO-JUDGE rows ---");

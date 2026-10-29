@@ -1,0 +1,67 @@
+=== r718 golden QA 2026-10-29T02:22:32+00:00 ===
+--- settings leg ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#settings
+"{\"census\":true,\"relay\":true}"
+--- radar leg (r712 stable aria name) ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#radar
+"frontier-aria-clicked"
+--- workflows leg: board witness attempt #12 ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#workflows
+"board-toggle-MISS"
+"{\"gate\":0,\"u\":0,\"nj\":0,\"legend\":1}"
+--- run-panel long-paste leg ---
+"paste-len:799"
+--- console ---
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 128ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 199ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 233ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 340ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 240ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 127ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 162ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 180ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 298ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 185ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 129ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 233ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 219ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 158ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 202ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 134ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 118ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 1336ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 221ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 248ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 223ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 187ms
+[log] [Fast Refresh] rebuilding
+--- page errors ---
+=== r718 QA end ===
+"{\"gate\":1,\"u\":0,\"nj\":0,\"legend\":1,\"texts\":[\"· ⚖ legend: verdict = confident judge call · u = judge answered below confidence · nj = no\"]}"

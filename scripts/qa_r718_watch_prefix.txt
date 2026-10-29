@@ -1,0 +1,14 @@
+quick_check: [{"quick_check":"ok"}]
+EvalEvent cols: id,runId,workflow,stepId,kind,verdict,confidence,note,createdAt
+EvalEvent rows: 12
+gate-bearing col: kind (12 rows)
+prefix histogram: [{"p":"gate-verdict","c":6},{"p":"gate-uncertain","c":6}]
+WATCH: verdict=4 (PASS 4 / FAIL 0) · uncertain=6 · nojudge=0   [remapped durable baseline · r716 read 1/2/0 — pre-remap 31/30/8 provenance closed r717]
+--- last UNCERTAIN rows (what do judges answer below confidence ON?) ---
+{"rid":11,"id":"cmvsw32ca000aq9vxjeayz8ep","runId":"run_14a887b12e58","workflow":"test run \"Continuous Research & Evaluation","stepId":"step_69bc5d71bbc7","kind":"gate-uncertain","verdict":null,"confidence":7,"note":"Decision gate uncertain 7% (intern-systemone · cross-family) — no confident verdict; output accepted unchanged","createdAt
+{"rid":10,"id":"cmvsw32ca0009q9vxe7q35k3j","runId":"run_14a887b12e58","workflow":"test run \"Continuous Research & Evaluation","stepId":"step_c93e4f485007","kind":"gate-uncertain","verdict":null,"confidence":53,"note":"Decision gate uncertain 53% (intern-systemone · cross-family) — no confident verdict; output accepted unchanged","created
+{"rid":9,"id":"cmvsw32ca0008q9vxiilyy7iq","runId":"run_14a887b12e58","workflow":"test run \"Continuous Research & Evaluation","stepId":"deep_b7bf2db49695","kind":"gate-uncertain","verdict":null,"confidence":2,"note":"Decision gate uncertain 2% (intern-systemone · cross-family) — no confident verdict; output accepted unchanged","createdAt"
+{"rid":8,"id":"cmvsw32ca0007q9vxhswojz8h","runId":"run_14a887b12e58","workflow":"test run \"Continuous Research & Evaluation","stepId":"step_3e2fd9fb9bdc","kind":"gate-uncertain","verdict":null,"confidence":55,"note":"Decision gate uncertain 55% (intern-systemone · cross-family) — no confident verdict; output accepted unchanged","createdA
+{"rid":3,"id":"cmvsts52s0002q9vx8g8mubnx","runId":"run_1dd667e858a7","workflow":"test run \"Continuous Research & Evaluation","stepId":"step_c93e4f485007","kind":"gate-uncertain","verdict":null,"confidence":36,"note":"Decision gate uncertain 36% (intern-systemone · cross-family) — no confident verdict; output accepted unchanged","createdA
+{"rid":2,"id":"cmvsts52s0001q9vxk6kjamso","runId":"run_1dd667e858a7","workflow":"test run \"Continuous Research & Evaluation","stepId":"deep_9bdc073c8e4a","kind":"gate-uncertain","verdict":null,"confidence":72,"note":"Decision gate uncertain 72% (intern-systemone · cross-family) — no confident verdict; output accepted unchanged","createdA
+--- last NO-JUDGE rows ---
