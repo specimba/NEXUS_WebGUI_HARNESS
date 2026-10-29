@@ -1,0 +1,83 @@
+=== r719 QA 2026-10-29T02:41:35+00:00 ===
+server: 200 after wait
+--- settings leg + vault backup witnesses ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#settings
+"{\"census\":true,\"relay\":true}"
+"backup-btn-clicked"
+"{\"confirmDialog\":true,\"pasteBox\":true}"
+"export-btn-clicked"
+"{\"emptyToast\":true,\"dialogClosed\":true}"
+--- radar leg (r712 stable aria name) ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#radar
+"frontier-aria-clicked"
+--- workflows leg: long paste ---
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/#workflows
+"paste-len:799"
+--- cron chip (sidebar footer) ---
+"1/1"
+--- console ---
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 340ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 240ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 127ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 162ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 180ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 298ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 185ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 129ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 233ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 219ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 158ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 202ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 134ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 118ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 1336ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 221ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 248ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 223ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 187ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 144ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 110ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 204ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 215ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 247ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 196ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 448ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 588ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 207ms
+--- page errors ---
+=== r719 QA end ===

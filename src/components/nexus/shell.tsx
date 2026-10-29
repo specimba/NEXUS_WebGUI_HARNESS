@@ -215,7 +215,7 @@ function FleetChip() {
           healthy ? "bg-emerald-400 soft-pulse" : degraded ? "bg-amber-400" : "bg-muted-foreground/40"
         )}
       />
-      <span className="font-medium">cron {fleet ? `${fleet.n}/${fleet.total}` : "?/?"}</span>
+      <span className="font-medium">cron {fleet ? `${fleet.n}/${fleet.total}` : "n/a"}</span>
       {fleet?.nextMin != null && <span className="ml-auto text-muted-foreground">next {fleet.nextMin}m</span>}
     </button>
   );
