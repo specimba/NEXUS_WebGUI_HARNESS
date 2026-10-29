@@ -33,7 +33,7 @@ for (const r of rows) {
   else if (/Decision gate PASS/i.test(t)) pass += 1;
   else if (/Decision gate FAIL/i.test(t)) fail += 1;
 }
-console.log(`WATCH: verdict=${pass + fail} (PASS ${pass} / FAIL ${fail}) · uncertain=${unc} · nojudge=${nj}   [baseline 31 / 30 / 8]`);
+console.log(`WATCH: verdict=${pass + fail} (PASS ${pass} / FAIL ${fail}) · uncertain=${unc} · nojudge=${nj}   [remapped durable baseline · r716 read 1/2/0 — pre-remap 31/30/8 provenance closed r717]`);
 console.log("--- last UNCERTAIN rows (what do judges answer below confidence ON?) ---");
 for (const r of uncRows) console.log(JSON.stringify(r).slice(0, 340));
 console.log("--- last NO-JUDGE rows ---");
