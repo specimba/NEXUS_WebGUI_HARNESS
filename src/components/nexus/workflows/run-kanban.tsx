@@ -319,6 +319,35 @@ function laneCountsOf(corpus: { rows: { note: string }[] }[]): Record<string, nu
   return counts;
 }
 
+/** r755: WHEN each lane was first seen - the same verbatim tried-trace
+ * scan as laneCountsOf, but tracking the earliest row timestamp naming
+ * each lane (UTC): on a growth wave, first-seen spread across lanes
+ * shows whether the whole ladder lit up together (near-uniform - the
+ * predicted full-ladder witness) or a lane joined late (the broadening
+ * signal the r751 handoff defined). Bounded by the fetched corpus
+ * window (newest 400 rows); the bound is disclosed in the chip titles.
+ * createdAt is read structurally (optional) so a missing field degrades
+ * to no date, never an error. */
+function laneFirstSeenOf(corpus: { rows: { note: string; createdAt?: string | null }[] }[]): Record<string, number> {
+  const first: Record<string, number> = {};
+  for (const entry of corpus) {
+    for (const row of entry.rows) {
+      const t = row.createdAt ? Date.parse(row.createdAt) : NaN;
+      if (Number.isNaN(t)) continue;
+      const c = gateCensusOf([{ note: row.note }]);
+      if (c.noJudge <= 0) continue;
+      const re = /(?:tried:|;)\s*([^—;]+?)\s*—/g;
+      let m: RegExpExecArray | null = re.exec(row.note || "");
+      while (m) {
+        const lane = m[1].trim();
+        if (lane && (first[lane] === undefined || t < first[lane])) first[lane] = t;
+        m = re.exec(row.note || "");
+      }
+    }
+  }
+  return first;
+}
+
 /** r753: HOW MANY RUNS each lane touched - the same verbatim
  * tried-trace scan as laneCountsOf, but tallying DISTINCT run ids per
  * lane (a run with several no-judge events on one lane counts once):
@@ -1583,6 +1612,9 @@ export function RunKanban({
   // r753: distinct runs affected per lane - the driver-first sort and
   // the runs figure ride this same corpus re-aggregation.
   const laneRunCounts = React.useMemo(() => laneRunCountsOf(corpusOnly), [corpusOnly]);
+  // r755: first-seen per lane (UTC) - the cadence instrument the r754
+  // handoff armed; it ships into the r754->r755 growth wave.
+  const laneFirstSeen = React.useMemo(() => laneFirstSeenOf(corpusOnly), [corpusOnly]);
   const visibleCorpus = React.useMemo(() => {
     let out = corpusOnly;
     if (pillQuery) out = out.filter((c) => c.runId.toLowerCase().includes(pillQuery));
@@ -2118,7 +2150,7 @@ export function RunKanban({
             <div
               id="corpus-lane-legend"
               data-testid="corpus-lane-legend"
-              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count."
+              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window."
               className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-2"
             >
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2140,7 +2172,10 @@ export function RunKanban({
                     (laneFilter === lane
                       ? "Active filter — click to clear it and restore every corpus pill"
                       : "Click to show only the runs whose ledger rows name this lane") +
-                    " — " + lane + " — " + (laneCounts[lane] ?? 0) + " dial attempt(s) across " + (laneRunCounts[lane] ?? 0) + " run(s) affected"
+                    " — " + lane + " — " + (laneCounts[lane] ?? 0) + " dial attempt(s) across " + (laneRunCounts[lane] ?? 0) + " run(s) affected" +
+                    (laneFirstSeen[lane] !== undefined
+                      ? " — first seen " + new Date(laneFirstSeen[lane]).toISOString().replace("T", " ").slice(0, 16) + " UTC (earliest fetched row naming this lane; window = newest 400 rows)"
+                      : "")
                   }
                 >
                   {lane}
@@ -2150,6 +2185,11 @@ export function RunKanban({
                   <span className="ml-0.5 tabular-nums text-muted-foreground/70">
                     {laneRunCounts[lane] ?? 0} run{(laneRunCounts[lane] ?? 0) === 1 ? "" : "s"}
                   </span>
+                  {laneFirstSeen[lane] !== undefined ? (
+                    <span className="ml-0.5 tabular-nums text-muted-foreground/50">
+                      {"· " + new Date(laneFirstSeen[lane]).toISOString().slice(5, 10)}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
