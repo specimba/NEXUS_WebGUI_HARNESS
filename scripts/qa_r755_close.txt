@@ -4,3 +4,14 @@ legend: "{\"legend\":true,\"spans\":22,\"label\":\"lanes tried (49 no-judge)inte
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main e2769dd97] r755: growth-wave round - census moved 82/24/21/15/46 -> 85/25/21/15/49 (three fresh full-ladder no-judge rows from run_2330a9a2e94e, first wave since r751); shipped the deferred first-seen per-lane instrument per the handoff: laneFirstSeenOf (earliest fetched ledger row naming each lane), UTC date on each legend chip face, full UTC timestamp + newest-400-rows window disclosure in each chip title. On the full-ladder shape first-seen reads near-uniform across lanes - the time-axis witness of total ladder failure; a late lane would be the broadening signal. Snapshot discipline eleventh close.
+ 8 files changed, 248 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T20-51-55.json
+ create mode 100644 scripts/qa_r755.txt
+ create mode 100644 scripts/qa_r755_close.txt
+ create mode 100644 scripts/r755_close.sh
+ create mode 100644 scripts/r755_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   5841894fc..e2769dd97  main -> main
+To https://github.com/specimba/PraisonAI.git
+   5841894fc..e2769dd97  main -> main
