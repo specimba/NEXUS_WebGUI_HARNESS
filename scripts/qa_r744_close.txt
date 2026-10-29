@@ -10,3 +10,16 @@ census: {"total": 83, "runs": 26, "verdict": 23, "uncertain": 15, "nj": 45}
 --- worklog append ---
 worklog appended
 --- commit + push ---
+[main bf8174e2e] r744: watch round — second FROZEN slot inside the new rhythm (83 rows · 26 runs · verdict 23 PASS 19/FAIL 4 · uncertain 15 · nj 45; zero new rows, newest still run_81dbe4d56416 @22:18) — lane set steady at SEVEN (no eighth entry), no flicker sample (candidate stays 2-of-4 slots), no re-store signal. CADENCE HYPOTHESIS: the last four slots read grind(+4) → frozen → grind(+4) → frozen — an alternating grind/quiet rhythm is now a watched variable (a third consecutive freeze would re-rank toward a bursty upstream scheduler). Witness hygiene sixth slot running: tally matched the DB census BYTE-FOR-BYTE on the first eval; the r743 template fix is APPLIED — all four QA leg URLs carry unique r=744 params (root cause of the r743 miss recorded: ?r=742 URLs hold no contiguous r742 substring; dual-pattern sed is the new standard). Golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean watch disposition per r743 handoff (named evaluation = first-try three-way agreement + fresh LD title + applied template fix, scripts/qa_r744.txt). Post-close tee sweep baked into the close chain (r722..r743 precedent).
+ 8 files changed, 331 insertions(+)
+ create mode 100644 scripts/qa_r744.txt
+ create mode 100644 scripts/qa_r744_close.txt
+ create mode 100644 scripts/qa_r744_lint.txt
+ create mode 100644 scripts/qa_r744_tsc.txt
+ create mode 100644 scripts/r744_close.sh
+ create mode 100644 scripts/r744_commitmsg.txt
+ create mode 100644 scripts/r744_qa.sh
+--- verify ---
+bf8174e2e r744: watch round — second FROZEN slot inside the new rhythm (83 rows · 26 runs · verdict 23 PASS 19/FAIL 4 · uncertain 15 · nj 45; zero new rows, newest still run_81dbe4d56416 @22:18) — lane set steady at SEVEN (no eighth entry), no flicker sample (candidate stays 2-of-4 slots), no re-store signal. CADENCE HYPOTHESIS: the last four slots read grind(+4) → frozen → grind(+4) → frozen — an alternating grind/quiet rhythm is now a watched variable (a third consecutive freeze would re-rank toward a bursty upstream scheduler). Witness hygiene sixth slot running: tally matched the DB census BYTE-FOR-BYTE on the first eval; the r743 template fix is APPLIED — all four QA leg URLs carry unique r=744 params (root cause of the r743 miss recorded: ?r=742 URLs hold no contiguous r742 substring; dual-pattern sed is the new standard). Golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean watch disposition per r743 handoff (named evaluation = first-try three-way agreement + fresh LD title + applied template fix, scripts/qa_r744.txt). Post-close tee sweep baked into the close chain (r722..r743 precedent).
+ M scripts/qa_r744_close.txt
+== r744 CLOSED ==
