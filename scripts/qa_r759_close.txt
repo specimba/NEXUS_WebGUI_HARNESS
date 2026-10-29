@@ -6,3 +6,15 @@ divergence: "{\"divBadges\":4}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 2fb12add6] r759: diamonds decoded - route-preference shift, not contraction; lanes figure ships. The wave-2/4 trace diff found every row names a 5-lane chain whose middle tier ALTERNATES routes (qwen free pair vs glm-5.3 pair, never all four); wave-2 alternated within one run (rows 0-1 qwen, rows 2-3 glm, 21:12:23 UTC), waves 3-4 are glm-only (qwen free lanes silent since ~21:12 UTC; alternation predates the waves so no config change is witnessable). The r758 truncation interpretation was wrong in mechanism - traces were never 7-wide; the diamonds fired on the route shift. On-page corrections: diamond titles, chip-title clause and legend text now say recent-bucket lag (route shift or partial ladder - check the laggards before interpreting); stale full-ladder premise sentences removed. Increment: laneSpread in the wave strip - (N lanes) per bucket makes route alternation an on-page witness (mixed-tier bucket = 7 lanes). Snapshot discipline fifteenth close.
+ 9 files changed, 338 insertions(+), 19 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T22-43-23.json
+ create mode 100644 scripts/qa_r759.txt
+ create mode 100644 scripts/qa_r759_close.txt
+ create mode 100644 scripts/r759_close.sh
+ create mode 100644 scripts/r759_prose.py
+ create mode 100644 scripts/r759_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   42e58ecdc..2fb12add6  main -> main
+To https://github.com/specimba/PraisonAI.git
+   42e58ecdc..2fb12add6  main -> main
