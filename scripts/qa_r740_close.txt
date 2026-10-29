@@ -1,0 +1,12 @@
+== r740 close ==
+--- gates ---
+tsc_exit:0
+lint_exit:0 ✖ 33 problems (0 errors, 33 warnings)
+gate-census: qa-gate-census: 48/48
+cortex: qa-cortex-census: 23/23
+--- fresh cache-busted LD witness ---
+fld: "{\"strip\":true,\"tally\":\"24 runs · 75 ev · 22 verdicts· 15u· 38nj\",\"ld\":true,\"count\":\"38\",\"hasIntern\":true,\"hasPaid\":true}"
+census: {"total": 75, "runs": 24, "verdict": 22, "uncertain": 15, "nj": 38}
+--- worklog append ---
+worklog appended
+--- commit + push ---

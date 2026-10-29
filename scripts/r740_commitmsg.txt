@@ -1,0 +1,13 @@
+r740: watch round — ledger resumed climbing: corpus 72→75 (+3, one new run
+run_aabcce45b62c x3 nj), verdict 22 FLAT (PASS 18/FAIL 4), uncertain 15
+flat, nj 35→38 (+3/slot pace resumes); lane set unchanged at six entries —
+no eighth lane; no flicker repeat (the r739 PASS@94% found no successor);
+no re-store signal. Witness hygiene second slot running: ?r=740 opener
+matched the DB census BYTE-FOR-BYTE on the first eval (three-way agreement,
+zero scare rounds). Golden QA green (settings census/relay, radar frontier,
+paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors /
+33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO
+code delta — clean watch disposition per r739 handoff (named evaluation =
+first-try three-way agreement + fresh LD title witness, scripts/qa_r740.txt).
+db/gateway-pulse.json rides the commit (gateway runtime pulse, disclosed).
+Post-close tee sweep baked into the close chain (r722..r739 precedent).

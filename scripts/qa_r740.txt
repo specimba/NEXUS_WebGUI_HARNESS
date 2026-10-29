@@ -1,0 +1,25 @@
+== r740 golden QA + judge-lane board witness ==
+board: "{\"strip\":true,\"tally\":\"24 runs · 75 ev · 22 verdicts· 15u· 38nj\",\"chips\":24}"
+ld: "{\"ld\":true,\"count\":\"38\",\"hasIntern\":true,\"hasFast\":true,\"hasPaid\":true,\"lanes\":\"intern-systemone; fast-judge AIHubMix · qwen3.8-flash-free (qwen3.8-flash-free); fast-judge AIHubMix · qwen3.8-max-free (qwen3.8-max-free); fast-judge; jev (paid rung); fast-judge Z.ai · glm-5.3 (glm-5.3); fast-judge Intern TokenPlan · glm-5.3 (glm-5.3)\"}"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/?r=740s#settings
+settings: "{\"census\":true,\"relay\":true}"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/?r=740r#radar
+radar: "frontier-aria-clicked"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/?r=740w#workflows
+paste: "paste-len:799"
+cron chip: "1/1"
+--- console tail ---
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+--- page errors ---
+
+== r740 QA GREEN ==
