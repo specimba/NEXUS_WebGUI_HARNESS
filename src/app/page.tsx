@@ -42,6 +42,11 @@ function useIsClient(): boolean {
 // #/evolution        → Settings scrolled to the Evolution proposals panel
 // #/radar            → Trend Radar view (GitHub stars / HF trending / papers)
 // #/chat | #/agents | #/workflows | #/settings → bare view deep-links (r272)
+// #/workflows/board → Workflows with the Runs board layout forced open (r747):
+//   the layout bit is localStorage-persisted (nexus-ui.workflowBoardOpen, default
+//   false) — a wiped profile left the patrol QA probing the card grid, where the
+//   board subtree (kanban + corpus-only-runs strip witness) cannot render at all.
+//   The sub-path deep-link makes the board deterministic again.
 
 // r427: the bare view heads the URL-reflect bridge may rewrite (see the
 // effect in Page). Parameterized heads (chat/<id>, guide/<p>) and wizard
@@ -89,6 +94,12 @@ function applyHashRoute(): void {
     ui.setSetupWizardOpen(false);
     ui.setView(head);
     if (head === "settings") ui.setSettingsAnchor(null); // bare link: top, no section scroll
+    // r747: #/workflows/board forces the Runs board layout on — the layout bit
+    // is persisted and defaults false, so a fresh/wiped profile lands on the
+    // card grid where the kanban (and the corpus-only-runs strip) never mounts.
+    // The sub-path beats the persisted bit deterministically; bare #/workflows
+    // keeps honoring whatever the profile persisted.
+    if (head === "workflows" && param === "board") ui.setWorkflowBoardOpen(true);
   }
 }
 
