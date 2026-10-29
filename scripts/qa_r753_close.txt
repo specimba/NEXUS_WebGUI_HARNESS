@@ -4,3 +4,14 @@ legend: "{\"legend\":true,\"spans\":15,\"label\":\"lanes tried (46 no-judge)inte
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main b90beb3e4] r753: legend ergonomics - driver-first sort + runs-affected magnitude. The legend chips now sort by dial-attempt count descending (stable sort; ties keep ledger insertion order) so the distress driver reads first, and each chip carries a second figure beside the xN badge: the number of DISTINCT runs whose ledger rows name the lane (laneRunCountsOf - same verbatim scan, per-lane runId sets), answering 'how many dials' and 'how many runs' as different questions. Chip titles carry both magnitudes. ALSO fixed a probe-side regex bug from r752 (tallyWholeCorpus:false was a false negative - / runs . ev/ cannot span 'runs · 82 ev'); the assertion now uses /runs . \d+ ev/ and is gated. Gates: tsc 0, lint 0E/33W; golden QA GREEN (seven lanes re-verified - no eighth; settings census/relay + radar frontier + 799-char paste, console 0 errors); chip + legend + lane-filter probes gated (chip internals edited). Snapshot discipline ninth close.
+ 8 files changed, 248 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T19-42-15.json
+ create mode 100644 scripts/qa_r753.txt
+ create mode 100644 scripts/qa_r753_close.txt
+ create mode 100644 scripts/r753_close.sh
+ create mode 100644 scripts/r753_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   8d2d7d65e..b90beb3e4  main -> main
+To https://github.com/specimba/PraisonAI.git
+   8d2d7d65e..b90beb3e4  main -> main
