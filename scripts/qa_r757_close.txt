@@ -5,3 +5,15 @@ wave strip: "{\"strip\":true,\"text\":\"no-judge rows by 15-min UTC bucket: 10-2
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 95c787277] r757: three-wave burst + the queued mini-strip ships - R2 census 96/27/21/15/60 vs r756 baseline 89/26/21/15/53 (+7 nj / +1 run, newest 21:28:47 UTC) = the THIRD consecutive growth slot, the first three-wave burst on record (both prior bursts were two-wave; magnitude escalating +3/+4/+7, intervals accelerating). Shipped laneBucketsOf (per-lane dials + corpus-wide nj rows in 15-minute UTC buckets), a visible wave strip under the lane legend (corpus-wide by default, filtered lane dials when a filter is active, last-6-of-N cap disclosed), per-lane bucket lists in every chip title, legend title bucket semantics. Under the full-ladder shape per-lane profiles coincide with the corpus strip - divergence = the partial-ladder signal, now watchable on-page. Wave-strip probe: presence GATED / text RECORDED. Snapshot discipline thirteenth close.
+ 9 files changed, 393 insertions(+), 2 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T21-47-17.json
+ create mode 100644 scripts/qa_r757.txt
+ create mode 100644 scripts/qa_r757_close.txt
+ create mode 100644 scripts/r757_close.sh
+ create mode 100644 scripts/r757_prose.py
+ create mode 100644 scripts/r757_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   b0eae32b9..95c787277  main -> main
+To https://github.com/specimba/PraisonAI.git
+   b0eae32b9..95c787277  main -> main
