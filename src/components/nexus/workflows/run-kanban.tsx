@@ -257,18 +257,23 @@ function fmtEventAt(v?: string | number | null): string {
  * callLog, server lane, digest rows, now per-row panels — never a rival
  * vocabulary), and the note renders VERBATIM, so the judge dial trace
  * ("tried: intern-systemone — no answer; fast-judge …") rides inside it. */
+/** r731: the per-row label — ONE derivation shared by the rendered row and
+ * the copied ladder (r649: the same classifier, never a rival vocabulary). */
+function eventLabelOf(c: ReturnType<typeof gateCensusOf>): string {
+  return c.verdicts > 0
+    ? c.verdictTone === "fail"
+      ? "verdict · FAIL"
+      : "verdict · PASS"
+    : c.uncertain > 0
+      ? "uncertain"
+      : c.noJudge > 0
+        ? "no judge"
+        : "gate event";
+}
+
 function CorpusEventRow({ row }: { row: LedgerRunRow }) {
   const c = gateCensusOf([{ note: row.note }]);
-  const label =
-    c.verdicts > 0
-      ? c.verdictTone === "fail"
-        ? "verdict · FAIL"
-        : "verdict · PASS"
-      : c.uncertain > 0
-        ? "uncertain"
-        : c.noJudge > 0
-          ? "no judge"
-          : "gate event";
+  const label = eventLabelOf(c);
   const tone =
     c.verdictTone === "fail" || c.uncertain > 0
       ? "text-amber-600 dark:text-amber-400"
@@ -388,6 +393,82 @@ function CopyAllRunIdsButton({ ids }: { ids: string[] }) {
       onClick={onCopy}
       aria-label={"Copy all " + ids.length + " corpus run ids to the clipboard as a comma list"}
       title="Copy every distinct run id in the durable corpus as a comma list — the key set for triage scripts (SQLite IN(...) queries, Cortex batches). Sits beside the ⧉ digest chip; the panel header's copy button carries one id at a time."
+      className={cn(
+        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+        "hover:bg-muted hover:text-foreground",
+        CHIP_FOCUS_RING,
+        copied && "text-emerald-600 dark:text-emerald-400"
+      )}
+    >
+      {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
+    </button>
+  );
+}
+
+/** r731: copy-ladder affordance on the corpus detail panel header — the
+ * panel already SHOWS a run's whole decision ladder (time · label · step
+ * key · note, the judge dial trace verbatim); one click puts that exact
+ * view on the clipboard as text so a triage ticket or Cortex batch gets
+ * the full tried-trace without retyping. The copied text is built from
+ * the SAME rows and the SAME per-row classifier the panel renders (r649:
+ * never a rival vocabulary) — what lands on the clipboard is what the
+ * screen shows. Copy→Check + toast vocabulary of the r728/r729 buttons;
+ * honest error toasts — never a fake success. */
+function CopyLadderButton({
+  runId,
+  rows,
+  census,
+}: {
+  runId: string;
+  rows: LedgerRunRow[];
+  census: ReturnType<typeof gateCensusOf>;
+}) {
+  const [copied, setCopied] = React.useState(false);
+  const timer = React.useRef<number | null>(null);
+  React.useEffect(
+    () => () => {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    },
+    []
+  );
+  const ladderText = () => {
+    const head =
+      runId +
+      " · " + rows.length + " events" +
+      " · engaged " + census.engaged +
+      " · " + census.verdicts + " verdicts" +
+      " · " + census.uncertain + "u · " + census.noJudge + "nj";
+    const lines = rows.map((row) => {
+      const c = gateCensusOf([{ note: row.note }]);
+      const step = row.stepId ? " (step " + row.stepId + ")" : "";
+      return fmtEventAt(row.createdAt) + " [" + eventLabelOf(c) + "]" + step + " " + row.note;
+    });
+    return [head].concat(lines).join("\n");
+  };
+  const onCopy = () => {
+    const done = () => {
+      setCopied(true);
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(false), 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(ladderText())
+        .then(() => {
+          done();
+          toast.success("Run ladder copied");
+        })
+        .catch(() => toast.error("Clipboard refused the ladder — copy the rows from the panel"));
+    } else {
+      toast.error("Clipboard unavailable in this browser");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      aria-label={"Copy the full decision ladder for run " + runId + " as text"}
+      title="Copy this run's whole decision ladder as text — the same rows, labels and verbatim notes the panel renders, one line per event. For triage tickets and Cortex batches."
       className={cn(
         "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
         "hover:bg-muted hover:text-foreground",
@@ -1845,6 +1926,11 @@ export function RunKanban({
                 <span className="inline-flex items-center gap-1">
                   <code className="font-mono text-foreground">{detailRun.runId}</code>
                   <CopyRunIdButton runId={detailRun.runId} />
+                  <CopyLadderButton
+                    runId={detailRun.runId}
+                    rows={detailRows}
+                    census={detailCensus}
+                  />
                 </span>
                 <span className="tabular-nums text-muted-foreground">
                   {detailRows.length} event{detailRows.length === 1 ? "" : "s"} · engaged {detailCensus.engaged} · {detailCensus.verdicts} verdict{detailCensus.verdicts === 1 ? "" : "s"}
