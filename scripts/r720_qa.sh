@@ -28,11 +28,13 @@ agent-browser eval "JSON.stringify({census: /free-reach|free reach/i.test(docume
 agent-browser eval "(() => { const el=document.querySelector('[data-testid=\"vault-readiness-strip\"]'); return el ? el.getAttribute('aria-label') : 'readiness-MISS'; })()" || true
 # mirror strip census (count only — never key material)
 agent-browser eval "(() => { const el=document.querySelector('[data-testid=\"mirror-count\"]'); return 'mirror-count:'+(el?el.textContent.trim():'MISS'); })()" || true
-agent-browser eval "(() => { const btns=[...document.querySelectorAll('button')].filter(b=>/^Mirror$/i.test((b.textContent||'').trim())); if(!btns.length) return 'mirror-btns:0'; btns[0].click(); return 'mirror-btns:'+btns.length+' first-clicked'; })()" || true
-sleep 2.5
+agent-browser eval "(() => { const all=document.querySelector('[data-testid=\"mirror-all\"]'); if(!all) return 'mirror-all-MISS'; all.click(); return 'mirror-all-clicked'; })()" || true
+sleep 3.5
 agent-browser eval "(() => { const toasts=[...document.querySelectorAll('[data-sonner-toast],li')].map(t=>t.textContent||'').join(' | '); const hit=/mirrored to the server lane|Mirror failed/.test(toasts); return hit ? ('mirror-toast:'+(toasts.match(/mirrored to the server lane|Mirror failed/)||[''])[0]) : 'mirror-toast:not-seen'; })()" || true
-# readiness strip AFTER (growth = the recovery signal)
+sleep 7
+# readiness strip AFTER (growth = the recovery signal — the r719 handoff's arm)
 agent-browser eval "(() => { const el=document.querySelector('[data-testid=\"vault-readiness-strip\"]'); return el ? el.getAttribute('aria-label') : 'readiness-MISS'; })()" || true
+agent-browser eval "(() => { const c=document.querySelector('[data-testid=\"mirror-count\"]'); return 'mirror-count-after:'+(c?c.textContent.trim():'strip-gone'); })()" || true
 
 echo "--- backup round trip WITH DATA (r719 road, armed) ---"
 agent-browser eval "(() => { const b=[...document.querySelectorAll('button')].find(x=>/Back up now/i.test(x.textContent||'')); if(!b) return 'backup-btn-MISS'; b.click(); return 'backup-btn-clicked'; })()" || true
@@ -41,7 +43,7 @@ agent-browser eval "(() => JSON.stringify({confirmDialog: /Export the vault back
 agent-browser eval "(() => { const b=[...document.querySelectorAll('button')].find(x=>/^Export backup$/.test((x.textContent||'').trim())); if(!b) return 'export-btn-MISS'; b.click(); return 'export-btn-clicked'; })()" || true
 sleep 1.2
 # capture the exported plaintext (masked: only length + slot count + hasCopy leave the page)
-agent-browser eval "(() => { const tas=[...document.querySelectorAll('textarea')]; const t=tas.find(x=>(x.value||'').trim().startsWith('{') && (x.value||'').includes('slots')); if(!t) return 'export-plaintext-MISS'; let n=-1; try { n=(JSON.parse(t.value).slots||[]).length; } catch(e) { return 'export-parse-FAIL'; } const copy=[...document.querySelectorAll('button')].some(b=>/^Copy( to clipboard)?$|^Copy$/.test((b.textContent||'').trim())); window.__r720backup=t.value; return JSON.stringify({plaintextLen:t.value.length, slots:n, hasCopyBtn:copy}); })()" || true
+agent-browser eval "(() => { const t=document.querySelector('[data-testid=\"export-plaintext\"]'); if(!t) return 'export-plaintext-MISS'; let n=-1; try { n=(JSON.parse(t.value).slots||[]).length; } catch(e) { return 'export-parse-FAIL'; } const copy=[...document.querySelectorAll('button')].some(b=>/^Copy$/.test((b.textContent||'').trim())); window.__r720backup=t.value; return JSON.stringify({plaintextLen:t.value.length, slots:n, hasCopyBtn:copy}); })()" || true
 # close the export dialog
 agent-browser eval "(() => { const b=[...document.querySelectorAll('button')].find(x=>/^(Close|Done|OK)$/i.test((x.textContent||'').trim())); if(b) b.click(); return 'close-clicked'; })()" || true
 sleep 0.5
