@@ -375,6 +375,42 @@ function laneLastSeenOf(corpus: { rows: { note: string; createdAt?: string | nul
   return last;
 }
 
+/** r757: the dials-over-time mini-strip - per-lane dial attempts AND
+ * corpus-wide no-judge rows bucketed into 15-minute UTC slots. At the
+ * current burst cadence (waves at 20:16, ~21:0x, ~21:28 UTC on 10-29)
+ * 15-minute slots resolve each wave separately where hour buckets would
+ * merge the last two. Under the full-ladder shape every no-judge row
+ * names every lane, so per-lane bucket profiles coincide with the corpus
+ * strip; a lane whose profile DIVERGES is the partial-ladder signal.
+ * Same newest-400-rows window bound, disclosed in the strip title. */
+function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null }[] }[]): { lanes: Record<string, Record<string, number>>; corpusRows: Record<string, number> } {
+  const lanes: Record<string, Record<string, number>> = {};
+  const corpusRows: Record<string, number> = {};
+  for (const entry of corpus) {
+    for (const row of entry.rows) {
+      const c = gateCensusOf([{ note: row.note }]);
+      if (c.noJudge <= 0) continue;
+      const t = row.createdAt ? Date.parse(row.createdAt) : NaN;
+      if (Number.isNaN(t)) continue;
+      const d = new Date(t);
+      const q = String(Math.floor(d.getUTCMinutes() / 15) * 15).padStart(2, "0");
+      const key = d.toISOString().slice(5, 10) + " " + d.toISOString().slice(11, 13) + ":" + q;
+      corpusRows[key] = (corpusRows[key] ?? 0) + 1;
+      const re = /(?:tried:|;)\s*([^—;]+?)\s*—/g;
+      let m: RegExpExecArray | null = re.exec(row.note || "");
+      while (m) {
+        const lane = m[1].trim();
+        if (lane) {
+          if (!lanes[lane]) lanes[lane] = {};
+          lanes[lane][key] = (lanes[lane][key] ?? 0) + 1;
+        }
+        m = re.exec(row.note || "");
+      }
+    }
+  }
+  return { lanes, corpusRows };
+}
+
 /** r753: HOW MANY RUNS each lane touched - the same verbatim
  * tried-trace scan as laneCountsOf, but tallying DISTINCT run ids per
  * lane (a run with several no-judge events on one lane counts once):
@@ -1645,6 +1681,15 @@ export function RunKanban({
   // r756: last-seen per lane (UTC) - the mirror instrument; the first/last
   // pair brackets each wave (shipped mid-round as the wave pivot).
   const laneLastSeen = React.useMemo(() => laneLastSeenOf(corpusOnly), [corpusOnly]);
+  // r757: dials-over-time buckets - 15-minute UTC slots per lane and
+  // corpus-wide; the mini-strip the r756 handoff queued, shipped into the
+  // THIRD consecutive growth slot (the first three-wave burst).
+  const laneBuckets = React.useMemo(() => laneBucketsOf(corpusOnly), [corpusOnly]);
+  const waveStrip = React.useMemo(() => {
+    const src = laneFilter ? laneBuckets.lanes[laneFilter] : laneBuckets.corpusRows;
+    const keys = Object.keys(src).sort();
+    return { src, shown: keys.slice(-6), total: keys.length };
+  }, [laneBuckets, laneFilter]);
   const visibleCorpus = React.useMemo(() => {
     let out = corpusOnly;
     if (pillQuery) out = out.filter((c) => c.runId.toLowerCase().includes(pillQuery));
@@ -2180,7 +2225,7 @@ export function RunKanban({
             <div
               id="corpus-lane-legend"
               data-testid="corpus-lane-legend"
-              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal."
+              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each chip's title."
               className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-2"
             >
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2208,6 +2253,9 @@ export function RunKanban({
                       : "") +
                     (laneLastSeen[lane] !== undefined
                       ? " — last seen " + new Date(laneLastSeen[lane]).toISOString().replace("T", " ").slice(0, 16) + " UTC (latest such row)"
+                      : "") +
+                    (laneBuckets.lanes[lane] !== undefined
+                      ? " — by 15-min UTC bucket: " + Object.keys(laneBuckets.lanes[lane]).sort().map((k) => k + " ×" + laneBuckets.lanes[lane][k]).join(" · ")
                       : "")
                   }
                 >
@@ -2232,6 +2280,17 @@ export function RunKanban({
                   ) : null}
                 </button>
               ))}
+            </div>
+          ) : null}
+          {waveStrip.total > 0 ? (
+            <div
+              data-testid="corpus-wave-strip"
+              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Under the full-ladder shape every no-judge row names every lane, so a lane whose bucket profile diverges from the corpus strip is the partial-ladder signal. Bounded by the newest-400-rows corpus fetch window (same as first/last-seen)."}
+              className="mb-2 text-[11px] leading-4 tabular-nums text-muted-foreground/70"
+            >
+              {laneFilter ? "dials for " + laneFilter + " by 15-min UTC bucket: " : "no-judge rows by 15-min UTC bucket: "}
+              {waveStrip.shown.map((k) => k + " ×" + waveStrip.src[k]).join(" · ")}
+              {waveStrip.total > waveStrip.shown.length ? " (+" + (waveStrip.total - waveStrip.shown.length) + " older)" : ""}
             </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
