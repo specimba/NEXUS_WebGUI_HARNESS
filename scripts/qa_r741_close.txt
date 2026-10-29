@@ -10,3 +10,16 @@ census: {"total": 79, "runs": 25, "verdict": 23, "uncertain": 15, "nj": 41}
 --- worklog append ---
 worklog appended
 --- commit + push ---
+[main f72471666] r741: watch round — ledger climbed at the acceleration edge: corpus 75→79 (+4, one new run run_839b9ce75fae x4), verdict 22→23 (+1: PASS@87%), uncertain 15 flat, nj 38→41 (+3). THE FLICKER RETURNED AND STRENGTHENED: 3 nj + 1 PASS@87% (intern-systemone cross-family) on the SAME run — second sample of the intermittent pattern in three slots (r739 1-of-3 @94%, r741 1-of-4 @87%), high confidence whenever it answers; fast-judge family still 100% dead (lane set unchanged at six, no eighth entry) — flaky intern dial, NOT a re-store landing (that would flood verdicts, not +1/slot). Witness hygiene third slot running: ?r=741 opener matched the DB census BYTE-FOR-BYTE on the first eval (three-way agreement, zero scare rounds). Golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean watch disposition per r740 handoff (named evaluation = first-try three-way agreement + fresh LD title witness, scripts/qa_r741.txt). Post-close tee sweep baked into the close chain (r722..r740 precedent).
+ 8 files changed, 327 insertions(+)
+ create mode 100644 scripts/qa_r741.txt
+ create mode 100644 scripts/qa_r741_close.txt
+ create mode 100644 scripts/qa_r741_lint.txt
+ create mode 100644 scripts/qa_r741_tsc.txt
+ create mode 100644 scripts/r741_close.sh
+ create mode 100644 scripts/r741_commitmsg.txt
+ create mode 100644 scripts/r741_qa.sh
+--- verify ---
+f72471666 r741: watch round — ledger climbed at the acceleration edge: corpus 75→79 (+4, one new run run_839b9ce75fae x4), verdict 22→23 (+1: PASS@87%), uncertain 15 flat, nj 38→41 (+3). THE FLICKER RETURNED AND STRENGTHENED: 3 nj + 1 PASS@87% (intern-systemone cross-family) on the SAME run — second sample of the intermittent pattern in three slots (r739 1-of-3 @94%, r741 1-of-4 @87%), high confidence whenever it answers; fast-judge family still 100% dead (lane set unchanged at six, no eighth entry) — flaky intern dial, NOT a re-store landing (that would flood verdicts, not +1/slot). Witness hygiene third slot running: ?r=741 opener matched the DB census BYTE-FOR-BYTE on the first eval (three-way agreement, zero scare rounds). Golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean watch disposition per r740 handoff (named evaluation = first-try three-way agreement + fresh LD title witness, scripts/qa_r741.txt). Post-close tee sweep baked into the close chain (r722..r740 precedent).
+ M scripts/qa_r741_close.txt
+== r741 CLOSED ==
