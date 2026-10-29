@@ -1954,11 +1954,11 @@ export function RunKanban({
             >
               {corpusOnly.length} run{corpusOnly.length === 1 ? "" : "s"} · {stripEvents} ev · {stripCensus.verdicts} verdict{stripCensus.verdicts === 1 ? "" : "s"}
               {stripCensus.uncertain > 0 ? (
-                <span className="ml-1 text-amber-600 dark:text-amber-400">· {stripCensus.uncertain}u</span>
+                <span className="mx-1 text-amber-600 dark:text-amber-400">· {stripCensus.uncertain}u</span>
               ) : null}
               {stripCensus.noJudge > 0 ? (
                 <span
-                  className="ml-1"
+                  className="mx-1"
                   title={
                     laneDistress
                       ? "Lanes tried in these " + stripCensus.noJudge + " no-judge failures (the ledger's verbatim tried-trace, deduped): " + laneDistress

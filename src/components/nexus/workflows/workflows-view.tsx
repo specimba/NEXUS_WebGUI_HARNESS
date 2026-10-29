@@ -1537,6 +1537,35 @@ export function WorkflowsView() {
   // r486-a: the third tab — Run Archive (localStorage tier, browsable/exportable).
   const [archiveOpen, setArchiveOpen] = React.useState(false);
 
+  // r748: corpus glance on the card grid — the strip lives on the board, but
+  // the default view (the one a wiped profile lands on) had ZERO corpus
+  // signal. One best-effort GET /api/evals on mount; distinct runIds — the
+  // same data the board strip summarizes. Unreachable ledger → the chip
+  // stays silent (no signal, no chip — the r648 doctrine). Click opens the
+  // board so the strip's per-run breakdown is one tap away.
+  const [corpusRuns, setCorpusRuns] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    let stopped = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/evals");
+        if (!res.ok) return;
+        const json = (await res.json()) as { runs?: Array<{ runId?: string }> };
+        if (!stopped && Array.isArray(json.runs)) {
+          setCorpusRuns(
+            new Set(json.runs.map((r) => r.runId).filter(Boolean)).size
+          );
+        }
+      } catch {
+        /* ledger briefly unreachable — chip stays silent, never an error */
+      }
+    };
+    void load();
+    return () => {
+      stopped = true;
+    };
+  }, []);
+
   const agentById = React.useMemo(
     () => new Map(agents.map((a) => [a.id, a])),
     [agents]
@@ -1971,6 +2000,23 @@ export function WorkflowsView() {
             </span>
             {liveRunCount} running
           </span>
+        )}
+        {corpusRuns !== null && corpusRuns > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setBoardOpen(true);
+              setArchiveOpen(false);
+            }}
+            title={
+              corpusRuns +
+              (corpusRuns === 1 ? " run" : " runs") +
+              " in the training corpus (GET /api/evals). The Runs board's strip breaks this down per run — click to open the board."
+            }
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground transition-colors hover:text-foreground"
+          >
+            ⧉ {corpusRuns} in corpus
+          </button>
         )}
         <div
           role="radiogroup"
