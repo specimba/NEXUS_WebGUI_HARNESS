@@ -2,3 +2,10 @@ chip: "{\"chip\":true,\"text\":\"⧉ 23 in corpus\",\"amber\":false}"
 nj click: "clicked"
 legend: "{\"legend\":true,\"spans\":8,\"label\":\"lanes tried (45 no-judge)intern-systemonefast-ju\"}"
 worklog appended
+[main 032e58d06] r750: lane legend - the judge-lane distress instrument rendered on-page. The deduped tried-trace lived in a hover-only title (invisible on touch); the nj tally is now a real toggle button (aria-expanded/controls, dotted-underline family styling) and the lanes render as a legend between the strip header and the pill row (data-testid corpus-lane-legend, one chip per deduped lane). TIMELY: the open probe witnessed the nj driver at source - live gate-no-judge rows between slots, tried: intern-systemone dial failure; the legend ships while the distress is live. Gates: tsc 0, lint 0E/33W; golden QA GREEN (tally steady 23 runs / 81 ev / nj 45, seven lanes re-verified - no eighth; settings census/relay + radar frontier + 799-char paste, console 0 errors); chip + legend probes in the close (legend gated). Snapshot discipline sixth close; witness now five-legged.
+ 5 files changed, 31 insertions(+), 4 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-29T18-13-08.json
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   fef4ec3cd..032e58d06  main -> main
+To https://github.com/specimba/PraisonAI.git
+   fef4ec3cd..032e58d06  main -> main
