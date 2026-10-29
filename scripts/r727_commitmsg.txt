@@ -1,0 +1,20 @@
+r727: keyboard-complete corpus strip — arrow traversal + Escape close; vault-lane census names the nj root cause
+
+- SHIP (run-kanban.tsx): strip pills gain keyboard traversal — ArrowDown/
+  ArrowUp move focus between pills without leaving the strip (roving
+  within the pills row, bounded at the ends), Escape collapses the open
+  panel from its own pill (focus stays put, aria-expanded flips with
+  state); the strip header documents the affordance.
+- JUDGE-LANE EVIDENCE (patrol-side, the r726 trigger): corpus 31->35
+  with LIVE traffic (+2 PASS @ 92%, +2 nj on run_9a5495f732ea4);
+  AutomationVault counts 0 lanes post-recycle — every fresh nj ladder
+  reads dial failures through the emptied vault. Owner-side cure (r720
+  re-store + Cortex P1 v2 deploy); the r726 panel surfaces the ladders.
+- witnesses: keyboard (arrow move + escape close, DOM-probed) + r726
+  click-through regression on the grown corpus — scripts/qa_r727.txt.
+- golden QA: settings census/relay · radar frontier · paste-799 · cron ·
+  console clean · page errors none.
+- gates: tsc 0 · lint 0 errors (33-warning baseline) · qa-gate-census
+  48/48 · qa-cortex-census 23/23.
+- budget: 10 rounds, two under the cap (two clean guard aborts — witness-
+  sequence and guard-regex bugs, disclosed; the app never failed one).

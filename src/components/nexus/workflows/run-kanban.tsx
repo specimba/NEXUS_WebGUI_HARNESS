@@ -1631,7 +1631,10 @@ export function RunKanban({
           className="mb-4 rounded-xl border border-border/60 bg-muted/20 p-3"
         >
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span
+              className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+              title="Keyboard: arrow keys move between the run pills, Enter toggles the detail panel, Escape closes it."
+            >
               ⧉ In the corpus, not on this board
             </span>
             {/* r724: the strip's aggregate glance tally — the per-run chips
@@ -1660,6 +1663,22 @@ export function RunKanban({
                 onClick={() => setOpenCorpusRun((cur) => (cur === runId ? null : runId))}
                 aria-expanded={openCorpusRun === runId}
                 aria-controls={openCorpusRun === runId ? "corpus-detail-" + runId : undefined}
+                onKeyDown={(e) => {
+                  // r727: keyboard traversal — ArrowDown/ArrowUp move between
+                  // the run pills without leaving the strip (no full Tab
+                  // cycle), Escape collapses the open panel from its own
+                  // pill (focus stays put; aria-expanded flips with state).
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    const row = e.currentTarget.parentElement;
+                    const pills = row ? Array.from(row.querySelectorAll("button")) : [];
+                    const i = pills.indexOf(e.currentTarget);
+                    const next = pills[i + (e.key === "ArrowDown" ? 1 : -1)];
+                    if (next) next.focus();
+                  } else if (e.key === "Escape" && openCorpusRun === runId) {
+                    setOpenCorpusRun(null);
+                  }
+                }}
                 title="Per-run gate detail from the durable ledger rows alone — every event note verbatim, the judge dial trace included when the judge never answered. Click to expand or collapse."
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border bg-card/60 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors",
