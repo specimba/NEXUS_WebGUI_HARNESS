@@ -10,3 +10,16 @@ census: {"total": 79, "runs": 25, "verdict": 23, "uncertain": 15, "nj": 41}
 --- worklog append ---
 worklog appended
 --- commit + push ---
+[main c7c687618] r742: watch round — ledger FROZEN at the r741 close state (79 rows · 25 runs · verdict 23 PASS 19/FAIL 4 · uncertain 15 · nj 41; ZERO new rows this slot, newest row still run_839b9ce75fae @21:12) — gate traffic went quiet; no third flicker sample (pattern candidate stays 2-of-4 slots), lane set unchanged at six entries, no re-store signal (verdict flat). Three watch signatures stay separable: flicker (judged +1/slot beside same-run nj), re-store (verdict growth accelerating), outage-quiet (frozen — this slot). Witness hygiene fourth slot running: ?r=742 opener matched the DB census BYTE-FOR-BYTE on the first eval (three-way agreement, zero scare rounds). Golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean watch disposition per r741 handoff (named evaluation = first-try three-way agreement + fresh LD title witness, scripts/qa_r742.txt). Post-close tee sweep baked into the close chain (r722..r741 precedent).
+ 8 files changed, 325 insertions(+)
+ create mode 100644 scripts/qa_r742.txt
+ create mode 100644 scripts/qa_r742_close.txt
+ create mode 100644 scripts/qa_r742_lint.txt
+ create mode 100644 scripts/qa_r742_tsc.txt
+ create mode 100644 scripts/r742_close.sh
+ create mode 100644 scripts/r742_commitmsg.txt
+ create mode 100644 scripts/r742_qa.sh
+--- verify ---
+c7c687618 r742: watch round — ledger FROZEN at the r741 close state (79 rows · 25 runs · verdict 23 PASS 19/FAIL 4 · uncertain 15 · nj 41; ZERO new rows this slot, newest row still run_839b9ce75fae @21:12) — gate traffic went quiet; no third flicker sample (pattern candidate stays 2-of-4 slots), lane set unchanged at six entries, no re-store signal (verdict flat). Three watch signatures stay separable: flicker (judged +1/slot beside same-run nj), re-store (verdict growth accelerating), outage-quiet (frozen — this slot). Witness hygiene fourth slot running: ?r=742 opener matched the DB census BYTE-FOR-BYTE on the first eval (three-way agreement, zero scare rounds). Golden QA green (settings census/relay, radar frontier, paste-799, cron 1/1, console 0 errors); gates green (tsc 0, lint 0 errors / 33-warning baseline, qa-gate-census 48/48, qa-cortex-census 23/23); ZERO code delta — clean watch disposition per r741 handoff (named evaluation = first-try three-way agreement + fresh LD title witness, scripts/qa_r742.txt). Post-close tee sweep baked into the close chain (r722..r741 precedent).
+ M scripts/qa_r742_close.txt
+== r742 CLOSED ==
