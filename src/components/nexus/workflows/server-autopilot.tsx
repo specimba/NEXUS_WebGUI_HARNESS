@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUiStore, useWorkflowsStore } from "@/lib/stores";
 import { copyText } from "@/lib/helpers";
+import { apiJson } from "@/lib/api-fetch"; // r780: the death-window guard joins the autopilot card
 import {
   computeStaleRegistry,
   hasMemoizedTrail,
@@ -336,15 +337,22 @@ export function ServerAutopilot() {
   const [redactionHits, setRedactionHits] = React.useState(0);
   const poll = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/automation/sync", { cache: "no-store" });
-      if (res.ok) setState((await res.json()) as SyncState);
+      // r780: apiJson — the sync poll joins the death-window guard (an HTML
+      // 502 page can no longer be parsed on a later tick's happy path).
+      const { res, json } = await apiJson<SyncState>("/api/automation/sync", {
+        cache: "no-store",
+      });
+      if (res.ok) setState(json);
     } catch {
       /* local server briefly unreachable — retry next tick */
     }
     try {
-      const r = await fetch("/api/automation/redaction", { cache: "no-store" });
+      // r780: apiJson — the redaction telemetry read joins the guard.
+      const { res: r, json: j } = await apiJson<{ redaction?: { hits: number } }>(
+        "/api/automation/redaction",
+        { cache: "no-store" },
+      );
       if (r.ok) {
-        const j = (await r.json()) as { redaction?: { hits: number } };
         setRedactionHits(j.redaction?.hits ?? 0);
       }
     } catch {
@@ -376,8 +384,11 @@ export function ServerAutopilot() {
   // ── r497: Capability Radar poll + actions ──────────────────────────────────
   const pollRadar = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/radar/hourly", { cache: "no-store" });
-      if (res.ok) setRadar((await res.json()) as RadarState);
+      // r780: apiJson — the radar poll joins the guard.
+      const { res, json } = await apiJson<RadarState>("/api/radar/hourly", {
+        cache: "no-store",
+      });
+      if (res.ok) setRadar(json);
     } catch {
       /* local server briefly unreachable — retry next tick */
     }
@@ -402,8 +413,11 @@ export function ServerAutopilot() {
 
   const pollAutonomy = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/autonomy", { cache: "no-store" });
-      if (res.ok) setAutonomy((await res.json()) as AutonomyState);
+      // r780: apiJson — the autonomy poll joins the guard.
+      const { res, json } = await apiJson<AutonomyState>("/api/autonomy", {
+        cache: "no-store",
+      });
+      if (res.ok) setAutonomy(json);
     } catch {
       /* local server briefly unreachable — retry next tick */
     }
@@ -420,12 +434,17 @@ export function ServerAutopilot() {
   async function runCycleNow() {
     setCycleBusy(true);
     try {
-      const res = await fetch("/api/autonomy", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
-        body: JSON.stringify({ action: "cycle" }),
-      });
-      const json = (await res.json()) as AutonomyState & { alreadyRan?: boolean };
+      // r780: apiJson — the cycle POST joins the guard (the route is
+      // idempotent per 10-minute bucket server-side, so the one retry can
+      // never double-run — a repeat lands on alreadyRan).
+      const { res, json } = await apiJson<AutonomyState & { alreadyRan?: boolean }>(
+        "/api/autonomy",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+          body: JSON.stringify({ action: "cycle" }),
+        },
+      );
       if (json.ok) {
         setAutonomy(json);
         void pollAutonomy();
@@ -463,12 +482,13 @@ export function ServerAutopilot() {
     }
     setImportBusy(true);
     try {
-      const res = await fetch("/api/autonomy", {
+      // r780: apiJson — the enqueue POST joins the guard (server-side dedupe
+      // makes a retry harmless — duplicates are counted, never double-inserted).
+      const { res, json } = await apiJson<EnqueueCounts>("/api/autonomy", {
         method: "POST",
         headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
         body: JSON.stringify({ action: "enqueue", urls }),
       });
-      const json = (await res.json()) as EnqueueCounts;
       if (json.ok) {
         const line = `last import: +${json.inserted} queued · ${json.duplicates} duplicate${json.duplicates === 1 ? "" : "s"} · ${json.invalid} invalid${json.capped ? " · capped at 500 rows" : ""}`;
         setImportSummary(line);
@@ -499,8 +519,11 @@ export function ServerAutopilot() {
   async function checkNow() {
     setRadarBusy(true);
     try {
-      const res = await fetch("/api/radar/hourly", { method: "POST" });
-      const json = (await res.json()) as RadarState;
+      // r780: apiJson — the capability check joins the guard (same-hour
+      // re-checks are idempotent server-side, so the one retry is safe).
+      const { res, json } = await apiJson<RadarState>("/api/radar/hourly", {
+        method: "POST",
+      });
       if (json.ok) {
         setRadar(json);
         const n = json.latest?.findings.length ?? 0;
@@ -531,12 +554,18 @@ export function ServerAutopilot() {
   async function runNow(id: string, name: string) {
     setBusy(id);
     try {
-      const res = await fetch("/api/automation/run-now", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workflowId: id }),
-      });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
+      // r780: apiJson with retries 0 — run-now queues a real run, so the
+      // auto-retry must NOT fire (not idempotent); the guard still turns an
+      // HTML death-window page into an honest error instead of parse noise.
+      const { res, json } = await apiJson<{ ok?: boolean; error?: string }>(
+        "/api/automation/run-now",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workflowId: id }),
+        },
+        { retries: 0 },
+      );
       if (json.ok) {
         toast.success("Queued on the local server", {
           // r592: the old copy promised an unconditional 30s pickup, but the
@@ -560,6 +589,12 @@ export function ServerAutopilot() {
               : json.error ?? "unknown error",
         });
       }
+    } catch (e) {
+      // r780: the missing catch — a network failure here used to escape as an
+      // unhandled rejection with no user word; now it names the situation.
+      toast.error("Run-now failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setBusy(null);
     }
@@ -955,12 +990,14 @@ export function ServerAutopilot() {
                     {plan ? ` at step ${plan.step}/${plan.total}` : " at the failed step"}
                   </button>
                 ) : null}
+                {/* r780: keyboard parity with the amber resume button beside it — the run-now
+                    control gets the same visible focus ring (the r777 keyboard-bridge doctrine). */}
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={busy === r.id}
                   onClick={() => void runNow(r.id, r.name)}
-                  className="ml-auto h-6 gap-1 border-sky-500/30 px-1.5 text-[10px] text-sky-300/90 transition-colors hover:bg-sky-500/10 hover:text-sky-200"
+                  className="ml-auto h-6 gap-1 border-sky-500/30 px-1.5 text-[10px] text-sky-300/90 transition-colors hover:bg-sky-500/10 hover:text-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                   title="Fire this pipeline on the local server now (headless lane)"
                 >
                   <Server className="h-3 w-3" aria-hidden />
