@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main e5f1ed84f] r779: the apiJson long tail closed - all 11 remaining unguarded fetch sites on the three Owner-reported cards converted to the death-window guard (vault: backup export GET, restore POST, providers/recheck, slot DELETE, verify consume 404-preserved, test-dial 400-preserved, reveal consume; egress: cached token preview, status+token Promise.all refresh reads, routing read, probe read). tsc caught the one real conversion bug pre-commit (revealSlot duplicate declaration). Styling polish: the export-plaintext textarea arms visibly with an amber focus ring + selection wash on the clipboard-blocked fallback. Wave 17 witnessed mid-round via the rendered tally 43/162/124. Snapshot discipline thirty-fifth close.
+ 10 files changed, 408 insertions(+), 67 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T10-43-16.json
+ create mode 100644 scripts/patch_r779_close.py
+ create mode 100644 scripts/qa_r779.txt
+ create mode 100644 scripts/qa_r779_close.txt
+ create mode 100644 scripts/r779_close.sh
+ create mode 100644 scripts/r779_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   8b25e3304..e5f1ed84f  main -> main
+To https://github.com/specimba/PraisonAI.git
+   8b25e3304..e5f1ed84f  main -> main
