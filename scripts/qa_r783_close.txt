@@ -1,0 +1,1 @@
+GUARD qa - no GREEN marker; no-ship-on-red
