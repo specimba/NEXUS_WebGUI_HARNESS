@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":2}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main a33339a85] r766: per-run route letters ship + wave 9 leans qwen. Census 129/34/21/15/93 vs the r765 baseline 126/33/90 - +3 ev / +1 run / +3 nj, newest ~02:02:18 UTC, ~57 min after wave 8 (back inside the band); verdict/uncertain flat eight waves. Live tier-state read: bucket 10-30 02:00 letter q - a THIRD straight qwen wave (00:03, 01:05, 02:02): the wave-by-wave alternation era is over, the relay leans toward the free routes. Increment: laneRunLetterOf (same tried-trace extraction as laneCountsOf + laneTierOf per run; q/g/m, an m run = the both-routes investigate signal) rendering on every corpus run pill - acceptance witnessed live: 34 pills, tails evq/evq/evq/evg/evg, the run list is now the wave-route history (handoff candidate (a) builtin-box refactor deferred: pure refactor, Owner-ask gated). Snapshot discipline twenty-second close.
+ 9 files changed, 343 insertions(+), 1 deletion(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T02-14-14.json
+ create mode 100644 scripts/qa_r766.txt
+ create mode 100644 scripts/qa_r766_close.txt
+ create mode 100644 scripts/r766_close.sh
+ create mode 100644 scripts/r766_prose.py
+ create mode 100644 scripts/r766_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   fbcb161d7..a33339a85  main -> main
+To https://github.com/specimba/PraisonAI.git
+   fbcb161d7..a33339a85  main -> main
