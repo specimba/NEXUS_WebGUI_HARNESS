@@ -319,6 +319,33 @@ function laneCountsOf(corpus: { rows: { note: string }[] }[]): Record<string, nu
   return counts;
 }
 
+/** r766: per-run route letter - which middle-tier routes a single run
+ * touched, from the same verbatim tried-trace extraction laneCountsOf
+ * uses, classified by the same laneTierOf heuristic (q = qwen-only,
+ * g = glm-only, m = both). Shown on the corpus run cards: during the
+ * alternation era the run list itself becomes the wave-route history,
+ * and an m run = a genuine both-routes run (investigate signal). */
+function laneRunLetterOf(rows: { note: string }[]): string {
+  let q = 0;
+  let g = 0;
+  for (const row of rows) {
+    const c = gateCensusOf([{ note: row.note }]);
+    if (c.noJudge <= 0) continue;
+    const re = /(?:tried:|;)\s*([^—;]+?)\s*—/g;
+    let m: RegExpExecArray | null = re.exec(row.note || "");
+    while (m) {
+      const tier = laneTierOf(m[1].trim());
+      if (tier === "middle · qwen route") q += 1;
+      else if (tier === "middle · glm route") g += 1;
+      m = re.exec(row.note || "");
+    }
+  }
+  if (q > 0 && g > 0) return "m";
+  if (q > 0) return "q";
+  if (g > 0) return "g";
+  return "";
+}
+
 /** r755: WHEN each lane was first seen - the same verbatim tried-trace
  * scan as laneCountsOf, but tracking the earliest row timestamp naming
  * each lane (UTC): on a growth wave, first-seen spread across lanes
@@ -2456,6 +2483,14 @@ export function RunKanban({
                 <CorpusRunChip rows={rows} tabbable={false} />
                 <code className="font-mono">{runId.length > 20 ? runId.slice(0, 20) + "…" : runId}</code>
                 <span className="tabular-nums">{rows.length} ev</span>
+                {laneRunLetterOf(rows) ? (
+                  <span
+                    className="font-medium text-foreground/70"
+                    title={"run route letter (r766): which middle-tier routes this run touched - q = qwen-only, g = glm-only, m = both (an m run is the investigate signal)"}
+                  >
+                    {laneRunLetterOf(rows)}
+                  </span>
+                ) : null}
                 <ChevronDown
                   className={cn("h-3 w-3 shrink-0 transition-transform", openCorpusRun === runId && "rotate-180")}
                   aria-hidden
