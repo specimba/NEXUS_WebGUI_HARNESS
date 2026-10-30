@@ -14,3 +14,12 @@ divergence: "{\"divBadges\":5}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main d5cd227a9] r783: the fetch long tail completed across the eight named files - 11 apiJson conversions with per-site judgments (workflows-view evals glance + vault readiness reads; automation-bridge heartbeat sync POST, a full-snapshot upsert so the default retry is safe; workflow-scheduler pulse read with the 3s timeout signal passing through; gateway-pulse-chip refresh read; archived-reports list + detail reads; strategy-card poll read + actions POST at retries 0 since action=create inserts, the run-now doctrine, + the briefing read LEFT raw with the judgment annotated - a plain-text route the apiJson JSON contract does not apply to; agents-view + agent-form-dialog registry reads with the abort signal passing through) + the band docs seventeenth point at all four on-page sites (wave 18 = 58, bucket 10:00 to 11:00 maxes, quoted rendered from the r780 close probes per the r775 record-forward convention; the quiet-half band string brought level) + the rescue-lane cursor-help polish (the r776 title-carrier convention). Snapshot discipline thirty-seventh close.
+ 10 files changed, 272 insertions(+), 24 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T14-11-03.json
+ create mode 100644 scripts/patch_r783.py
+ create mode 100644 scripts/qa_r783.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   0eb0755b0..d5cd227a9  main -> main
+To https://github.com/specimba/PraisonAI.git
+   0eb0755b0..d5cd227a9  main -> main
