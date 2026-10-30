@@ -603,7 +603,7 @@ export function FrontierScoutTab() {
             const traction =
               item.kind === "repo" ? `${item.stars ?? 0}★` : `${item.upvotes ?? 0}▲`;
             return (
-              <Card key={item.id} className="flex flex-col gap-2.5 p-4">
+              <Card key={item.id} className="cv-auto flex flex-col gap-2.5 p-4">
                 {/* Verdict row */}
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span

@@ -415,7 +415,18 @@ export function AutomationVaultCard() {
     ...ACQUISITION_PROVIDERS.filter(
       (p) =>
         settings.providerKeys?.[p.id]?.key?.trim() &&
-        !slots.some((s) => s.provider === p.id),
+        !slots.some((s) => s.provider === p.id) &&
+        // r791: exa lives in BOTH registries (the providers.ts FREE_PROVIDERS
+        // row + this acquisition registry) — the FREE_PROVIDERS spread above
+        // already carries it whenever a browser key exists, so an unguarded
+        // second entry here rendered TWO children with key "exa" in the
+        // mirror strip (the Owner-reported console warning). React may
+        // DUPLICATE children on re-renders with non-unique keys — with the
+        // 15s lane-snapshot re-render that grows the DOM without bound (the
+        // Chrome-freeze mechanism the Owner reported the same day).
+        // Registry-only ids (brightdata, webshare) still need this spread:
+        // providerById keeps the overlap out without losing them.
+        !providerById(p.id),
     ).map((p) => ({ id: p.id, name: p.label })),
   ];
 

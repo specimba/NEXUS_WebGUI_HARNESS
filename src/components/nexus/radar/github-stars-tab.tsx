@@ -315,7 +315,7 @@ function GitHubStarsTab() {
                     const dot = repo.language ? LANGUAGE_DOTS[repo.language] : undefined;
                     const topics = (repo.topics ?? []).slice(0, 4);
                     return (
-                      <Card key={repo.id} className="card-lift flex flex-col gap-2 p-4">
+                      <Card key={repo.id} className="card-lift cv-auto flex flex-col gap-2 p-4">
                         <div className="flex items-start justify-between gap-2">
                           <a
                             href={repo.html_url}

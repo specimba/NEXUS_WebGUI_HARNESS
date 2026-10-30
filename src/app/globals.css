@@ -552,3 +552,16 @@
        focus-visible:outline-none focus-visible:ring-2
        focus-visible:ring-violet-500/40 focus-visible:ring-offset-1
        focus-visible:ring-offset-background ──────────────────────────────── */
+
+/* ─── r791: render-cost containment for long card lists. content-visibility:
+       auto lets the browser skip layout+paint of offscreen cards (Chrome 85+,
+       Safari 18+, Firefox 125+) — the commit cost of the heavy Radar grids
+       (Frontier / Papers / GitHub, 30-100 cards each) drops to the visible
+       subset, the client half of the freeze-watch fix (the server half is
+       scripts/mem-guard.sh, the pre-OOM graceful-restart watchdog).
+       contain-intrinsic-size keeps the scrollbar honest; the DOM stays
+       complete so census/probe queries are unaffected. ──────────────────── */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}

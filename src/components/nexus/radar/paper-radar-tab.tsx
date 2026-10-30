@@ -254,7 +254,7 @@ export function PaperRadarTab() {
           ) : (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {cache.papers.map((paper) => (
-                <Card key={paper.id} className="card-lift flex flex-col gap-2 p-4">
+                <Card key={paper.id} className="card-lift cv-auto flex flex-col gap-2 p-4">
                   <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
                     {paper.title}
                   </h3>
