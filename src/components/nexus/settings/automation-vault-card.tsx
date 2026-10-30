@@ -157,11 +157,7 @@ export function AutomationVaultCard() {
       // cache:"no-store" (r218): this endpoint's answer must never come from
       // the browser's HTTP cache — a cached empty vault rendered a LIE
       // ("no key stored") while the DB held the row.
-      const res = await fetch("/api/vault", {
-        cache: "no-store",
-        headers: { "x-nexus-csrf": "1" },
-      });
-      const json = (await res.json()) as {
+      const { res, json } = await apiJson<{
         vault?: VaultSlot[];
         acquisition?: {
           provider: string;
@@ -170,7 +166,10 @@ export function AutomationVaultCard() {
           source: "vault" | "env" | null;
         }[];
         error?: string;
-      };
+      }>("/api/vault", {
+        cache: "no-store",
+        headers: { "x-nexus-csrf": "1" },
+      });
       // r413: a 500 answer carries vault:[] + error — swallowing res.ok would
       // render "no key stored" over a read that never succeeded (r411 class).
       // Keep last known slots on screen (r219 no-flicker) but flag the read.
