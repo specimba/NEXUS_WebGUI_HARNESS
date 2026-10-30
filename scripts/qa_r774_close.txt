@@ -9,3 +9,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 6e5693e94] r774: wave 13 witnessed and recorded forward - the 06:15 bucket (x1 q, 5 lanes) broke the post-burst lull at +73m since prior (band 13/16/41/58/13/42/62/57/61/70/6/73, past the old 70 max; the 62-ceiling amber fired mid-lull unwitnessed - inferred, disclosed in the quiet title); the fresh lean run starts q x1 (qwen back 1/2, glm still 0/2 across the window - the GLM-SILENT watch opens); BOTH-SILENT carry cleared; verdicts grew again (23). Increment: the r773 named-lane chip lists now carry per-lane dial counts (lane xN); the band docs carry /6/73 at all four sites. Styling polish: cursor-help on the wave-strip container, census tally and tier-state titles. Snapshot discipline thirtieth close.
+ 10 files changed, 399 insertions(+), 9 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T07-14-07.json
+ create mode 100644 scripts/qa_r774.txt
+ create mode 100644 scripts/qa_r774_close.txt
+ create mode 100644 scripts/r774_close.sh
+ create mode 100644 scripts/r774_patch_close.py
+ create mode 100644 scripts/r774_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   486ada03d..6e5693e94  main -> main
+To https://github.com/specimba/PraisonAI.git
+   486ada03d..6e5693e94  main -> main
