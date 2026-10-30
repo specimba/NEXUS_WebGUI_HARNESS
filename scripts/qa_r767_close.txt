@@ -10,3 +10,15 @@ lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
     L.append('- R3 increment (run-kanban.tsx): laneLean memo inserted after laneTiers - a trailing-run read over the wave-strip route letters within the shown strip window (last 6 corpus buckets, newest backward; an absent letter - a bucket without middle-tier rows - breaks the run, window caps it at 6); run >= 2 renders the lean tag in the corpus tier-state line (' q-lean ×N — ' style, font-medium text-foreground/70 matching the strip letters, own title documenting semantics), and the tier-state title gains the lean sentence. Three-edit MultiEdit verified in the returned diff (r760/r762 marker-verify discipline honored).')
                                                                                                                                                                                                                                                                                                                                                                                         ^
 SyntaxError: invalid character '×' (U+00D7)
+[main 8bbd01ffc] r767: qwen-lean counter ships + quiet open. Census flat at 129/34/21/15/93 vs the r766 close - no wave 10 at open (~35 min quiet, newest ~02:02:18 UTC, inside the band); verdict/uncertain flat ninth wave. Increment: laneLean - a trailing-run read over the wave-strip route letters (shown window, newest backward, absent letter breaks the run); run >= 2 renders the lean tag in the corpus tier-state line (q-lean ×N, font-medium text-foreground/70, own title) and the title gains the lean sentence - the r766 relay-lean watch is now an on-page read, carried live by the recorded tier-state probe (styling polish: the tag matches the strip-letter treatment). Snapshot discipline twenty-third close.
+ 8 files changed, 347 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T02-52-33.json
+ create mode 100644 scripts/qa_r767.txt
+ create mode 100644 scripts/qa_r767_close.txt
+ create mode 100644 scripts/r767_close.sh
+ create mode 100644 scripts/r767_prose.py
+ create mode 100644 scripts/r767_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   490adc44d..8bbd01ffc  main -> main
+To https://github.com/specimba/PraisonAI.git
+   490adc44d..8bbd01ffc  main -> main
