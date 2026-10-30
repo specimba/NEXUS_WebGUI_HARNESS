@@ -14,3 +14,16 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 849ac43c9] r791: THE OWNER BUG ROUND - the exa duplicate-key fix (exa lived in BOTH the FREE_PROVIDERS spread and the acquisition-registry candidates; with a browser exa key saved and no exa slot yet the vault mirror strip rendered two children with the same key exa - the !providerById guard makes the two candidate sources provably disjoint, registry-only ids brightdata/webshare kept) + the freeze watch in two halves (client: the cv-auto class, content-visibility auto + contain-intrinsic-size, on the Frontier / GitHub Stars / Papers card grids so offscreen cards skip layout+paint while the DOM stays complete for probes; server: scripts/mem-guard.sh the pre-OOM graceful-restart watchdog - RSS threshold 1.70 GB fires the canonical dev-restart.sh BEFORE the kernel killer, dead-server revive after two failed probes, 300s cooldown, flock single-instance, launched session-detached after the close) + the r791 quiet-pass witness at the four on-page sites (no new bucket by the 22:34 UTC witness, the quiet rendered +208m - PAST the 122 band max, the longest zero-growth stretch on record, the genuine cadence break, the amber past-ceiling regime four witnesses deep +67/+99/+122/+208m). QA green (adopted mid-flight marker) + gates first-try (tsc 0, lint 0 errors / 33 warnings); snapshot discipline forty-sixth close.
+ 15 files changed, 412 insertions(+), 7 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T22-46-42.json
+ create mode 100644 scripts/mem-guard.sh
+ create mode 100644 scripts/patch_r791_close.py
+ create mode 100644 scripts/qa_r791.txt
+ create mode 100644 scripts/qa_r791_close.txt
+ create mode 100644 scripts/r791_close.sh
+ create mode 100644 scripts/r791_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   df43b934b..849ac43c9  main -> main
+To https://github.com/specimba/PraisonAI.git
+   df43b934b..849ac43c9  main -> main
