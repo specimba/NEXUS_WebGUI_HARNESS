@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 953264f61] r770: burst-end witnessed + the quiet meter goes live. Census flat 133/35/21/15/97 at open with quiet 64m - PAST the ~62 ceiling of the recorded band (13-42-62-57-61): the burst-end signal condition first met on-page; verdict/uncertain flat eleventh wave; lean CEMENTED q x4 held. Increment: the quiet meter goes live - a 30s tick keeps the staleness readout honest while the board is open, and past the QUIET_CEILING (62, the recorded band max) the quiet tag takes the house amber signal tone (text-amber-600 dark:text-amber-400, divergence-diamond convention, a witness not a fault); the tier-state probe gains a quietAmber class read - the burst-end witness as a probe witness. Close heredoc rebuilt by block replacement with a compile() pre-flight (the r767/r769 wrapper lessons). Snapshot discipline twenty-sixth close.
+ 9 files changed, 388 insertions(+), 6 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T04-16-32.json
+ create mode 100644 scripts/qa_r770.txt
+ create mode 100644 scripts/qa_r770_close.txt
+ create mode 100644 scripts/r770_close.sh
+ create mode 100644 scripts/r770_close_build.py
+ create mode 100644 scripts/r770_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   8811b25cb..953264f61  main -> main
+To https://github.com/specimba/PraisonAI.git
+   8811b25cb..953264f61  main -> main
