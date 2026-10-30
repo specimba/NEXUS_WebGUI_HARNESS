@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 2ff39f2ca] r780: the band docs updated to sixteen points at all four on-page sites (wave 17 = 57, bucket 09:00 to 10:00 maxes, quoted rendered per the r775 convention) + the fetch long tail advanced one full card: server-autopilot.tsx, all 8 sites converted to the apiJson death-window guard with per-site idempotence judgments (polls = reads; cycle retry-safe via the 10-minute-bucket route idempotence; enqueue retry-safe via server-side dedupe; capability check retry-safe via same-hour idempotence; run-now at retries 0 - queues a real run, the auto-retry must not fire) + the run-now missing-catch bug fixed (network failures toasted honestly instead of escaping as unhandled rejections) + the run-on-server button focus ring (keyboard parity with the amber resume button). Gates caught the attribute-position JSX comment (TS1005) pre-commit. Snapshot discipline thirty-sixth close.
+ 10 files changed, 375 insertions(+), 28 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T11-12-02.json
+ create mode 100644 scripts/patch_r780_close.py
+ create mode 100644 scripts/qa_r780.txt
+ create mode 100644 scripts/qa_r780_close.txt
+ create mode 100644 scripts/r780_close.sh
+ create mode 100644 scripts/r780_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   27d1747aa..2ff39f2ca  main -> main
+To https://github.com/specimba/PraisonAI.git
+   27d1747aa..2ff39f2ca  main -> main
