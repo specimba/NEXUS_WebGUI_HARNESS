@@ -143,6 +143,8 @@ function FleetChip() {
         // (tsc TS1005, witnessed this round).
         return json as {
           registry?: { jobs?: Array<{ kind?: string; enabled?: boolean; schedule?: { expr?: unknown } }> };
+          heartbeat?: { last?: Array<string> };
+          cli?: { available?: boolean };
         };
       })
       .then((d) => {
