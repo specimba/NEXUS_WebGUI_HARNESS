@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
+import { apiJson } from "@/lib/api-fetch"; // r781: the death-window guard
 import { ServerAutopilot } from "@/components/nexus/workflows/server-autopilot";
 import { StrategyCard } from "@/components/nexus/workflows/strategy-card";
 import { GatewayPulse } from "@/components/nexus/workflows/gateway-pulse-chip";
@@ -1548,9 +1549,13 @@ export function WorkflowsView() {
     let stopped = false;
     const load = async () => {
       try {
-        const res = await fetch("/api/evals");
+        // r781: apiJson death-window guard — an OOM-window HTML 502 page can
+        // no longer parse-throw here; the glance read is idempotent so the
+        // one retry self-heals instead of waiting for the next mount.
+        const { res, json } = await apiJson<{
+          runs?: Array<{ runId?: string }>;
+        }>("/api/evals");
         if (!res.ok) return;
-        const json = (await res.json()) as { runs?: Array<{ runId?: string }> };
         if (!stopped && Array.isArray(json.runs)) {
           setCorpusRuns(
             new Set(json.runs.map((r) => r.runId).filter(Boolean)).size
@@ -1661,9 +1666,13 @@ export function WorkflowsView() {
   React.useEffect(() => {
     if (activeSchedules === 0) return;
     let alive = true;
-    fetch("/api/vault", { headers: { "x-nexus-csrf": "1" } })
-      .then((r) => r.json())
-      .then((j: { vault?: { provider: string }[] }) => {
+    // r781: apiJson guard — the masked readiness read is idempotent; a
+    // death-window HTML page raises into the catch (show nothing) instead
+    // of parse-throwing the same way.
+    apiJson<{ vault?: { provider: string }[] }>("/api/vault", {
+      headers: { "x-nexus-csrf": "1" },
+    })
+      .then(({ json: j }) => {
         if (alive)
           setBuiltinVaultReady(
             Array.isArray(j.vault) && j.vault.some((s) => s.provider === "builtin")

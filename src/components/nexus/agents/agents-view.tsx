@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Copy, Download, FlaskConical, MoreVertical, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
+import { apiJson } from "@/lib/api-fetch"; // r781: the death-window guard
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -159,8 +160,14 @@ let packsInflight: Promise<PacksData | null> | null = null;
 
 function fetchPacks(): Promise<PacksData | null> {
   if (packsInflight) return packsInflight;
-  packsInflight = fetch("/api/tools/registry")
-    .then((r) => (r.ok ? r.json() : null))
+  // r781: apiJson guard — the registry read is idempotent; a death-window
+  // HTML page lands in the fail-quiet catch (null) instead of parse noise,
+  // and one retry self-heals a blip inside the same inflight window.
+  packsInflight = apiJson<{
+    packs?: PacksData["packs"];
+    invalid?: PacksData["invalid"];
+  }>("/api/tools/registry")
+    .then(({ res, json: j }) => (res.ok ? j : null))
     .then((j) => {
       if (j && Array.isArray(j.packs)) {
         packsCache = { packs: j.packs, invalid: j.invalid ?? [], checkedAt: Date.now() };

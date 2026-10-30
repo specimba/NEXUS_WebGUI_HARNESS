@@ -13,6 +13,7 @@ import * as React from "react";
 import { Archive, ChevronDown, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { apiJson } from "@/lib/api-fetch"; // r781: the death-window guard
 import {
   Collapsible,
   CollapsibleContent,
@@ -78,10 +79,13 @@ export function ArchivedReports({ workflowId }: ArchivedReportsProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/runs/archive?workflowId=${encodeURIComponent(workflowId)}&limit=50`
-      );
-      const json = (await res.json()) as { reports?: ArchiveMeta[]; error?: string };
+      // r781: apiJson guard — the list read is idempotent; a death-window
+      // HTML page surfaces the honest ApiError message in the pane instead
+      // of raw parse noise (the detail read below likewise).
+      const { res, json } = await apiJson<{
+        reports?: ArchiveMeta[];
+        error?: string;
+      }>(`/api/runs/archive?workflowId=${encodeURIComponent(workflowId)}&limit=50`);
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setReports(json.reports ?? []);
     } catch (err) {
@@ -111,8 +115,11 @@ export function ArchivedReports({ workflowId }: ArchivedReportsProps) {
       setDetailSteps(null);
       setDetailLoading(true);
       try {
-        const res = await fetch(`/api/runs/archive?runId=${encodeURIComponent(id)}`);
-        const json = (await res.json()) as { report?: { steps?: ArchiveStep[] }; error?: string };
+        // r781: apiJson guard (idempotent read) — see the list read above.
+        const { res, json } = await apiJson<{
+          report?: { steps?: ArchiveStep[] };
+          error?: string;
+        }>(`/api/runs/archive?runId=${encodeURIComponent(id)}`);
         if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
         setDetailSteps(json.report?.steps ?? []);
       } catch {

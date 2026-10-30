@@ -4,6 +4,7 @@ import * as React from "react";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtRel } from "@/lib/helpers";
+import { apiJson } from "@/lib/api-fetch"; // r781: the death-window guard
 import { providerById } from "@/lib/providers";
 
 // ─── Gateway pulse chip (r161) ───────────────────────────────────────────────
@@ -45,8 +46,13 @@ export function GatewayPulse() {
   const fetchPulse = React.useCallback(async () => {
     setBusy(true);
     try {
-      const res = await fetch("/api/gateway/pulse", { cache: "no-store" });
-      if (res.ok) setPulse({ ...(await res.json()) as Pulse, at: Date.now() });
+      // r781: apiJson guard — the explicit refresh read is idempotent; a
+      // death-window HTML page raises into the silent catch (previous state
+      // kept) instead of parse noise, and one retry self-heals a blip.
+      const { res, json } = await apiJson<Pulse>("/api/gateway/pulse", {
+        cache: "no-store",
+      });
+      if (res.ok) setPulse({ ...json, at: Date.now() });
     } catch {
       /* server briefly down — keep the previous (or empty) state silently */
     } finally {
@@ -130,7 +136,9 @@ export function GatewayPulse() {
       {rescue && rescueLive && (
         <span
           title={`Rescue lane — the server lane's positive rotation memory (r437/r438): this lane finished a FULL successful call on a recent congested dial, so the next fallback walk LEADS with it while it stays live (15m TTL, refreshed on each success, cleared the moment it fails).\n\nServer lane only — a browser tab's engine keeps its own rescue memory, invisible here.`}
-          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+          // r781 polish: the rich rescue tooltip deserves the help cursor —
+          // the r776 title-carrier convention (cursor-help + transition).
+          className="inline-flex w-fit cursor-help items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 transition-colors dark:text-emerald-400"
         >
           <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           rescue lane · {rescueLabel} · {rescueMin}m left

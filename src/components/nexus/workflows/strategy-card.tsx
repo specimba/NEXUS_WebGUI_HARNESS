@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { apiJson } from "@/lib/api-fetch"; // r781: the death-window guard
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,8 +113,12 @@ export function StrategyCard() {
 
   const load = React.useCallback(async () => {
     try {
-      const r = await fetch("/api/strategy", { cache: "no-store" });
-      const j = (await r.json()) as StrategyPayload;
+      // r781: apiJson guard — the 45s poll is an idempotent read; a
+      // death-window HTML page raises into the poll catch (next tick
+      // recovers) instead of parse noise.
+      const { json: j } = await apiJson<StrategyPayload>("/api/strategy", {
+        cache: "no-store",
+      });
       if (j.ok) setData(j);
     } catch {
       /* poll — the next tick recovers */
@@ -130,13 +135,22 @@ export function StrategyCard() {
     async (body: Record<string, unknown>, label: string) => {
       setBusy(label);
       try {
-        const r = await fetch("/api/strategy", {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
-          body: JSON.stringify(body),
-        });
-        const j = (await r.json()) as StrategyPayload & { seedsInserted?: number; radarAdded?: number; seedsSkipped?: number };
-        if (!j.ok) throw new Error(j.error ?? `http ${r.status}`);
+        // r781: apiJson guard at retries 0 — action=create INSERTs a real
+        // strategy row, so the auto-retry must not fire (the run-now
+        // doctrine); the guard still turns a death-window HTML page into
+        // the honest toasted error instead of parse noise.
+        const { res, json: j } = await apiJson<
+          StrategyPayload & { seedsInserted?: number; radarAdded?: number; seedsSkipped?: number }
+        >(
+          "/api/strategy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+            body: JSON.stringify(body),
+          },
+          { retries: 0 }
+        );
+        if (!j.ok) throw new Error(j.error ?? `http ${res.status}`);
         if (body.action === "sync") {
           toast.success(
             `Strategy synced — +${j.seedsInserted ?? 0} seeds (+${j.radarAdded ?? 0} radar tryables, ${j.seedsSkipped ?? 0} already present)`,
@@ -157,6 +171,9 @@ export function StrategyCard() {
   const openBriefing = React.useCallback(async () => {
     setBusy("briefing");
     try {
+      // r781 judgment: left as raw fetch — the briefing route answers plain
+      // text, not JSON, so apiJson's content-type contract does not apply;
+      // the catch already toasts honestly (cosmetic display, best-effort).
       const r = await fetch("/api/briefing", { cache: "no-store" });
       setBriefing(await r.text());
       setBriefingOpen(true);

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useWorkflowsStore } from "@/lib/stores";
 import { executeWorkflowRun, isWorkflowRunning } from "@/lib/workflow-runner";
 import { closeScheduleDeferral, noteScheduleDeferred } from "@/lib/schedule-skips";
+import { apiJson } from "@/lib/api-fetch"; // r781: the death-window guard
 import {
   gatewayQuietUntil,
   gatewaySaturated,
@@ -57,13 +58,16 @@ let lastSatToastAt = 0;
 async function readPulse(): Promise<SaturationSignal | null> {
   if (pulseCache && Date.now() - pulseCache.at < PULSE_TTL_MS) return pulseCache.sig;
   if (!pulseFetching) {
-    pulseFetching = fetch("/api/gateway/pulse", {
+    // r781: apiJson guard — the pulse read is idempotent; a death-window
+    // HTML page raises ApiError into the fail-open catch (null, no cache)
+    // instead of parse-throwing the same way. The 3s timeout signal passes
+    // through untouched (an abort/timeout is rethrown as-is, not retried).
+    pulseFetching = apiJson<SaturationSignal>("/api/gateway/pulse", {
       cache: "no-store",
       signal: AbortSignal.timeout(PULSE_TIMEOUT_MS),
     })
-      .then(async (r) => {
-        if (!r.ok) return null;
-        const sig = (await r.json()) as SaturationSignal;
+      .then(async ({ res, json: sig }) => {
+        if (!res.ok) return null;
         // Shape guard — an error-shaped body must not be cached as signal.
         if (typeof sig?.last429At !== "number" && sig?.last429At !== null) return null;
         if (typeof sig?.count1h !== "number") return null;

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { apiJson } from "@/lib/api-fetch"; // r781: the death-window guard
 import {
   Dialog,
   DialogContent,
@@ -196,8 +197,14 @@ export function AgentFormDialog({
   React.useEffect(() => {
     if (!open) return;
     const ctl = new AbortController();
-    fetch("/api/tools/registry", { signal: ctl.signal })
-      .then((res) => (res.ok ? res.json() : null))
+    // r781: apiJson guard — the optional registry read is idempotent; a
+    // death-window HTML page lands in the fail-quiet catch instead of parse
+    // noise. The unmount abort signal passes through untouched (an abort is
+    // rethrown as-is, not retried).
+    apiJson<{
+      packs?: { name: string; tools?: { name: string; base: string; description: string }[] }[];
+    }>("/api/tools/registry", { signal: ctl.signal })
+      .then(({ res, json }) => (res.ok ? json : null))
       .then(
         (
           data:

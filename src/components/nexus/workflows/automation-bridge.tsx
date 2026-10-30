@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useAgentsStore, useWorkflowsStore } from "@/lib/stores";
+import { apiJson } from "@/lib/api-fetch"; // r781: the death-window guard
 
 // ─── v20: Automation bridge (global) ─────────────────────────────────────────
 // Mounted once at the app root. Every 60s it heartbeats the local server and
@@ -61,7 +62,12 @@ export function AutomationBridge() {
 
     const sync = async () => {
       try {
-        const res = await fetch("/api/automation/sync", {
+        // r781: apiJson guard — the sync POST is a full-snapshot upsert (a
+        // repeat lands the same registration the next 60s heartbeat would),
+        // so the default one retry is safe; an OOM-window HTML page now
+        // raises ApiError into the heartbeat catch instead of feeding raw
+        // page text to the warn line.
+        const { res } = await apiJson("/api/automation/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ workflows: buildPayload() }),
