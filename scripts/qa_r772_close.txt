@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 813f8af98] r772: wave 12 handled - verdict growth (21 -> 22, the first after the eleven-wave 21/15 flat), a TENTH lane label (fast-judge OrcaRouter · google/gemini-3.8-flash, a provider-level re-route witness), the q x5 lean run broken by a letterless 05:00 bucket, and the BOTH-SILENT newest bucket (0/2 and 0/2) investigated with the bound disclosed (the letterless chip title carries the one-instant span, no lane names - doc debt queued). Increment: the band docs record the witnessed +6m restart (13/16/41/58/13/42/62/57/61/70/6) and silent lanes now name themselves inline after the tier count - the both-silent board reads without opening the chips; styling polish: cursor-help on the titled auto-digest and deep-skipped badges. Snapshot discipline twenty-eighth close.
+ 9 files changed, 387 insertions(+), 5 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T05-17-57.json
+ create mode 100644 scripts/qa_r772.txt
+ create mode 100644 scripts/qa_r772_close.txt
+ create mode 100644 scripts/r772_close.sh
+ create mode 100644 scripts/r772_close_build.py
+ create mode 100644 scripts/r772_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   981387d22..813f8af98  main -> main
+To https://github.com/specimba/PraisonAI.git
+   981387d22..813f8af98  main -> main
