@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 525c262e3] r793: THE CAP REVERSE-GEAR ROUND - the corpus cap gains its collapse affordance (the r792 Show-all lift was one-way until reload; a violet-hover Collapse to newest 24 button now renders whenever the cap is lifted unfiltered above the cap, live-verified: 59 pills lifted -> 25 after collapse with the 24 of 58 shown chip and the +34 older footer restored) + the QA-probe honesty fix (the r792 cap silently changed the golden-QA board witness: the chips figure counted rendered pills 26 where it historically read the whole corpus; the probe now reports chips + corpusPills + cap explicitly - the r227 truth class restored, board: chips 26 / corpusPills 58 / cap 24) + the r793 quiet continuation at the four on-page sites (no new bucket by the 23:40 UTC witness, quiet +273m - the break deepens again past the r792 +245m reading, the amber regime six witnesses deep +67/+99/+122/+208/+245/+273m; the census backfilled +2 runs / +14 ev into older slots). QA green first-try + gates first-try (tsc 0, lint 0 errors / 33 warnings); snapshot forty-eighth.
+ 9 files changed, 320 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T23-43-59.json
+ create mode 100644 scripts/patch_r793_close.py
+ create mode 100644 scripts/qa_r793.txt
+ create mode 100644 scripts/qa_r793_close.txt
+ create mode 100644 scripts/r793_close.sh
+ create mode 100644 scripts/r793_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   737f5e5b3..525c262e3  main -> main
+To https://github.com/specimba/PraisonAI.git
+   737f5e5b3..525c262e3  main -> main
