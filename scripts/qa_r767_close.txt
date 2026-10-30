@@ -1,0 +1,12 @@
+chip: "{\"chip\":true,\"text\":\"⧉ 34 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":41,\"label\":\"lanes tried (93 no-judge)bucket 10-30 02:00 · q —  q-lean ×3 — mid·qwen route ACTIVE (2/2) · mid·glm route sil\"}"
+tier state: "{\"tier\":true,\"text\":\"bucket 10-30 02:00 · q —  q-lean ×3 — mid·qwen route ACTIVE (2/2) · mid·glm route silent (0/2)\"}"
+wave strip: "{\"strip\":true,\"text\":\"no-judge rows by 15-min UTC bucket: 10-29 22:45 ×5 q (5 lanes) · 10-29 23:00 ×4 g (5 lanes) · 10-29 23:15 ×9 g (5 lanes) · 10-30 00:00 ×4 q (5 lanes) · 10-30 01:00 ×4 q (\"}"
+divergence: "{\"divBadges\":2}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
+  File "<stdin>", line 12
+    L.append('- R3 increment (run-kanban.tsx): laneLean memo inserted after laneTiers - a trailing-run read over the wave-strip route letters within the shown strip window (last 6 corpus buckets, newest backward; an absent letter - a bucket without middle-tier rows - breaks the run, window caps it at 6); run >= 2 renders the lean tag in the corpus tier-state line (' q-lean ×N — ' style, font-medium text-foreground/70 matching the strip letters, own title documenting semantics), and the tier-state title gains the lean sentence. Three-edit MultiEdit verified in the returned diff (r760/r762 marker-verify discipline honored).')
+                                                                                                                                                                                                                                                                                                                                                                                        ^
+SyntaxError: invalid character '×' (U+00D7)

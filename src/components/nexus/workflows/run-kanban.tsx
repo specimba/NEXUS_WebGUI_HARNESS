@@ -1803,6 +1803,26 @@ export function RunKanban({
     }
     return { lastKey, routes };
   }, [laneBuckets]);
+  // r767: qwen-lean counter - the trailing run of identical route letters
+  // across the shown strip window (last 6 corpus buckets), newest backward.
+  // Reads the SAME route map the strip letters use - no new data source;
+  // an absent letter (a bucket without middle-tier rows) breaks the run and
+  // the window caps it at 6. Corpus-scoped like the strip letters.
+  const laneLean = React.useMemo(() => {
+    const route = waveStrip.route;
+    const keys = [...waveStrip.shown].reverse();
+    let letter = "";
+    let run = 0;
+    for (const k of keys) {
+      const cur = route[k];
+      if (!cur) break;
+      if (run === 0 || cur === letter) {
+        letter = cur;
+        run += 1;
+      } else break;
+    }
+    return { letter, run };
+  }, [waveStrip]);
   const visibleCorpus = React.useMemo(() => {
     let out = corpusOnly;
     if (pillQuery) out = out.filter((c) => c.runId.toLowerCase().includes(pillQuery));
@@ -2348,9 +2368,9 @@ export function RunKanban({
                 <span
                   data-testid="corpus-tier-state"
                   className="mr-1 text-[10px] tabular-nums text-muted-foreground/70"
-                  title={"Route-state (r760): the middle tier grouped by route against the newest corpus bucket (" + laneTiers.lastKey + ") - " + Object.entries(laneTiers.routes).map(([tier, r]) => tier + ": " + r.lanes.length + " lane(s), " + (r.active.length ? "ACTIVE" : "none answered")).join(" · ") + ". ACTIVE = the route answered in the newest corpus bucket; silent = the route is unpicked (route-shift witness, r759 finding). The letter (r764) is the newest-bucket route composition from the wave strip: q = qwen-only, g = glm-only, m = both; absent = no middle-tier rows in that bucket. Letter history (r765) of the shown strip buckets, oldest first: " + (waveStrip.shown.map((k) => k + " " + (waveStrip.route[k] ?? "-")).join(" - ") || "none") + " (a dash = no middle-tier rows there)."}
+                  title={"Route-state (r760): the middle tier grouped by route against the newest corpus bucket (" + laneTiers.lastKey + ") - " + Object.entries(laneTiers.routes).map(([tier, r]) => tier + ": " + r.lanes.length + " lane(s), " + (r.active.length ? "ACTIVE" : "none answered")).join(" · ") + ". ACTIVE = the route answered in the newest corpus bucket; silent = the route is unpicked (route-shift witness, r759 finding). The letter (r764) is the newest-bucket route composition from the wave strip: q = qwen-only, g = glm-only, m = both; absent = no middle-tier rows in that bucket. Letter history (r765) of the shown strip buckets, oldest first: " + (waveStrip.shown.map((k) => k + " " + (waveStrip.route[k] ?? "-")).join(" - ") || "none") + " (a dash = no middle-tier rows there). Lean counter (r767): the trailing run of identical route letters across the shown strip window (last 6 buckets), newest backward - an absent letter (a bucket without middle-tier rows) breaks the run, capped at the window; a run of 2+ renders the lean tag in this line - the on-page read of the relay lean watched since r766 (three straight qwen waves, 00:03/01:05/02:02, ended the wave-by-wave alternation)."}
                 >
-                  {waveStrip.route[laneTiers.lastKey] ? <span className="font-medium text-foreground/70">{"bucket " + laneTiers.lastKey + " · " + waveStrip.route[laneTiers.lastKey] + " — "}</span> : null}{Object.entries(laneTiers.routes).map(([tier, r]) => tier.replace("middle · ", "mid·") + " " + (r.active.length ? "ACTIVE" : "silent") + " (" + r.active.length + "/" + r.lanes.length + ")").join(" · ")}
+                  {waveStrip.route[laneTiers.lastKey] ? <span className="font-medium text-foreground/70">{"bucket " + laneTiers.lastKey + " · " + waveStrip.route[laneTiers.lastKey] + " — "}</span> : null}{!laneFilter && laneLean.run >= 2 ? <span className="font-medium text-foreground/70" title={"Lean counter (r767): " + laneLean.run + " straight " + (laneLean.letter === "q" ? "qwen-route" : laneLean.letter === "g" ? "glm-route" : "both-routes") + " buckets ending at the shown window's newest lettered bucket; the trailing run of identical route letters (q = qwen-only, g = glm-only, m = both) within the shown strip window (last 6 buckets) - a bucket without middle-tier rows breaks the run. Watched since r766: three straight qwen waves (00:03, 01:05, 02:02) ended the wave-by-wave alternation."}>{" " + laneLean.letter + "-lean ×" + laneLean.run + " — "}</span> : null}{Object.entries(laneTiers.routes).map(([tier, r]) => tier.replace("middle · ", "mid·") + " " + (r.active.length ? "ACTIVE" : "silent") + " (" + r.active.length + "/" + r.lanes.length + ")").join(" · ")}
                 </span>
               ) : null}
               {[...laneDistress.split("; ")].sort((a, b) => (laneCounts[b] ?? 0) - (laneCounts[a] ?? 0)).map((lane, i) => (
