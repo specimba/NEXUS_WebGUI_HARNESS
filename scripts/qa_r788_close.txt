@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 0cae30ab4] r788: the band docs carry the wave-20 letterless-break point at all four on-page sites (19 points, 78 quoted rendered from the r786 close per the r775 convention - the wave-20 slot dialed no middle-tier lane, the five-long q-lean run ended per the r767 break semantics, mid-qwen route silent 0/2 there) + the fetch sweep CLOSED: every remaining raw fetch in src/components/nexus now carries its judgment in-code (run-kanban EventEmitBar event-INSERT POST left raw - the body is never parsed so the failed state is already parse-noise-free; the r787 cortex source route left raw - text/plain contract the apiJson JSON rule does not apply to; strategy-card briefing + the chat trio stand as the prior annotated leaves) + the Emit button failure state gains a distinct red tone. Census moved 48 to 52 runs / 141nj; QA green first-try; snapshot discipline forty-third close.
+ 10 files changed, 319 insertions(+), 4 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T20-13-01.json
+ create mode 100644 scripts/patch_r788_close.py
+ create mode 100644 scripts/qa_r788.txt
+ create mode 100644 scripts/qa_r788_close.txt
+ create mode 100644 scripts/r788_close.sh
+ create mode 100644 scripts/r788_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   1ffb9ae31..0cae30ab4  main -> main
+To https://github.com/specimba/PraisonAI.git
+   1ffb9ae31..0cae30ab4  main -> main
