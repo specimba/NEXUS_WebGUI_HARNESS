@@ -283,6 +283,10 @@ export function CortexEdgeCard() {
   // carries the ~64 KB source. This button fetches the repo's source file via
   // /api/cortex/source (fresh bytes, never bundled) and puts it on the
   // clipboard as the SECOND paste of the two-paste deploy flow.
+  // r788 sweep judgment - LEFT RAW on purpose: the route answers text/plain
+  // (the source IS text), so the apiJson JSON contract does not apply; the
+  // harness-name sniff below is the honest guard (an HTML death-window page
+  // fails the check with a plain error instead of copying garbage).
   const [copyingSrc, setCopyingSrc] = React.useState(false);
   async function handleCopySource() {
     if (copyingSrc) return;
