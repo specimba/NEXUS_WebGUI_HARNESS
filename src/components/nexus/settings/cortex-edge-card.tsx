@@ -8,6 +8,7 @@ import {
   ClipboardCopy,
   Eye,
   EyeOff,
+  FileCode2,
   Globe2,
   KeyRound,
   Loader2,
@@ -265,7 +266,7 @@ export function CortexEdgeCard() {
       const ok = await copyText(CORTEX_PASTE_PACK);
       if (ok) {
         toast.success("Paste pack copied — paste it into your Supabase AI Assistant", {
-          description: "It deploys the nexus-cortex-harness edge function + its cache/telemetry tables.",
+          description: "It runs the migration + sets the safety rails; the source comes as your SECOND paste.",
         });
       } else {
         toast.error("Copy failed — the browser refused clipboard access", {
@@ -274,6 +275,39 @@ export function CortexEdgeCard() {
       }
     } finally {
       setCopying(false);
+    }
+  }
+
+  // r787 (Owner-directed): the Supabase AI assistant asks for the exact
+  // TypeScript after running the migration — the pack deliberately never
+  // carries the ~64 KB source. This button fetches the repo's source file via
+  // /api/cortex/source (fresh bytes, never bundled) and puts it on the
+  // clipboard as the SECOND paste of the two-paste deploy flow.
+  const [copyingSrc, setCopyingSrc] = React.useState(false);
+  async function handleCopySource() {
+    if (copyingSrc) return;
+    setCopyingSrc(true);
+    try {
+      const res = await fetch("/api/cortex/source", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const src = await res.text();
+      if (!src.includes("nexus-cortex-harness")) throw new Error("unexpected payload — not the harness source");
+      const ok = await copyText(src);
+      if (ok) {
+        toast.success("Function source copied — paste it as your NEXT message to the Supabase AI", {
+          description: `${(src.length / 1024).toFixed(0)} KB · single Deno file · deploys nexus-cortex-harness only (verify_jwt off, safety rails in the pack).`,
+        });
+      } else {
+        toast.error("Copy failed — the browser refused clipboard access", {
+          description: "Fetch the file manually from deliverables/nexus-cortex-harness/nexus-cortex-harness-edge-function.ts.",
+        });
+      }
+    } catch (err) {
+      toast.error("Could not load the function source", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setCopyingSrc(false);
     }
   }
 
@@ -458,6 +492,21 @@ export function CortexEdgeCard() {
             )}
             Copy Supabase AI paste pack
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="transition-colors hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-400"
+            onClick={handleCopySource}
+            disabled={copyingSrc}
+          >
+            {copyingSrc ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <FileCode2 className="h-4 w-4" aria-hidden />
+            )}
+            Copy function source
+          </Button>
         </div>
         <div aria-live="polite" className="flex min-h-5 items-center">
           {probe ? (
@@ -550,11 +599,22 @@ export function CortexEdgeCard() {
           <CollapsibleContent>
             <ol className="list-decimal space-y-3 px-3 pb-3 pl-7 text-xs leading-relaxed text-muted-foreground marker:text-muted-foreground/70">
               <li>
-                <span className="font-medium text-foreground">Deploy the function</span> — press{" "}
+                <span className="font-medium text-foreground">Run the migration via the paste pack</span> — press{" "}
                 <span className="font-medium text-foreground">Copy Supabase AI paste pack</span> above → paste it
-                into your Supabase project&apos;s AI Assistant → it creates the tables and deploys{" "}
-                <span className="font-mono text-[11px]">nexus-cortex-harness</span>. You&apos;ll find it in the{" "}
-                <FreeLink href="https://supabase.com/dashboard">Supabase Dashboard</FreeLink>.
+                into your Supabase project&apos;s AI Assistant → it creates the cache/telemetry tables (idempotent,
+                RLS on, no anon policies) and sets the safety rails. The pack deliberately does NOT carry the
+                ~64 KB source — that is the next step.
+              </li>
+              <li>
+                <span className="font-medium text-foreground">Paste the source when the AI asks</span> — the
+                assistant will ask for the exact TypeScript (it did in the first Owner run). Press{" "}
+                <span className="font-medium text-foreground">Copy function source</span> above and paste it as
+                your next message; the pack&apos;s rails tell it to deploy/update ONLY{" "}
+                <span className="font-mono text-[11px]">nexus-cortex-harness</span> (your other functions and
+                secrets stay untouched — <span className="font-mono text-[11px]">make-server</span>, the nexus
+                bot, <span className="font-mono text-[11px]">NEXUS_SHARED_SECRET</span> etc. all persist).
+                Alternative: Edge Functions → Deploy a new function → Via Editor → name{" "}
+                <span className="font-mono text-[11px]">nexus-cortex-harness</span> → paste the same source.
               </li>
               <li>
                 <span className="font-medium text-foreground">Set the edge secrets</span> — Supabase Dashboard →
@@ -567,6 +627,11 @@ export function CortexEdgeCard() {
                     </div>
                   ))}
                 </dl>
+                <span className="mt-1.5 block">
+                  <span className="font-mono text-[11px] text-foreground">CORTEX_SHARED_SECRET</span> is NEW and
+                  separate from the existing <span className="font-mono text-[11px]">NEXUS_SHARED_SECRET</span> —
+                  set any random phrase; the nexus bot&apos;s gate is not touched.
+                </span>
                 <span className="mt-1.5 block">
                   Copy the SAME values into the matching fields here only when you want per-request BYOK instead
                   of edge secrets.
@@ -770,9 +835,11 @@ export function CortexEdgeCard() {
         <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
           <Globe2 className="mt-0.5 h-4 w-4 shrink-0 text-violet-500/80 dark:text-violet-400" aria-hidden />
           <p className="text-xs leading-relaxed text-muted-foreground">
-            One-time setup: press <span className="font-medium text-foreground">Copy Supabase AI paste pack</span> and
-            paste it into your project&apos;s Supabase AI Assistant — it creates the cache/telemetry tables and deploys
-            the edge function. Keys in this card live in your browser only and are forwarded per request; nothing is
+            One-time setup, two pastes: <span className="font-medium text-foreground">Copy Supabase AI paste
+            pack</span> runs the migration in your project&apos;s Supabase AI Assistant; when it asks for the
+            TypeScript, <span className="font-medium text-foreground">Copy function source</span> carries the
+            exact file as your next message (safety rails included — nothing else on the project is touched).
+            Keys in this card live in your browser only and are forwarded per request; nothing is
             persisted server-side (BYOK).
           </p>
         </div>

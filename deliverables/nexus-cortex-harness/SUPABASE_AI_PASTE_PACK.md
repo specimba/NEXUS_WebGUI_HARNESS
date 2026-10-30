@@ -1,10 +1,12 @@
 # NEXUS Cortex Harness — Supabase AI Assistant Paste Pack (v2)
 
 > Copy everything inside the fence in **Step "Paste this to your Supabase AI Assistant"** into the
-> Supabase AI Assistant on the NEXUS mirror project (`vwottesqbdgcsmvvvzok`).
-> If the assistant asks for the exact TypeScript, open **Edge Functions → Deploy a new function →
-> Via Editor**, name it `nexus-cortex-harness`, and paste `nexus-cortex-harness-edge-function.ts`
-> (same folder, v2.0). The kickbot `nexus-cortex` function on the same project is NOT touched — this
+> Supabase AI Assistant on the NEXUS mirror project (`vwottesqbdgcsmvvvzok`). It runs the migration
+> and sets the safety rails — the pack deliberately does NOT carry the ~64 KB source, so it stays
+> reviewable. When the assistant asks for the TypeScript (it will), press **Copy function source**
+> on the Settings → Cortex Edge card (or open `nexus-cortex-harness-edge-function.ts` in this
+> folder) and paste it as your next message.
+> The kickbot `nexus-cortex` function on the same project is NOT touched — this
 > is a sibling function so the stream widget keeps working unchanged. Re-deploying over an existing
 > `nexus-cortex-harness` v1 is safe and is the intended upgrade path (v1 cache rows stay valid).
 
@@ -170,14 +172,31 @@ Behavior: scrape/search go through a 30-min L2 cache (Upstash Redis SETEX when c
 `EdgeRuntime.waitUntil()` so the reply is never delayed; cache/memory/job-parking failures are
 best-effort and never block the reply; no secrets in logs or responses.
 
-I have the full TypeScript source ready — if you need it, tell me and I'll switch to
-Edge Functions → Deploy a new function → Via Editor, name it `nexus-cortex-harness`, and paste
-`nexus-cortex-harness-edge-function.ts` directly.
+### 3. The full source comes in my NEXT message
+
+The function is a single ~64 KB Deno TypeScript file (`nexus-cortex-harness-edge-function.ts`,
+self-contained, no imports beyond Deno std + Web APIs). I will paste it here as my next message
+once you confirm the migration above ran. Deploy or update ONLY `nexus-cortex-harness` with it —
+`verify_jwt: false`, full CORS OPTIONS support (allowed headers include `x-nexus-cortex-key`).
+
+SAFETY RAILS — important:
+- Do NOT modify, delete, or redeploy any OTHER Edge Function on this project. Leave
+  `make-server-1333aad3`, `nexus-cortex`, and every other function exactly as-is — this is a
+  sibling function so the existing nexus bot keeps working unchanged.
+- Do NOT change or delete any EXISTING secrets (`NEXUS_SHARED_SECRET`, `VYCE_API_KEY`,
+  `GROQ_API_KEY`, `HYPERBROWSER_API_KEY`, `UPSTASH_REDIS_REST_URL`/`TOKEN`, `EXA_API_KEY`, … all
+  stay untouched). Only CREATE a secret when I explicitly name it in a later message.
+- The migration and the deploy are idempotent and safe to re-run; re-deploying over an existing
+  v1 `nexus-cortex-harness` is the intended upgrade path (v1 cache rows stay valid).
+
+If you cannot deploy from a pasted source, say so — I'll use Edge Functions → Deploy a new
+function → Via Editor myself (name `nexus-cortex-harness`, paste the same source) and you only
+need to confirm the migration result.
 ````
 
 ---
 
-## Step 3 — Verify after deploy
+## Step 4 — Verify after deploy
 
 ```bash
 BASE=https://vwottesqbdgcsmvvvzok.supabase.co/functions/v1/nexus-cortex-harness
