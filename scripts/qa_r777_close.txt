@@ -12,3 +12,11 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 91a0fd2aa] r777: wave 16 landed mid-round and is recorded forward - bucket 10-30 09:00 q (qwen-only, 1/2 active) at +62m, band 13/16/41/58/13/42/62/57/61/70/6/73/55/59/62 (15 points) at the band sites with wave-16 framing; the amber fired live mid-round before the wave reset the quiet (second true firing); the lean run restarted (the r776 break note unrendered live, the wave-bound gate degraded to RECORDED as the handoff predicted); GLM-SILENT firms (q with no glm dial). Increment: the r777 keyboard bridge - the strip bucket chips gained tabIndex 0 + a focus-visible ring, the hover-only bucket data reachable by keyboard focus; the strip container title documents the bridge. Styling polish: the focus ring + focused-chip text emphasis. Snapshot discipline thirty-third close.
+ 7 files changed, 180 insertions(+), 18 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T09-16-55.json
+ create mode 100644 scripts/r777_patch2.py
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   589d88db9..91a0fd2aa  main -> main
+To https://github.com/specimba/PraisonAI.git
+   589d88db9..91a0fd2aa  main -> main
