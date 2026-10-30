@@ -14,3 +14,11 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main eae5cf202] r786: the radar fetch watch completed - six apiJson death-window conversions across four tabs with per-site judgments (paper-radar search + load-more GETs with the 25s timeout signals through and the load-more dedupe untouched by the guard retry; github-stars paged proxy GETs with the 30s pool-retry timeout through and the 404/429 classification kept; hf-trending fleet load with the 35s timeout through, the timeout-aware catch wording kept + the three-kind allSettled fan-out with per-kind failure isolation kept; frontier-scout aggregation GET with the manual abort signal through, never retried) + the image-studio generate POST converted at retries 0 per the action-route doctrine so the studio error box gets the honest ApiError instead of parse noise + two documented leaves annotated in-code (transcribe, a billable STT action whose catch already degrades honestly; tts, a NON-JSON audio-blob success contract the apiJson JSON rule does not apply to) + the hub-fleet Reload button gains the violet hover (the r783 convention). Census held; QA green; snapshot discipline forty-second close.
+ 6 files changed, 65 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T15-42-31.json
+ create mode 100644 scripts/qa_r786.txt
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   d4325de08..eae5cf202  main -> main
+To https://github.com/specimba/PraisonAI.git
+   d4325de08..eae5cf202  main -> main
