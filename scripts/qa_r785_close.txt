@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":5}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 704c167dd] r785: the settings fetch watch - five apiJson death-window conversions across two files with per-site judgments (model-relay benchmark-intel GET + free-reach census GET, idempotent reads with the silent-auto and toast-on-fresh catches kept; the restore pre-check tracker read FIXING an honesty bug - the old !ok-to-null path conflated a dead server with absent-from-catalog and now lands the honest Catalog-check-failed catch; provider-gallery account probe, a read-style POST against the provider /v1/me judged repeat-safe so the default retry stays; the quarantine-pardon recheck heal, a no-op-on-repeat idempotent clear; free-models roster refresh at retries 0 per the action-route doctrine with the r23 browser-direct fallback now serving every failure class - region-block, HTTP error body, death-window HTML) + the relay lane-row dim gains transition-opacity. Census held flat 46/168/130nj; QA green first-try; snapshot discipline forty-first close.
+ 10 files changed, 387 insertions(+), 40 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T15-14-10.json
+ create mode 100644 scripts/patch_r785_close.py
+ create mode 100644 scripts/qa_r785.txt
+ create mode 100644 scripts/qa_r785_close.txt
+ create mode 100644 scripts/r785_close.sh
+ create mode 100644 scripts/r785_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   0bd1a6357..704c167dd  main -> main
+To https://github.com/specimba/PraisonAI.git
+   0bd1a6357..704c167dd  main -> main
