@@ -8,3 +8,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 1303c2800] r773: doc debt paid - the letterless strip chip now names its lanes on hover and states why it carries no letter (no middle-tier lane dialed in this slot; the letter needs a middle-tier qwen or glm dial), so the r772 one-instant-span investigation bound is closed on-page; every corpus bucket chip hover carries its named-lane list (the r757 per-lane claim true on the strip itself); the legend title r757 sentence forward-corrected. Styling polish: transition-colors on the legend lane chips. Watch: no wave 13 - the letterless 05:00 bucket stayed newest (+6m interval, +43m quiet at witness, amber correctly off), TEN lanes held, lean counter restarted with no fresh run, BOTH-SILENT carry unchanged. Snapshot discipline twenty-ninth close.
+ 9 files changed, 383 insertions(+), 5 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T05-52-54.json
+ create mode 100644 scripts/qa_r773.txt
+ create mode 100644 scripts/qa_r773_close.txt
+ create mode 100644 scripts/r773_close.sh
+ create mode 100644 scripts/r773_patch_close.py
+ create mode 100644 scripts/r773_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   ba6b1e986..1303c2800  main -> main
+To https://github.com/specimba/PraisonAI.git
+   ba6b1e986..1303c2800  main -> main
