@@ -11,9 +11,13 @@
 # killer fires, and it revives a DEAD server after two consecutive failed
 # health probes (cooldown-bound so a compile error can never loop it).
 #
-# Usage (session-detached — the r519 setsid recipe that survives
-# tool-call boundaries):
-#   setsid nohup bash scripts/mem-guard.sh </dev/null >/dev/null 2>&1 &
+# Usage (session-detached — THE PROVEN RECIPE, r791 addendum: a bare
+# `setsid nohup ... &` WITHOUT the exec-wrapper + disown is reaped at the
+# tool-call boundary — two witnessed deaths, pids 16641 at 22:47:06 and
+# 16788 at 22:48:48; the dev-restart.sh r475/r519 survival record requires
+# the full line, and a same-call pgrep proves NOTHING — verify in a
+# SEPARATE tool call):
+#   setsid nohup bash -c 'exec bash scripts/mem-guard.sh' </dev/null >/dev/null 2>&1 & disown || true
 #
 # Tunables (env): MEM_GUARD_KB   restart threshold in KB (default 1740000
 #                                 ≈ 1.70 GB — under every witnessed kill mark)
