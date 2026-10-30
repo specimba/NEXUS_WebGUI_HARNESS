@@ -1,0 +1,11 @@
+chip: "{\"chip\":true,\"text\":\"⧉ 41 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":60,\"label\":\"lanes tried (117 no-judge) +59m since prior —  +4m quiet — mid·qwen route silent (0/2 · silent: AIHubMix qwen3\"}"
+tier state: "{\"tier\":true,\"text\":\"+59m since prior —  +4m quiet — mid·qwen route silent (0/2 · silent: AIHubMix qwen3.8-flash-free (qwen3.8-flash-free), A\",\"quietSpan\":\"font-medium transition-colors text-foreground/70\",\"quietAmber\":false}"
+wave strip: "{\"strip\":true,\"text\":\"no-judge rows by 15-min UTC bucket: 10-30 04:00 ×3 q (6 lanes) · 10-30 04:45 ×8 q (8 lanes) · 10-30 05:00 ×3 (5 lanes) · 10-30 06:15 ×1 q (5 lanes) · 10-30 07:00 ×2 q (5 \"}"
+last chip: "{\"chips\":6,\"hasLanes\":true,\"hasCounts\":true,\"hasGap\":true,\"gapVal\":\"59\",\"tail\":\"r: no middle-tier lane dialed in this slot, the lanes above are outer-rung lanes (the letter needs a middle-tier qwen or glm dial)\"}"
+letterless chip: "{\"letterless\":true,\"hasWhy\":true,\"hasLanes\":true}"
+divergence: "{\"divBadges\":6}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
+worklog appended
