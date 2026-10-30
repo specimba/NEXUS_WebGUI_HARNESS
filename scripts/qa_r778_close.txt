@@ -14,3 +14,11 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main ca500dd49] r778: the Owner rollback report root-caused and landed - three next-server OOM kills witnessed in dmesg (rss 1.82/1.71/1.56 GB); during death windows the gateway answers /api with HTML 502/504 pages, the cards res.json() surfaced raw parse noise and failed saves read as rollbacks on refresh. Fix adopted from the parallel report-handler session (quiescence-verified 4m40s, tsc/lint/QA green before landing): the apiJson guarded-fetch helper (non-JSON detection before parse, one idempotent retry, honest errors) wired through the vault store/mirror/delete, egress token/routing and GitHub vitals flows; r778 adds the vault load() read conversion (the refresh half). Styling polish: focus wash on the wave-strip bucket chips. The read-path long tail is queued for r779. Snapshot discipline thirty-fourth close.
+ 5 files changed, 136 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T09-47-38.json
+ create mode 100644 scripts/r778_patch2.py
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   77a8dcda1..ca500dd49  main -> main
+To https://github.com/specimba/PraisonAI.git
+   77a8dcda1..ca500dd49  main -> main
