@@ -1768,6 +1768,11 @@ export function RunKanban({
     // rendered only in corpus mode - a lane-filtered strip is about one
     // lane, not the relay. Same single laneBuckets dependency.
     const route: Record<string, string> = {};
+    // r773: per-bucket named-lane list - the lanes with at least one dial
+    // row in the slot, the same scan the route letters read. The r772
+    // both-silent investigation hit the gap: a letterless chip hover
+    // carried the span but no lane names. The list closes that on-page.
+    const named: Record<string, string[]> = {};
     for (const k of keys) {
       let q = 0;
       let g = 0;
@@ -1781,8 +1786,9 @@ export function RunKanban({
       if (q > 0 && g > 0) route[k] = "m";
       else if (q > 0) route[k] = "q";
       else if (g > 0) route[k] = "g";
+      named[k] = Object.keys(laneBuckets.lanes).filter((lane) => (laneBuckets.lanes[lane]?.[k] ?? 0) > 0);
     }
-    return { src, shown: keys.slice(-6), total: keys.length, spread: laneBuckets.laneSpread, bounds: laneBuckets.bucketBounds, route };
+    return { src, shown: keys.slice(-6), total: keys.length, spread: laneBuckets.laneSpread, bounds: laneBuckets.bucketBounds, route, named };
   }, [laneBuckets, laneFilter]);
   // r758: divergence auto-highlight per lane - the recent-bucket lag
   // signal, amber-flagged on the chips; ships pre-armed (steady slot).
@@ -2405,7 +2411,7 @@ export function RunKanban({
             <div
               id="corpus-lane-legend"
               data-testid="corpus-lane-legend"
-              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each chip's title. The divergence diamond (r758) ambers a lane whose last-3-bucket profile lags the corpus strip, auto-highlighted on the chip face; r759 semantics: a lag fires on middle-tier route shifts too (the chain's middle tier alternates the qwen free pair and the glm-5.3 pair) - check the laggard lanes before interpreting. The tier-state line (r760) groups the middle tier by route: ACTIVE = the route answered in the newest corpus bucket; silent = the route is currently unpicked (the route-shift witness standing watch both ways - a silent->ACTIVE flip on the qwen routes = the free routes returning)."
+              title="Per-lane dial-attempt counts from the ledger's verbatim tried-trace (the same scan as the nj token's title, tallying instead of deduping). Counts are trace entries: a step that tried several lanes counts each, so the sum can exceed the no-judge step count. First-seen dates (r755) are the earliest fetched row naming the lane, UTC, bounded by the newest-400-rows window. Last-seen (r756) is the latest such row - the first/last pair brackets each wave; a lane whose last-seen lags the others is the partial-ladder signal. The wave strip (r757) buckets no-judge rows - or the filtered lane's dials - into 15-minute UTC slots; per-lane bucket lists live in each lane chip title, and since r773 each strip bucket chip names its lanes on hover too - a letterless bucket states why it carries no letter. The divergence diamond (r758) ambers a lane whose last-3-bucket profile lags the corpus strip, auto-highlighted on the chip face; r759 semantics: a lag fires on middle-tier route shifts too (the chain's middle tier alternates the qwen free pair and the glm-5.3 pair) - check the laggard lanes before interpreting. The tier-state line (r760) groups the middle tier by route: ACTIVE = the route answered in the newest corpus bucket; silent = the route is currently unpicked (the route-shift witness standing watch both ways - a silent->ACTIVE flip on the qwen routes = the free routes returning)."
               className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-2"
             >
               <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2427,7 +2433,7 @@ export function RunKanban({
                   aria-pressed={laneFilter === lane}
                   onClick={() => setLaneFilter((cur) => (cur === lane ? null : lane))}
                   className={cn(
-                    "rounded border bg-background/60 px-1.5 py-0.5 text-[10px]",
+                    "rounded border bg-background/60 px-1.5 py-0.5 text-[10px] transition-colors",
                     laneFilter === lane
                       ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
                       : "border-border text-muted-foreground hover:text-foreground"
@@ -2501,7 +2507,7 @@ export function RunKanban({
                 <span
                   key={k}
                   className="inline-flex items-end gap-1 whitespace-nowrap cursor-help"
-                  title={"Bucket " + k + " UTC (15-min slot)" + (waveStrip.bounds[k] ? " — corpus rows actually span " + new Date(waveStrip.bounds[k].min).toISOString().slice(0, 19).replace("T", " ") + " to " + new Date(waveStrip.bounds[k].max).toISOString().slice(11, 19) + " UTC" : "")}
+                  title={"Bucket " + k + " UTC (15-min slot)" + (waveStrip.bounds[k] ? " — corpus rows actually span " + new Date(waveStrip.bounds[k].min).toISOString().slice(0, 19).replace("T", " ") + " to " + new Date(waveStrip.bounds[k].max).toISOString().slice(11, 19) + " UTC" : "") + (!laneFilter ? " — lanes named here: " + ((waveStrip.named[k] ?? []).length ? (waveStrip.named[k] ?? []).map((l) => l.replace(/^fast-judge /, "").replace(" · ", " ")).join(", ") : "none") + (waveStrip.route[k] ? "" : " — no route letter: no middle-tier lane dialed in this slot, the lanes above are outer-rung lanes (the letter needs a middle-tier qwen or glm dial)") : "")}
                 >
                   <span
                     aria-hidden
