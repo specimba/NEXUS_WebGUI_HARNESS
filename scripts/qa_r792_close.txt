@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 290cc43ec] r792: THE FREEZE-WATCH FOLLOW-UP - the corpus strip render cap (the unfiltered strip rendered every pill - 56 runs and climbing at +2-3 per patrol slot of unbounded DOM on the heaviest board surface; now CORPUS_STRIP_CAP 24 at render time per the r227 truth class: tally + census keep the whole-corpus numbers, the shown chip reads the render truth 24 of 56 shown, an honest +32 older runs not shown footer carries a violet-hover Show-all affordance, filters always lift the cap, the lift is session-local; live-verified with the lift arithmetic 25 -> 57 pills) + the mem-guard end-to-end proof witnessed (the old-threshold in-process guard fired its one graceful restart at 22:58:36 - RSS 1.96 GB > the 1.74 GB threshold - BEFORE the kernel killer, the fresh boot armed the tuned guard avail 600 MB / RSS 2.15 GB, the addendum-3 doctrine validated) + the r792 quiet continuation at the four on-page sites (no new bucket by the 23:12 UTC witness, quiet +245m - the break deepens past its own +208m record, the amber regime five witnesses deep). QA green first-try + gates first-try (tsc 0, lint 0 errors / 33 warnings); snapshot forty-seventh.
+ 9 files changed, 355 insertions(+), 7 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T23-16-35.json
+ create mode 100644 scripts/patch_r792_close.py
+ create mode 100644 scripts/qa_r792.txt
+ create mode 100644 scripts/qa_r792_close.txt
+ create mode 100644 scripts/r792_close.sh
+ create mode 100644 scripts/r792_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   b6a6f9a66..290cc43ec  main -> main
+To https://github.com/specimba/PraisonAI.git
+   b6a6f9a66..290cc43ec  main -> main
