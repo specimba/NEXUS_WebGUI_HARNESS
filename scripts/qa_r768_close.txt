@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":2}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 6e3643480] r768: interval readout ships + wave 10 lands inside the band, lean cemented. Census 97 nj / 35 runs vs the r767 close 93/34 - +4 nj / +1 run, newest ~03:03:43 UTC, ~61 min after wave 9 (band 13-42-62-57-61, plateau near ~60, no break); verdict/uncertain flat tenth wave. Route: fourth straight q (00:03, 01:05, 02:02, 03:03) - the lean is CEMENTED. Increment: laneGap - minutes between the newest corpus-row timestamps of the two newest strip buckets (bounds max-to-max), rendered as +61m since prior in the corpus tier-state line after the lean tag (font-medium text-foreground/70, own title) with the interval sentence in the title - the cadence-band watch made on-page, pairing with the lean counter (styling polish: the tag matches the strip-letter treatment). Surgery new-texts apostrophe-free per the r767 lesson. Snapshot discipline twenty-fourth close.
+ 9 files changed, 348 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T03-19-51.json
+ create mode 100644 scripts/qa_r768.txt
+ create mode 100644 scripts/qa_r768_close.txt
+ create mode 100644 scripts/r768_close.sh
+ create mode 100644 scripts/r768_prose.py
+ create mode 100644 scripts/r768_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   fc697e123..6e3643480  main -> main
+To https://github.com/specimba/PraisonAI.git
+   fc697e123..6e3643480  main -> main
