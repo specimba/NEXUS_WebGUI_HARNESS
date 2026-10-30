@@ -221,6 +221,11 @@ function useVoiceInput(onTranscript: (text: string) => void) {
           reader.readAsDataURL(blob);
         });
         const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+        // r786 judgment - LEFT RAW: a billable STT action route whose parse
+        // failures already degrade to the honest generic Transcription-failed
+        // line via the {} catch; converting would only add the guard retry
+        // surface to a user-paid dial (the action-route doctrine keeps the
+        // retry decision with the mic button).
         const res = await fetch("/api/transcribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

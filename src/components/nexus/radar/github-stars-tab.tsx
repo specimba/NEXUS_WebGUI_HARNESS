@@ -25,6 +25,7 @@ import {
   relTime,
   writeCache,
 } from "./radar-shared";
+import { apiJson } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
 
 const GH_USER_KEY = "nexus-radar-user";
@@ -121,13 +122,14 @@ function GitHubStarsTab() {
       // the username and may attach a SERVER-side token for a higher rate
       // limit (never shipped to the client). Still an explicit user action.
       for (let page = 1; page <= GH_PAGES; page++) {
-        const res = await fetch(
+        // r786: the GitHub proxy pages ride the apiJson guard - idempotent
+        // GETs with the 30s pool-retry timeout passing through untouched; a
+        // death-window HTML page now raises the honest ApiError into the
+        // same error line instead of the generic HTTP fallback.
+        const { res, json: data } = await apiJson<{ repos?: GhRepo[]; error?: string; via?: string } | null>(
           `/api/radar/github?user=${encodeURIComponent(name)}&page=${page}`,
-          { signal: AbortSignal.timeout(30_000) } // r516: 20s→30s — the pool retry leg adds a hop
+          { signal: AbortSignal.timeout(30_000) }, // r516: 20s→30s — the pool retry leg adds a hop
         );
-        const data = (await res.json().catch(() => null)) as
-          | { repos?: GhRepo[]; error?: string; via?: string }
-          | null;
         if (res.status === 404) throw new Error(`GitHub user “${name}” was not found.`);
         if (res.status === 429) throw new Error(data?.error ?? "GitHub API rate limit hit — try again in a bit.");
         if (!res.ok || !data || !Array.isArray(data.repos)) {

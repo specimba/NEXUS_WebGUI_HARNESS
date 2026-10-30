@@ -29,6 +29,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/nexus/atoms";
+import { apiJson } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
 import {
   CacheStatus,
@@ -136,8 +137,14 @@ function HubFleetSection() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/hub/fleet", { signal: AbortSignal.timeout(35_000) });
-      const body = (await res.json().catch(() => null)) as FleetData | { error?: string } | null;
+      // r786: the hub-fleet load rides the apiJson guard - an idempotent GET
+      // with the 35s timeout signal passing through untouched (a timeout is
+      // rethrown as-is, never retried, so the timeout-aware catch below
+      // keeps its wording); a death-window HTML page raises the honest
+      // ApiError into the same error box.
+      const { res, json: body } = await apiJson<FleetData | { error?: string } | null>("/api/hub/fleet", {
+        signal: AbortSignal.timeout(35_000),
+      });
       if (!res.ok) {
         throw new Error(
           (body && "error" in body && body.error) || `Hub fleet returned HTTP ${res.status}.`
@@ -210,7 +217,7 @@ function HubFleetSection() {
       {open ? (
         <div className="space-y-3 border-t px-3 py-3">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <Button variant="outline" size="sm" className="transition-colors hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-400" onClick={() => void load()} disabled={loading}>
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden />
               {loading ? "Sweeping the Hub…" : fleet ? "Re-sweep fleet" : "Load fleet"}
             </Button>
@@ -451,12 +458,14 @@ export function HfTrendingTab() {
           // the three radar sources to leave the browser (GitHub Stars and
           // Paper Radar already hop through the server). Same egress path,
           // same { error } classification, no silent CSP/egress surprises.
-          const res = await fetch(`/api/radar/hf?kind=${k}&limit=${HF_LIMIT}`, {
-            signal: AbortSignal.timeout(25_000),
-          });
-          const data = (await res.json().catch(() => null)) as
-            | { items?: HfItem[]; error?: string; authed?: boolean }
-            | null;
+          // r786: the hub proxy kind fetches ride the guard - idempotent
+          // GETs inside the allSettled fan-out; a death-window HTML page
+          // becomes an honest ApiError that fails only its own kind (the
+          // r468 per-kind fallback keeps the other two boards).
+          const { res, json: data } = await apiJson<{ items?: HfItem[]; error?: string; authed?: boolean } | null>(
+            `/api/radar/hf?kind=${k}&limit=${HF_LIMIT}`,
+            { signal: AbortSignal.timeout(25_000) },
+          );
           if (!res.ok) {
             throw new Error(
               data?.error ?? `Hugging Face API (${k}) returned HTTP ${res.status}.`

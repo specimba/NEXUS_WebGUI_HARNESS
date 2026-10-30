@@ -22,6 +22,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { apiJson } from "@/lib/api-fetch";
 import { useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
 import { uid } from "@/lib/helpers";
 import type { ChatMessage } from "@/lib/types";
@@ -127,17 +128,24 @@ export function ImageStudioDialog() {
     setError("");
     setResult(null);
     try {
-      const res = await fetch("/api/images/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerId: "vyce", key: vyceKey, prompt: p, size }),
-      });
-      const data = (await res.json()) as {
+      // r786: the image generation rides the guard at retries 0 - a billable
+      // action route (the Generate button keeps the retry decision), and a
+      // death-window HTML page now raises the honest ApiError into the
+      // studio error box instead of browser parse noise.
+      const { res, json: data } = await apiJson<{
         imageUrl?: string;
         revisedPrompt?: string;
         ms?: number;
         error?: string;
-      };
+      }>(
+        "/api/images/generate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ providerId: "vyce", key: vyceKey, prompt: p, size }),
+        },
+        { retries: 0 },
+      );
       if (!res.ok || !data.imageUrl) {
         setError(data.error ?? `Generation failed (HTTP ${res.status})`);
       } else {

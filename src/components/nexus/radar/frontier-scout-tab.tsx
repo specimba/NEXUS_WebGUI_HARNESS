@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/nexus/atoms";
+import { apiJson } from "@/lib/api-fetch";
 import { copyText } from "@/lib/helpers";
 import { useSettingsStore } from "@/lib/stores";
 import { cn } from "@/lib/utils";
@@ -146,10 +147,14 @@ export function FrontierScoutTab() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/radar/frontier${fresh ? "?fresh=1" : ""}`, {
+      // r786: the frontier aggregation rides the apiJson guard - an
+      // idempotent GET whose manual abort signal passes through untouched
+      // (an abort is rethrown, never retried - the new-fetch-cancels-old
+      // discipline is unchanged); a death-window HTML page now raises the
+      // honest ApiError instead of browser parse noise.
+      const { res, json: body } = await apiJson<unknown>(`/api/radar/frontier${fresh ? "?fresh=1" : ""}`, {
         signal: controller.signal,
       });
-      const body: unknown = await res.json();
       if (!res.ok) {
         const msg =
           body && typeof body === "object" && "error" in body

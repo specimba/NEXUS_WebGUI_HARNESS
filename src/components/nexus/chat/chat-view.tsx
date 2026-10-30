@@ -723,6 +723,10 @@ export function ChatView() {
       }
       setSpeech({ msgId, state: "loading" });
       try {
+        // r786 judgment - LEFT RAW: a billable TTS action route on a NON-JSON
+        // success contract (the answer is an audio blob, not JSON), so the
+        // apiJson JSON contract does not apply - the same leave class as the
+        // strategy-card briefing route.
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

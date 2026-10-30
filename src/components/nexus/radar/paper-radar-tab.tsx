@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/nexus/atoms";
+import { apiJson } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
 import {
   CacheStatus,
@@ -82,10 +83,13 @@ export function PaperRadarTab() {
           max: String(PAPERS_MAX),
           sort: "submittedDate",
         });
-        const res = await fetch(`/api/radar/papers?${params.toString()}`, {
+        // r786: the arXiv proxy search rides the apiJson guard - an idempotent
+        // GET with the 25s timeout signal passing through untouched; a
+        // death-window HTML page now raises the honest ApiError instead of
+        // browser parse noise.
+        const { res, json: body } = await apiJson<unknown>(`/api/radar/papers?${params.toString()}`, {
           signal: AbortSignal.timeout(25_000),
         });
-        const body: unknown = await res.json();
         if (!res.ok) {
           const msg =
             body && typeof body === "object" && "error" in body
@@ -131,10 +135,12 @@ export function PaperRadarTab() {
         sort: "submittedDate",
         start: String(cache.papers.length),
       });
-      const res = await fetch(`/api/radar/papers?${params.toString()}`, {
+      // r786: the load-more page fetch rides the guard too - same idempotent
+      // GET judgment; the seen-id dedupe below is untouched by the retry
+      // (a repeated page lands the same rows and they are all filtered).
+      const { res, json: body } = await apiJson<unknown>(`/api/radar/papers?${params.toString()}`, {
         signal: AbortSignal.timeout(25_000),
       });
-      const body: unknown = await res.json();
       if (!res.ok) {
         const msg =
           body && typeof body === "object" && "error" in body
