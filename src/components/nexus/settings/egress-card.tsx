@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { apiJson } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
 
 // ─── r514: Egress · Webshare proxies ─────────────────────────────────────────
@@ -203,11 +204,11 @@ export function EgressCard() {
     setSaving(true);
     setTokenProbeError(null);
     try {
-      const res = await fetch("/api/egress/token", {
+      const res = (await apiJson<{ ok: boolean; tokenPreview?: string; probe?: { ok: boolean; error?: string; count?: number; validCount?: number }; error?: string }>("/api/egress/token", {
         method: "POST",
         headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
         body: JSON.stringify({ token }),
-      }).then((r) => r.json() as Promise<{ ok: boolean; tokenPreview?: string; probe?: { ok: boolean; error?: string; count?: number; validCount?: number }; error?: string }>);
+      })).json;
 
       if (!res.ok) {
         toast.error("Token save failed", { description: res.error ?? "unknown error" });
@@ -226,8 +227,10 @@ export function EgressCard() {
         });
       }
       await refreshStatus({ force: true });
-    } catch {
-      toast.error("Token save failed — network error");
+    } catch (e) {
+      toast.error("Token save failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setSaving(false);
     }
@@ -237,10 +240,10 @@ export function EgressCard() {
     if (clearing) return;
     setClearing(true);
     try {
-      const res = await fetch("/api/egress/token", {
+      const res = (await apiJson<{ ok: boolean }>("/api/egress/token", {
         method: "DELETE",
         headers: { "x-nexus-csrf": "1" },
-      }).then((r) => r.json() as Promise<{ ok: boolean }>);
+      })).json;
       if (res.ok) {
         setTokenPreview(null);
         setTokenProbeError(null);
@@ -249,8 +252,10 @@ export function EgressCard() {
         toast.error("Token clear failed");
       }
       await refreshStatus({ force: true });
-    } catch {
-      toast.error("Token clear failed — network error");
+    } catch (e) {
+      toast.error("Token clear failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setClearing(false);
     }
@@ -263,11 +268,11 @@ export function EgressCard() {
     const prev = routing[upstreamKey];
     setRouting((r) => ({ ...r, [upstreamKey]: mode })); // optimistic
     try {
-      const res = await fetch("/api/egress/routing", {
+      const res = (await apiJson<{ ok: boolean; routing?: RoutingMap; error?: string }>("/api/egress/routing", {
         method: "PUT",
         headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
         body: JSON.stringify({ upstreamKey, mode }),
-      }).then((r) => r.json() as Promise<{ ok: boolean; routing?: RoutingMap; error?: string }>);
+      })).json;
       if (res.ok && res.routing) {
         setRouting(res.routing);
         toast.success(`${upstreamKey} → ${mode}`);
@@ -275,9 +280,11 @@ export function EgressCard() {
         setRouting((r) => ({ ...r, [upstreamKey]: prev ?? "direct" }));
         toast.error("Routing not saved", { description: res.error ?? "unknown error" });
       }
-    } catch {
+    } catch (e) {
       setRouting((r) => ({ ...r, [upstreamKey]: prev ?? "direct" }));
-      toast.error("Routing not saved — network error");
+      toast.error("Routing not saved", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setModePending(null);
     }

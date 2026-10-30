@@ -20,6 +20,7 @@ import * as React from "react";
 import { GitBranch, KeyRound, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiJson } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
 
 const CACHE_KEY = "nexus-gh-vitals";
@@ -114,8 +115,9 @@ export function GitHubOpsCard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/gh/vitals", { signal: AbortSignal.timeout(30_000) });
-      const body = (await res.json().catch(() => null)) as GhVitals | { error?: string } | null;
+      const { res, json: body } = await apiJson<GhVitals | { error?: string } | null>("/api/gh/vitals", {
+        signal: AbortSignal.timeout(30_000),
+      });
       if (!res.ok) {
         throw new Error(
           (body && "error" in body && body.error) || `GitHub vitals returned HTTP ${res.status}.`

@@ -27,6 +27,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { apiJson } from "@/lib/api-fetch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -499,12 +500,11 @@ export function AutomationVaultCard() {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/vault", {
+      const { res, json } = await apiJson<{ ok?: boolean; error?: string }>("/api/vault", {
         method: "POST",
         headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
         body: JSON.stringify({ provider: "builtin", key: key.trim() }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setKey("");
       setShowKey(false);
@@ -530,11 +530,10 @@ export function AutomationVaultCard() {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/vault?provider=builtin", {
+      const { res, json } = await apiJson<{ ok?: boolean; error?: string }>("/api/vault?provider=builtin", {
         method: "DELETE",
         headers: { "x-nexus-csrf": "1" },
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       maskNow();
       await load();
@@ -558,12 +557,11 @@ export function AutomationVaultCard() {
     }
     setLaneSaving(true);
     try {
-      const res = await fetch("/api/vault", {
+      const { res, json } = await apiJson<{ ok?: boolean; error?: string }>("/api/vault", {
         method: "POST",
         headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
         body: JSON.stringify({ provider: laneProvider, key: laneKey.trim() }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setLaneKey("");
       await load();
@@ -629,7 +627,7 @@ export function AutomationVaultCard() {
     if (!savedKey) return;
     setMirroringProvider(providerId);
     try {
-      const res = await fetch("/api/vault", {
+      const { res, json } = await apiJson<{ ok?: boolean; error?: string }>("/api/vault", {
         method: "POST",
         headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
         body: JSON.stringify({
@@ -638,7 +636,6 @@ export function AutomationVaultCard() {
           label: "mirrored from saved provider keys",
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       await load();
       // r548: the mirror just replaced the credential — the BROWSER dial
