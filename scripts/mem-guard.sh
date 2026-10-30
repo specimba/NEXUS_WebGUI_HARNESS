@@ -19,13 +19,19 @@
 # SEPARATE tool call):
 #   setsid nohup bash -c 'exec bash scripts/mem-guard.sh' </dev/null >/dev/null 2>&1 & disown || true
 #
-# Tunables (env): MEM_GUARD_KB   restart threshold in KB (default 1740000
-#                                 ≈ 1.70 GB — under every witnessed kill mark)
+# Tunables (env): MEM_GUARD_KB   restart threshold in KB (default 2150000
+#                                 ≈ 2.10 GB — r791 addendum 3: the warm-boot
+#                                 steady state measured 1.87-1.93 GB, so the
+#                                 old 1.74 GB mark would loop restarts; the
+#                                 IN-PROCESS guard (src/lib/server/mem-guard.ts)
+#                                 additionally watches MemAvailable < 600 MB —
+#                                 the honest pressure signal, since the kernel
+#                                 kills fired on pressure, not absolute RSS)
 #                 MEM_GUARD_LOG  log path (default scripts/mem-guard.log)
 set -uo pipefail
 cd /home/z/my-project
 
-KB="${MEM_GUARD_KB:-1740000}"
+KB="${MEM_GUARD_KB:-2150000}"
 LOG="${MEM_GUARD_LOG:-scripts/mem-guard.log}"
 COOLDOWN=300     # min seconds between restart attempts
 CHECK_EVERY=120  # seconds between health + RSS probes
