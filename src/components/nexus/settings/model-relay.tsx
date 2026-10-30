@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { apiJson } from "@/lib/api-fetch";
 import { resolveLlm } from "@/lib/llm-config";
 import {
   buildRelayChain,
@@ -233,9 +234,12 @@ export function ModelRelayCard() {
   const loadIntel = React.useCallback(async (fresh: boolean) => {
     setIntelLoading(true);
     try {
-      const res = await fetch(`/api/intelligence${fresh ? "?fresh=1" : ""}`);
+      // r785: the intel index rides the apiJson death-window guard - an
+      // idempotent GET (the default single retry is safe); the stale-mount
+      // auto-refresh stays silent, a forced refresh surfaces the honest
+      // ApiError in its failure toast instead of raw parse noise.
+      const { res, json: idx } = await apiJson<IntelligenceIndex>(`/api/intelligence${fresh ? "?fresh=1" : ""}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const idx = (await res.json()) as IntelligenceIndex;
       writeIntelligenceCache(idx);
       setIntel(idx);
       if (fresh) {
@@ -271,9 +275,11 @@ export function ModelRelayCard() {
   const loadFreellm = React.useCallback(async (fresh: boolean) => {
     setFreellmLoading(true);
     try {
-      const res = await fetch(`/api/freellm${fresh ? "?fresh=1" : ""}`);
+      // r785: the free-reach census rides the guard too - same idempotent-GET
+      // judgment; a death-window HTML page now raises the plain-language
+      // ApiError instead of the browser Unexpected-token parse error.
+      const { res, json: idx } = await apiJson<FreellmIndex>(`/api/freellm${fresh ? "?fresh=1" : ""}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const idx = (await res.json()) as FreellmIndex;
       writeFreellmCache(idx);
       setFreellm(idx);
       if (fresh) {
@@ -1445,10 +1451,16 @@ function AdoptedLaneRow({
   async function restore() {
     setRestoring(true);
     try {
-      const res = await fetch("/api/tracker", { cache: "no-store" });
-      const json = res.ok
-        ? ((await res.json()) as { tracked?: Array<{ id?: string; removedAt?: string | null }> })
-        : null;
+      // r785: the restore pre-check rides the guard - and the old !ok-to-null
+      // path CONFLATED a dead server with absent-from-catalog: a 502 window
+      // read as the false nothing-to-restore-yet verdict. !ok and the
+      // death-window HTML page now throw into the honest Catalog-check-failed
+      // catch below instead of a fabricated absence answer.
+      const { res, json } = await apiJson<{ tracked?: Array<{ id?: string; removedAt?: string | null }> }>(
+        "/api/tracker",
+        { cache: "no-store" },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const row = json?.tracked?.find((r) => r?.id === lane.key);
       if (!row || row.removedAt) {
         toast.error(`${lane.modelId} is still absent from the provider catalog — nothing to restore yet`);
@@ -1465,7 +1477,7 @@ function AdoptedLaneRow({
   }
 
   return (
-    <li className={cn("flex items-center gap-2 px-2.5 py-1.5", (!lane.enabled || retired) && "opacity-70")}>
+    <li className={cn("flex items-center gap-2 px-2.5 py-1.5 transition-opacity", (!lane.enabled || retired) && "opacity-70")}>
       <span aria-hidden className="w-5 shrink-0 text-center text-sm" title={providerMeta(lane.providerId).label}>
         {providerMeta(lane.providerId).glyph}
       </span>

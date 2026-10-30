@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { runAgentChat } from "@/lib/chat-client";
 import { resetProvider429 } from "@/lib/provider-rotation";
+import { apiJson } from "@/lib/api-fetch";
 import { remirrorIfDrifted } from "@/lib/vault-mirror";
 import { PRESEED_PROVIDER_KEYS } from "@/lib/constants";
 import {
@@ -287,12 +288,12 @@ export function ProviderGallery() {
     }
     setBusy(p.id);
     try {
-      const res = await fetch("/api/providers/account", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerId: p.id, key }),
-      });
-      const data = (await res.json()) as {
+      // r785: the account probe rides the apiJson death-window guard - a
+      // read-style POST against the provider /v1/me (nothing inserts,
+      // nothing bills), judged repeat-safe so the default single retry
+      // stays; a death-window HTML page now raises the honest ApiError into
+      // the failure toast instead of raw parse noise.
+      const { res, json: data } = await apiJson<{
         name?: string;
         balance?: number;
         rateLimit?: number;
@@ -300,7 +301,11 @@ export function ProviderGallery() {
         totalSpent?: number;
         totalRequests?: number;
         error?: string;
-      };
+      }>("/api/providers/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerId: p.id, key }),
+      });
       if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
       setCredits((c) => ({ ...c, [p.id]: { ...data, at: Date.now() } }));
       // r335: a proven account answer is also the QUARANTINE PARDON. Until
@@ -313,15 +318,18 @@ export function ProviderGallery() {
       // in server-process memory a browser click can't reach).
       resetProvider429(p.id);
       try {
-        const rec = await fetch("/api/providers/recheck", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ providerId: p.id }),
-        });
-        const rd = (await rec.json()) as {
-          ok?: boolean;
-          cleared?: { billingLeftMs: number; cooldownLeftMs: number };
-        };
+        // r785: the quarantine-pardon heal rides the guard - clearing an
+        // already-clear map is a no-op on repeat (idempotent), so the
+        // default retry is safe; the cosmetic catch below still swallows
+        // everything by design.
+        const { json: rd } = await apiJson<{ ok?: boolean; cleared?: { billingLeftMs: number; cooldownLeftMs: number } }>(
+          "/api/providers/recheck",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ providerId: p.id }),
+          },
+        );
         const hadServerQuarantine =
           rd.ok && rd.cleared && (rd.cleared.billingLeftMs > 0 || rd.cleared.cooldownLeftMs > 0);
         if (hadServerQuarantine) {
@@ -365,6 +373,14 @@ export function ProviderGallery() {
     }
   }
 
+  /** r785: the /api/providers/free-models answer shape, shared by the guard call and the failure check. */
+  type FreeModelsAnswer = {
+    models?: { id: string; label?: string; contextLength?: number }[];
+    error?: string;
+    cached?: boolean;
+    regionBlocked?: boolean;
+  };
+
   /**
    * Refresh ONE provider's model roster from its live /models endpoint.
    * Works for every registry provider (r22): key-authed catalogs POST the
@@ -379,24 +395,37 @@ export function ProviderGallery() {
     const key = entry?.key?.trim() || "";
     setRefreshing((r) => ({ ...r, [p.id]: true }));
     try {
-      const res = await fetch("/api/providers/free-models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerId: p.id, key, accountId: entry?.accountId }),
-      });
-      const data = (await res.json()) as {
-        models?: { id: string; label?: string; contextLength?: number }[];
-        error?: string;
-        cached?: boolean;
-        regionBlocked?: boolean;
-      };
-      if (!res.ok || data.error) {
+      // r785: the roster refresh rides the guard at retries 0 - a force
+      // action against the provider live /models, so the user Refresh
+      // button keeps the retry decision (the action-route doctrine). The
+      // guard ApiError (an HTTP error body or a death-window HTML page)
+      // now feeds the SAME r23 browser-direct fallback the region-block
+      // path built, instead of leaking SyntaxError parse noise.
+      let data: FreeModelsAnswer | null = null;
+      let apiFailure: unknown = null;
+      try {
+        const answer = await apiJson<FreeModelsAnswer>(
+          "/api/providers/free-models",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ providerId: p.id, key, accountId: entry?.accountId }),
+          },
+          { retries: 0 },
+        );
+        data = answer.json;
+        if (!answer.res.ok) apiFailure = new Error(`HTTP ${answer.res.status}`);
+      } catch (err) {
+        apiFailure = err;
+      }
+      if (apiFailure || data?.error) {
         // Server blocked by the provider's network policy → try the browser.
         const viaBrowser = await refreshFromBrowser(p, key, entry?.accountId);
         if (viaBrowser != null) return viaBrowser;
-        throw new Error(data.error ?? `HTTP ${res.status}`);
+        if (apiFailure instanceof Error) throw apiFailure;
+        throw new Error(data?.error ?? "Roster refresh failed");
       }
-      const models = data.models ?? [];
+      const models = data?.models ?? [];
       persistLive({ ...live, [p.id]: models }, { ...liveAt, [p.id]: Date.now() });
       return models.length;
     } catch (err) {

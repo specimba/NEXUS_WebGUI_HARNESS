@@ -1,0 +1,16 @@
+chip: "{\"chip\":true,\"text\":\"⧉ 47 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":61,\"label\":\"lanes tried (130 no-judge)bucket 10-30 14:00 · q —  q-lean ×5 —  +122m since prior —  +67m quiet — mid·qwen ro\"}"
+tier state: "{\"tier\":true,\"text\":\"bucket 10-30 14:00 · q —  q-lean ×5 —  +122m since prior —  +67m quiet — mid·qwen route ACTIVE (1/2 · silent: AIHubMix q\",\"quietSpan\":\"font-medium transition-colors text-amber-600 dark:text-amber\",\"quietAmber\":true}"
+wave strip: "{\"strip\":true,\"text\":\"no-judge rows by 15-min UTC bucket: 10-30 08:00 ×3 (5 lanes) · 10-30 09:00 ×3 q (6 lanes) · 10-30 10:00 ×4 q (5 lanes) · 10-30 11:00 ×3 q (5 lanes) · 10-30 12:00 ×2 q (5 \"}"
+last chip: "{\"chips\":6,\"hasLanes\":true,\"hasCounts\":true,\"hasGap\":true,\"gapVal\":\"122\",\"tail\":\"ne ×1, AIHubMix qwen3.8-max-free (qwen3.8-max-free) ×1, Inception Labs mercury-3 (mercury-3) ×1, fast-judge ×1, jev (paid rung) ×1\"}"
+broken note: "{\"broken\":false,\"text\":\"\",\"hasTitle\":false}"
+broken-note gate DEGRADED to RECORDED (wave 16 landed mid-round - the r776 wave-bound disclosure)
+broken-note gate DEGRADED to RECORDED (wave 16 landed mid-round - the r776 wave-bound disclosure)
+letterless chip: "{\"letterless\":true,\"hasWhy\":true,\"hasLanes\":true}"
+letterless-chip gate DEGRADED to RECORDED (r785: cadence volatility after the r777 mid-round abort)
+letterless-chip gate DEGRADED to RECORDED (r785: cadence volatility after the r777 mid-round abort)
+divergence: "{\"divBadges\":5}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
+worklog appended
