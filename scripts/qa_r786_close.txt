@@ -1,1 +1,16 @@
-GUARD qa - no GREEN marker; no-ship-on-red
+chip: "{\"chip\":true,\"text\":\"⧉ 48 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":61,\"label\":\"lanes tried (131 no-judge) lean run broken (was q ×5) —  +78m since prior —  +16m quiet — mid·qwen route silen\"}"
+tier state: "{\"tier\":true,\"text\":\"lean run broken (was q ×5) —  +78m since prior —  +16m quiet — mid·qwen route silent (0/2 · silent: AIHubMix qwen3.8-max\",\"quietSpan\":\"font-medium transition-colors text-foreground/70\",\"quietAmber\":false}"
+wave strip: "{\"strip\":true,\"text\":\"no-judge rows by 15-min UTC bucket: 10-30 09:00 ×3 q (6 lanes) · 10-30 10:00 ×4 q (5 lanes) · 10-30 11:00 ×3 q (5 lanes) · 10-30 12:00 ×2 q (5 lanes) · 10-30 14:00 ×1 q (\"}"
+last chip: "{\"chips\":6,\"hasLanes\":true,\"hasCounts\":true,\"hasGap\":true,\"gapVal\":\"78\",\"tail\":\"r: no middle-tier lane dialed in this slot, the lanes above are outer-rung lanes (the letter needs a middle-tier qwen or glm dial)\"}"
+broken note: "{\"broken\":true,\"text\":\"lean run broken (was q ×5) —\",\"hasTitle\":false}"
+broken-note gate DEGRADED to RECORDED (wave 16 landed mid-round - the r776 wave-bound disclosure)
+broken-note gate DEGRADED to RECORDED (wave 16 landed mid-round - the r776 wave-bound disclosure)
+letterless chip: "{\"letterless\":true,\"hasWhy\":true,\"hasLanes\":true}"
+letterless-chip gate DEGRADED to RECORDED (r786: cadence volatility after the r777 mid-round abort)
+letterless-chip gate DEGRADED to RECORDED (r786: cadence volatility after the r777 mid-round abort)
+divergence: "{\"divBadges\":6}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
+worklog appended
