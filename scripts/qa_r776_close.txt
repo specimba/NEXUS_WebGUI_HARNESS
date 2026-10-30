@@ -10,3 +10,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 90f422abf] r776: the lean-run break witnessed on-page - when the newest bucket is letterless and the run beneath it was 2+, the tier-state line now renders lean run broken (was q ×2) in place of the silently-dropped r767 tag (the laneLean memo returns the pre-break run; muted tone + cursor-help + transition-colors; the title carries the break semantics and the restart rule); the letterless 08:00 bucket exercised the note live during QA. Styling polish: transition-colors on the strip route-letter spans. Census fully flat (155/41/23/15/117, no wave 16, band stays /55/59, the r775 /59 correction held). Snapshot discipline thirty-second close.
+ 9 files changed, 415 insertions(+), 8 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T08-41-39.json
+ create mode 100644 scripts/qa_r776.txt
+ create mode 100644 scripts/qa_r776_close.txt
+ create mode 100644 scripts/r776_close.sh
+ create mode 100644 scripts/r776_patch_close.py
+ create mode 100644 scripts/r776_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   5956ba12e..90f422abf  main -> main
+To https://github.com/specimba/PraisonAI.git
+   5956ba12e..90f422abf  main -> main
