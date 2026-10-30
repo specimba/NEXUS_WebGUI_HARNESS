@@ -161,4 +161,14 @@ export async function register(): Promise<void> {
   // pass, unref'd interval, never throws.
   const { startAutonomyEngine } = await import("@/lib/server/autonomy");
   startAutonomyEngine();
+  // r791 — in-process pre-OOM watchdog (the Owner freeze-watch, server half):
+  // the RSS ceiling curve (three kernel kills at 1.82/1.71/1.56 GB, the ~1.92
+  // GB stall, the ~2.1 GB hover) costs ~20 minutes per kill cycle and the
+  // recovery refresh risks a sandbox wipe. The guard turns the hard kill into
+  // a ~25s graceful dev-restart BEFORE the kernel killer fires — see
+  // src/lib/server/mem-guard.ts for why it must live in-process (the reaper
+  // kills every tool-call-launched daemon; three witnessed shell-guard deaths
+  // in one round, the last with the full dev-restart launch recipe).
+  const { startMemGuard } = await import("@/lib/server/mem-guard");
+  startMemGuard();
 }
