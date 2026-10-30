@@ -5,6 +5,7 @@ import { RefreshCw, Skull, TimerReset, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { apiJson } from "@/lib/api-fetch";
 
 // ─── Cron Observatory (r56) ──────────────────────────────────────────────────
 // Live window into the PLATFORM cron fleet that drives this project's
@@ -114,8 +115,11 @@ export function CronObservatory() {
 
   const load = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/cron/forensics", { cache: "no-store" });
-      const json = (await res.json()) as ForensicsPayload;
+      // r784: apiJson death-window guard - idempotent read, retry-safe; the
+      // !res.ok / !json.ok error paths keep the exact old semantics.
+      const { res, json } = await apiJson<ForensicsPayload>("/api/cron/forensics", {
+        cache: "no-store",
+      });
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setData(json);
       setError(null);

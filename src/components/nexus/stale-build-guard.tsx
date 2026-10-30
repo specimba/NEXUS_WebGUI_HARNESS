@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { apiJson } from "@/lib/api-fetch";
 
 // r189 — stale-tab guard. Schedules fire IN THIS TAB with the bundle the tab
 // loaded at page-open. Dev HMR dies silently in throttled background tabs, so
@@ -47,9 +48,12 @@ export function StaleBuildGuard() {
 
     const poll = async () => {
       try {
-        const r = await fetch("/api/version", { cache: "no-store" });
+        // r784: apiJson death-window guard - idempotent read, retry-safe;
+        // the !r.ok early-return semantics kept exactly (silent retry follows).
+        const { res: r, json: j } = await apiJson<{ stamp?: string }>("/api/version", {
+          cache: "no-store",
+        });
         if (!r.ok) return;
-        const j = (await r.json()) as { stamp?: string };
         if (!alive || !j.stamp) return;
         if (stamp.current == null) {
           stamp.current = j.stamp;
@@ -107,7 +111,7 @@ export function StaleBuildGuard() {
       data-testid="stale-build-pill"
       onClick={() => window.location.reload()}
       aria-label="Refresh to load the updated app build"
-      className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-sm font-medium text-amber-700 shadow-sm backdrop-blur transition-colors hover:bg-amber-500/25 dark:text-amber-300"
+      className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-sm font-medium text-amber-700 shadow-sm backdrop-blur transition-colors hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 dark:text-amber-300"
     >
       <span className="relative flex h-2 w-2">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-60" />
