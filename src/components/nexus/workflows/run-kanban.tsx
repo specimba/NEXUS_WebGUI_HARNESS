@@ -384,9 +384,10 @@ function laneLastSeenOf(corpus: { rows: { note: string; createdAt?: string | nul
  * per-lane bucket profiles DIVERGE when the route preference shifts -
  * the laneSpread figure below makes the composition visible on-page.
  * Same newest-400-rows window bound, disclosed in the strip title. */
-function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null }[] }[]): { lanes: Record<string, Record<string, number>>; corpusRows: Record<string, number>; laneSpread: Record<string, number> } {
+function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null }[] }[]): { lanes: Record<string, Record<string, number>>; corpusRows: Record<string, number>; laneSpread: Record<string, number>; bucketBounds: Record<string, { min: number; max: number }> } {
   const lanes: Record<string, Record<string, number>> = {};
   const corpusRows: Record<string, number> = {};
+  const bucketBounds: Record<string, { min: number; max: number }> = {};
   for (const entry of corpus) {
     for (const row of entry.rows) {
       const c = gateCensusOf([{ note: row.note }]);
@@ -397,6 +398,9 @@ function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null
       const q = String(Math.floor(d.getUTCMinutes() / 15) * 15).padStart(2, "0");
       const key = d.toISOString().slice(5, 10) + " " + d.toISOString().slice(11, 13) + ":" + q;
       corpusRows[key] = (corpusRows[key] ?? 0) + 1;
+      const bb = bucketBounds[key] ?? (bucketBounds[key] = { min: t, max: t });
+      if (t < bb.min) bb.min = t;
+      if (t > bb.max) bb.max = t;
       const re = /(?:tried:|;)\s*([^—;]+?)\s*—/g;
       let m: RegExpExecArray | null = re.exec(row.note || "");
       while (m) {
@@ -413,7 +417,7 @@ function laneBucketsOf(corpus: { rows: { note: string; createdAt?: string | null
   for (const key of Object.keys(corpusRows)) {
     laneSpread[key] = Object.values(lanes).filter((lb) => (lb[key] ?? 0) > 0).length;
   }
-  return { lanes, corpusRows, laneSpread };
+  return { lanes, corpusRows, laneSpread, bucketBounds };
 }
 
 /** r760: the route-tier classifier - every lane in the verbatim
@@ -1731,7 +1735,7 @@ export function RunKanban({
   const waveStrip = React.useMemo(() => {
     const src = laneFilter ? laneBuckets.lanes[laneFilter] : laneBuckets.corpusRows;
     const keys = Object.keys(src).sort();
-    return { src, shown: keys.slice(-6), total: keys.length, spread: laneBuckets.laneSpread };
+    return { src, shown: keys.slice(-6), total: keys.length, spread: laneBuckets.laneSpread, bounds: laneBuckets.bucketBounds };
   }, [laneBuckets, laneFilter]);
   // r758: divergence auto-highlight per lane - the recent-bucket lag
   // signal, amber-flagged on the chips; ships pre-armed (steady slot).
@@ -2375,12 +2379,16 @@ export function RunKanban({
           {waveStrip.total > 0 ? (
             <div
               data-testid="corpus-wave-strip"
-              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Bounded by the newest-400-rows corpus fetch window (same as first/last-seen). The (N lanes) figure is the distinct lanes named per bucket - a mixed-tier bucket shows more (r759: the middle tier alternates the qwen free pair and the glm-5.3 pair, so a 7-lane bucket is a both-routes bucket). The mini-bar (r761) scales with the row count (2px per row, 16px cap); an amber bar marks a mixed-tier (both-routes) bucket, muted bars are single-tier - the route watch reads the bar color at a glance."}
+              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Bounded by the newest-400-rows corpus fetch window (same as first/last-seen). The (N lanes) figure is the distinct lanes named per bucket - a mixed-tier bucket shows more (r759: the middle tier alternates the qwen free pair and the glm-5.3 pair, so a 7-lane bucket is a both-routes bucket). The mini-bar (r761) scales with the row count (2px per row, 16px cap); an amber bar marks a mixed-tier (both-routes) bucket, muted bars are single-tier - the route watch reads the bar color at a glance. The bucket hover (r762) shows the actual first/last corpus-row times inside the slot - the bucket key drops the year, the hover recovers it from the row epochs."}
               className="mb-2 text-[11px] leading-4 tabular-nums text-muted-foreground/70"
             >
               {laneFilter ? "dials for " + laneFilter + " by 15-min UTC bucket: " : "no-judge rows by 15-min UTC bucket: "}
               {waveStrip.shown.map((k, i) => (
-                <span key={k} className="inline-flex items-end gap-1 whitespace-nowrap">
+                <span
+                  key={k}
+                  className="inline-flex items-end gap-1 whitespace-nowrap cursor-help"
+                  title={"Bucket " + k + " UTC (15-min slot)" + (waveStrip.bounds[k] ? " — corpus rows actually span " + new Date(waveStrip.bounds[k].min).toISOString().slice(0, 19).replace("T", " ") + " to " + new Date(waveStrip.bounds[k].max).toISOString().slice(11, 19) + " UTC" : "")}
+                >
                   <span
                     aria-hidden
                     className={"inline-block w-1.5 rounded-sm " + (!laneFilter && (waveStrip.spread[k] ?? 0) > 5 ? "bg-amber-500/40" : "bg-muted-foreground/30")}
