@@ -153,9 +153,10 @@ export function EgressCard() {
         // the token preview is a cheap local GET (mask preview only, no
         // upstream dial) — keep it fresh even on the cached path
         try {
-          const t = await fetch("/api/egress/token", { cache: "no-store" }).then(
-            (r) => r.json() as Promise<TokenStatus>,
-          );
+          // r779: apiJson — the cached-path token preview joins the guard.
+          const t = (
+            await apiJson<TokenStatus>("/api/egress/token", { cache: "no-store" })
+          ).json;
           if (t.ok) setTokenPreview(t.tokenPreview ?? null);
         } catch {
           /* keep previous preview */
@@ -164,15 +165,17 @@ export function EgressCard() {
       }
     }
     try {
+      // r779: apiJson — both refresh reads join the guard (a death-window
+      // GET can no longer unread a landed save, nor parse an HTML 502 page).
       const [s, t] = await Promise.all([
-        fetch("/api/egress/status", { cache: "no-store" }).then((r) => r.json() as Promise<EgressStatus>),
-        fetch("/api/egress/token", { cache: "no-store" }).then((r) => r.json() as Promise<TokenStatus>),
+        apiJson<EgressStatus>("/api/egress/status", { cache: "no-store" }),
+        apiJson<TokenStatus>("/api/egress/token", { cache: "no-store" }),
       ]);
-      if (s.ok) {
-        setStatus(s);
-        writeCachedStatus(s);
+      if (s.json.ok) {
+        setStatus(s.json);
+        writeCachedStatus(s.json);
       }
-      if (t.ok) setTokenPreview(t.tokenPreview ?? null);
+      if (t.json.ok) setTokenPreview(t.json.tokenPreview ?? null);
     } catch {
       /* status fetch failure → card shows its honest "unknown" state */
     }
@@ -180,9 +183,12 @@ export function EgressCard() {
 
   const refreshRouting = React.useCallback(async () => {
     try {
-      const r = await fetch("/api/egress/routing", { cache: "no-store" }).then(
-        (res) => res.json() as Promise<{ ok: boolean; routing?: RoutingMap }>,
-      );
+      // r779: apiJson — the routing read joins the guard.
+      const r = (
+        await apiJson<{ ok: boolean; routing?: RoutingMap }>("/api/egress/routing", {
+          cache: "no-store",
+        })
+      ).json;
       if (r.ok && r.routing) setRouting(r.routing);
     } catch {
       /* keep local map */
@@ -295,9 +301,12 @@ export function EgressCard() {
     setProbing(true);
     setProbe(null);
     try {
-      const res = await fetch("/api/egress/probe", { cache: "no-store" }).then(
-        (r) => r.json() as Promise<{ ok: boolean; probe?: EgressProbe }>,
-      );
+      // r779: apiJson — the probe read joins the guard.
+      const res = (
+        await apiJson<{ ok: boolean; probe?: EgressProbe }>("/api/egress/probe", {
+          cache: "no-store",
+        })
+      ).json;
       if (res.ok && res.probe) setProbe(res.probe);
       else setProbe({ checkedAt: new Date().toISOString(), error: "probe request failed", transport: null, poolConfigured: false, poolCount: null, targets: [] });
     } catch {

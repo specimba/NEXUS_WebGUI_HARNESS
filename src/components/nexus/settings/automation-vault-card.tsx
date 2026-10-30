@@ -235,17 +235,19 @@ export function AutomationVaultCard() {
     setAskBackup(false);
     setBackingUp(true);
     try {
-      const res = await fetch("/api/vault/backup", {
-        cache: "no-store",
-        headers: { "x-nexus-csrf": "1" },
-      });
-      const json = (await res.json().catch(() => null)) as {
+      // r779: apiJson — the export read joins the death-window guard (an HTML
+      // 502 page can no longer surface as a parse error; one idempotent read
+      // retry self-heals a blip shorter than the retry window).
+      const { res, json } = await apiJson<{
         ok?: boolean;
         slots?: unknown[];
         error?: string;
-      } | null;
-      if (!res.ok || !json?.ok || !Array.isArray(json.slots)) {
-        toast.error(json?.error ?? "Vault export failed — the server didn't answer.");
+      }>("/api/vault/backup", {
+        cache: "no-store",
+        headers: { "x-nexus-csrf": "1" },
+      });
+      if (!res.ok || !json.ok || !Array.isArray(json.slots)) {
+        toast.error(json.error ?? "Vault export failed — the server didn't answer.");
         return;
       }
       if (json.slots.length === 0) {
@@ -285,19 +287,20 @@ export function AutomationVaultCard() {
     async (slots: unknown[]) => {
       setRestoring(true);
       try {
-        const res = await fetch("/api/vault/backup", {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
-          body: JSON.stringify({ slots }),
-        });
-        const json = (await res.json().catch(() => null)) as {
+        // r779: apiJson — the restore write joins the guard (an idempotent
+        // slot upsert, so the single retry can never double-apply).
+        const { res, json } = await apiJson<{
           ok?: boolean;
           imported?: number;
           skipped?: number;
           error?: string;
-        } | null;
-        if (!res.ok || !json?.ok) {
-          toast.error(json?.error ?? "Vault import failed — the server didn't answer.");
+        }>("/api/vault/backup", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+          body: JSON.stringify({ slots }),
+        });
+        if (!res.ok || !json.ok) {
+          toast.error(json.error ?? "Vault import failed — the server didn't answer.");
           return;
         }
         toast.success(
@@ -656,15 +659,17 @@ export function AutomationVaultCard() {
       // on its next proven dial or a later recheck.
       let healNote = "";
       try {
-        const rec = await fetch("/api/providers/recheck", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ providerId }),
-        });
-        const rd = (await rec.json()) as {
-          ok?: boolean;
-          cleared?: { billingLeftMs: number; cooldownLeftMs: number };
-        };
+        // r779: apiJson — cosmetic heal read joins the guard
+        const rd = (
+          await apiJson<{
+            ok?: boolean;
+            cleared?: { billingLeftMs: number; cooldownLeftMs: number };
+          }>("/api/providers/recheck", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ providerId }),
+          })
+        ).json;
         if (rd.ok && rd.cleared && (rd.cleared.billingLeftMs > 0 || rd.cleared.cooldownLeftMs > 0)) {
           healNote = " The server lane was quarantined from an older failure — cleared just now.";
         }
@@ -712,11 +717,14 @@ export function AutomationVaultCard() {
       return;
     }
     try {
-      const res = await fetch(`/api/vault?provider=${encodeURIComponent(provider)}`, {
-        method: "DELETE",
-        headers: { "x-nexus-csrf": "1" },
-      });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
+      // r779: apiJson — the slot delete joins the guard (idempotent delete).
+      const { res, json } = await apiJson<{ ok?: boolean; error?: string }>(
+        `/api/vault?provider=${encodeURIComponent(provider)}`,
+        {
+          method: "DELETE",
+          headers: { "x-nexus-csrf": "1" },
+        },
+      );
       if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       maskNow(); // a revealed key must not linger past its slot's death
       await load();
@@ -747,18 +755,22 @@ export function AutomationVaultCard() {
     if (!slot) return;
     setTestingProvider(provider);
     try {
-      const res = await fetch("/api/vault/consume", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
-        body: JSON.stringify({ provider }),
-      });
+      // r779: apiJson — the verify consume joins the guard (the route's own
+      // 404 is JSON, so the status special-case below still reads first).
+      const { res, json } = await apiJson<{ ok?: boolean; key?: string; error?: string }>(
+        "/api/vault/consume",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+          body: JSON.stringify({ provider }),
+        },
+      );
       if (res.status === 404) {
         toast.error("No key to test", {
           description: "The vault slot vanished — store a key first.",
         });
         return;
       }
-      const json = (await res.json()) as { ok?: boolean; key?: string; error?: string };
       if (!res.ok || !json.ok || typeof json.key !== "string" || json.key.length === 0) {
         throw new Error(json.error ?? `HTTP ${res.status}`);
       }
@@ -805,17 +817,18 @@ export function AutomationVaultCard() {
   async function liveDial(provider: string) {
     setDialingProvider(provider);
     try {
-      const res = await fetch("/api/vault/test-dial", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
-        body: JSON.stringify({ provider }),
-      });
-      const json = (await res.json()) as {
+      // r779: apiJson — the live dial joins the guard (the route's own 400
+      // is JSON, so the verdict special-case below still reads first).
+      const { res, json } = await apiJson<{
         ok?: boolean;
         verdict?: string;
         httpStatus?: number;
         error?: string;
-      };
+      }>("/api/vault/test-dial", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+        body: JSON.stringify({ provider }),
+      });
       if (res.status === 400) {
         toast.error("No dial target for this provider", {
           description:
@@ -877,11 +890,16 @@ export function AutomationVaultCard() {
     }
     setRevealingProvider(provider);
     try {
-      const res = await fetch("/api/vault/consume", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
-        body: JSON.stringify({ provider }),
-      });
+      // r779: apiJson — the reveal consume joins the guard (JSON 404 path
+      // preserved below).
+      const { res, json } = await apiJson<{ ok?: boolean; key?: string; error?: string }>(
+        "/api/vault/consume",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-nexus-csrf": "1" },
+          body: JSON.stringify({ provider }),
+        },
+      );
       if (res.status === 404) {
         toast.error("Nothing to reveal", {
           description: "The vault slot vanished — store a key first.",
@@ -890,7 +908,6 @@ export function AutomationVaultCard() {
         await load();
         return;
       }
-      const json = (await res.json()) as { ok?: boolean; key?: string; error?: string };
       if (!res.ok || !json.ok || typeof json.key !== "string" || json.key.length === 0) {
         throw new Error(json.error ?? `HTTP ${res.status}`);
       }
@@ -1341,7 +1358,10 @@ export function AutomationVaultCard() {
                     readOnly
                     data-testid="export-plaintext"
                     aria-label="Vault backup JSON"
-                    className="max-h-72 min-h-[120px] font-mono text-[10.5px]"
+                    // r779: the clipboard-blocked fallback arms visibly — an
+                    // amber focus ring + selection wash so the "text is
+                    // selected, press Ctrl+C" state reads as intentional.
+                    className="max-h-72 min-h-[120px] font-mono text-[10.5px] selection:bg-amber-500/25 focus-visible:border-amber-500/50 focus-visible:ring-amber-500/30"
                     value={backupText ?? ""}
                     ref={backupTextRef}
                     onFocus={(e) => e.currentTarget.select()}
