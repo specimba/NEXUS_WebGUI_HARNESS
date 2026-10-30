@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { fmtAge } from "@/lib/tracker-types";
+import { apiJson } from "@/lib/api-fetch";
 
 // ─── Model Odds — launch-forecast card (r51) ────────────────────────────────
 // Reads models.lunarwerx.com (free, keyless) through /api/tracker/odds and
@@ -62,8 +63,10 @@ export function ModelOddsCard() {
 
   const load = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/tracker/odds", { cache: "no-store" });
-      if (res.ok) setData((await res.json()) as OddsPayload);
+      // r783: apiJson death-window guard - idempotent read, retry-safe;
+      // the res.ok gate keeps the exact old keep-previous semantics.
+      const { res, json } = await apiJson<OddsPayload>("/api/tracker/odds", { cache: "no-store" });
+      if (res.ok) setData(json);
     } catch {
       /* keep previous */
     } finally {
@@ -106,7 +109,7 @@ export function ModelOddsCard() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 gap-1.5 text-[12px]"
+              className="h-7 gap-1.5 text-[12px] transition-colors hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-400"
               disabled={refreshing}
               onClick={() => {
                 setRefreshing(true);

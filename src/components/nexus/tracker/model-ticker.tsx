@@ -24,6 +24,7 @@ import {
   type TrackerData,
 } from "@/lib/tracker-types";
 import { usePinModel } from "./use-pin-model";
+import { apiJson } from "@/lib/api-fetch";
 
 // ─── Model Tracker ticker (r28) ──────────────────────────────────────────────
 // The "firsthand entry advantage" strip: a slim always-visible marquee that
@@ -168,9 +169,11 @@ export function ModelTicker() {
   const refresh = React.useCallback(
     async (announce: boolean) => {
       try {
-        const res = await fetch("/api/tracker", { cache: "no-store" });
+        // r783: apiJson death-window guard - idempotent read, retry-safe;
+        // the HTML-page detect joins the 5s/15s/60s backoff ladder below.
+        const { res, json } = await apiJson<TrackerData>("/api/tracker", { cache: "no-store" });
         if (!res.ok) throw new Error(`tracker HTTP ${res.status}`);
-        const fresh = (await res.json()) as TrackerData;
+        const fresh = json;
         failsRef.current = 0;
         apply(fresh, announce);
         if (fresh.status.stale) void syncNowRef.current();
@@ -196,12 +199,18 @@ export function ModelTicker() {
     async (announce = true) => {
       setSyncing(true);
       try {
-        const res = await fetch("/api/tracker", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-nexus-csrf": "1" },
-          body: JSON.stringify(vyceKey ? { force: true, vyceKey } : { force: true }),
-        });
-        const out = (await res.json()) as { skipped?: boolean; reason?: string; newModels?: number };
+        // r783: apiJson guard, retries 0 - action route (forces an external
+        // source sync), the retry decision stays with the user button.
+        const { json } = await apiJson(
+          "/api/tracker",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-nexus-csrf": "1" },
+            body: JSON.stringify(vyceKey ? { force: true, vyceKey } : { force: true }),
+          },
+          { retries: 0 },
+        );
+        const out = json as { skipped?: boolean; reason?: string; newModels?: number };
         await refresh(announce);
         if (!out.skipped) {
           if ((out.newModels ?? 0) > 0) toast(`Tracker caught ${out.newModels} new model${out.newModels === 1 ? "" : "s"}`, { icon: "🛰" });

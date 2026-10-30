@@ -24,6 +24,7 @@ import {
   type TrackedModelRow,
 } from "@/lib/tracker-types";
 import { usePinModel } from "./use-pin-model";
+import { apiJson } from "@/lib/api-fetch";
 
 // ─── Radar → "Models" tab (r28) ──────────────────────────────────────────────
 // The full-screen companion to the ticker: every watched lane with NEW/FREE
@@ -106,9 +107,11 @@ export function ModelRadarTab() {
 
   const load = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/tracker", { cache: "no-store" });
+      // r783: apiJson death-window guard - idempotent read, retry-safe;
+      // the res.ok / loadFailed branches keep the exact old semantics.
+      const { res, json } = await apiJson<TrackerData>("/api/tracker", { cache: "no-store" });
       if (res.ok) {
-        const next = (await res.json()) as TrackerData;
+        const next = json;
         setData(next);
         setLoadFailed(false);
         // r503: the first-seen → registry → relay-chain wiring, run on the
@@ -151,12 +154,23 @@ export function ModelRadarTab() {
   const sync = React.useCallback(async () => {
     setSyncing(true);
     try {
-      const res = await fetch("/api/tracker", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-nexus-csrf": "1" },
-        body: JSON.stringify(vyceKey ? { force: true, vyceKey } : { force: true }),
-      });
-      const out = (await res.json()) as { skipped?: boolean; reason?: string; newModels?: number; sources?: { id: string; ok: boolean; models: number }[] };
+      // r783: apiJson guard, retries 0 - action route (forces an external
+      // source sync), the retry decision stays with the user button.
+      const { json } = await apiJson(
+        "/api/tracker",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-nexus-csrf": "1" },
+          body: JSON.stringify(vyceKey ? { force: true, vyceKey } : { force: true }),
+        },
+        { retries: 0 },
+      );
+      const out = json as {
+        skipped?: boolean;
+        reason?: string;
+        newModels?: number;
+        sources?: { id: string; ok: boolean; models: number }[];
+      };
       if (!out.skipped) {
         const ok = (out.sources ?? []).filter((s) => s.ok).map((s) => `${s.id} (${s.models})`).join(", ");
         toast(`Synced — ${out.newModels ?? 0} new · ${ok || "no sources"}`, { icon: "🛰" });

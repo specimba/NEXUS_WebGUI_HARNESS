@@ -1590,10 +1590,13 @@ export function RunKanban({
     let timer: ReturnType<typeof setTimeout> | null = null;
     const load = () => {
       tries += 1;
-      void fetch("/api/evals")
-        .then(async (res) => {
+      // r783: apiJson death-window guard - idempotent read; the type rides
+      // as an as-cast (inline object-literal generics are parser-fragile in
+      // .tsx) and the HTML-page detect joins the 3s retry ladder below.
+      void apiJson("/api/evals")
+        .then(({ res, json }) => {
           if (!res.ok) throw new Error(`ledger census HTTP ${res.status}`);
-          const j = (await res.json()) as {
+          const j = json as {
             total?: number;
             verdicts?: number;
             fails?: number;
