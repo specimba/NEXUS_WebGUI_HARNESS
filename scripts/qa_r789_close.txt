@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 241798fa5] r789: the band docs carry the wave-21 lettered-q point at all four on-page sites (20 points, 61 quoted rendered with dual provenance - the r788 close probes recorded gapVal 61 and the r789 witness re-witnessed it: bucket 10-30 19:00 UTC rows 19:06:22 UTC maxes, the slot LETTERED q again via mid-qwen ACTIVE 1/2 (AIHubMix qwen3.8-max-free) vs mid-glm silent 0/2, the q-lean tag renders x4 in the shown window, quiet +99m amber past the 62m ceiling) + the corpus lane-filter chips gain the violet hover (the r783 convention). Census 52 to 53 runs / 186 ev / 141nj; QA green first-try; snapshot discipline forty-fourth close.
+ 9 files changed, 305 insertions(+), 4 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T20-52-44.json
+ create mode 100644 scripts/patch_r789_close.py
+ create mode 100644 scripts/qa_r789.txt
+ create mode 100644 scripts/qa_r789_close.txt
+ create mode 100644 scripts/r789_close.sh
+ create mode 100644 scripts/r789_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   aef9fd311..241798fa5  main -> main
+To https://github.com/specimba/PraisonAI.git
+   aef9fd311..241798fa5  main -> main
