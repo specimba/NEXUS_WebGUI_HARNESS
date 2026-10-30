@@ -34,6 +34,7 @@ import { APP_VERSION, AIHUBMIX_INTRO_FLAG, VYCE_INTRO_FLAG } from "@/lib/constan
 import type { View } from "@/lib/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { apiJson } from "@/lib/api-fetch";
 
 // ─── Nav items ───────────────────────────────────────────────────────────────
 const NAV_ITEMS: { view: View; label: string; icon: React.ElementType; hint: string }[] = [
@@ -131,8 +132,19 @@ function FleetChip() {
 
   React.useEffect(() => {
     let alive = true;
-    fetch("/api/cron/forensics")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    // r782: apiJson death-window guard - the chip's read is idempotent and
+    // retry-safe; a gateway HTML page self-heals (one retry) instead of
+    // rejecting raw, and the !res.ok branch keeps the exact old semantics.
+    apiJson("/api/cron/forensics")
+      .then(({ res, json }) => {
+        if (!res.ok) throw new Error(String(res.status));
+        // r782 note: the type rides as an as-cast at the use site - inline
+        // object-literal generics in a .tsx file are parser-fragile
+        // (tsc TS1005, witnessed this round).
+        return json as {
+          registry?: { jobs?: Array<{ kind?: string; enabled?: boolean; schedule?: { expr?: unknown } }> };
+        };
+      })
       .then((d) => {
         if (!alive) return;
         const jobs: Array<{ kind?: string; enabled?: boolean; schedule?: { expr?: unknown } }> =

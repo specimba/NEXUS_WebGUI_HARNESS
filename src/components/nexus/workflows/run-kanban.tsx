@@ -41,6 +41,7 @@ import { GATE_MIN_CHARS } from "@/lib/systemone";
 import { gateCensusOf } from "@/lib/gate-census";
 import { GateSuffix } from "@/components/nexus/workflows/gate-suffix";
 import { familyTallyOf } from "@/lib/family-witness";
+import { apiJson } from "@/lib/api-fetch";
 
 // r695: one focus-ring home for the board's focusable chip family — the
 // digest ⧉/⚖ pair, the per-run ⚖/↻/harness chips, and the r683 ghost button
@@ -146,9 +147,11 @@ function useServerRuns(enabled: boolean): ServerRunRow[] {
     let stopped = false;
     const load = async () => {
       try {
-        const res = await fetch("/api/automation/sync");
+        // r782: apiJson death-window guard on the sync poll - idempotent
+        // read, retry-safe; a gateway HTML 502 page can no longer hit the
+        // raw res.json() parse on the board's 60s poll.
+        const { res, json } = await apiJson<{ runs?: ServerRunRow[] }>("/api/automation/sync");
         if (!res.ok) return;
-        const json = (await res.json()) as { runs?: ServerRunRow[] };
         if (!stopped && Array.isArray(json.runs)) {
           setServerRuns(json.runs);
           // r486-a: land each settled server run into the local archive
@@ -1492,7 +1495,7 @@ function EventEmitBar() {
     <div
       role="group"
       aria-label="Emit automation event"
-      className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/5 px-2.5 py-1.5"
+      className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/5 px-2.5 py-1.5 transition-colors focus-within:border-amber-500/45 focus-within:ring-1 focus-within:ring-amber-500/25"
     >
       <Hourglass className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden />
       <span className="text-[10px] font-medium text-muted-foreground">
