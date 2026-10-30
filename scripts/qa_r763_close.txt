@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":4}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 62d98cf00] r763: per-bucket route letters ship (q/g/m) + wave 8 pending. Opening census 122/32/21/15/86 - IDENTICAL to the r762 close (newest 00:03:15 UTC, wave 7); corpus ~34 min quiet at open, not yet an interval break (max observed gap ~58 min). Increment (r762-handoff named candidate): per-bucket route letter in the wave strip text - q = qwen-only, g = glm-only, m = both middle-tier routes answered per 15-min bucket, derived from laneTierOf over the same laneBuckets scan, corpus-mode only; letter styled font-medium text-foreground/70 (styling polish); strip title documents the legend. The wave-by-wave relay alternation is now legible in the recorded probe text itself. QA GREEN first-try at the wave-7 census (32/122/86nj, seven lanes). Snapshot discipline nineteenth close.
+ 9 files changed, 331 insertions(+), 4 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T00-48-58.json
+ create mode 100644 scripts/qa_r763.txt
+ create mode 100644 scripts/qa_r763_close.txt
+ create mode 100644 scripts/r763_close.sh
+ create mode 100644 scripts/r763_prose.py
+ create mode 100644 scripts/r763_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   973d0d5f6..62d98cf00  main -> main
+To https://github.com/specimba/PraisonAI.git
+   973d0d5f6..62d98cf00  main -> main
