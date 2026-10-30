@@ -2321,9 +2321,9 @@ export function RunKanban({
                 <span
                   data-testid="corpus-tier-state"
                   className="mr-1 text-[10px] tabular-nums text-muted-foreground/70"
-                  title={"Route-state (r760): the middle tier grouped by route against the newest corpus bucket (" + laneTiers.lastKey + ") - " + Object.entries(laneTiers.routes).map(([tier, r]) => tier + ": " + r.lanes.length + " lane(s), " + (r.active.length ? "ACTIVE" : "none answered")).join(" · ") + ". ACTIVE = the route answered in the newest corpus bucket; silent = the route is unpicked (route-shift witness, r759 finding)."}
+                  title={"Route-state (r760): the middle tier grouped by route against the newest corpus bucket (" + laneTiers.lastKey + ") - " + Object.entries(laneTiers.routes).map(([tier, r]) => tier + ": " + r.lanes.length + " lane(s), " + (r.active.length ? "ACTIVE" : "none answered")).join(" · ") + ". ACTIVE = the route answered in the newest corpus bucket; silent = the route is unpicked (route-shift witness, r759 finding). The letter (r764) is the newest-bucket route composition from the wave strip: q = qwen-only, g = glm-only, m = both; absent = no middle-tier rows in that bucket."}
                 >
-                  {Object.entries(laneTiers.routes).map(([tier, r]) => tier.replace("middle · ", "mid·") + " " + (r.active.length ? "ACTIVE" : "silent") + " (" + r.active.length + "/" + r.lanes.length + ")").join(" · ")}
+                  {(waveStrip.route[laneTiers.lastKey] ? "bucket " + laneTiers.lastKey + " · " + waveStrip.route[laneTiers.lastKey] + " — " : "") + Object.entries(laneTiers.routes).map(([tier, r]) => tier.replace("middle · ", "mid·") + " " + (r.active.length ? "ACTIVE" : "silent") + " (" + r.active.length + "/" + r.lanes.length + ")").join(" · ")}
                 </span>
               ) : null}
               {[...laneDistress.split("; ")].sort((a, b) => (laneCounts[b] ?? 0) - (laneCounts[a] ?? 0)).map((lane, i) => (

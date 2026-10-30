@@ -1,0 +1,9 @@
+chip: "{\"chip\":true,\"text\":\"⧉ 33 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":41,\"label\":\"lanes tried (90 no-judge)bucket 10-30 01:00 · q — mid·qwen route ACTIVE (2/2) · mid·glm route silent (0/2)entr\"}"
+tier state: "{\"tier\":true,\"text\":\"bucket 10-30 01:00 · q — mid·qwen route ACTIVE (2/2) · mid·glm route silent (0/2)\"}"
+wave strip: "{\"strip\":true,\"text\":\"no-judge rows by 15-min UTC bucket: 10-29 22:00 ×4 g (5 lanes) · 10-29 22:45 ×5 q (5 lanes) · 10-29 23:00 ×4 g (5 lanes) · 10-29 23:15 ×9 g (5 lanes) · 10-30 00:00 ×4 q (\"}"
+divergence: "{\"divBadges\":4}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
+worklog appended
