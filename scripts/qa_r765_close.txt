@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":4}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 8604d9580] r765: tier-state letter history ships + quiet open. Census 126/33/21/15/90 - IDENTICAL to the r764 close (newest ~01:05:10 UTC, wave 8); ~32 min quiet at open, within the stretching 13-62 min band. Increment (r764-handoff candidate a): the per-bucket letter history in the tier-state title (shown strip buckets oldest first, dash = no middle-tier rows) - the alternation story reads in one hover; the visible bucket tag gained the font-medium treatment matching the strip letters (styling polish), textContent byte-identical so the recorded probe format is unchanged. QA GREEN first-try at the steady census. Snapshot discipline twenty-first close.
+ 9 files changed, 310 insertions(+), 3 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T01-41-32.json
+ create mode 100644 scripts/qa_r765.txt
+ create mode 100644 scripts/qa_r765_close.txt
+ create mode 100644 scripts/r765_close.sh
+ create mode 100644 scripts/r765_prose.py
+ create mode 100644 scripts/r765_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   2625b044e..8604d9580  main -> main
+To https://github.com/specimba/PraisonAI.git
+   2625b044e..8604d9580  main -> main
