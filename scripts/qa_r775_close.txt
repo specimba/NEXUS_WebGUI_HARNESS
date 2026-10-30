@@ -9,3 +9,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main db3414c25] r775: waves 14 and 15 recorded forward - band 13/16/41/58/13/42/62/57/61/70/6/73/55/60 (wave 14 = 07:00 q at +55m; wave 15 = 08:00 LETTERLESS at +60m, no middle-tier dial - the q-lean x2 run breaks per r767); the r770-gated ceiling re-look runs at four post-burst points (6/73/55/60, mean 48.5m vs pre-burst 43.3m) and HOLDS the 62 ceiling (its one firing true) - verdict in the quiet title. Increment: per-chip +Xm since prior (max-to-max) on the strip bucket hovers - the whole cadence band readable per-bucket on-page; the four band sites carry /55/60 with wave framing. Styling polish: transition-colors on the strip bucket chips (legend parity). Snapshot discipline thirty-first close.
+ 9 files changed, 387 insertions(+), 6 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T08-15-06.json
+ create mode 100644 scripts/qa_r775.txt
+ create mode 100644 scripts/qa_r775_close.txt
+ create mode 100644 scripts/r775_close.sh
+ create mode 100644 scripts/r775_patch_close.py
+ create mode 100644 scripts/r775_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   ffb9e4015..db3414c25  main -> main
+To https://github.com/specimba/PraisonAI.git
+   ffb9e4015..db3414c25  main -> main
