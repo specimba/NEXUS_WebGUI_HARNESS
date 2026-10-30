@@ -7,3 +7,16 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main c851a61b3] r771: band docs catch up to wave 11 + the quiet-tag amber flip gets its transition polish. Re-labeled round: the 12:07 slot already closed r770 (ship 953264f61 + addendum e88f24967, wave 11 landed mid-round = the pre-declared reset case). Census flat at open 136/36/21/15/100 (newest ~04:13:18 UTC, the +70m wave-11 interval; no wave 12, quiet ~28m, amber cleared). Lane census corrected FORWARD: nine lane labels in both qa_r770 and qa_r771 - the seven-lane handoff phrasing was stale prose, not a new-lane signal. Increment: the interval title, quiet title and both tier-state band mentions now record 13/16/41/58/13/42/62/57/61/70 (the 70 = the witnessed wave-11 readout; the addendum prose 71 noted as the same data point) + transition-colors on both branches of the quiet tag ternary (amber flip animates). QUIET_CEILING held at 62 - one data point is not a retune. Snapshot discipline twenty-seventh close.
+ 10 files changed, 425 insertions(+), 5 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T04-51-09.json
+ create mode 100644 scripts/qa_r771.txt
+ create mode 100644 scripts/qa_r771_close.txt
+ create mode 100644 scripts/r771_census.py
+ create mode 100644 scripts/r771_close.sh
+ create mode 100644 scripts/r771_close_build.py
+ create mode 100644 scripts/r771_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   e88f24967..c851a61b3  main -> main
+To https://github.com/specimba/PraisonAI.git
+   e88f24967..c851a61b3  main -> main
