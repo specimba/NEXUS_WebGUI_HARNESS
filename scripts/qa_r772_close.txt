@@ -1,0 +1,9 @@
+chip: "{\"chip\":true,\"text\":\"⧉ 38 in corpus\",\"amber\":false}"
+nj click: "clicked"
+legend: "{\"legend\":true,\"spans\":60,\"label\":\"lanes tried (111 no-judge) +6m since prior —  +14m quiet — mid·qwen route silent (0/2 · silent: AIHubMix qwen3\"}"
+tier state: "{\"tier\":true,\"text\":\"+6m since prior —  +14m quiet — mid·qwen route silent (0/2 · silent: AIHubMix qwen3.8-flash-free (qwen3.8-flash-free), A\",\"quietSpan\":\"font-medium transition-colors text-foreground/70\",\"quietAmber\":false}"
+wave strip: "{\"strip\":true,\"text\":\"no-judge rows by 15-min UTC bucket: 10-30 01:00 ×4 q (5 lanes) · 10-30 02:00 ×3 q (5 lanes) · 10-30 03:00 ×4 q (5 lanes) · 10-30 04:00 ×3 q (6 lanes) · 10-30 04:45 ×8 q (\"}"
+divergence: "{\"divBadges\":6}"
+lane filter click: "clicked"
+lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
+worklog appended
