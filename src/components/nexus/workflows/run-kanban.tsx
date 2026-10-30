@@ -1735,7 +1735,27 @@ export function RunKanban({
   const waveStrip = React.useMemo(() => {
     const src = laneFilter ? laneBuckets.lanes[laneFilter] : laneBuckets.corpusRows;
     const keys = Object.keys(src).sort();
-    return { src, shown: keys.slice(-6), total: keys.length, spread: laneBuckets.laneSpread, bounds: laneBuckets.bucketBounds };
+    // r763: per-bucket route letter - which middle-tier routes answered in
+    // the bucket (q = qwen-only, g = glm-only, m = both). Corpus-wide by
+    // design (it documents the relay's route state for that slot) and
+    // rendered only in corpus mode - a lane-filtered strip is about one
+    // lane, not the relay. Same single laneBuckets dependency.
+    const route: Record<string, string> = {};
+    for (const k of keys) {
+      let q = 0;
+      let g = 0;
+      for (const lane of Object.keys(laneBuckets.lanes)) {
+        const tier = laneTierOf(lane);
+        if (tier !== "middle · qwen route" && tier !== "middle · glm route") continue;
+        const n = laneBuckets.lanes[lane]?.[k] ?? 0;
+        if (tier === "middle · qwen route") q += n;
+        else g += n;
+      }
+      if (q > 0 && g > 0) route[k] = "m";
+      else if (q > 0) route[k] = "q";
+      else if (g > 0) route[k] = "g";
+    }
+    return { src, shown: keys.slice(-6), total: keys.length, spread: laneBuckets.laneSpread, bounds: laneBuckets.bucketBounds, route };
   }, [laneBuckets, laneFilter]);
   // r758: divergence auto-highlight per lane - the recent-bucket lag
   // signal, amber-flagged on the chips; ships pre-armed (steady slot).
@@ -2379,7 +2399,7 @@ export function RunKanban({
           {waveStrip.total > 0 ? (
             <div
               data-testid="corpus-wave-strip"
-              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Bounded by the newest-400-rows corpus fetch window (same as first/last-seen). The (N lanes) figure is the distinct lanes named per bucket - a mixed-tier bucket shows more (r759: the middle tier alternates the qwen free pair and the glm-5.3 pair, so a 7-lane bucket is a both-routes bucket). The mini-bar (r761) scales with the row count (2px per row, 16px cap); an amber bar marks a mixed-tier (both-routes) bucket, muted bars are single-tier - the route watch reads the bar color at a glance. The bucket hover (r762) shows the actual first/last corpus-row times inside the slot - the bucket key drops the year, the hover recovers it from the row epochs."}
+              title={"Dials over time (r757): " + (laneFilter ? "dial attempts naming " + laneFilter : "no-judge ledger rows") + " bucketed into 15-minute UTC slots, oldest first, last 6 slots shown of " + waveStrip.total + ". Bounded by the newest-400-rows corpus fetch window (same as first/last-seen). The (N lanes) figure is the distinct lanes named per bucket - a mixed-tier bucket shows more (r759: the middle tier alternates the qwen free pair and the glm-5.3 pair, so a 7-lane bucket is a both-routes bucket). The mini-bar (r761) scales with the row count (2px per row, 16px cap); an amber bar marks a mixed-tier (both-routes) bucket, muted bars are single-tier - the route watch reads the bar color at a glance. The bucket hover (r762) shows the actual first/last corpus-row times inside the slot - the bucket key drops the year, the hover recovers it from the row epochs. The route letter (r763, corpus mode) names which middle-tier routes answered in the bucket: q = qwen-only, g = glm-only, m = both - the wave-by-wave relay alternation becomes legible in the strip text itself."}
               className="mb-2 text-[11px] leading-4 tabular-nums text-muted-foreground/70"
             >
               {laneFilter ? "dials for " + laneFilter + " by 15-min UTC bucket: " : "no-judge rows by 15-min UTC bucket: "}
@@ -2394,7 +2414,7 @@ export function RunKanban({
                     className={"inline-block w-1.5 rounded-sm " + (!laneFilter && (waveStrip.spread[k] ?? 0) > 5 ? "bg-amber-500/40" : "bg-muted-foreground/30")}
                     style={{ height: Math.max(2, Math.min(16, waveStrip.src[k] * 2)) + "px" }}
                   />
-                  <span>{k + " ×" + waveStrip.src[k] + (laneFilter ? "" : " (" + (waveStrip.spread[k] ?? 0) + " lanes)")}</span>
+                  <span>{k + " ×" + waveStrip.src[k]}{!laneFilter && waveStrip.route[k] ? <span className="font-medium text-foreground/70">{" " + waveStrip.route[k]}</span> : null}{laneFilter ? "" : " (" + (waveStrip.spread[k] ?? 0) + " lanes)"}</span>
                   {i < waveStrip.shown.length - 1 ? <span aria-hidden className="text-muted-foreground/40"> · </span> : null}
                 </span>
               ))}
