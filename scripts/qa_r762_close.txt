@@ -7,3 +7,15 @@ divergence: "{\"divBadges\":4}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main d461ccdd7] r762: bucket-bounds hover ships + wave 7 flips to qwen + r761 silence claim corrected. Census 122/32/86 vs the r761 baseline 118/31/82 - +4 ev / +1 run / +4 nj, newest 00:03:15 UTC (~42 min after wave 6, first 10-30 bucket); verdict/uncertain flat six waves. Full-trace read: wave 7 is QWEN-routed - the middle tier ALTERNATES near-per-wave (21:28 glm, 22:09 glm, 22:54 QWEN, 23:07 glm, 23:20 glm, 00:03 QWEN); r761 prose claimed qwen silent since 21:12 - WRONG, run_07a648a13e4e (22:54, the 22:45 bucket the strip displayed) was qwen-routed; instruments honest, narrative lagged; corrected forward, r761 text untouched. Increment (r761-handoff named candidate): bucket-bounds hover on the wave strip - laneBucketsOf tracks per-bucket min/max row epochs, bucket spans gain cursor-help + title with actual first/last row times (the MM-DD key drops the year; the hover recovers it); strip title documents. Snapshot discipline eighteenth close.
+ 9 files changed, 368 insertions(+), 6 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T00-14-38.json
+ create mode 100644 scripts/qa_r762.txt
+ create mode 100644 scripts/qa_r762_close.txt
+ create mode 100644 scripts/r762_close.sh
+ create mode 100644 scripts/r762_prose.py
+ create mode 100644 scripts/r762_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   300abb085..d461ccdd7  main -> main
+To https://github.com/specimba/PraisonAI.git
+   300abb085..d461ccdd7  main -> main
