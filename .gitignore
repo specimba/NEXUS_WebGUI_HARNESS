@@ -119,3 +119,5 @@ db/.corrupt-backup*/
 # snapshot-rollback quarantine (r636) — Owner-reviewable dead code, excluded from tsc/eslint
 .archive-snapshot-1027/
 .archive-snapshot-1028/
+scripts/.mem-guard.lock
+scripts/mem-guard.log
