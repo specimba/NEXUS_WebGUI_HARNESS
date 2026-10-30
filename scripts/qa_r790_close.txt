@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 715b6565f] r790: the band docs carry the r790 quiet-watch witness at all four on-page sites (no new cadence point - the census held flat at 53 runs / 186 ev / 141nj, chips 54, and the zero-growth stretch TIES the 122 band max: the quiet readout rendered +122m at the 21:08 UTC witness, the amber past-ceiling regime held across the r788/r789/r790 witnesses at +67/+99/+122m; the band stays 20 points ending 61) + the lanes-tried legend toggle gains the hover underline solidify (dotted to solid on hover). QA green first-try; snapshot discipline forty-fifth close.
+ 9 files changed, 304 insertions(+), 4 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-30T21-12-33.json
+ create mode 100644 scripts/patch_r790_close.py
+ create mode 100644 scripts/qa_r790.txt
+ create mode 100644 scripts/qa_r790_close.txt
+ create mode 100644 scripts/r790_close.sh
+ create mode 100644 scripts/r790_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   a9e44188f..715b6565f  main -> main
+To https://github.com/specimba/PraisonAI.git
+   a9e44188f..715b6565f  main -> main
