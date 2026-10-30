@@ -2518,7 +2518,7 @@ export function RunKanban({
                 <span
                   key={k}
                   tabIndex={0}
-                  className="inline-flex items-end gap-1 whitespace-nowrap rounded-sm cursor-help transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring/60 focus-visible:text-foreground/90"
+                  className="inline-flex items-end gap-1 whitespace-nowrap rounded-sm cursor-help transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring/60 focus-visible:bg-muted/30 focus-visible:text-foreground/90"
                   title={"Bucket " + k + " UTC (15-min slot)" + (waveStrip.bounds[k] ? " — corpus rows actually span " + new Date(waveStrip.bounds[k].min).toISOString().slice(0, 19).replace("T", " ") + " to " + new Date(waveStrip.bounds[k].max).toISOString().slice(11, 19) + " UTC" : "") + (!laneFilter ? (waveStrip.gap[k] ? " — +" + waveStrip.gap[k] + "m since prior (max-to-max)" : "") + " — lanes named here: " + ((waveStrip.named[k] ?? []).length ? (waveStrip.named[k] ?? []).map((l) => l.replace(/^fast-judge /, "").replace(" · ", " ") + " ×" + (laneBuckets.lanes[l]?.[k] ?? 0)).join(", ") : "none") + (waveStrip.route[k] ? "" : " — no route letter: no middle-tier lane dialed in this slot, the lanes above are outer-rung lanes (the letter needs a middle-tier qwen or glm dial)") : "")}
                 >
                   <span
