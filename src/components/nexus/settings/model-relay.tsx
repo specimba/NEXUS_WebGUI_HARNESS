@@ -181,6 +181,41 @@ function buildFleetRows(
   return rows;
 }
 
+/** r811: one ranked row of the benchmark-intelligence ladder — extracted so
+ *  the honest-six disclosure can render the tail with the IDENTICAL treatment
+ *  instead of a diluted copy. Ranked-list semantics: screen readers hear
+ *  "#N name — intelligence X.XX", not floating numbers; the score and meter
+ *  teach the blend on hover instead of staying mute. */
+function IntelLadderRow({ e, rank }: { e: { name: string; intel: number }; rank: number }) {
+  return (
+    <div
+      role="listitem"
+      aria-label={`#${rank} ${e.name} — intelligence ${e.intel.toFixed(2)}`}
+      className="flex items-center gap-2 text-[11px]"
+    >
+      <span className="w-4 shrink-0 text-right font-mono text-muted-foreground">{rank}</span>
+      <span className="min-w-0 flex-1 truncate font-mono" title={e.name}>
+        {e.name}
+      </span>
+      <div
+        className="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-muted"
+        title={`intelligence ${e.intel.toFixed(2)} — the ordering blends 65% benchmark boards · 35% catalog Elo`}
+      >
+        <div
+          className="h-full rounded-full bg-emerald-500/60"
+          style={{ width: `${Math.round(e.intel * 100)}%` }}
+        />
+      </div>
+      <span
+        className="w-8 shrink-0 text-right font-mono text-emerald-400"
+        title={`intelligence ${e.intel.toFixed(2)} — 65% benchmark boards · 35% catalog Elo`}
+      >
+        {e.intel.toFixed(2)}
+      </span>
+    </div>
+  );
+}
+
 export function ModelRelayCard() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
@@ -584,27 +619,36 @@ export function ModelRelayCard() {
                   {intel.entries.length} models · updated {new Date(intel.asOf).toLocaleString()}
                 </span>
               </div>
-              <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+              {/* r811: THE LADDER'S HONEST SIX — the tally said "N models"
+                  while the grid silently showed six; the tail now discloses
+                  itself behind a native <details> (ranked identically, no
+                  state, keyboard-accessible by default). Rows are a ranked
+                  list (role=list/listitem) with per-row accessible names. */}
+              <div
+                className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2"
+                role="list"
+                aria-label="Top models by blended benchmark intelligence"
+              >
                 {intel.entries.slice(0, 6).map((e, i) => (
-                  <div key={e.name} className="flex items-center gap-2 text-[11px]">
-                    <span className="w-4 shrink-0 text-right font-mono text-muted-foreground">
-                      {i + 1}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate font-mono" title={e.name}>
-                      {e.name}
-                    </span>
-                    <div className="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-emerald-500/60"
-                        style={{ width: `${Math.round(e.intel * 100)}%` }}
-                      />
-                    </div>
-                    <span className="w-8 shrink-0 text-right font-mono text-emerald-400">
-                      {e.intel.toFixed(2)}
-                    </span>
-                  </div>
+                  <IntelLadderRow key={e.name} e={e} rank={i + 1} />
                 ))}
               </div>
+              {intel.entries.length > 6 ? (
+                <details className="mt-1">
+                  <summary className="w-fit cursor-pointer text-[10px] text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground hover:decoration-solid">
+                    +{intel.entries.length - 6} more below the top six — open to rank them too
+                  </summary>
+                  <div
+                    className="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2"
+                    role="list"
+                    aria-label="Models ranked below the top six by blended benchmark intelligence"
+                  >
+                    {intel.entries.slice(6).map((e, i) => (
+                      <IntelLadderRow key={e.name} e={e} rank={i + 7} />
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </>
           ) : (
             <p className="mt-2 text-[11px] text-muted-foreground" role="status">
