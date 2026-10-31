@@ -377,7 +377,37 @@ export async function probeCortexEdge(cfg: CortexConfig): Promise<CortexProbeRes
       headers: cfg.key?.trim() ? { "x-nexus-cortex-key": cfg.key.trim() } : undefined,
       signal: budgetSignal(CORTEX_PROBE_TIMEOUT_MS),
     });
-    if (!res.ok) return { ok: false, ms: Date.now() - started, error: `HTTP ${res.status} from the function URL` };
+    if (!res.ok) {
+      // r798: a 401 from the function URL is TWO different walls, and the
+      // bare status line never said which — witnessed live 2026-10-31: both
+      // of the Owner's project URLs answer {"code":"UNAUTHORIZED_NO_AUTH_HEADER"}
+      // because the deployed v2 function still has verify_jwt ON, so the
+      // Supabase PLATFORM gate rejects every keyless request BEFORE the
+      // function (and its x-nexus-cortex-key gate) ever runs. Name the wall,
+      // name the fix. The other arm: the function answered and its own
+      // shared-secret gate rejected the key.
+      const bodyText = await res.text().catch(() => "");
+      if (
+        res.status === 401 &&
+        /UNAUTHORIZED_NO_AUTH_HEADER|Missing authorization header/i.test(bodyText)
+      ) {
+        return {
+          ok: false,
+          ms: Date.now() - started,
+          error:
+            "HTTP 401 · Supabase platform JWT gate (UNAUTHORIZED_NO_AUTH_HEADER) — the function is deployed with \u201cverify JWT\u201d ON, so Supabase rejects every request that lacks a Supabase JWT before the function (and its x-nexus-cortex-key gate) ever runs. Fix (this function only): Supabase Dashboard \u2192 Edge Functions \u2192 nexus-cortex-harness \u2192 Details \u2192 disable \u201cEnforce JWT verification\u201d, set the edge secrets (CORTEX_SHARED_SECRET + the per-lane keys), then Probe again — GET health stays open, POSTs ride the shared-secret gate.",
+        };
+      }
+      if (res.status === 401) {
+        return {
+          ok: false,
+          ms: Date.now() - started,
+          error:
+            "HTTP 401 from the function URL — the function\u2019s shared-secret gate rejected the key: the CORTEX_SHARED_SECRET edge secret doesn\u2019t match the key stored here (or isn\u2019t set on the function). Re-paste it in Supabase \u2192 Edge Functions \u2192 Secrets, then Probe again.",
+        };
+      }
+      return { ok: false, ms: Date.now() - started, error: `HTTP ${res.status} from the function URL` };
+    }
     const j = (await res.json().catch(() => null)) as
       | { service?: unknown; edgeRegion?: unknown; ok?: unknown }
       | null;
@@ -406,7 +436,10 @@ export async function probeCortexEdge(cfg: CortexConfig): Promise<CortexProbeRes
         ms: Date.now() - started,
         service,
         edgeRegion,
-        error: `health ok; diagnostics HTTP ${res.status} — lane matrix unavailable`,
+        error:
+          res.status === 401
+            ? "health ok; diagnostics 401 — the shared-secret gate rejected the key (CORTEX_SHARED_SECRET mismatch or unset on the function — Supabase → Edge Functions → Secrets); lane matrix unavailable"
+            : `health ok; diagnostics HTTP ${res.status} — lane matrix unavailable`,
       };
     }
     const j = (await res.json().catch(() => null)) as

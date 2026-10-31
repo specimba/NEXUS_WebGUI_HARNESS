@@ -827,6 +827,18 @@ export function buildRelayChain(
       const fp = freeRank(a) - freeRank(b);
       if (fp) return fp;
     }
+    // r798: benchmark-led tier jump — when BOTH hops carry benchmark-backed
+    // intel (blendedIntel origin "live": the index knows the model, not the
+    // catalog Elo prior), the smarter lane outranks ACROSS tiers. The r516
+    // tier wall parked radar-adopted free frontier (hardcoded tier 2) below
+    // unproven tier-1 siblings forever — the Owner verdict 2026-10-31:
+    // "ordering is still not the smartest and best available frontier".
+    // Tier now only orders lanes the boards don't cover.
+    if (a.intelOrigin === "live" && b.intelOrigin === "live") {
+      const ja = a.intel ?? a.elo;
+      const jb = b.intel ?? b.elo;
+      if (jb !== ja) return jb - ja;
+    }
     if (a.tier !== b.tier) return a.tier - b.tier;
     // "smart" (default): free-first WITHIN a tier — quality tiers preserved,
     // wallet protected (a free lane beats a paid sibling of the same era).

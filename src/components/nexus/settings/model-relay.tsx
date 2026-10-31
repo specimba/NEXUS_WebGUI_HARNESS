@@ -244,9 +244,17 @@ export function ModelRelayCard() {
       setIntel(idx);
       if (fresh) {
         const live = idx.sources.filter((s) => s.status === "live").length;
-        toast.success("Benchmark index refreshed", {
-          description: `${idx.entries.length} models · ${idx.origin === "live" ? `${live} live board${live === 1 ? "" : "s"}` : "curated snapshot (boards unreachable)"} · ${idx.ms}ms`,
-        });
+        // r798: a forced refresh that lands on the curated snapshot no
+        // longer toasts plain success — the TITLE carries the fallback arm
+        // (the badge always did; the toast now matches, Owner 2026-10-31).
+        toast.success(
+          idx.origin === "live"
+            ? "Benchmark index refreshed"
+            : "Benchmark index refreshed — curated snapshot (boards unreachable)",
+          {
+            description: `${idx.entries.length} models · ${idx.origin === "live" ? `${live} live board${live === 1 ? "" : "s"}` : "the snapshot is the newest parse this device holds — the ladder orders on it honestly until a live board answers"} · ${idx.ms}ms`,
+          },
+        );
       }
     } catch (err) {
       if (fresh) {
@@ -543,7 +551,10 @@ export function ModelRelayCard() {
             Analysis (intelligence index + coding agents). Lane order blends{" "}
             <span className="font-medium text-emerald-400">65% benchmark · 35% catalog Elo</span>,
             cached 6h; a speed lane can no longer outrank a benchmark-proven
-            frontier model just because its name says so.
+            frontier model just because its name says so — and when the boards
+            cover both lanes, the smarter one now jumps tiers too (r798: the
+            tier wall no longer parks a benchmark-proven free frontier below
+            an unproven flagship sibling).
           </p>
           {intel ? (
             <>

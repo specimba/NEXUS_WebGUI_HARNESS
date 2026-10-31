@@ -476,7 +476,7 @@ export function FrontierScoutTab() {
 
       {/* Seed ledger strip */}
       <div
-        className="max-h-40 overflow-y-auto rounded-lg border bg-muted/20 p-3"
+        className="max-h-[60vh] overflow-y-auto rounded-lg border bg-muted/20 p-3"
         role="region"
         aria-label="Evolution seed ledger"
       >
