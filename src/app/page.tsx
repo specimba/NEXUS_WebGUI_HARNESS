@@ -154,9 +154,21 @@ export default function Page() {
     if (!mounted) return;
     applyHashRoute();
     hashConsumedRef.current = true;
+    // r796: the r747 board force-open can lose the zustand-persist
+    // rehydration race on a cold/rolled profile - witnessed live this round:
+    // the view switched to Workflows but the forced workflowBoardOpen bit
+    // landed absent, leaving the card grid (no kanban, no corpus strip).
+    // Re-apply the route after the rehydration window: two post-mount
+    // macrotasks, idempotent reads of the same hash, timers cleaned up.
+    const t1 = setTimeout(applyHashRoute, 0);
+    const t2 = setTimeout(applyHashRoute, 400);
     const onHash = () => applyHashRoute();
     window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    return () => {
+      window.removeEventListener("hashchange", onHash);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [mounted]);
 
   if (!mounted) return <Splash />;

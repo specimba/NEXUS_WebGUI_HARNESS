@@ -1,0 +1,3 @@
+== r796 golden QA + judge-lane board witness ==
+board: "{\"strip\":false}"
+GUARD board strip
