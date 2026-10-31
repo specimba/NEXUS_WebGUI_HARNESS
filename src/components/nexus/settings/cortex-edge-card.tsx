@@ -188,6 +188,8 @@ export function CortexEdgeCard() {
   const [guideOpen, setGuideOpen] = React.useState(false);
   const [probing, setProbing] = React.useState(false);
   const [probe, setProbe] = React.useState<CortexProbeResult | null>(null);
+  // r810: session-local consecutive-failure counter for the escalation line.
+  const [failureStreak, setFailureStreak] = React.useState(0);
   // r672: the probe verdict is now PERSISTED (cortex-census adapter) — the
   // census survives reloads and renders on every mount, killing the card's
   // ephemeral-probe staleness (KB-1-b finding: green badge while edge down).
@@ -236,9 +238,29 @@ export function CortexEdgeCard() {
     return cleaned;
   }
 
+  /** r810: session-local streak bookkeeping — a bounded log of the last 10
+   *  probe outcomes in sessionStorage; returns the consecutive-failure count
+   *  INCLUDING this probe (0 when it succeeded). Clears with the tab, so the
+   *  note honestly says "this session", never implying a durable history. */
+  function recordProbeOutcome(ok: boolean): number {
+    try {
+      const raw = sessionStorage.getItem("nexus-cortex-probe-log");
+      const log = raw ? (JSON.parse(raw) as boolean[]) : [];
+      const next = [...(Array.isArray(log) ? log : []), ok].slice(-10);
+      sessionStorage.setItem("nexus-cortex-probe-log", JSON.stringify(next));
+      if (ok) return 0;
+      let streak = 0;
+      for (let i = next.length - 1; i >= 0 && next[i] === false; i--) streak++;
+      return streak;
+    } catch {
+      return ok ? 0 : 1;
+    }
+  }
+
   /** Record a probe verdict: component state + the persisted census, together. */
   function recordProbe(result: CortexProbeResult) {
     setProbe(result);
+    setFailureStreak(recordProbeOutcome(result.ok));
     persistCortexProbe({
       at: Date.now(),
       ok: result.ok,
@@ -550,6 +572,12 @@ export function CortexEdgeCard() {
                 className="max-w-full rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive"
               >
                 <p className="font-medium">✗ Probe failed — {probe.error}</p>
+                {failureStreak >= 2 && (
+                  <p className="mt-1 text-[11px] opacity-90" data-testid="cortex-probe-streak">
+                    {failureStreak} consecutive failed probes this session — the outage reads as
+                    persistent, not a one-off flap (session-local history, clears with the tab).
+                  </p>
+                )}
                 {probe.error && /401/.test(probe.error) && (
                   <p className="mt-1 flex items-start gap-1.5 text-[11px] opacity-90">
                     <KeyRound className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
