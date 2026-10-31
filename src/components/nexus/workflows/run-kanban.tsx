@@ -2338,7 +2338,7 @@ export function RunKanban({
                 </p>
               ) : null}
               {cards.length === 0 ? (
-                <p className="px-1 py-3 text-[11px] leading-relaxed text-muted-foreground/70">
+                <p data-testid="board-empty-state" className="rounded-r-md border-l-2 border-border/60 bg-background/40 px-2 py-3 text-[11px] leading-relaxed text-muted-foreground/70">
                   {col.id === "running" && "No runs streaming — start one from a pipeline card."}
                   {col.id === "attention" && "Nothing needs attention. 🎉"}
                   {col.id === "done" && "Finished runs will pile up here."}
