@@ -377,6 +377,11 @@ export function ModelRelayCard() {
   const fleet = React.useMemo(() => buildFleetRows(health, breaker), [health, breaker]);
   const quarantinedCount = fleet.filter((r) => r.quarantined).length;
   const degraded = quarantinedCount > 0 || fleet.some((r) => r.sickLanes >= 2);
+  // r820: the fleet-header aggregate (the r814 handoff's verify-first idea) —
+  // verified against the real rows before acting: when the fleet degrades
+  // through sick lanes alone (no breaker tripped), the degraded state lived
+  // ONLY in the border/icon COLOR. This count feeds the spoken aggregate.
+  const sickProviders = fleet.filter((r) => r.sickLanes >= 2).length;
   // Mirror buildRelayWire's exclusion: the primary is already shown in its own
   // row — don't list it twice. The auto hop is likewise excluded when the
   // built-in engine IS the primary.
@@ -1069,7 +1074,7 @@ export function ModelRelayCard() {
             breaker countdowns, and the “one more fail trips it” anticipation. */}
         <section
           className={cn(
-            "rounded-lg border p-3",
+            "rounded-lg border p-3 transition-colors",
             degraded
               ? "border-amber-500/30 bg-amber-500/[0.05]"
               : "border-border/80 bg-muted/20"
@@ -1090,10 +1095,18 @@ export function ModelRelayCard() {
               )}
               aria-hidden
             />
-            <Badge variant="outline" className="text-[10px] font-normal">
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] font-normal",
+                degraded && "border-amber-500/40 text-amber-300"
+              )}
+            >
               {fleet.length === 0
                 ? "no dial history"
-                : `${fleet.length} provider${fleet.length === 1 ? "" : "s"} · live verdicts`}
+                : degraded
+                  ? `degraded fleet · ${fleet.length} provider${fleet.length === 1 ? "" : "s"} · live verdicts`
+                  : `${fleet.length} provider${fleet.length === 1 ? "" : "s"} · live verdicts`}
             </Badge>
           </div>
 
@@ -1103,6 +1116,18 @@ export function ModelRelayCard() {
               {quarantinedCount === 1 ? "" : "s"} quarantined. Their lanes dial
               last until the timer lapses, then the next dial re-probes them.
               Lanes that answered in the last 15m keep their seat.
+            </p>
+          )}
+
+          {degraded && quarantinedCount === 0 && (
+            // r820: the degraded aggregate leaves the color-only channel —
+            // when sick lanes degrade the fleet without tripping a breaker,
+            // this board now SAYS it, mirroring the rows' own "N sick" copy.
+            <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-300">
+              Fleet degraded — {sickProviders} provider
+              {sickProviders === 1 ? "" : "s"} with lanes reading sick (2+
+              each). No breaker tripped yet; the rows below carry the per-lane
+              verdicts.
             </p>
           )}
 

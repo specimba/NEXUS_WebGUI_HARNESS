@@ -1,0 +1,42 @@
+== r820 golden QA + lane-matrix witness ==
+board: "{\"strip\":true,\"corpusChip\":null,\"emptyNotice\":true,\"chips\":9,\"corpusPills\":null,\"cap\":null}"
+board: "{\"strip\":true,\"corpusChip\":null,\"emptyNotice\":true,\"chips\":9,\"corpusPills\":null,\"cap\":null}" (runs list empty; corpus strip PRESENT - server-side eval events exist and the strip is correctly summarizing them)
+ld: "{\"ld\":false,\"note\":\"no-nj-title\"}"
+ld: skipped (corpus present, zero no-judge failures - healthy judged corpus)
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/?r=820s#settings
+settings: "{\"census\":true,\"relay\":true}"
+✓ Done
+cortex-verdict: "{\"verdict\":true,\"failureNote\":true,\"quickCheck\":false}"
+cortex: readable failure note rendered
+✓ Done
+cortex-streak: "{\"verdict\":true,\"failureNote\":true,\"streakLine\":true,\"streakText\":\"10 consecutive failed probes this session — the outage reads\"}"
+streak: escalation line rendered on consecutive failures
+lane-matrix: skipped (no v2 matrix this probe - honest skip)
+✓ Done
+compact-receipt: "{\"receipt\":true,\"freed\":true,\"stamp\":true}"
+✓ Done
+egress-verdict: "{\"verdict\":true,\"ageCaption\":true,\"failureNote\":false,\"probed\":true}"
+egress: vintage caption rendered
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/?r=820d#/radar/frontier
+radar-deeplink: "{\"selected\":\"Radar tab: Frontier\",\"frontierTrigger\":true}"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/?r=820r#radar
+✓ Done
+radar: "{\"selected\":\"Radar tab: Frontier\",\"frontierTrigger\":true,\"frontierCopy\":true}"
+✓ NEXUS WebGUI — Agentic Workflow Automation Platform
+  http://localhost:3000/?r=820w#/workflows/board
+paste: "paste-len:799"
+cron chip: "1/1"
+--- console tail ---
+[log] [HMR] connected
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+--- page errors ---
+
+== r820 QA GREEN ==
