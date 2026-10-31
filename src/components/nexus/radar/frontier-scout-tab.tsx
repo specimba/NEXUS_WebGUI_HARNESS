@@ -380,8 +380,24 @@ export function FrontierScoutTab() {
 
   const seedRow = (seed: FrontierSeed, key: number) => {
     const verdict = verdictOf(seed.total);
+    // r817: the ledger's rows were anonymous divs and the verdict dot was
+    // aria-hidden — a screen reader heard a bare title link and a copy
+    // button; the row's whole point (verdict + score + AWorld reproduction
+    // state) lived in a color and a tooltip. One utterance per row.
+    const repro = seed.reproduction
+      ? ` · AWorld ${seed.reproduction.verdict}${
+          seed.reproduction.verdict === "reproduced"
+            ? ` · ${seed.reproduction.evidence.length} evidence checks`
+            : ""
+        }`
+      : " · AWorld check available, not yet verified";
     return (
-      <div key={`${seed.id}-${key}`} className="flex min-w-0 items-center gap-2 py-1">
+      <div
+        key={`${seed.id}-${key}`}
+        role="listitem"
+        aria-label={`${seed.title} — ${verdict} ${seed.total}/100${repro}`}
+        className="flex min-w-0 items-center gap-2 rounded py-1 transition-colors hover:bg-muted/40"
+      >
         <span
           className={cn("h-2 w-2 shrink-0 rounded-full", VERDICT_DOT[verdict])}
           title={`${verdict} ${seed.total}/100`}
@@ -486,7 +502,7 @@ export function FrontierScoutTab() {
             stalled-pipeline proposals start pulling from it.
           </p>
         ) : (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1" role="list" aria-label="Pinned evolution seeds">
             <div className="mb-1 flex flex-wrap items-center gap-1.5">
               <Chip>
                 {seeds.length} seed{seeds.length === 1 ? "" : "s"} → Evolution pulls from
@@ -532,7 +548,7 @@ export function FrontierScoutTab() {
                 <summary className="cursor-pointer text-[11px] text-muted-foreground transition-colors hover:text-foreground hover:underline">
                   +{seeds.length - 3} older seed{seeds.length - 3 === 1 ? "" : "s"}
                 </summary>
-                <div className="mt-1">{seeds.slice(3).map((seed, i) => seedRow(seed, i))}</div>
+                <div className="mt-1" role="list" aria-label="Older pinned evolution seeds">{seeds.slice(3).map((seed, i) => seedRow(seed, i))}</div>
               </details>
             ) : null}
           </div>
