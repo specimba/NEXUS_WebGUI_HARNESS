@@ -395,11 +395,23 @@ export function EgressCard() {
               </Button>
             ) : null}
           </div>
-          <div aria-live="polite" className="flex min-h-5 items-center">
+          <div aria-live="polite" data-testid="egress-token-verdict" className="flex min-h-5 items-center">
             {tokenProbeError ? (
-              <Badge variant="destructive" className="max-w-full font-normal">
-                ✗ {tokenProbeError}
-              </Badge>
+              /* r808: the last wrong-container pill in the card — a save-time
+                 probe rejection is remediation-worthy context, not a badge.
+                 Readable note; the store-then-probe contract spelled out. */
+              <div
+                role="note"
+                data-testid="egress-token-failure"
+                className="max-w-full rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive"
+              >
+                <p className="font-medium">✗ Webshare rejected the token — {tokenProbeError}</p>
+                <p className="mt-1 text-[11px] opacity-90">
+                  Store-then-probe honesty: the token IS saved server-side, but a rejected token never
+                  routes pool traffic — save a corrected token to replace it, or Clear it when the button
+                  is offered.
+                </p>
+              </div>
             ) : configured && status ? (
               <Badge
                 variant="outline"
