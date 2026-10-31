@@ -478,8 +478,18 @@ export function EgressCard() {
         </div>
 
         {/* Probe */}
+        {/* r807: the probe row — button now carries an accessible name + an
+            honest tooltip (real dials, never cached). */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={handleProbe} disabled={probing}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleProbe}
+            disabled={probing}
+            aria-label="Probe egress direct versus pool"
+            title="Real dials against each probe target — direct and pool legs. Failures render as a readable note below."
+          >
             {probing ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
@@ -488,14 +498,36 @@ export function EgressCard() {
             {probing ? "Probing…" : "Probe direct vs pool"}
           </Button>
         </div>
-        <div aria-live="polite" className="space-y-1.5">
+        <div aria-live="polite" data-testid="egress-probe-verdict" className="space-y-1.5">
           {probe ? (
             probe.error ? (
-              <Badge variant="destructive" className="max-w-full font-normal">
-                ✗ {probe.error}
-              </Badge>
+              /* r807: the r805 doctrine ported to egress — a probe failure is
+                 a remediation-worthy event, not a pill badge. Readable note,
+                 honest timeout disclosure. */
+              <div
+                role="note"
+                data-testid="egress-probe-failure"
+                className="max-w-full rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive"
+              >
+                <p className="font-medium">✗ Probe failed — {probe.error}</p>
+                {probe.timedOut ? (
+                  <p className="mt-1 text-[11px] opacity-90">
+                    The probe hit its timeout — Probe again to retry.
+                  </p>
+                ) : null}
+              </div>
             ) : (
               <div className="space-y-1.5">
+                {/* r807: the probe finally says WHEN it measured (the r806
+                       lane-age lesson) + the honest timeout line. */}
+                <p className="text-[11px] text-muted-foreground" data-testid="egress-probe-age">
+                  Probed {new Date(probe.checkedAt).toLocaleString()} · Probe again to refresh — each leg is a real dial.
+                </p>
+                {probe.timedOut && probe.targets.length ? (
+                  <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-600 dark:text-amber-400">
+                    Timed out before every leg answered — the rows below are the legs that did.
+                  </p>
+                ) : null}
                 {probe.targets.map((t) => (
                   <div
                     key={t.target}
