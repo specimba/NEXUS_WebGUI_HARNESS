@@ -268,12 +268,20 @@ function RouteReceiptChip({
   );
 }
 
+// r822: the tool-calls strip was a bare stack of disclosure buttons with no list
+// semantics, and each card's outcome lived ONLY in the status icon's own
+// aria-label — a screen reader heard ungrouped buttons and had to open each one
+// to learn what happened. The wrapper is now a labeled list ("Tool activity —
+// N calls"), every card self-describes in one utterance ("Web Search —
+// Succeeded, 1.2s") mirroring the visible copy, and the icons are aria-hidden
+// so the status word has ONE source of truth (the r819 statusWord lesson).
 function ToolCallCard({ call }: { call: ToolCallInfo }) {
   const [open, setOpen] = React.useState(false);
   const meta = TOOL_META[call.name as ToolId];
   const label = meta?.label ?? call.name;
   const emoji = meta?.emoji ?? "🛠️";
   const pending = call.result === undefined;
+  const statusWord = pending ? "Running" : call.ok ? "Succeeded" : "Failed";
 
   const prettyArgs = React.useMemo(() => {
     try {
@@ -287,17 +295,21 @@ function ToolCallCard({ call }: { call: ToolCallInfo }) {
     <Collapsible
       open={open}
       onOpenChange={setOpen}
-      className="rounded-lg border bg-muted/40"
+      role="listitem"
+      className="rounded-lg border bg-muted/40 transition-colors hover:border-border/60"
     >
-      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-colors hover:bg-accent/50">
+      <CollapsibleTrigger
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-colors hover:bg-accent/50"
+        aria-label={`${label} — ${statusWord}${call.ms != null ? `, ${fmtMs(call.ms)}` : ""}`}
+      >
         <span aria-hidden>{emoji}</span>
         <span className="font-medium">{label}</span>
         {pending ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" aria-label="Running" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" aria-hidden />
         ) : call.ok ? (
-          <Check className="h-3.5 w-3.5 text-emerald-400" aria-label="Succeeded" />
+          <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
         ) : (
-          <X className="h-3.5 w-3.5 text-destructive" aria-label="Failed" />
+          <X className="h-3.5 w-3.5 text-destructive" aria-hidden />
         )}
         {call.ms != null && (
           <span className="text-[10px] tabular-nums text-muted-foreground">{fmtMs(call.ms)}</span>
@@ -899,7 +911,11 @@ export const MessageItem = React.memo(function MessageItem({
 
         {/* Tool calls */}
         {message.toolCalls.length > 0 && (
-          <div className="mt-2 space-y-1.5">
+          <div
+            className="mt-2 space-y-1.5"
+            role="list"
+            aria-label={`Tool activity — ${message.toolCalls.length} call${message.toolCalls.length === 1 ? "" : "s"}`}
+          >
             {message.toolCalls.map((call) => (
               <ToolCallCard key={call.id} call={call} />
             ))}
