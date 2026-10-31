@@ -38,6 +38,57 @@ export const COMPACTABLE_CACHE_KEYS: readonly string[] = [
 // 92% of the ~5 MB per-origin character budget the quota errors actually hit.
 export const AUTO_COMPACT_THRESHOLD_CHARS = 4_600_000;
 
+// r804: the compaction disclosure needs to outlive sonner's ~4-5s toast
+// (the r803 auto-compact witness caught the toast only inside a 1.5s window —
+// an Owner returning to the tab later sees nothing). compactNexusStorage
+// itself records this receipt so BOTH arms (the manual button and the boot
+// auto-responder) leave the same durable trace. The key sits deliberately
+// outside COMPACTABLE_CACHE_KEYS: it survives the very compaction it
+// describes, and it is a receipt, not a refillable cache.
+export const LAST_COMPACT_KEY = "nexus-last-compact";
+
+export interface LastCompactReceipt {
+  /** ISO timestamp of the compaction run. */
+  at: string;
+  freedChars: number;
+  clearedKeys: number;
+}
+
+/** Best-effort durable record — a full quota must never break the hygiene tool. */
+function recordLastCompact(result: CompactResult): void {
+  try {
+    const receipt: LastCompactReceipt = {
+      at: new Date().toISOString(),
+      freedChars: result.freedChars,
+      clearedKeys: result.cleared.length,
+    };
+    window.localStorage.setItem(LAST_COMPACT_KEY, JSON.stringify(receipt));
+  } catch {
+    // Quota-poisoned / private-mode writes: the compaction still happened;
+    // only the receipt is lost, and the next successful run rewrites it.
+  }
+}
+
+/** Read the last-compaction receipt; null when never compacted (or unreadable). */
+export function readLastCompact(): LastCompactReceipt | null {
+  try {
+    const raw = window.localStorage.getItem(LAST_COMPACT_KEY);
+    if (raw == null) return null;
+    const parsed = JSON.parse(raw) as Partial<LastCompactReceipt> | null;
+    if (
+      !parsed ||
+      typeof parsed.at !== "string" ||
+      typeof parsed.freedChars !== "number" ||
+      typeof parsed.clearedKeys !== "number"
+    ) {
+      return null;
+    }
+    return { at: parsed.at, freedChars: parsed.freedChars, clearedKeys: parsed.clearedKeys };
+  } catch {
+    return null;
+  }
+}
+
 function measureOriginChars(): number {
   let total = 0;
   for (let i = 0; i < window.localStorage.length; i++) {
@@ -67,12 +118,14 @@ export function compactNexusStorage(): CompactResult {
     }
   }
   const afterChars = measureOriginChars();
-  return {
+  const result: CompactResult = {
     beforeChars,
     afterChars,
     freedChars: Math.max(0, beforeChars - afterChars),
     cleared,
   };
+  recordLastCompact(result);
+  return result;
 }
 
 /**

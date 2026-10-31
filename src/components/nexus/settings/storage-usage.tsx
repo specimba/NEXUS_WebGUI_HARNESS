@@ -52,7 +52,11 @@ import {
   listArchiveFull,
   type ArchiveTierStats,
 } from "@/lib/run-archive";
-import { compactNexusStorage } from "@/lib/storage-hygiene";
+import {
+  compactNexusStorage,
+  readLastCompact,
+  type LastCompactReceipt,
+} from "@/lib/storage-hygiene";
 
 const KNOWN_KEYS: Record<string, string> = {
   "nexus-workflows": "Workflows",
@@ -93,6 +97,9 @@ const KNOWN_KEYS: Record<string, string> = {
   "nexus-migrated-from-praison-v1": "Rebrand migration stamp",
   // r498: tombstone written by the legacy reclaimer (small JSON receipt).
   "nexus-legacy-reclaimed": "Legacy reclaim receipt",
+  // r804: the compaction receipt (small JSON) written by compactNexusStorage
+  // itself — surfaced in the meter card so the disclosure outlives the toast.
+  "nexus-last-compact": "Last compaction receipt",
   // r507: the run archive keys were never labeled — the warm history is
   // often the single biggest eater and it showed up as a raw identifier.
   "nexus.run-archive.v1": "Run archive (hot tier)",
@@ -797,11 +804,15 @@ export function StorageUsage() {
   const [receipt, setReceipt] = React.useState<ReclaimReceipt | null>(null);
   const [reclaiming, setReclaiming] = React.useState(false);
   const [compacting, setCompacting] = React.useState(false);
+  // r804: the durable compaction record — the toast auto-dismisses in ~4-5s,
+  // this row is the honest leftover the Owner can actually find later.
+  const [lastCompact, setLastCompact] = React.useState<LastCompactReceipt | null>(null);
 
   const recheck = React.useCallback(() => {
     setSnap(measure());
     setLegacy(scanLegacy());
     setReceipt(readReceipt());
+    setLastCompact(readLastCompact());
   }, []);
 
   // r800: one-click compaction of the refillable caches (radar/ticker fetch
@@ -934,6 +945,24 @@ export function StorageUsage() {
               ? ` · biggest: ${snap.rows[0].label} (${fmt(snap.rows[0].chars)})`
               : ""}
           </p>
+
+          {lastCompact && (
+            <p
+              className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"
+              data-testid="last-compact-receipt"
+            >
+              <History className="h-3 w-3 shrink-0" aria-hidden />
+              <span>
+                Last compacted {new Date(lastCompact.at).toLocaleString()} — freed{" "}
+                {/* r804 QA lesson: exact digits here (the auto-compact toast's
+                    own unit) — the card's fmt() abbreviates (e.g. "81.6K"),
+                    which is style for the meter but loses the audit number. */}
+                {lastCompact.freedChars.toLocaleString()} chars across{" "}
+                {lastCompact.clearedKeys}{" "}
+                refillable cache{lastCompact.clearedKeys === 1 ? "" : "s"}.
+              </span>
+            </p>
+          )}
 
           {snap.rows.length === 0 ? (
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
