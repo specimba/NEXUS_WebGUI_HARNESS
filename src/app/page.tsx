@@ -15,6 +15,8 @@ import { WorkflowScheduler } from "@/components/nexus/workflows/workflow-schedul
 import { AutomationBridge } from "@/components/nexus/workflows/automation-bridge";
 import { StaleBuildGuard } from "@/components/nexus/stale-build-guard";
 import { RadarView } from "@/components/nexus/radar/radar-view";
+import { RADAR_TABS, RADAR_TAB_KEY } from "@/components/nexus/radar/radar-view";
+import { writeCache } from "@/components/nexus/radar/radar-shared";
 import { ModelTicker } from "@/components/nexus/tracker/model-ticker";
 import { SettingsView } from "@/components/nexus/settings/settings-view";
 import { ensureSeeded, useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
@@ -43,6 +45,10 @@ function useIsClient(): boolean {
 // #/vault            → Settings scrolled to the Automation vault (server-lane keys)
 // #/evolution        → Settings scrolled to the Evolution proposals panel
 // #/radar            → Trend Radar view (GitHub stars / HF trending / papers)
+// #/radar/<tab>      → Trend Radar opened on that tab (r802: models/github/
+//                        hf/papers/frontier — the persisted tab is written in
+//                        the view's own JSON envelope before the remount, so
+//                        the entry is deterministic and bookmarkable)
 // #/chat | #/agents | #/workflows | #/settings → bare view deep-links (r272)
 // #/workflows/board → Workflows with the Runs board layout forced open (r747):
 //   the layout bit is localStorage-persisted (nexus-ui.workflowBoardOpen, default
@@ -81,6 +87,14 @@ function applyHashRoute(): void {
   } else if (head === "radar") {
     ui.setSetupWizardOpen(false);
     ui.setView("radar");
+    // r802: #/radar/<tab> — linkable tab deep links. The RadarView remounts on
+    // every view switch and reads the persisted tab at its useState init, so
+    // writing the SAME JSON envelope its writeCache uses makes the hash the
+    // deterministic entry. Invalid tabs are ignored (the view's own fallback
+    // to Models stays the single source of truth for staleness).
+    if (param && (RADAR_TABS as readonly string[]).includes(param)) {
+      writeCache(RADAR_TAB_KEY, param);
+    }
   } else if (head === "chat" && param) {
     // r406: shareable/bookmarkable conversation link — the chat analog of
     // guide/<provider>. An unknown/stale id is safe BY DESIGN: chat-view

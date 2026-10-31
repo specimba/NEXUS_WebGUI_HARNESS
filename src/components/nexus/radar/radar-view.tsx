@@ -23,8 +23,11 @@ import { FrontierScoutTab } from "./frontier-scout-tab";
 // r301: the last-visited radar tab joins the persisted set — r240 taught the
 // inner controls to survive remounts (HF kind, GH username, arXiv query);
 // this is the same treatment one level up.
-const RADAR_TAB_KEY = "nexus-radar-tab";
-const RADAR_TABS = ["models", "github", "hf", "papers", "frontier"] as const;
+// r802: exported for the hash router — #/radar/<tab> deep links write the SAME
+// JSON envelope the view persists (a bare setItem JSON.parse-throws here and
+// silently falls back to Models: the r801 route oddity, root-caused).
+export const RADAR_TAB_KEY = "nexus-radar-tab";
+export const RADAR_TABS = ["models", "github", "hf", "papers", "frontier"] as const;
 type RadarTab = (typeof RADAR_TABS)[number];
 
 // ─── View shell ──────────────────────────────────────────────────────────────
@@ -52,23 +55,23 @@ export function RadarView() {
       <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
         <div className="border-b px-4 pt-3 md:px-6">
           <TabsList aria-label="Trend radar sections">
-            <TabsTrigger value="models" aria-label="Radar tab: Models" className="gap-1.5">
+            <TabsTrigger value="models" aria-label="Radar tab: Models" title="Switch to the Models board" className="gap-1.5">
               <Database className="h-3.5 w-3.5" aria-hidden />
               Models
             </TabsTrigger>
-            <TabsTrigger value="github" aria-label="Radar tab: GitHub Stars" className="gap-1.5">
+            <TabsTrigger value="github" aria-label="Radar tab: GitHub Stars" title="Switch to the GitHub Stars board" className="gap-1.5">
               <Github className="h-3.5 w-3.5" aria-hidden />
               GitHub Stars
             </TabsTrigger>
-            <TabsTrigger value="hf" aria-label="Radar tab: HF Trending" className="gap-1.5">
+            <TabsTrigger value="hf" aria-label="Radar tab: HF Trending" title="Switch to the HF Trending board" className="gap-1.5">
               <Boxes className="h-3.5 w-3.5" aria-hidden />
               HF Trending
             </TabsTrigger>
-            <TabsTrigger value="papers" aria-label="Radar tab: Paper Radar" className="gap-1.5">
+            <TabsTrigger value="papers" aria-label="Radar tab: Paper Radar" title="Switch to the Paper Radar board" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" aria-hidden />
               Paper Radar
             </TabsTrigger>
-            <TabsTrigger value="frontier" aria-label="Radar tab: Frontier" className="gap-1.5">
+            <TabsTrigger value="frontier" aria-label="Radar tab: Frontier" title="Switch to the Frontier Scout board" className="gap-1.5">
               <Telescope className="h-3.5 w-3.5" aria-hidden />
               Frontier
             </TabsTrigger>
