@@ -480,7 +480,15 @@ export function CortexEdgeCard() {
 
         {/* Probe + paste pack */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={handleProbe} disabled={probing}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleProbe}
+            disabled={probing}
+            aria-label="Probe the Cortex edge"
+            title="One health read plus the v2 lane diagnostics against the configured function URL; the shared key rides x-nexus-cortex-key. Failures render as a readable note below."
+          >
             {probing ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
@@ -512,7 +520,7 @@ export function CortexEdgeCard() {
             Copy function source
           </Button>
         </div>
-        <div aria-live="polite" className="flex min-h-5 items-center">
+        <div aria-live="polite" data-testid="cortex-probe-verdict" className="flex min-h-5 items-center">
           {probe ? (
             probe.ok ? (
               <Badge
@@ -522,9 +530,27 @@ export function CortexEdgeCard() {
                 Edge online{probe.edgeRegion ? ` · ${probe.edgeRegion}` : ""} · {probe.ms}ms
               </Badge>
             ) : (
-              <Badge variant="destructive" className="max-w-full font-normal">
-                ✗ {probe.error}
-              </Badge>
+              // r805: the r798 verdict strings are full remediation guides
+              // (300+ chars) — a pill badge was the wrong container (cramped,
+              // unreadable). Failures now render as a readable note, and the
+              // 401 walls get a scannable quick check under the verdict line.
+              <div
+                role="note"
+                data-testid="cortex-probe-failure"
+                className="max-w-full rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive"
+              >
+                <p className="font-medium">✗ Probe failed — {probe.error}</p>
+                {probe.error && /401/.test(probe.error) && (
+                  <p className="mt-1 flex items-start gap-1.5 text-[11px] opacity-90">
+                    <KeyRound className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                    <span>
+                      401 quick check: the shared key here equals the CORTEX_SHARED_SECRET edge
+                      secret · “Enforce JWT verification” is OFF for nexus-cortex-harness only ·
+                      then Probe again.
+                    </span>
+                  </p>
+                )}
+              </div>
             )
           ) : null}
         </div>
