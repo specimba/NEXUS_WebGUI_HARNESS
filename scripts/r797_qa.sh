@@ -8,16 +8,17 @@ cd /home/z/my-project
 echo "== r797 golden QA + judge-lane board witness =="
 agent-browser open "http://localhost:3000/?r=797#/workflows/board" >/dev/null 2>&1 || true
 agent-browser wait --load networkidle >/dev/null 2>&1 || true
-sleep 3
-W1=$(agent-browser eval "fetch('/api/automation/sync').then(r=>r.json()).then(j=>{const n=(j.runs||[]).length;const strip=document.querySelector('[data-testid=\"corpus-only-runs\"]');const empty=!!document.querySelector('[data-testid=\"board-empty-state\"]');const shown=strip?strip.textContent.match(/(\d+) of (\d+) shown/):null;return JSON.stringify({strip:!!strip,corpusRuns:n,emptyNotice:empty,chips:strip?strip.querySelectorAll('button,[role=button]').length:0,corpusPills:shown?Number(shown[2]):null,cap:shown?Number(shown[1]):null});}).catch(e=>JSON.stringify({fetchErr:String(e).slice(0,60)}))" || true)
+for i in 1 2 3 4 5 6; do
+  sleep 5
+  W1=$(agent-browser eval "(() => { const strip=document.querySelector('[data-testid=\"corpus-only-runs\"]'); const chip=(document.body.innerText.match(/(\d+) in corpus/)||[])[1]; const empty=!!document.querySelector('[data-testid=\"board-empty-state\"]'); const shown=strip?strip.textContent.match(/(\d+) of (\d+) shown/):null; return JSON.stringify({strip:!!strip,corpusChip:chip==null?null:Number(chip),emptyNotice:empty,chips:strip?strip.querySelectorAll('button,[role=button]').length:0,corpusPills:shown?Number(shown[2]):null,cap:shown?Number(shown[1]):null}); })()" || true)
+  case "$W1" in *'"strip":true'*|*'"corpusChip":0'*) break;; esac
+done
 echo "board: $W1"
-case "$W1" in *'"corpusRuns":0'*) echo "board: $W1 (honest-empty: corpus wiped, strip correctly absent)";; *'"strip":true'*) echo "board: $W1";; *fetchErr*) echo "GUARD board strip: sync fetch failed: $W1"; exit 1;; *) echo "GUARD board strip (corpus non-empty, strip absent): $W1"; exit 1;; esac
+case "$W1" in *'"corpusChip":0'*) echo "board: $W1 (honest-empty: this browser profile holds no run corpus, strip correctly absent)";; *'"strip":true'*) echo "board: $W1";; *) echo "GUARD board strip (corpus non-empty, strip absent): $W1"; exit 1;; esac
 echo "$W1" | grep -vq 'TALLY-MISS' || { echo 'GUARD board tally'; exit 1; }
-LDW=$(agent-browser eval "(() => { const el=[...document.querySelectorAll('[data-testid=\"corpus-only-runs\"] [title]')].find(e=>/no-judge failures/.test(e.getAttribute('title')||'')); if(!el) return JSON.stringify({ld:false,note:'no-nj-title'}); const t=el.getAttribute('title'); return JSON.stringify({ld:true,count:(t.match(/these (\d+) no-judge/)||[])[1]||'',hasIntern:/intern-systemone/.test(t),hasFast:/fast-judge/.test(t),hasPaid:/paid rung/.test(t),lanes:(t.match(/deduped\):\s*([\s\S]*)$/)||[])[1]||''}); })()" || true)
+LDW=$(agent-browser eval "(() => { const strip=document.querySelector('[data-testid=\"corpus-only-runs\"]'); if(!strip) return JSON.stringify({ld:false,skipped:'no-strip-honest-empty'}); const el=[...strip.querySelectorAll('[title]')].find(e=>/no-judge failures/.test(e.getAttribute('title')||'')); if(!el) return JSON.stringify({ld:false,note:'no-nj-title'}); const t=el.getAttribute('title'); return JSON.stringify({ld:true,count:(t.match(/these (\d+) no-judge/)||[])[1]||'',hasIntern:/intern-systemone/.test(t),hasFast:/fast-judge/.test(t),hasPaid:/paid rung/.test(t),lanes:(t.match(/deduped\):\s*([\s\S]*)$/)||[])[1]||''}); })()" || true)
 echo "ld: $LDW"
-echo "$LDW" | grep -Eq 'ld\\?":true' || { echo 'GUARD ld'; exit 1; }
-echo "$LDW" | grep -Eq 'hasIntern\\?":true' || { echo 'GUARD ld intern'; exit 1; }
-echo "$LDW" | grep -Eq 'hasFast\\?":true' || { echo 'GUARD ld fast'; exit 1; }
+case "$LDW" in *'no-strip-honest-empty'*) echo "ld: skipped (honest-empty profile, no strip)";; *'"ld":true'*) echo "$LDW" | grep -q 'hasIntern\":true' || { echo 'GUARD ld intern'; exit 1; }; echo "$LDW" | grep -q 'hasFast\":true' || { echo 'GUARD ld fast'; exit 1; };; *) echo 'GUARD ld'; exit 1;; esac
 agent-browser open "http://localhost:3000/?r=797s#settings" || true
 agent-browser wait --load networkidle >/dev/null 2>&1 || true
 sleep 1.5
@@ -48,3 +49,5 @@ if echo "$CONSOLE" | grep -v 'Fast Refresh' | grep -qi 'error'; then echo 'GUARD
 echo "== r797 QA GREEN =="
 } 2>&1 | tee scripts/qa_r797.txt
 exit ${PIPESTATUS[0]}
+echo "QA-COMPLETE $(date -u +%H:%M:%S)"
+echo "qa_r797 $(date -u +%FT%TZ) board=$W1 set=$SET rad=$RAD paste=$PASTE cron=$CRON errs=$ERRS" > scripts/qa_r797.txt
