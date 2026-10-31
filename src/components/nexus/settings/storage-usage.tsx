@@ -14,6 +14,7 @@ import {
   CloudUpload,
   Copy,
   Database,
+  Eraser,
   ExternalLink,
   HardDriveDownload,
   History,
@@ -51,6 +52,7 @@ import {
   listArchiveFull,
   type ArchiveTierStats,
 } from "@/lib/run-archive";
+import { compactNexusStorage } from "@/lib/storage-hygiene";
 
 const KNOWN_KEYS: Record<string, string> = {
   "nexus-workflows": "Workflows",
@@ -794,12 +796,37 @@ export function StorageUsage() {
   });
   const [receipt, setReceipt] = React.useState<ReclaimReceipt | null>(null);
   const [reclaiming, setReclaiming] = React.useState(false);
+  const [compacting, setCompacting] = React.useState(false);
 
   const recheck = React.useCallback(() => {
     setSnap(measure());
     setLegacy(scanLegacy());
     setReceipt(readReceipt());
   }, []);
+
+  // r800: one-click compaction of the refillable caches (radar/ticker fetch
+  // caches, intel ladder index, free-catalog index) — the pressure responder
+  // for the Owner's 4.81/5.00 MB profile. Zero data loss: chats, workflows,
+  // settings, UI state and the provider vault are never in the set; every
+  // cleared key rehydrates from its API on the next visit.
+  const onCompact = React.useCallback(() => {
+    setCompacting(true);
+    try {
+      const result = compactNexusStorage();
+      if (result.cleared.length === 0) {
+        toast.info("Nothing to compact — the refillable caches are already empty.");
+        return;
+      }
+      toast.success(
+        `Compacted ${result.cleared.length} cache key${result.cleared.length === 1 ? "" : "s"} — freed ${fmt(result.freedChars)}; they refill from their APIs on the next visit.`,
+      );
+    } catch (err) {
+      toast.error(`Compact failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setCompacting(false);
+      recheck();
+    }
+  }, [recheck]);
 
   const onReclaim = React.useCallback(() => {
     setReclaiming(true);
@@ -835,17 +862,31 @@ export function StorageUsage() {
     <div className="rounded-lg border p-3" data-testid="storage-usage">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">Storage usage</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 px-2 text-xs"
-          onClick={recheck}
-          aria-label="Recheck storage usage"
-        >
-          <RefreshCw className="h-3 w-3" aria-hidden />
-          Recheck
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs"
+            onClick={onCompact}
+            disabled={compacting}
+            aria-label="Compact refillable caches"
+          >
+            <Eraser className="h-3 w-3" aria-hidden />
+            Compact caches
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs"
+            onClick={recheck}
+            aria-label="Recheck storage usage"
+          >
+            <RefreshCw className="h-3 w-3" aria-hidden />
+            Recheck
+          </Button>
+        </div>
       </div>
 
       {!snap.available ? (
@@ -939,7 +980,7 @@ export function StorageUsage() {
             >
               {overBudget
                 ? "This site is over the typical localStorage budget — saves may not persist until you free space. Old workflow runs and chat tool payloads eat the most; reclaiming the stale pre-rebrand copies below (if offered) frees it without touching live data, and recent saves already trim old history automatically."
-                : `Nearly full. Recent saves trim old workflow runs and chat tool payloads automatically${legacy.chars > 0 ? ", and the stale pre-rebrand copies below can be reclaimed in one click" : ""}; Export + Clear all data frees the most space if storage errors appear.`}
+                : `Nearly full. Recent saves trim old workflow runs and chat tool payloads automatically, and Compact caches frees the refillable ones (they rehydrate from their APIs)${legacy.chars > 0 ? ", and the stale pre-rebrand copies below can be reclaimed in one click" : ""}; Export + Clear all data frees the most space if storage errors appear.`}
             </p>
           )}
 

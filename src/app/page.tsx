@@ -18,6 +18,8 @@ import { RadarView } from "@/components/nexus/radar/radar-view";
 import { ModelTicker } from "@/components/nexus/tracker/model-ticker";
 import { SettingsView } from "@/components/nexus/settings/settings-view";
 import { ensureSeeded, useConversationsStore, useSettingsStore, useUiStore } from "@/lib/stores";
+import { maybeAutoCompact } from "@/lib/storage-hygiene";
+import { toast } from "sonner";
 import { useKeyboardShortcuts } from "@/lib/use-shortcuts";
 import { DEFAULT_UI_THEME } from "@/lib/constants";
 
@@ -123,6 +125,21 @@ export default function Page() {
       document.documentElement.setAttribute("data-theme", id);
     }
   }, [uiTheme]);
+
+  // r800: boot-time storage pressure responder — the Owner's profile sat at
+  // 4.81/5.00 MB. maybeAutoCompact() clears ONLY the refillable caches (radar
+  // fetches, intel ladder, free-catalog) and ONLY above 92% of the per-origin
+  // character budget; under the threshold it is a silent no-op. Callers own
+  // the disclosure: the toast names every freed unit honestly.
+  useEffect(() => {
+    if (!mounted) return;
+    const result = maybeAutoCompact();
+    if (result && result.cleared.length > 0) {
+      toast.success(
+        `Storage auto-compacted: freed ${result.freedChars.toLocaleString()} chars from ${result.cleared.length} refillable cache${result.cleared.length === 1 ? "" : "s"} — they rehydrate on next visit.`,
+      );
+    }
+  }, [mounted]);
 
   // r427: reflect in-app navigation into the URL. The r272 router was
   // one-way (hash → view): a sidebar / command-palette switch left the hash
