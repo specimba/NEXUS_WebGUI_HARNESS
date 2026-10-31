@@ -1142,6 +1142,13 @@ export function WorkflowRunPanel({
 
   // Run history list — reachable from BOTH the empty state and the run view,
   // so past runs can be re-opened, compared and exported anytime.
+  // r819: each row's status lived only in an aria-hidden icon (done check /
+  // error X / running spinner) — the accessible name said WHEN and WHAT but
+  // never HOW the run ended. The label now carries the status: error speaks
+  // the r818 visible-copy word "failed"; the other statuses speak their own
+  // word (running / done / partial / blocked / stopped). A first draft also
+  // mapped a "pending" state — TS2367 caught it: runs have no pending status
+  // (that is a STEP state), so the mapping was honestly removed.
   const historySection = (
     <Collapsible open={historyOpen} onOpenChange={setHistoryOpen} className="pt-2">
       <CollapsibleTrigger asChild>
@@ -1172,13 +1179,15 @@ export function WorkflowRunPanel({
                 "flex items-center gap-0.5 rounded-lg border pr-0.5 transition",
                 r.id === viewingRunId
                   ? "border-violet-500/40 bg-violet-500/5"
-                  : "border-transparent"
+                  : "border-transparent hover:border-border/60"
               )}
             >
               <button
                 type="button"
                 onClick={() => setViewingRunId(r.id)}
-                aria-label={`View run from ${fmtRel(r.startedAt)}: ${r.task}`}
+                aria-label={`View run from ${fmtRel(r.startedAt)}: ${r.task} — ${
+                  r.status === "error" ? "failed" : r.status
+                }`}
                 className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left transition hover:bg-muted/50"
               >
                 {r.status === "done" ? (
