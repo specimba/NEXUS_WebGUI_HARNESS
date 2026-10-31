@@ -580,6 +580,17 @@ function recentlyFailed(entry: RelayHealthEntry | undefined): boolean {
   return Date.now() - entry.lastFailAt < windowMs;
 }
 
+/** r814: observability-only "recent soft fail" check. The ROTATION never
+ * demotes soft failures (recentlyFailed returns false for them BY DESIGN —
+ * r25), but the fleet board still must SHOW 429 noise honestly: throttled
+ * was a dead tally (laneRecentlyFailed(e) && e.soft can never be true, so
+ * the badge and its teaching tooltip were unreachable). Same 5-minute
+ * observation window as the hard cooldown; NEVER used by dial ordering. */
+export function softRecentlyObserved(entry: RelayHealthEntry | undefined): boolean {
+  if (!entry?.soft || !entry.lastFailAt) return false;
+  return Date.now() - entry.lastFailAt < HEALTH_COOLDOWN_MS;
+}
+
 // ─── r504: smart failover policy — free frontiers + provider breaker ─────────
 // Owner directive (Vyce fleet degraded, 58.3% uptime): "we have to be prepared
 // for these problems and auto-rotate them to the best available alternative

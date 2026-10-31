@@ -43,6 +43,7 @@ import {
   hopBreakerDocked,
   hopIsFree,
   laneRecentlyFailed,
+  softRecentlyObserved,
   relayHealthSnapshot,
   resetRelayHealth,
   TIER_LABEL,
@@ -160,7 +161,12 @@ function buildFleetRows(
       providerId,
       okLanes: lanes.filter((e) => !laneRecentlyFailed(e) && e.ok > 0).length,
       sickLanes: lanes.filter((e) => laneRecentlyFailed(e) && !e.soft).length,
-      throttledLanes: lanes.filter((e) => laneRecentlyFailed(e) && e.soft).length,
+      // r814: softRecentlyObserved — laneRecentlyFailed returns false for
+      // soft entries BY DESIGN (soft never demotes the rotation, r25), which
+      // made this tally a dead path (throttledLanes was forever 0 and the
+      // badge + teaching tooltip unreachable). The board observes, the
+      // rotation still never demotes.
+      throttledLanes: lanes.filter((e) => softRecentlyObserved(e)).length,
       answered: lanes.reduce((n, e) => n + e.ok, 0),
       quarantined: quarantineLeftMs(providerId, breaker) > 0,
       leftMs: quarantineLeftMs(providerId, breaker),
