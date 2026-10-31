@@ -292,7 +292,15 @@ export function ConversationList({ onNavigate, className }: ConversationListProp
                     </span>
                   )}
                 </h3>
-                <div className="space-y-1">
+                {/* r824: the group's rows are a real labeled list - the group
+                    heading carries the bucket name, the list carries the
+                    count + unit, and each row is a listitem whose BUTTON tells
+                    the whole story (the r822 interactive-row rule). */}
+                <div
+                  className="space-y-1"
+                  role="list"
+                  aria-label={`${group.label} — ${group.items.length} ${group.items.length === 1 ? "chat" : "chats"}`}
+                >
                   {group.items.map((c) => {
                     const active = c.id === activeId;
                     const convAgent = c.agentId ? agentMap.get(c.agentId) : undefined;
@@ -305,12 +313,24 @@ export function ConversationList({ onNavigate, className }: ConversationListProp
                         break;
                       }
                     }
+                    // r824: the row's ONE utterance (single source of truth) -
+                    // title, agent, recency, size, pin and the lane story all
+                    // travel together on the BUTTON (the r822 interactive-row
+                    // rule: the listitem groups, the button names).
+                    const rowUtterance =
+                      `${c.title}${convAgent ? `, with ${convAgent.name}` : ""} — ` +
+                      `${fmtListTime(c.updatedAt)}, ${c.messages.length} ${c.messages.length === 1 ? "message" : "messages"}` +
+                      `${c.pinned ? ", pinned" : ""}` +
+                      `${lastLane ? `, last reply via ${lastLane === "server" ? "server relay" : "browser-direct (key stayed local)"}` : ""}`;
                     return (
                       <div
                         key={c.id}
+                        role="listitem"
                         className={cn(
                           "group flex items-center gap-1 rounded-lg pr-1 transition-colors",
-                          active ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-accent/60"
+                          active
+                            ? "bg-primary/10 ring-1 ring-primary/30"
+                            : "hover:bg-accent/60 has-[button:focus-visible]:bg-accent/60"
                         )}
                       >
                         <button
@@ -320,6 +340,7 @@ export function ConversationList({ onNavigate, className }: ConversationListProp
                             onNavigate?.();
                           }}
                           aria-current={active ? "true" : undefined}
+                          aria-label={rowUtterance}
                           className="min-w-0 flex-1 rounded-lg px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                         >
                           <div className="flex items-center gap-1.5">
@@ -338,7 +359,7 @@ export function ConversationList({ onNavigate, className }: ConversationListProp
                             {c.pinned && (
                               <Pin
                                 className="h-2.5 w-2.5 text-violet-400/90"
-                                aria-label="Pinned"
+                                aria-hidden
                               />
                             )}
                             <span title={new Date(c.updatedAt).toLocaleString()}>{fmtListTime(c.updatedAt)}</span>
@@ -372,7 +393,7 @@ export function ConversationList({ onNavigate, className }: ConversationListProp
                               variant="ghost"
                               size="icon"
                               aria-label={`Options for ${c.title}`}
-                              className="h-7 w-7 shrink-0 text-muted-foreground opacity-60 hover:opacity-100"
+                              className="h-7 w-7 shrink-0 text-muted-foreground opacity-60 hover:opacity-100 focus-visible:opacity-100"
                             >
                               <MoreVertical className="h-3.5 w-3.5" aria-hidden />
                             </Button>
