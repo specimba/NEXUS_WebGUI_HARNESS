@@ -131,7 +131,7 @@ function buildChatHits(
   const hits: ChatHit[] = [];
   for (const conv of [...conversations].sort((a, b) => b.updatedAt - a.updatedAt)) {
     if (excludeConvIds.has(conv.id)) continue;
-    const tIdx = conv.title.toLowerCase().indexOf(q);
+    const tIdx = (conv.title ?? "").toLowerCase().indexOf(q);
     if (tIdx === -1) continue;
     hits.push({
       convId: conv.id,
@@ -175,12 +175,18 @@ function buildWorkflowHits(
   if (q.length < 2) return [];
   const hits: WorkflowHit[] = [];
   for (const wf of [...workflows].sort((a, b) => b.updatedAt - a.updatedAt)) {
-    const nameIdx = wf.name.toLowerCase().indexOf(q);
+    // r823 QA-found crash: description/label/title are TYPED optional but were
+    // read unguarded — an agent (or workflow) saved without a description made
+    // EVERY query throw "Cannot read properties of undefined (reading
+    // 'toLowerCase')" inside this dialog, and the error boundary unmounted it
+    // (the console tail caught it; the v1-v5 witness "dialog self-close" was
+    // this crash all along). Guard every optional string at the scan.
+    const nameIdx = (wf.name ?? "").toLowerCase().indexOf(q);
     const matchedIn = nameIdx !== -1
       ? "name"
-      : wf.description.toLowerCase().includes(q)
+      : (wf.description ?? "").toLowerCase().includes(q)
         ? "description"
-        : wf.steps.some((st) => st.label.toLowerCase().includes(q))
+        : wf.steps.some((st) => (st.label ?? "").toLowerCase().includes(q))
           ? "steps"
           : null;
     if (!matchedIn) continue;
@@ -231,12 +237,12 @@ function buildAgentHits(
   if (q.length < 2) return [];
   const hits: AgentHit[] = [];
   for (const a of [...agents].sort((x, y) => y.updatedAt - x.updatedAt)) {
-    const nameIdx = a.name.toLowerCase().indexOf(q);
+    const nameIdx = (a.name ?? "").toLowerCase().indexOf(q);
     const matchedIn = nameIdx !== -1
       ? "name"
-      : a.role.toLowerCase().includes(q)
+      : (a.role ?? "").toLowerCase().includes(q)
         ? "role"
-        : a.description.toLowerCase().includes(q)
+        : (a.description ?? "").toLowerCase().includes(q)
           ? "description"
           : null;
     if (!matchedIn) continue;
@@ -448,6 +454,13 @@ export function GlobalSearchDialog() {
                   </span>
                 </p>
                 <div className="space-y-1">
+                  {/* r823: the message-hit rows' own content said WHO spoke and
+                      the snippet — the conversation they belong to lived ONLY in
+                      the group header above (visual context), so navigating the
+                      listbox by option heard "WitnessWorker — 2h ago — snippet"
+                      with no idea which chat a jump would open. Each row now
+                      carries its conversation in the utterance (the arc's
+                      interactive-row rule: the button names, the group frames). */}
                   {convHits.map((h) => (
                     <button
                       key={h.msgId}
@@ -455,9 +468,10 @@ export function GlobalSearchDialog() {
                       role="option"
                       aria-selected={false}
                       onClick={() => jump(h)}
+                      aria-label={`${h.convTitle} — ${h.who}, ${fmtRel(h.createdAt)}: ${h.snippetBefore}${h.snippetMatch}${h.snippetAfter}`}
                       className={cn(
                         "group flex w-full items-start gap-2.5 rounded-xl border border-transparent px-2.5 py-2 text-left",
-                        "transition-colors hover:border-violet-500/30 hover:bg-violet-500/5"
+                        "transition-colors hover:border-violet-500/30 hover:bg-violet-500/5 focus-visible:border-violet-500/50 focus-visible:bg-violet-500/5"
                       )}
                     >
                       <span
@@ -515,7 +529,7 @@ export function GlobalSearchDialog() {
                     onClick={() => jumpToConversation(h)}
                     className={cn(
                       "group flex w-full items-start gap-2.5 rounded-xl border border-transparent px-2.5 py-2 text-left",
-                      "transition-colors hover:border-violet-500/30 hover:bg-violet-500/5"
+                      "transition-colors hover:border-violet-500/30 hover:bg-violet-500/5 focus-visible:border-violet-500/50 focus-visible:bg-violet-500/5"
                     )}
                   >
                     <span
@@ -568,7 +582,7 @@ export function GlobalSearchDialog() {
                       onClick={() => jumpToAgent(h)}
                       className={cn(
                         "group flex w-full items-start gap-2.5 rounded-xl border border-transparent px-2.5 py-2 text-left",
-                        "transition-colors hover:border-violet-500/30 hover:bg-violet-500/5"
+                        "transition-colors hover:border-violet-500/30 hover:bg-violet-500/5 focus-visible:border-violet-500/50 focus-visible:bg-violet-500/5"
                       )}
                     >
                       {agent ? (
@@ -635,7 +649,7 @@ export function GlobalSearchDialog() {
                     onClick={() => jumpToWorkflow(w)}
                     className={cn(
                       "group flex w-full items-start gap-2.5 rounded-xl border border-transparent px-2.5 py-2 text-left",
-                      "transition-colors hover:border-violet-500/30 hover:bg-violet-500/5"
+                      "transition-colors hover:border-violet-500/30 hover:bg-violet-500/5 focus-visible:border-violet-500/50 focus-visible:bg-violet-500/5"
                     )}
                   >
                     <span
