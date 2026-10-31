@@ -1269,6 +1269,14 @@ export function ModelRelayCard() {
   );
 }
 
+// r816: transport ordinals for the hop utterances — "dials first/second/…"
+// names the failover semantics (earlier hops try first, later hops fire only
+// when earlier ones fail) instead of a bare position digit.
+const HOP_ORDINALS = [
+  "first", "second", "third", "fourth", "fifth", "sixth",
+  "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth",
+];
+
 function HopRow({
   hop,
   index,
@@ -1297,14 +1305,33 @@ function HopRow({
   const isAuto = hop.providerId === "auto";
   const cooling = !!health?.lastFailAt && Date.now() - health.lastFailAt < 5 * 60_000;
   const free = hopIsFree(hop);
+  // r816: the chain's last silent list — every HopRow was role=listitem with
+  // no accessible name, so screen readers heard fragments (a digit, badges,
+  // move buttons) with no statement of WHERE this hop dials or what state
+  // it's in. One utterance per row: label → transport position (the pinned
+  // last resort gets its doctrine phrase) → tier → free/reach marks → state.
+  const transit = isAuto
+    ? "pinned last: fires only after every named hop fails"
+    : `hop ${index + 1}, dials ${HOP_ORDINALS[index] ?? `#${index + 1}`}`;
+  const state = docked
+    ? "breaker-docked, dials last until the quarantine lapses"
+    : cooling
+      ? "demoted, failed recently"
+      : health && health.ok > 0
+        ? `answered ${health.ok} times`
+        : "no saved verdicts yet";
   return (
     <div
       role="listitem"
+      aria-label={`${hop.label} — ${transit}, tier T${hop.tier} ${TIER_LABEL[hop.tier]}${free && !isAuto ? ", free lane" : ""}${reach && !isAuto ? `, census-confirmed free on ${reach.provider}` : ""}, ${state}`}
       className={cn(
         "flex items-center gap-2 rounded-lg border px-2.5 py-2",
         isAuto ? "border-dashed border-border/70" : "border-border",
         (cooling || docked) && "border-amber-500/40 bg-amber-500/5",
-        docked && "opacity-80"
+        docked && "opacity-80",
+        // r816 styling polish: clean rows get interactive hover feedback;
+        // state rows keep their amber warning tint untouched (no hue fight).
+        !(cooling || docked) && "transition-colors hover:bg-muted/30"
       )}
     >
       <span className="w-5 shrink-0 text-center font-mono text-[10px] text-muted-foreground">
