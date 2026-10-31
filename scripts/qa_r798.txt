@@ -1,0 +1,3 @@
+== r798 golden QA + judge-lane board witness ==
+board: "{\"strip\":false,\"corpusChip\":null,\"emptyNotice\":true,\"chips\":0,\"corpusPills\":null,\"cap\":null}"
+GUARD board strip (corpus non-empty, strip absent): "{\"strip\":false,\"corpusChip\":null,\"emptyNotice\":true,\"chips\":0,\"corpusPills\":null,\"cap\":null}"

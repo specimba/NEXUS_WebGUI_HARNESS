@@ -162,12 +162,25 @@ export default function Page() {
     // macrotasks, idempotent reads of the same hash, timers cleaned up.
     const t1 = setTimeout(applyHashRoute, 0);
     const t2 = setTimeout(applyHashRoute, 400);
+    // r799: the fixed timers are belt-and-braces, not the mechanism - a slow
+    // cold boot can still finish rehydrating AFTER the 400ms re-apply (the
+    // r798 open flake: fresh agent-browser profiles sometimes stayed on home
+    // past both timers). The deterministic arm is the persist hydration gate:
+    // when the async storage has not rehydrated by mount, re-apply the exact
+    // same hash the moment hydration lands. When the store hydrated
+    // synchronously this registers nothing (the applyHashRoute() above already
+    // saw final state). Unsubscribed in the cleanup below.
+    let offHydration: (() => void) | null = null;
+    if (!useUiStore.persist.hasHydrated()) {
+      offHydration = useUiStore.persist.onFinishHydration(() => applyHashRoute());
+    }
     const onHash = () => applyHashRoute();
     window.addEventListener("hashchange", onHash);
     return () => {
       window.removeEventListener("hashchange", onHash);
       clearTimeout(t1);
       clearTimeout(t2);
+      offHydration?.();
     };
   }, [mounted]);
 
