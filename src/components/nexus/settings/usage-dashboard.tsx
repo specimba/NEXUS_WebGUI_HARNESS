@@ -272,9 +272,14 @@ export function UsageDashboard() {
                 {usedTools.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No tool runs yet.</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2" role="list" aria-label="Tool mix — runs per tool">
                     {usedTools.map((t) => (
-                      <div key={t.id} className="flex items-center gap-2">
+                      <div
+                        key={t.id}
+                        role="listitem"
+                        aria-label={`${t.label} — ${t.count} run${t.count === 1 ? "" : "s"}`}
+                        className="flex items-center gap-2 rounded px-1 transition-colors hover:bg-muted/30"
+                      >
                         <span className="w-24 shrink-0 truncate text-xs" aria-hidden>
                           {t.emoji} {t.label}
                         </span>
@@ -286,7 +291,7 @@ export function UsageDashboard() {
                             className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
                           />
                         </div>
-                        <span className="w-6 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
+                        <span className="w-6 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground" aria-hidden>
                           {t.count}
                         </span>
                       </div>
@@ -308,14 +313,19 @@ export function UsageDashboard() {
                 {stats.topAgents.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No agent replies yet.</p>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-2.5" role="list" aria-label="Busiest agents — replies per agent">
                     {stats.topAgents.map((a) => (
-                      <div key={a.id} className="flex items-center gap-2.5">
+                      <div
+                        key={a.id}
+                        role="listitem"
+                        aria-label={`${a.name} — ${a.count} repl${a.count === 1 ? "y" : "ies"}`}
+                        className="flex items-center gap-2.5 rounded px-1 transition-colors hover:bg-muted/30"
+                      >
                         <AgentAvatar
                           agent={{ emoji: a.emoji, color: a.color, name: a.name }}
                           size="xs"
                         />
-                        <span className="w-24 shrink-0 truncate text-xs font-medium">{a.name}</span>
+                        <span className="w-24 shrink-0 truncate text-xs font-medium" aria-hidden>{a.name}</span>
                         <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
                           <motion.div
                             initial={{ width: 0 }}
@@ -324,7 +334,7 @@ export function UsageDashboard() {
                             className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
                           />
                         </div>
-                        <span className="w-6 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
+                        <span className="w-6 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground" aria-hidden>
                           {a.count}
                         </span>
                       </div>
