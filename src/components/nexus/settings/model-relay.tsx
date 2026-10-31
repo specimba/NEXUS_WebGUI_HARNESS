@@ -791,7 +791,8 @@ export function ModelRelayCard() {
                     <div
                       key={e.id}
                       role="listitem"
-                      className="flex items-start gap-2 rounded-md border border-border/50 bg-background/30 px-2 py-1.5"
+                      aria-label={`${e.name} (${e.provider}) — ${e.access.filter((a) => a === "free-forever" || a === "free-tier" || a === "signup-credits").join(" + ") || "free access"}${e.gated ? " · gated" : ""}${isNewcomer(e) ? " · new to the index" : ""}`}
+                      className="flex items-start gap-2 rounded-md border border-border/50 bg-background/30 px-2 py-1.5 transition-colors hover:border-teal-500/40 hover:bg-teal-500/[0.06]"
                     >
                       <span
                         className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
