@@ -345,7 +345,13 @@ function StatusIndicator({
   }
   if (status === "done") {
     return (
-      <span className="flex shrink-0 items-center gap-1 text-xs text-emerald-500">
+      <span
+        className="flex shrink-0 items-center gap-1 text-xs text-emerald-500"
+        // r818: the old indicator was a color + an aria-hidden check icon + a
+        // bare duration — a screen reader heard "3.2s" with nothing saying the
+        // step COMPLETED. The state now names itself.
+        aria-label={`Done in ${fmtMs(ms)}`}
+      >
         <Check className="h-3.5 w-3.5" aria-hidden />
         {fmtMs(ms)}
       </span>
@@ -1848,6 +1854,21 @@ export function WorkflowRunPanel({
               })()}
               {viewedRun.steps.map((step, i) => {
                 const agent = agents.find((a) => a.id === step.agentId);
+                // r818: the run panel's step cards were the workflows surface of
+                // the spoken-lists arc (r811-r817): a screen reader walking the
+                // sheet heard an avatar, a name, chips and a bare duration with no
+                // statement of WHICH step this is or how it stands. The status's
+                // only channel was the border COLOR. One utterance per card:
+                // position in the run, worker, kind, state.
+                // Utterance mirrors the VISIBLE status copy (r818: the
+                // error indicator reads "Failed", pending reads "Queued").
+                const statusWord =
+                  step.status === "pending"
+                    ? "queued"
+                    : step.status === "error"
+                      ? "failed"
+                      : step.status;
+                const stepUtterance = `Step ${i + 1} of ${viewedRun.steps.length} — ${step.agentName}${step.kind === "review" ? ", review gate" : ""}, ${statusWord}`;
                 // r180/r182 role honesty: routing is agentId, never the title.
                 // The EFFECTIVE role signal prefers an explicit step.roleId
                 // (authorable since r182); the parsed "[Tag]" prefix is the
@@ -1885,10 +1906,16 @@ export function WorkflowRunPanel({
                 return (
                   <Card
                     key={`${viewedRun.id}-${step.stepId}-${i}`}
+                    role="group"
+                    aria-label={stepUtterance}
                     className={cn(
                       "gap-2 border-l-4 p-4",
                       STEP_BORDER[step.status],
-                      step.kind === "review" && "bg-amber-500/[0.035]"
+                      step.kind === "review" && "bg-amber-500/[0.035]",
+                      // r818 polish: cards answer hover without touching any
+                      // status color (shadow only — the left border keeps its
+                      // state hue, review keeps its amber wash).
+                      "transition-shadow hover:shadow-sm"
                     )}
                   >
                     <div className="flex items-center gap-2">
