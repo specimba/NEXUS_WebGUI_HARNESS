@@ -47,6 +47,7 @@ import {
 } from "@/lib/cortex-edge";
 import type { CortexConfig, CortexProbeResult } from "@/lib/cortex-edge";
 import {
+  ageLabel,
   CORTEX_PROBE_FRESH_MS,
   cortexCensusOf,
   cortexStatusLabel,
@@ -61,6 +62,15 @@ import { cn } from "@/lib/utils";
 const EMPTY_CORTEX: CortexConfig = { url: "" };
 
 /** Probe-matrix chips — order = the lane order of the v2 diagnostics. */
+// r806: per-lane transport notes — the no-silent-fallback disclosure at chip
+// level: HOW a lane answered matters as much as whether it answered.
+const TR_NOTE: Record<string, string> = {
+  edge: " · answered via the edge function",
+  direct: " · answered by direct dial",
+  "upstash-direct": " · answered via the Upstash REST dial",
+  off: " · off in the last probe",
+};
+
 const LANE_CHIPS: {
   key: keyof NonNullable<CortexProbeResult["lanes"]>;
   emoji: string;
@@ -563,10 +573,14 @@ export function CortexEdgeCard() {
                 const armed = !!lanes[chip.key];
                 const helper =
                   chip.key === "sharedSecretGate" && !armed ? "open — set the secret" : chip.helper;
+                const tr =
+                  chip.key === "sharedSecretGate" ? undefined : census.transports?.[chip.key];
+                const trNote = tr ? (TR_NOTE[tr] ?? "") : "";
                 return (
                   <li
                     key={chip.key}
-                    title={helper}
+                    aria-label={`${chip.label}: ${armed ? "armed" : "off"}`}
+                    title={`${helper}${trNote}`}
                     className={cn(
                       "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] leading-none",
                       armed
@@ -588,6 +602,9 @@ export function CortexEdgeCard() {
                 );
               })}
             </ul>
+            <p className="text-xs text-muted-foreground" data-testid="cortex-lane-age">
+              Lane matrix from the last probe · {ageLabel(census.ageMs)} · Probe again to refresh.
+            </p>
             {rate && rate.day && typeof rate.day.count === "number" ? (
               <p className="text-xs leading-relaxed text-muted-foreground">
                 <span aria-hidden>⏱</span> {rate.day.count} edge actions today
