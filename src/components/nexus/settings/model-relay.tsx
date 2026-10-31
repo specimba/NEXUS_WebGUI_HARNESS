@@ -1412,7 +1412,17 @@ function FleetHealthRow({ row }: { row: FleetRow }) {
   const meta = providerMeta(row.providerId);
   const nearTrip = !row.quarantined && row.streak >= BREAKER_STREAK_THRESHOLD - 1;
   return (
-    <li className="flex items-center gap-2 px-2.5 py-1.5">
+    <li
+      className="flex items-center gap-2 px-2.5 py-1.5"
+      data-testid="fleet-health-row"
+      aria-label={`${meta.label} fleet — ${row.quarantined ? `breaker open, ${fmtQuarantineLeft(row.leftMs)} left · ` : ""}${
+        [
+          row.okLanes > 0 ? `${row.okLanes} ok` : null,
+          row.sickLanes > 0 ? `${row.sickLanes} sick` : null,
+          row.throttledLanes > 0 ? `${row.throttledLanes} throttled` : null,
+        ].filter(Boolean).join(", ") || "no recent lane verdicts"
+      }${row.answered > 0 ? ` · ${row.answered} answers served` : ""}`}
+    >
       <span aria-hidden className="w-5 shrink-0 text-center text-sm" title={meta.label}>
         {meta.glyph}
       </span>
@@ -1441,12 +1451,17 @@ function FleetHealthRow({ row }: { row: FleetRow }) {
             <Badge
               variant="outline"
               className="border-amber-500/40 bg-amber-500/10 text-[10px] font-normal text-amber-300"
+              title="Recent hard fails — these lanes are demoted in the rotation until they answer again"
             >
               {row.sickLanes} sick
             </Badge>
           )}
           {row.throttledLanes > 0 && (
-            <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="text-[10px] font-normal text-muted-foreground"
+              title="429/capacity soft fails — recorded but never demoted; the next answer clears them"
+            >
               {row.throttledLanes} throttled
             </Badge>
           )}
@@ -1454,6 +1469,7 @@ function FleetHealthRow({ row }: { row: FleetRow }) {
             <Badge
               variant="outline"
               className="border-emerald-500/40 bg-emerald-500/10 text-[10px] font-normal text-emerald-400"
+              title="Lanes answering with no recent fail — they ride first in the rotation"
             >
               {row.okLanes} ok · {row.answered}×
             </Badge>
