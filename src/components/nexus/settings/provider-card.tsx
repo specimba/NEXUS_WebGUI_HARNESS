@@ -262,7 +262,7 @@ export function ProviderCard() {
                 )}
                 {testing ? "Testing…" : "Test connection"}
               </Button>
-              <div aria-live="polite" className="flex min-h-5 items-center">
+              <div aria-live="polite" data-testid="provider-test-verdict" className="flex min-h-5 items-center">
                 {testResult ? (
                   testResult.ok ? (
                     <Badge
@@ -272,9 +272,15 @@ export function ProviderCard() {
                       Connected ✓ {testResult.ms}ms
                     </Badge>
                   ) : (
-                    <Badge variant="destructive" className="max-w-full font-normal">
-                      ✗ {testResult.error}
-                    </Badge>
+                    /* r809: the doctrine sweep — a failed connection test is
+                       remediation context, not a badge. */
+                    <div
+                      role="note"
+                      data-testid="provider-test-failure"
+                      className="max-w-full rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive"
+                    >
+                      <p className="font-medium">✗ Test failed — {testResult.error}</p>
+                    </div>
                   )
                 ) : null}
               </div>

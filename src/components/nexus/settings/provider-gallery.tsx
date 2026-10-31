@@ -813,16 +813,22 @@ export function ProviderGallery() {
                   Check credits
                 </Button>
               ) : null}
-              <span aria-live="polite" className="flex min-h-6 flex-1 flex-wrap items-center justify-end gap-1.5">
+              <span aria-live="polite" data-testid="provider-gallery-test-verdict" className="flex min-h-6 flex-1 flex-wrap items-center justify-end gap-1.5">
                 {test ? (
                   test.ok ? (
                     <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500">
                       ✓ {test.ms}ms · saved {fmtRel(entry.validatedAt)}
                     </Badge>
                   ) : (
-                    <Badge variant="destructive" className="max-w-full font-normal">
-                      ✗ {test.error}
-                    </Badge>
+                    /* r809: the doctrine sweep — same readable note as the
+                       provider-card verdict, sized for the gallery row. */
+                    <span
+                      role="note"
+                      data-testid="provider-gallery-test-failure"
+                      className="w-full rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-left text-[11px] leading-relaxed text-destructive"
+                    >
+                      ✗ Test failed — {test.error}
+                    </span>
                   )
                 ) : hasKey && entry.validatedAt ? (
                   <span className="text-[11px] text-muted-foreground">validated {fmtRel(entry.validatedAt)}</span>
