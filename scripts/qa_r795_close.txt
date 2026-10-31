@@ -14,3 +14,15 @@ divergence: "{\"divBadges\":6}"
 lane filter click: "clicked"
 lane filter: "{\"pressed\":true,\"shownChip\":true,\"tallyWholeCorpus\":true}"
 worklog appended
+[main 4b0693f0c] r795: THE RENDER-CONTAINMENT ROUND - the corpus strip gains content-visibility:auto render containment (the freeze-watch third increment after the r792 cap and the r793 reverse gear: the heaviest DOM surface - the 24 capped pills + the lane legend - skips layout and paint while scrolled out of view, DOM intact for every probe, renders normally on approach, live-verified via the computed style) + the four-clause quiet continuation (no new bucket by the 00:14 UTC witness, quiet +309m - the break deepens past the r793 +273m reading, the amber regime seven witnesses deep +67/+99/+122/+208/+245/+273m/+309m; the census held flat 58 runs / 214 ev and the interval held 61m). QA green first-try + gates first-try (tsc 0, lint 0 errors / 33 warnings); snapshot forty-ninth.
+ 9 files changed, 356 insertions(+), 4 deletions(-)
+ create mode 100644 db/corpus-snapshots/corpus-2026-10-31T00-52-38.json
+ create mode 100644 scripts/patch_r795_close.py
+ create mode 100644 scripts/qa_r795.txt
+ create mode 100644 scripts/qa_r795_close.txt
+ create mode 100644 scripts/r795_close.sh
+ create mode 100644 scripts/r795_qa.sh
+To https://github.com/specimba/NEXUS_WebGUI_HARNESS.git
+   59053c641..4b0693f0c  main -> main
+To https://github.com/specimba/PraisonAI.git
+   59053c641..4b0693f0c  main -> main
