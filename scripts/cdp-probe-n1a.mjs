@@ -19,7 +19,7 @@ async function connect(wsUrl) {
     const m = JSON.parse(ev.data);
     if (m.id && pending.has(m.id)) {
       const { resolve, reject } = pending.get(m.id);
-      m.error ? reject(new Error(m.error.message)) : resolve(m.result);
+      if (m.error) reject(new Error(m.error.message)); else resolve(m.result);
     }
   };
   return ws;
