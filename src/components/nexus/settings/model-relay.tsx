@@ -1168,10 +1168,7 @@ export function ModelRelayCard() {
               </div>
             )}
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[10.5px] text-muted-foreground">
-                {lanes.length}/{MAX_ADOPTED_LANES} adopted lanes ride the chain · oldest evicted
-                past the cap
-              </p>
+              <LaneRideTally lanes={lanes} />
               <Button
                 type="button"
                 variant="ghost"
@@ -1532,7 +1529,10 @@ function AdoptedLaneRow({
   }
 
   return (
-    <li className={cn("flex items-center gap-2 px-2.5 py-1.5 transition-opacity", (!lane.enabled || retired) && "opacity-70")}>
+    <li
+      className={cn("flex items-center gap-2 px-2.5 py-1.5 transition-opacity", (!lane.enabled || retired) && "opacity-70")}
+      aria-label={`${lane.modelId} — ${lane.free ? "free" : "paid"} lane, ${retired ? "retired" : lane.enabled ? "active" : "muted"}`}
+    >
       <span aria-hidden className="w-5 shrink-0 text-center text-sm" title={providerMeta(lane.providerId).label}>
         {providerMeta(lane.providerId).glyph}
       </span>
@@ -1569,7 +1569,10 @@ function AdoptedLaneRow({
             </Badge>
           ) : null}
         </div>
-        <p className="truncate text-[10px] text-muted-foreground">
+        <p
+          className="truncate text-[10px] text-muted-foreground"
+          title={[ctx, price, `first seen ${fmtAge(lane.firstSeenAt)}`].filter(Boolean).join(" · ") || "tags n/a"}
+        >
           {[ctx, price, `first seen ${fmtAge(lane.firstSeenAt)}`].filter(Boolean).join(" · ") ||
             "tags n/a"}
         </p>
@@ -1624,5 +1627,30 @@ function AdoptedLaneRow({
         <Trash2 className="h-3 w-3" aria-hidden />
       </Button>
     </li>
+  );
+}
+
+// ─── r812: THE TALLY'S HONEST RIDE ───────────────────────────────────────
+// The footer used to say "N adopted lanes ride the chain" while counting
+// muted and retired rows — a parked lane rides nothing. The tally now splits
+// the registry into who actually dials versus who is parked, and each parked
+// state discloses itself only when it exists (no noise while every lane
+// rides). Same honesty treatment the intel ladder's tally got in r811.
+function tallyAdoptedLanes(lanes: AdoptedLane[]) {
+  const retired = lanes.filter((l) => l.retired === true).length;
+  const muted = lanes.filter((l) => l.retired !== true && l.enabled === false).length;
+  const active = lanes.length - retired - muted;
+  return { active, muted, retired };
+}
+
+function LaneRideTally({ lanes }: { lanes: AdoptedLane[] }) {
+  const t = tallyAdoptedLanes(lanes);
+  const parts = [`${t.active} of ${lanes.length} adopted lanes ride the chain · cap ${MAX_ADOPTED_LANES}`];
+  if (t.muted > 0) parts.push(`${t.muted} muted`);
+  if (t.retired > 0) parts.push(`${t.retired} retired`);
+  return (
+    <p className="text-[10.5px] text-muted-foreground" data-testid="lane-ride-tally">
+      {parts.join(" · ")} · oldest evicted past the cap
+    </p>
   );
 }
