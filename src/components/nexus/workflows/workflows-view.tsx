@@ -357,7 +357,15 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
         New lane experiment
       </button>
 
-      <div className="mt-3 space-y-1.5">
+      {/* r825: the ledger's rows were bare fragments (name + bare counts +
+          title-only trail dots + title-only experiment chips) with no list
+          semantics; now a labeled list where every row tells its whole story
+          in one utterance (the r821 informational-row rule). */}
+      <div
+        className="mt-3 space-y-1.5"
+        role="list"
+        aria-label={`Evolution ledger — ${rows.length} ${rows.length === 1 ? "pipeline" : "pipelines"} with done runs`}
+      >
         {rows.map(({ wf, done }) => {
           const latest = done[0];
           const n = latest.novelty;
@@ -378,12 +386,24 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
             exp != null && expNovelty != null && srcNovelty != null
               ? expNovelty - srcNovelty
               : null;
+          // r825: the row's ONE utterance (single source of truth) - name,
+          // done count, recency, experiment provenance and the whole novelty
+          // trail travel together (the trail dots + chips were title-only).
+          const rowUtterance =
+            `${wf.name} — ${done.length} done run${done.length === 1 ? "" : "s"}` +
+            `${latest.finishedAt ? `, last ${fmtRel(latest.finishedAt)}` : ""}` +
+            `${exp ? `, experiment of ${expSource ? expSource.name : exp.lane} (${exp.label})` : ""}` +
+            `, novelty trail oldest to newest: ${trail
+              .map((r) => (r.novelty != null ? `${r.novelty}%${r.novelty < threshold ? " (stall)" : ""}` : "not scored"))
+              .join(", ")}`;
           return (
             <div
               key={wf.id}
-              className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2"
+              role="listitem"
+              aria-label={rowUtterance}
+              className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2 transition-colors hover:bg-muted/40"
             >
-              <div className="min-w-0">
+              <div className="min-w-0" aria-hidden>
                 <div className="truncate text-xs font-medium">{wf.name}</div>
                 <div className="text-[10px] text-muted-foreground">
                   {done.length} done run{done.length === 1 ? "" : "s"}
@@ -418,7 +438,7 @@ function EvolutionLedger({ workflows }: { workflows: Workflow[] }) {
                   </div>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1" aria-hidden>
                 {trail.map((r) => {
                   const v = r.novelty;
                   return (
@@ -2320,7 +2340,14 @@ export function WorkflowsView() {
               </AlertDescription>
             </Alert>
           )}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* r825: the board's cards are a real labeled list - the grid names
+              the collection and its size, each card is a listitem (the card's
+              h3 still names it; the actions button already speaks). */}
+          <div
+            className="grid grid-cols-1 gap-4 lg:grid-cols-2"
+            role="list"
+            aria-label={`Workflow pipelines — ${filteredWorkflows.length} ${filteredWorkflows.length === 1 ? "pipeline" : "pipelines"}`}
+          >
             {filteredWorkflows.map((wf) => {
               const lastRun = wf.runs[0];
               // r81: live state for ANY run (manual or scheduled) — see the
@@ -2339,6 +2366,7 @@ export function WorkflowsView() {
               return (
                 <Card
                   key={wf.id}
+                  role="listitem"
                   data-wf-card={wf.id}
                   className={cn(
                     "card-lift gap-3 p-4 hover:ring-1 hover:ring-violet-500/40 focus-within:ring-1 focus-within:ring-violet-500/40",
