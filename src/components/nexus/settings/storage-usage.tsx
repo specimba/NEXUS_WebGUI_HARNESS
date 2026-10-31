@@ -871,6 +871,7 @@ export function StorageUsage() {
             onClick={onCompact}
             disabled={compacting}
             aria-label="Compact refillable caches"
+            title="Clears the refillable caches (model radar, HF/papers/GitHub caches, intel ladder, free catalog) — they rehydrate from their APIs on the next visit. Never touches chats, workflows or keys."
           >
             <Eraser className="h-3 w-3" aria-hidden />
             Compact caches
